@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net6.0-windows10.0.17763.0</TargetFramework>
+    <RootNamespace>_3dTesting</RootNamespace>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>3dTesting</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="3dWorld\ObjectAI\" />
+  </ItemGroup>  
+</Project>
