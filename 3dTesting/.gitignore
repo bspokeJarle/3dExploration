@@ -48,6 +48,7 @@ x64/
 *.tlb
 *.tli
 *.tlh
+*.vsidx
 *.tmp
 *.tmp_proj
 *.log

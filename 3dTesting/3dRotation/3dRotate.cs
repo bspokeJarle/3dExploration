@@ -12,9 +12,12 @@ namespace _3dTesting._3dRotation
     {        
         private TriangleMesh CalculateNormal(TriangleMesh coord)
         {
-            //Calculate crossproduct\normal
-            //We need this to determine the angle of the triangle and also the normal to determine if the triangle is facing the camera
-            //Remember the left hand rule makes this easy
+            //P.S the left hand rule makes this possible
+            //Calculate crossproduct
+            //Normalizing the crossproduct vectors
+            //Calculate the vector length
+            //Calculate the common normal vector
+            //We need this to determine wether this triangle is facing the camera or not
 
             //Crossproduct vectors
             var U = new Vector3 { x = (coord.vert2.x-coord.vert1.x),z=(coord.vert2.z-coord.vert1.z),y=(coord.vert2.y-coord.vert1.y) };
@@ -31,7 +34,7 @@ namespace _3dTesting._3dRotation
             coord.normal1.x = Nx;
             coord.normal1.y = Ny;
             coord.normal1.z = Nz;
-            //Getting the angle of the triangle for shading purposes (as a COS value)
+            //Getting the angle of the triangle for shading purposes (as a COS(Theta) value)
             coord.angle = CalculateAngle(coord);            
             return coord;
         }

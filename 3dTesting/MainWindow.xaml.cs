@@ -3,11 +3,14 @@ using _3dTesting._3dWorld;
 using STL_Tools;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using _3dTesting.Helpers;
+using Colors = System.Windows.Media.Colors;
 
 namespace _3dTesting
 {
@@ -17,49 +20,58 @@ namespace _3dTesting
         public _3dTo2d From3dTo2d = new();
         public _3dRotate Rotate3d = new();
         private _3dWorld._3dWorld world = new();
-        public double rotateAngleX = 0;
-        public double rotateAngleY = -180;
-        public double rotateAngleZ = -180;
         public Viewtypes ViewType = Viewtypes.polygons;       
         public List<TriangleMesh> modelCoordinates;
-
-
 
         public MainWindow()
         {            
             InitializeComponent();
-            var modelReader = new STLReader("C:\\Users\\kh979\\Documents\\Privat\\Bspoke prosjekter\\3dProsjekt\\3dProsjekt\\3dTesting\\3d objects\\div\\complexorb.stl");
-            modelCoordinates = modelReader.ReadFile().ToList();                        
             CompositionTarget.Rendering += Handle3dWorld;
         }        
 
         public void Handle3dWorld(object sender, EventArgs e)
         {
-            rotateAngleY += 0.5;
-            rotateAngleX += 0.8;
-            rotateAngleZ += 0.5;
-            if (rotateAngleY >= 360) rotateAngleY = 0;
-            if (rotateAngleX >= 360) rotateAngleX = 0;
-            if (rotateAngleZ >= 360) rotateAngleZ = 0;
+            //Rotate the objects in the world
+            //todo temp solution, should be done in the world class
+
+            world.WorldInhabitants[0].Rotation.x += (float)0.5;
+            world.WorldInhabitants[0].Rotation.y += (float)0.8;
+            world.WorldInhabitants[0].Rotation.z += (float)0.5;
+            if (world.WorldInhabitants[0].Rotation.x >= 360) world.WorldInhabitants[0].Rotation.x = 0;
+            if (world.WorldInhabitants[0].Rotation.y >= 360) world.WorldInhabitants[0].Rotation.y = 0;
+            if (world.WorldInhabitants[0].Rotation.z >= 360) world.WorldInhabitants[0].Rotation.z = 0;
+
+            world.WorldInhabitants[1].Rotation.x += (float)0.3;
+            world.WorldInhabitants[1].Rotation.y += (float)0.6;
+            world.WorldInhabitants[1].Rotation.z += (float)0.7;
+            if (world.WorldInhabitants[1].Rotation.x >= 360) world.WorldInhabitants[1].Rotation.x = 0;
+            if (world.WorldInhabitants[1].Rotation.y >= 360) world.WorldInhabitants[1].Rotation.y = 0;
+            if (world.WorldInhabitants[1].Rotation.z >= 360) world.WorldInhabitants[1].Rotation.z = 0;
+
+            //Create new list of objects to prevent changing the original objects
+            var activeWorld = _3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants);
             clearCanvasPolygons();
+            
+            foreach (_3dObject inhabitant in activeWorld)
+            {
+                var RotatedInhabitant = new List<TriangleMesh>();
+                RotatedInhabitant.AddRange(inhabitant.Triangles);
+                RotatedInhabitant = Rotate3d.RotateZMesh(RotatedInhabitant, inhabitant.Rotation.z);
+                RotatedInhabitant = Rotate3d.RotateYMesh(RotatedInhabitant, inhabitant.Rotation.y);
+                RotatedInhabitant = Rotate3d.RotateXMesh(RotatedInhabitant, inhabitant.Rotation.x);
+                inhabitant.Triangles = RotatedInhabitant;                
+            }
 
-            var RotatedCoordinates = new List<TriangleMesh>();            
-            RotatedCoordinates = modelCoordinates;
-            RotatedCoordinates = Rotate3d.RotateZMesh(RotatedCoordinates, rotateAngleZ);
-            RotatedCoordinates = Rotate3d.RotateYMesh(RotatedCoordinates, rotateAngleY);
-            RotatedCoordinates = Rotate3d.RotateXMesh(RotatedCoordinates, rotateAngleX);
+            //Calculate perspective and convert from 3d to 2d
+            var ScreenCoordinates = From3dTo2d.convertTo2dFromObjects(activeWorld);
 
-            //Calculate perspective
-            var ScreenCoordinates = From3dTo2d.convertTo2d(RotatedCoordinates);
-          
             var blackBrush = new SolidColorBrush();
             blackBrush.Color = Colors.Black;
             
             foreach (var triangle in ScreenCoordinates.OrderBy(z=>z.CalculatedZ))
             {
                 var yellowBrush = new SolidColorBrush();
-                yellowBrush.Color = Helpers.Colors.getGrayColorFromNormal(triangle.TriangleAngle);
-                //Debug.WriteLine("Angle:"+triangle.TriangleAngle+" Color:"+yellowBrush.Color);
+                yellowBrush.Color = Helpers.Colors.getGrayColorFromNormal(triangle.TriangleAngle);                
 
                 var myPoly = new Polygon();
                 if (ViewType == Viewtypes.polygons)
@@ -97,24 +109,6 @@ namespace _3dTesting
             }            
         }
 
-        private void RotateY_Click(object sender, RoutedEventArgs e)
-        {
-            rotateAngleY+=25;            
-            clearCanvasPolygons();            
-        }
-
-        private void RotateX_Click(object sender, RoutedEventArgs e)
-        {
-            rotateAngleX+=25;
-            clearCanvasPolygons();            
-        }
-
-        private void RotateZ_Click(object sender, RoutedEventArgs e)
-        {
-            rotateAngleZ+=25;            
-            clearCanvasPolygons();                    
-        }
-
         public void clearCanvasPolygons()
         {            
             var buttons = new List<Button>();
@@ -127,18 +121,6 @@ namespace _3dTesting
             {
                 MyCanvas.Children.Add(b);
             }           
-        }
-
-        private void Polygons_Click(object sender, RoutedEventArgs e)
-        {
-            ViewType = Viewtypes.polygons;            
-            clearCanvasPolygons();                 
-        }
-
-        private void Lines_Click(object sender, RoutedEventArgs e)
-        {
-            ViewType = Viewtypes.lines;            
-            clearCanvasPolygons();                   
         }
     }
 }

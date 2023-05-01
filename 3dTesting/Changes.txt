@@ -1,0 +1,8 @@
+﻿Changes from version1: 23.04.2023
+Enabling multiple ojects with properties and abilities
+	See 3DWorld\Scene
+Render multiple objects and collect them in one view
+	See 3DWorld\Scene
+Read STL files into objects
+	See 3dWorld\Scene
+Start development of a scene setup P.S Early days
