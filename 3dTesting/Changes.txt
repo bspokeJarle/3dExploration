@@ -6,3 +6,5 @@ Render multiple objects and collect them in one view
 Read STL files into objects
 	See 3dWorld\Scene
 Start development of a scene setup P.S Early days
+	See 3dWorld\Scene
+As a test, add three objects and move them individually

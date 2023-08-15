@@ -33,7 +33,6 @@ namespace _3dTesting
         {
             //Rotate the objects in the world
             //todo temp solution, should be done in the world class
-
             world.WorldInhabitants[0].Rotation.x += (float)0.5;
             world.WorldInhabitants[0].Rotation.y += (float)0.8;
             world.WorldInhabitants[0].Rotation.z += (float)0.5;
@@ -47,6 +46,13 @@ namespace _3dTesting
             if (world.WorldInhabitants[1].Rotation.x >= 360) world.WorldInhabitants[1].Rotation.x = 0;
             if (world.WorldInhabitants[1].Rotation.y >= 360) world.WorldInhabitants[1].Rotation.y = 0;
             if (world.WorldInhabitants[1].Rotation.z >= 360) world.WorldInhabitants[1].Rotation.z = 0;
+
+            world.WorldInhabitants[2].Rotation.x += (float)0.4;
+            world.WorldInhabitants[2].Rotation.y += (float)0.6;
+            world.WorldInhabitants[2].Rotation.z += (float)0.7;
+            if (world.WorldInhabitants[2].Rotation.x >= 360) world.WorldInhabitants[2].Rotation.x = 0;
+            if (world.WorldInhabitants[2].Rotation.y >= 360) world.WorldInhabitants[2].Rotation.y = 0;
+            if (world.WorldInhabitants[2].Rotation.z >= 360) world.WorldInhabitants[2].Rotation.z = 0;
 
             //Create new list of objects to prevent changing the original objects
             var activeWorld = _3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants);
