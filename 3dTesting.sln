@@ -6,12 +6,15 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Frontend", "3dTesting\Frontend.csproj", "{035F226A-F07C-44F1-87CF-5B35A3351108}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{098E60BA-0020-4ECE-B255-925164831E12}"
+	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "3dSpesifics", "3dRotations\3dSpesifics.csproj", "{DEE6A875-DA07-4B8F-8D17-7158CF17334E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GameAiAndControls", "GameAi\GameAiAndControls.csproj", "{F5594282-CC6B-415B-855B-C940DDF54AD0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Domain", "Domain\Domain.csproj", "{D5F25B1D-887E-4601-AC03-6B0182D5B48A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Domain", "Domain\Domain.csproj", "{D5F25B1D-887E-4601-AC03-6B0182D5B48A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -11,15 +11,21 @@ namespace GameAiAndControls.Ai
     //make a class that will spawn particles that follow a trajectory
     public class ParticlesAI : Iparticles
     {
-        public List<ITriangleMeshWithColor> particles = new List<ITriangleMeshWithColor>();
-      /*  public List<ITriangleMeshWithColor> MoveParticles()
+        public List<ITriangleMeshWithColor> particles = new();
+        private Random random = new();
+        public List<ITriangleMeshWithColor> MoveParticles()
         {
-
+            //todo
+            //move particles according to their velocity, acceleration and direction
+            //when they hit something, they should bounce off
+            //when they hit something, they should lose some of their velocity
+            //when they hit something, they should lose some of their life
+            //when they lose all their life, they should be removed from the list
+            return particles;
         }
-      */
+      
         public List<ITriangleMeshWithColor> ReleaseParticles(IVector3 Trajectory, IVector3 StartPosition)
-        {
-            var random = new Random();
+        {            
             long particleCount = random.NextInt64(100);
             for (int i = 0; i < particleCount; i++)
             {
