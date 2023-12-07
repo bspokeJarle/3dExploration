@@ -5,14 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:_3dTesting"
         mc:Ignorable="d"
-        Title="MainWindow" Height="500" Width="2000" WindowState="Maximized">
+        Title="MainWindow" Height="1024" Width="1280" WindowState="Maximized">
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="215*"/>
-            <ColumnDefinition Width="37*"/>
-            <ColumnDefinition Width="148*"/>
-        </Grid.ColumnDefinitions>
-        <Canvas Name="MyCanvas" Grid.ColumnSpan="3">
+        <Canvas Name="MyCanvas">
             <Canvas.CacheMode>
                 <BitmapCache EnableClearType="False" RenderAtScale="1" SnapsToDevicePixels="True" />
             </Canvas.CacheMode>

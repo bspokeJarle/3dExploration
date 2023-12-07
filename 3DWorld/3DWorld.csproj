@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0-windows</TargetFramework>
+    <RootNamespace>_3DWorld</RootNamespace>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="ObjectAI\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CommonHelpers\CommonHelpers.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -4,12 +4,6 @@ using System.Text;
 
 namespace _3dTesting._Coordinates
 {
-    public struct _3dCoordinate
-    {
-        public double X { get; set; }
-        public double Y { get; set; }
-        public double Z { get; set; }
-    }
     public struct _2dCoordinate
     {
         public int X { get; set; }
@@ -28,5 +22,6 @@ namespace _3dTesting._Coordinates
 
         public int X3 { get; set; }
         public int Y3 { get; set; }
+        public string Color { get; set; }
     }
 }

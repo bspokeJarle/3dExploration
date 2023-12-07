@@ -1,16 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
-using _3dTesting._Coordinates;
-using Microsoft.VisualBasic.CompilerServices;
-using STL_Tools;
+using Domain;
+using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting._3dRotation
 {
     public class _3dRotate
     {        
-        private TriangleMesh CalculateNormal(TriangleMesh coord)
+        private TriangleMeshWithColor CalculateNormal(TriangleMeshWithColor coord)
         {
             //P.S the left hand rule makes this possible
             //Calculate crossproduct
@@ -39,13 +36,13 @@ namespace _3dTesting._3dRotation
             return coord;
         }
         
-        private float CalculateAngle(TriangleMesh normal)
+        private float CalculateAngle(TriangleMeshWithColor normal)
         {
             //This is the light vector
-            var lp1 = new Vector3 { x = 10, y=10, z = 150 };
-            var lp2 = new Vector3 { x = 0, y = 0, z = 5 };
+            var lp1 = new Vector3 { x = 0, y = 0, z = 0 };
+            var lp2 = new Vector3 { x = 0, y = 0, z = 250 };
             //Calculate light vector crossproduct
-            var lv = new Vector3 { x = (lp1.x - lp2.x), y = (lp1.y - lp2.y), z = (lp1.z - lp2.z) };
+            var lv = new Vector3 { x = (lp2.x - lp1.x), y = (lp2.y - lp1.y), z = (lp2.z - lp1.z) };
             //Calculate vector length
             var length = (float)Math.Sqrt((lv.x * lv.x) + (lv.y * lv.y) + (lv.z * lv.z));            
             //Calculate Normalized light vector NLV
@@ -54,70 +51,74 @@ namespace _3dTesting._3dRotation
             return (Nlv.x * normal.normal1.x) + (Nlv.y * normal.normal1.y) + (Nlv.z * normal.normal1.z);
         }
 
-        private TriangleMesh RotateOnX(float cosRes,float sinRes, TriangleMesh coord)
+        private TriangleMeshWithColor RotateOnX(float cosRes,float sinRes, TriangleMeshWithColor coord)
         {
-            var triangle = new TriangleMesh{ 
+            var triangle = new TriangleMeshWithColor
+            { 
                 vert1 = { x = coord.vert1.x, y = (coord.vert1.y * cosRes) - (coord.vert1.z * sinRes), z = (coord.vert1.z * cosRes) + (coord.vert1.y * sinRes) },
                 vert2 = { x = coord.vert2.x, y = (coord.vert2.y * cosRes) - (coord.vert2.z * sinRes), z = (coord.vert2.z * cosRes) + (coord.vert2.y * sinRes) },
                 vert3 = { x = coord.vert3.x, y = (coord.vert3.y * cosRes) - (coord.vert3.z * sinRes), z = (coord.vert3.z * cosRes) + (coord.vert3.y * sinRes) }                
             };
+            triangle.Color = coord.Color;
             return CalculateNormal(triangle);            
         }
 
-        private TriangleMesh RotateOnY(float cosRes, float sinRes, TriangleMesh coord)
+        private TriangleMeshWithColor RotateOnY(float cosRes, float sinRes, TriangleMeshWithColor coord)
         {            
-            var triangle = new TriangleMesh
+            var triangle = new TriangleMeshWithColor
             {                
                 vert1 = { x = (coord.vert1.x * cosRes) + (coord.vert1.z * sinRes), y = coord.vert1.y, z = (coord.vert1.z * cosRes) - (coord.vert1.x * sinRes) },
                 vert2 = { x = (coord.vert2.x * cosRes) + (coord.vert2.z * sinRes), y = coord.vert2.y, z = (coord.vert2.z * cosRes) - (coord.vert2.x * sinRes) },
                 vert3 = { x = (coord.vert3.x * cosRes) + (coord.vert3.z * sinRes), y = coord.vert3.y, z = (coord.vert3.z * cosRes) - (coord.vert3.x * sinRes) }
             };
+            triangle.Color = coord.Color;
             return CalculateNormal(triangle);
         }
-        private TriangleMesh RotateOnZ(float cosRes, float sinRes, TriangleMesh coord)
+        private TriangleMeshWithColor RotateOnZ(float cosRes, float sinRes, TriangleMeshWithColor coord)
         {            
-            var triangle = new TriangleMesh
+            var triangle = new TriangleMeshWithColor
             {
                 vert1 = { x = coord.vert1.x * cosRes - coord.vert1.y * sinRes, y = coord.vert1.y * cosRes + coord.vert1.x * sinRes, z = coord.vert1.z },
                 vert2 = { x = coord.vert2.x * cosRes - coord.vert2.y * sinRes, y = coord.vert2.y * cosRes + coord.vert2.x * sinRes, z = coord.vert2.z },
-                vert3 = { x = coord.vert3.x * cosRes - coord.vert3.y * sinRes, y = coord.vert3.y * cosRes + coord.vert3.x * sinRes, z = coord.vert3.z }
+                vert3 = { x = coord.vert3.x * cosRes - coord.vert3.y * sinRes, y = coord.vert3.y * cosRes + coord.vert3.x * sinRes, z = coord.vert3.z }                
             };
+            triangle.Color = coord.Color;
             return CalculateNormal(triangle);
         }
-        public List<TriangleMesh> RotateXMesh(List<TriangleMesh> X, double angle)
+        public List<ITriangleMeshWithColor> RotateXMesh(List<ITriangleMeshWithColor> X, double angle)
         {
             var radian = Math.PI * angle / 180.0;
-            var rotatedX = new List<TriangleMesh>();
+            var rotatedX = new List<ITriangleMeshWithColor>();
             var sinRes = Math.Sin(radian);
             var cosRes = Math.Cos(radian);
-            foreach (TriangleMesh TheX in X)
+            foreach (TriangleMeshWithColor TheX in X)
             {
                 rotatedX.Add(RotateOnX((float)cosRes,(float)sinRes,TheX));
             }
             return rotatedX;
         }
-        public List<TriangleMesh> RotateYMesh(List<TriangleMesh> Y, double angle)
+        public List<ITriangleMeshWithColor> RotateYMesh(List<ITriangleMeshWithColor> Y, double angle)
         {
             var radian = Math.PI * angle / 180.0;
-            var rotatedY = new List<TriangleMesh>();
+            var rotatedY = new List<ITriangleMeshWithColor>();
             var cosRes = Math.Cos(radian);
             var sinRes = Math.Sin(radian);
-            foreach (TriangleMesh TheY in Y)
+            foreach (TriangleMeshWithColor TheY in Y)
             {
                 rotatedY.Add(RotateOnY((float)cosRes, (float)sinRes,TheY));
             }
             return rotatedY;
         }
-        public List<TriangleMesh> RotateZMesh(List<TriangleMesh> Z, double angle)
+        public List<ITriangleMeshWithColor> RotateZMesh(List<ITriangleMeshWithColor> Z, double angle)
         {
             var radian = Math.PI * angle / 180.0;
-            var rotatedZ = new List<TriangleMesh>();
+            var rotatedZ = new List<ITriangleMeshWithColor>();
             var cosRes = Math.Cos(radian);
             var sinRes = Math.Sin(radian);
-            foreach (TriangleMesh TheZ in Z)
+            foreach (TriangleMeshWithColor TheZ in Z)
             {
                 rotatedZ.Add(RotateOnZ((float)cosRes, (float)sinRes, TheZ));
-            }
+            }            
             return rotatedZ;
         }
     }

@@ -1,5 +1,4 @@
-﻿using _3dTesting._3dWorld.Scene;
-using _3dTesting._Coordinates;
+﻿using _3DWorld.Scene;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

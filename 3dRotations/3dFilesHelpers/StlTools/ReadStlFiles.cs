@@ -12,6 +12,7 @@ using System.Linq;
 using System.IO;
 using System.Globalization;
 using System.Threading;
+using static Domain._3dSpecificsImplementations;
 
 namespace STL_Tools
 {

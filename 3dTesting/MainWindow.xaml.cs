@@ -1,6 +1,5 @@
 ﻿using _3dTesting._3dRotation;
 using _3dTesting._3dWorld;
-using STL_Tools;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -11,6 +10,8 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using _3dTesting.Helpers;
 using Colors = System.Windows.Media.Colors;
+using Domain;
+using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting
 {
@@ -19,7 +20,7 @@ namespace _3dTesting
         public enum Viewtypes {polygons , lines};
         public _3dTo2d From3dTo2d = new();
         public _3dRotate Rotate3d = new();
-        private _3dWorld._3dWorld world = new();
+        public _3dWorld._3dWorld world = new();
         public Viewtypes ViewType = Viewtypes.polygons;       
         public List<TriangleMesh> modelCoordinates;
 
@@ -27,45 +28,27 @@ namespace _3dTesting
         {            
             InitializeComponent();
             CompositionTarget.Rendering += Handle3dWorld;
+            
         }        
 
         public void Handle3dWorld(object sender, EventArgs e)
         {
-            //Rotate the objects in the world
-            //todo temp solution, should be done in the world class
-            world.WorldInhabitants[0].Rotation.x += (float)0.5;
-            world.WorldInhabitants[0].Rotation.y += (float)0.8;
-            world.WorldInhabitants[0].Rotation.z += (float)0.5;
-            if (world.WorldInhabitants[0].Rotation.x >= 360) world.WorldInhabitants[0].Rotation.x = 0;
-            if (world.WorldInhabitants[0].Rotation.y >= 360) world.WorldInhabitants[0].Rotation.y = 0;
-            if (world.WorldInhabitants[0].Rotation.z >= 360) world.WorldInhabitants[0].Rotation.z = 0;
-
-            world.WorldInhabitants[1].Rotation.x += (float)0.3;
-            world.WorldInhabitants[1].Rotation.y += (float)0.6;
-            world.WorldInhabitants[1].Rotation.z += (float)0.7;
-            if (world.WorldInhabitants[1].Rotation.x >= 360) world.WorldInhabitants[1].Rotation.x = 0;
-            if (world.WorldInhabitants[1].Rotation.y >= 360) world.WorldInhabitants[1].Rotation.y = 0;
-            if (world.WorldInhabitants[1].Rotation.z >= 360) world.WorldInhabitants[1].Rotation.z = 0;
-
-            world.WorldInhabitants[2].Rotation.x += (float)0.4;
-            world.WorldInhabitants[2].Rotation.y += (float)0.6;
-            world.WorldInhabitants[2].Rotation.z += (float)0.7;
-            if (world.WorldInhabitants[2].Rotation.x >= 360) world.WorldInhabitants[2].Rotation.x = 0;
-            if (world.WorldInhabitants[2].Rotation.y >= 360) world.WorldInhabitants[2].Rotation.y = 0;
-            if (world.WorldInhabitants[2].Rotation.z >= 360) world.WorldInhabitants[2].Rotation.z = 0;
-
             //Create new list of objects to prevent changing the original objects
             var activeWorld = _3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants);
             clearCanvasPolygons();
             
             foreach (_3dObject inhabitant in activeWorld)
             {
-                var RotatedInhabitant = new List<TriangleMesh>();
-                RotatedInhabitant.AddRange(inhabitant.Triangles);
-                RotatedInhabitant = Rotate3d.RotateZMesh(RotatedInhabitant, inhabitant.Rotation.z);
-                RotatedInhabitant = Rotate3d.RotateYMesh(RotatedInhabitant, inhabitant.Rotation.y);
-                RotatedInhabitant = Rotate3d.RotateXMesh(RotatedInhabitant, inhabitant.Rotation.x);
-                inhabitant.Triangles = RotatedInhabitant;                
+                inhabitant.Movement?.MoveObject(inhabitant);
+                foreach(var part in inhabitant.ObjectParts)
+                {
+                    var RotatedInhabitant = new List<ITriangleMeshWithColor>();
+                    RotatedInhabitant.AddRange(part.Triangles);
+                    RotatedInhabitant = Rotate3d.RotateZMesh(RotatedInhabitant, inhabitant.Rotation.z);
+                    RotatedInhabitant = Rotate3d.RotateYMesh(RotatedInhabitant, inhabitant.Rotation.y);
+                    RotatedInhabitant = Rotate3d.RotateXMesh(RotatedInhabitant, inhabitant.Rotation.x);
+                    part.Triangles = RotatedInhabitant;
+                }
             }
 
             //Calculate perspective and convert from 3d to 2d
@@ -76,8 +59,8 @@ namespace _3dTesting
             
             foreach (var triangle in ScreenCoordinates.OrderBy(z=>z.CalculatedZ))
             {
-                var yellowBrush = new SolidColorBrush();
-                yellowBrush.Color = Helpers.Colors.getGrayColorFromNormal(triangle.TriangleAngle);                
+                var colorBrush = new SolidColorBrush();
+                colorBrush.Color = Helpers.Colors.getShadeOfColorFromNormal(triangle.TriangleAngle,triangle.Color);
 
                 var myPoly = new Polygon();
                 if (ViewType == Viewtypes.polygons)
@@ -91,7 +74,7 @@ namespace _3dTesting
 
                     myPoly.Points = pointCollection;
                     myPoly.Stroke = blackBrush;
-                    myPoly.Fill = yellowBrush;
+                    myPoly.Fill = colorBrush;
                     myPoly.StrokeThickness = 1;
 
                     MyCanvas.Children.Add(myPoly);

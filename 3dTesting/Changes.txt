@@ -1,10 +1,23 @@
-﻿Changes from version1: 23.04.2023
+﻿Changes in this version:
 Enabling multiple ojects with properties and abilities
-	See 3DWorld\Scene
+	Done
 Render multiple objects and collect them in one view
-	See 3DWorld\Scene
+	Done
 Read STL files into objects
-	See 3dWorld\Scene
+	Done
 Start development of a scene setup P.S Early days
-	See 3dWorld\Scene
+	Done
 As a test, add three objects and move them individually
+	Done
+Add color to objects and shading	
+	Done
+Refactor whole project to make it more suited for game development
+	Done
+Game AI and Control is now in a separate project
+	Done
+As a POC start development of ship movement
+	Done
+Design main ship
+	Work in progress!
+Enable Crash detection
+	Work in progress!
