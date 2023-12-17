@@ -4,13 +4,9 @@ using System.Text;
 
 namespace _3dTesting._Coordinates
 {
-    public struct _2dCoordinate
-    {
-        public int X { get; set; }
-        public int Y { get; set; }
-    }
     public struct _2dTriangleMesh
     {
+        public string PartName { get; set; }
         public float CalculatedZ { get; set; }
         public float Normal { get; set; }
         public float TriangleAngle { get; set; }

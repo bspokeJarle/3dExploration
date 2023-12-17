@@ -10,10 +10,15 @@ namespace _3dRotations.Scene.Scene1
         public void SetupScene1(_3dWorld world)
         {
             //Add ship as first inhabitant
-            var orb = Ship.CreateShip();
-            orb.Position = new Vector3 { x = 100, y = 0, z = 800 };
-            orb.Rotation = new Vector3 { x = 0, y = -180, z = -180 };
-            world.WorldInhabitants.Add(orb);
+            var ship = Ship.CreateShip();
+            ship.Position = new Vector3 { x = 0, y = 0, z = 800 };
+            ship.Rotation = new Vector3 { x = 0, y = -180, z = -180 };
+            world.WorldInhabitants.Add(ship);
+
+            var surface = Surface.CreateSurface();
+            surface.Position = new Vector3 { x = 0, y = 200, z = 300 };
+            surface.Rotation = new Vector3 { x = 75, y = 0, z = 0 };
+            world.WorldInhabitants.Add(surface);
 
             /*//Add ship as first inhabitant
             var test1 = TestObjects.CreateTestObject();

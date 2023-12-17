@@ -7,7 +7,7 @@ Read STL files into objects
 	Done
 Start development of a scene setup P.S Early days
 	Done
-As a test, add three objects and move them individually
+As a test, add several objects to the scene	
 	Done
 Add color to objects and shading	
 	Done
@@ -18,6 +18,10 @@ Game AI and Control is now in a separate project
 As a POC start development of ship movement
 	Done
 Design main ship
-	Work in progress!
+	Done, first version
+Generate a surface
+	Done, first version
+Start development of a particle system
+	Done, first version
 Enable Crash detection
 	Work in progress!

@@ -7,7 +7,7 @@ namespace _3dTesting._3dRotation
 {
     public class _3dRotate
     {        
-        private TriangleMeshWithColor CalculateNormal(TriangleMeshWithColor coord)
+        private TriangleMeshWithColor CalculateNormalAndAngle(TriangleMeshWithColor coord)
         {
             //P.S the left hand rule makes this possible
             //Calculate crossproduct
@@ -60,7 +60,7 @@ namespace _3dTesting._3dRotation
                 vert3 = { x = coord.vert3.x, y = (coord.vert3.y * cosRes) - (coord.vert3.z * sinRes), z = (coord.vert3.z * cosRes) + (coord.vert3.y * sinRes) }                
             };
             triangle.Color = coord.Color;
-            return CalculateNormal(triangle);            
+            return CalculateNormalAndAngle(triangle);            
         }
 
         private TriangleMeshWithColor RotateOnY(float cosRes, float sinRes, TriangleMeshWithColor coord)
@@ -72,7 +72,7 @@ namespace _3dTesting._3dRotation
                 vert3 = { x = (coord.vert3.x * cosRes) + (coord.vert3.z * sinRes), y = coord.vert3.y, z = (coord.vert3.z * cosRes) - (coord.vert3.x * sinRes) }
             };
             triangle.Color = coord.Color;
-            return CalculateNormal(triangle);
+            return CalculateNormalAndAngle(triangle);
         }
         private TriangleMeshWithColor RotateOnZ(float cosRes, float sinRes, TriangleMeshWithColor coord)
         {            
@@ -83,7 +83,7 @@ namespace _3dTesting._3dRotation
                 vert3 = { x = coord.vert3.x * cosRes - coord.vert3.y * sinRes, y = coord.vert3.y * cosRes + coord.vert3.x * sinRes, z = coord.vert3.z }                
             };
             triangle.Color = coord.Color;
-            return CalculateNormal(triangle);
+            return CalculateNormalAndAngle(triangle);
         }
         public List<ITriangleMeshWithColor> RotateXMesh(List<ITriangleMeshWithColor> X, double angle)
         {

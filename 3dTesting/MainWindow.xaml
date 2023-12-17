@@ -5,9 +5,15 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:_3dTesting"
         mc:Ignorable="d"
-        Title="MainWindow" Height="1024" Width="1280" WindowState="Maximized">
+        Title="MainWindow" Height="1024" Width="1280" WindowStyle="None"  WindowState="Maximized">
     <Grid>
         <Canvas Name="MyCanvas">
+            <Canvas.Background>
+                <RadialGradientBrush>
+                    <GradientStop Color="#111111" Offset="2"/>
+                    <GradientStop Color="#000033" Offset="0.007"/>
+                </RadialGradientBrush>
+            </Canvas.Background>
             <Canvas.CacheMode>
                 <BitmapCache EnableClearType="False" RenderAtScale="1" SnapsToDevicePixels="True" />
             </Canvas.CacheMode>

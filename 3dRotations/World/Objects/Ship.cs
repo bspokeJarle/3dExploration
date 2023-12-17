@@ -1,5 +1,6 @@
 ﻿using _3dTesting._3dWorld;
 using Domain;
+using GameAiAndControls.Ai;
 using GameAiAndControls.Controls;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -16,18 +17,23 @@ namespace _3dRotations.World.Objects
             var upperTriangles = UpperTriangles();
             var lowerTriangles = LowerTriangles();
             var rearTriangles = RearTriangles();
+            var jetMotorTriangle = JetMotorTriangle();
+            var jetMotorDirectionGuide = JetMotorDirectionGuide();
 
             // Add orb as an inhabitant
-            var orb = new _3dObject();
-            if (upperTriangles==null||lowerTriangles==null||rearTriangles==null) return orb;
-            orb.ObjectParts.Add(new _3dObjectPart { PartName = "UpperPart", Triangles = upperTriangles });
-            orb.ObjectParts.Add(new _3dObjectPart { PartName = "LowerPart", Triangles = lowerTriangles });
-            orb.ObjectParts.Add(new _3dObjectPart { PartName = "RearPart", Triangles = rearTriangles });
+            var ship = new _3dObject();
+            if (upperTriangles==null||lowerTriangles==null||rearTriangles==null) return ship;
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "UpperPart", Triangles = upperTriangles, IsVisible=true });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "LowerPart", Triangles = lowerTriangles, IsVisible = true });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "RearPart", Triangles = rearTriangles, IsVisible = true });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotor", Triangles = jetMotorTriangle, IsVisible = true });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotorDirectionGuide", Triangles = jetMotorDirectionGuide, IsVisible = false });
 
-            orb.Position = new Vector3 { x = 0, y = 0, z = 0 };
-            orb.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
-            orb.Movement = new ShipControls();            
-            return orb;
+            ship.Position = new Vector3 { x = 0, y = 0, z = 0 };
+            ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
+            ship.Movement = new ShipControls();    
+            ship.Particles = new ParticlesAI();
+            return ship;
         }
         public static List<ITriangleMeshWithColor>? UpperTriangles()
         {
@@ -50,12 +56,28 @@ namespace _3dRotations.World.Objects
 
                 new TriangleMeshWithColor { Color = "00ff99", vert1 = { x = -50, y = -50, z = 0 } , vert2 = { x = -25, y = 0, z = -12 } , vert3 = { x = 0, y = -50, z = 0 } },
                 new TriangleMeshWithColor { Color = "00ff99", vert1 = { x = 0, y = -50, z = 0 } , vert2 = { x = 25, y = 0, z = -12 } , vert3 = { x = 50, y = -50, z = 0 } },
-                new TriangleMeshWithColor { Color = "00ff99", vert1 = { x = -25, y = 0, z = -12 } , vert2 = { x = 25, y = 0, z = -12 } , vert3 = { x = 0, y = -50, z = 0 }},
-
-                new TriangleMeshWithColor { Color = "ffff00", vert1 = { x = 25, y = 0, z = -12 }, vert2 = { x = -25, y = 0, z = -12 }, vert3 = { x = 0, y = 50, z = -25 } },
+                new TriangleMeshWithColor { Color = "00ff99", vert1 = { x = -25, y = 0, z = -12 } , vert2 = { x = 25, y = 0, z = -12 } , vert3 = { x = 0, y = -50, z = 0 }},                
             };
             return lower;
         }
+        public static List<ITriangleMeshWithColor>? JetMotorTriangle()
+        {
+            var jet = new List<ITriangleMeshWithColor>
+            {
+                new TriangleMeshWithColor { Color = "ffff00", vert1 = { x = 25, y = 0, z = -12 }, vert2 = { x = -25, y = 0, z = -12 }, vert3 = { x = 0, y = 50, z = -25 } },
+            };
+            return jet;
+        }
+
+        public static List<ITriangleMeshWithColor>? JetMotorDirectionGuide()
+        {
+            var jet = new List<ITriangleMeshWithColor>
+            {
+                new TriangleMeshWithColor { Color = "ffffff", vert1 = { x = 12, y = 0, z = -50 }, vert2 = { x = -12, y = 0, z = -50 }, vert3 = { x = 0, y = 50, z = -50 } },
+            };
+            return jet;
+        }
+
         public static List<ITriangleMeshWithColor>? RearTriangles()
         {
             var rear = new List<ITriangleMeshWithColor>

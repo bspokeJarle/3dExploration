@@ -28,7 +28,6 @@ namespace _3dTesting
         {            
             InitializeComponent();
             CompositionTarget.Rendering += Handle3dWorld;
-            
         }        
 
         public void Handle3dWorld(object sender, EventArgs e)
@@ -47,6 +46,7 @@ namespace _3dTesting
                     RotatedInhabitant = Rotate3d.RotateZMesh(RotatedInhabitant, inhabitant.Rotation.z);
                     RotatedInhabitant = Rotate3d.RotateYMesh(RotatedInhabitant, inhabitant.Rotation.y);
                     RotatedInhabitant = Rotate3d.RotateXMesh(RotatedInhabitant, inhabitant.Rotation.x);
+
                     part.Triangles = RotatedInhabitant;
                 }
             }
@@ -59,12 +59,15 @@ namespace _3dTesting
             
             foreach (var triangle in ScreenCoordinates.OrderBy(z=>z.CalculatedZ))
             {
+                if (triangle.CalculatedZ>1000||triangle.CalculatedZ<(-1000)) 
+                    continue;
+
                 var colorBrush = new SolidColorBrush();
                 colorBrush.Color = Helpers.Colors.getShadeOfColorFromNormal(triangle.TriangleAngle,triangle.Color);
 
                 var myPoly = new Polygon();
                 if (ViewType == Viewtypes.polygons)
-                {
+                {                    
                     PointCollection pointCollection = new()
                     {
                         new Point{X=triangle.X1,Y=triangle.Y1},
@@ -73,7 +76,7 @@ namespace _3dTesting
                     };
 
                     myPoly.Points = pointCollection;
-                    myPoly.Stroke = blackBrush;
+                    myPoly.Stroke = colorBrush;
                     myPoly.Fill = colorBrush;
                     myPoly.StrokeThickness = 1;
 
@@ -87,7 +90,7 @@ namespace _3dTesting
                     new Point{X=triangle.X1,Y=triangle.Y1},
                     new Point{X=triangle.X2,Y=triangle.Y2},
                     new Point{X=triangle.X3,Y=triangle.Y3}
-                };
+                    };
 
                     myPoly.Points = pointCollection;
                     myPoly.Stroke = blackBrush;

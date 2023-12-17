@@ -58,7 +58,7 @@ namespace _3dTesting.Helpers
                             Color = triangle.Color,                            
                         });
                     }
-                    objectparts.Add(new _3dObjectPart { PartName = part.PartName, Triangles = Triangles });
+                    objectparts.Add(new _3dObjectPart { PartName = part.PartName, Triangles = Triangles, IsVisible = part.IsVisible});
                 }            
 
                 theInhabitants.Add(new _3dObject
@@ -66,7 +66,8 @@ namespace _3dTesting.Helpers
                     Position = new Vector3 { x = inhabitant.Position.x, y = inhabitant.Position.y, z = inhabitant.Position.z },
                     Rotation = new Vector3 { x = inhabitant.Rotation.x, y = inhabitant.Rotation.y, z = inhabitant.Rotation.z },
                     ObjectParts = objectparts,
-                    Movement = inhabitant.Movement
+                    Movement = inhabitant.Movement,
+                    Particles = inhabitant.Particles,                    
                 });
             }                    
             return theInhabitants;
