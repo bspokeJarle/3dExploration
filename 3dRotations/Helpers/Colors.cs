@@ -4,14 +4,17 @@ namespace _3dTesting.Helpers
 {
     public class Colors
     {
-        public static System.Windows.Media.Color getShadeOfColorFromNormal(float normal,string color)
+        //Add some brightness to the colors, temp solution
+        const int brightness = 8;
+        public static System.Windows.Media.Color getShadeOfColorFromNormal(float normal, string color)
         {
+            var localNormal = Math.Abs(normal);
             string rs = color[0..2];
             string gs = color[2..4];
             string bs = color[4..6];
-            var r = Convert.ToInt16(Convert.ToInt16(rs,16)*normal);
-            var g = Convert.ToInt16(Convert.ToInt16(gs,16)*normal);
-            var b = Convert.ToInt16(Convert.ToInt16(bs,16)*normal);
+            var r = Convert.ToInt16(Convert.ToInt16(rs, 16) * localNormal) + brightness;
+            var g = Convert.ToInt16(Convert.ToInt16(gs, 16) * localNormal) + brightness;
+            var b = Convert.ToInt16(Convert.ToInt16(bs, 16) * localNormal) + brightness;
             //Make sure the color is within the range of 0-255
             if (r > 255) r = 255;
             if (g > 255) g = 255;
@@ -19,10 +22,11 @@ namespace _3dTesting.Helpers
             if (r < 0) r = 0;
             if (g < 0) g = 0;
             if (b < 0) b = 0;
-            var rhex = r.ToString("X").PadLeft(2,'0');
-            var ghex = g.ToString("X").PadLeft(2,'0');
-            var bhex = b.ToString("X").PadLeft(2,'0');
-            var hex = "#"+rhex + ghex + bhex;
+            var rhex = r.ToString("X").PadLeft(2, '0');
+            var ghex = g.ToString("X").PadLeft(2, '0');
+            var bhex = b.ToString("X").PadLeft(2, '0');
+            var hex = "#" + rhex + ghex + bhex;
+
             return (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
         }
     }

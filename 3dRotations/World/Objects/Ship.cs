@@ -33,7 +33,7 @@ namespace _3dRotations.World.Objects
             ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             ship.Movement = new ShipControls();    
             ship.Particles = new ParticlesAI();
-            return ship;
+            return ship; 
         }
         public static List<ITriangleMeshWithColor>? UpperTriangles()
         {
@@ -73,7 +73,7 @@ namespace _3dRotations.World.Objects
         {
             var jet = new List<ITriangleMeshWithColor>
             {
-                new TriangleMeshWithColor { Color = "ffffff", vert1 = { x = 12, y = 0, z = -50 }, vert2 = { x = -12, y = 0, z = -50 }, vert3 = { x = 0, y = 50, z = -50 } },
+                new TriangleMeshWithColor { Color = "ffffff", vert1 = { x = 12, y = 0, z = -100 }, vert2 = { x = -12, y = 0, z = -100 }, vert3 = { x = 0, y = 50, z = -100 } },
             };
             return jet;
         }

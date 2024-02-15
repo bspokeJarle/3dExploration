@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:_3dTesting"
         mc:Ignorable="d"
-        Title="MainWindow" Height="1024" Width="1280" WindowStyle="None"  WindowState="Maximized">
+        Title="MainWindow" Height="1024" Width="1280" WindowStyle="None"  WindowState="Maximized" Cursor="None">
     <Grid>
         <Canvas Name="MyCanvas">
             <Canvas.Background>

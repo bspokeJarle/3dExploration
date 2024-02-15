@@ -1,93 +1,153 @@
 ﻿using Domain;
+using GameAiAndControls.Controls;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static Domain._3dSpecificsImplementations;
 
 namespace GameAiAndControls.Ai
 {
     //make a class that will spawn particles that follow a trajectory
     public class ParticlesAI : IParticles
-    {        
-        private Random random = new();        
+    {
+        private Random random = new();
+        private const int screenRefresh = 50;
+        private const int MaxParticles = 80;
         public List<IParticle> Particles { get; set; } = new();
+        
+        public IObjectMovement? ParentShip { get;set; }
 
         public void MoveParticles()
-        {
+        {            
             var deadParticles = new List<IParticle>();
-            foreach( var particle in Particles)
+            foreach (var particle in Particles)
             {
-                var particleDateTime = new DateTime(particle.BirthTime.Ticks + Convert.ToInt64(particle.Life * 1000));
-                if (particleDateTime.Ticks<= new DateTime().Ticks)
-                {                    
-                    //todo
+                var currentDateTime = DateTime.Now;
+                if (particle.BirthTime.Ticks + particle.VariedStart > currentDateTime.Ticks) continue;
+
+                var particleDeathTime = new DateTime(particle.BirthTime.Ticks + Convert.ToInt64(particle.Life * 10000000) + particle.VariedStart);
+                if (particleDeathTime.Ticks > currentDateTime.Ticks)
+                {
+                    //todo's
                     //move particles according to their velocity, acceleration and direction
+                    particle.Position.x -= particle.Velocity.x;
+                    particle.Position.y -= particle.Velocity.y;
+                    particle.Position.z -= particle.Velocity.z;
+                    //Should we skip shading on particles? Maybe fade out instead? First check to rotate them to see
+                    //Lets rotate the particles for a nice effect
+                    if (particle.Rotation != null && particle.RotationSpeed != null) particle.Rotation.x += particle.RotationSpeed.x;
+                    if (particle.Rotation != null && particle.RotationSpeed != null) particle.Rotation.y += particle.RotationSpeed.y;
+                    if (particle.Rotation != null && particle.RotationSpeed != null) particle.Rotation.z += particle.RotationSpeed.z;
                     //when they hit something, they should bounce off
                     //when they hit something, they should lose some of their velocity
                     //when they hit something, they should lose some of their life - deduct from life-time                    
                 }
                 else
                 {
-                    //when they lose all their life, they s hould be removed from the list
+                    //when they lose all their life, they s hould be removed from the list                    
                     deadParticles.Add(particle);
                 }
             }
             foreach (var deadParticle in deadParticles)
             {
                 Particles.Remove(deadParticle);
-            }            
+            }
         }
-      
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition)
-        {                        
-            long particleCount = random.NextInt64(50,100);
+
+        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IObjectMovement ParShip)
+        {   
+
+            ParentShip = ParShip;
+            if (StartPosition == null && Trajectory == null) return;
+            if (Particles.Count > MaxParticles) return;
+            long particleCount = random.NextInt64(20, 50);
             for (int i = 0; i < particleCount; i++)
             {
-                var startX = (StartPosition.vert1.x + StartPosition.vert2.x + StartPosition.vert3.x)/3;
-                var startY = (StartPosition.vert1.y + StartPosition.vert2.y + StartPosition.vert3.y)/3;
-                var startz = (StartPosition.vert1.z + StartPosition.vert2.z + StartPosition.vert3.z)/3;
+                //Todo need to rotate the trajectory and startposition to position the particles according the actualt ship
+                //start position is the center of the engine
+                var startX = (StartPosition.vert1.x + StartPosition.vert2.x + StartPosition.vert3.x) / 3;
+                var startY = (StartPosition.vert1.y + StartPosition.vert2.y + StartPosition.vert3.y) / 3;
+                var startz = (StartPosition.vert1.z + StartPosition.vert2.z + StartPosition.vert3.z) / 3;
 
-                var guideX = (Trajectory.vert1.x + Trajectory.vert2.x + Trajectory.vert3.x)/3;
-                var guideY = (Trajectory.vert1.y + Trajectory.vert2.y + Trajectory.vert3.y)/3;
-                var guideZ = (Trajectory.vert1.z + Trajectory.vert2.z + Trajectory.vert3.z)/3;
+                //guide position is the center of the trajectory
+                var guideX = (Trajectory.vert1.x + Trajectory.vert2.x + Trajectory.vert3.x) / 3;
+                var guideY = (Trajectory.vert1.y + Trajectory.vert2.y + Trajectory.vert3.y) / 3;
+                var guideZ = (Trajectory.vert1.z + Trajectory.vert2.z + Trajectory.vert3.z) / 3;
 
-                var particleX = startX + (guideX - startX) * (float)random.NextDouble();
-                var particleY = startY + (guideY - startY) * (float)random.NextDouble();
-                var particleZ = startz + (guideZ - startz) * (float)random.NextDouble();
+                var particle = new Particle();
 
-                var particle = new Particle();                                
+                particle.Life = random.NextInt64(3, 5);
+
+                //Give the particles a random speed, but in the direction of the trajectory
+                var randomOffset = random.NextInt64(-4, 5);
+                var xSpeed = (startX - guideX) / (particle.Life) + randomOffset;
+                var ySpeed = (startY - guideY) / (particle.Life) + randomOffset;
+                var zSpeed = (startz - guideZ) / (particle.Life) + randomOffset;
+
                 particle.Velocity = new Vector3()
                 {
-                    x = (float)random.NextDouble() * 2 - 1,
-                    y = (float)random.NextDouble() * 2 - 1,
-                    z = (float)random.NextDouble() * 2 - 1
+                    x = xSpeed,
+                    y = ySpeed,
+                    z = zSpeed
                 };
-                //particle.Velocity = particle.Velocity.Normalize();
-                //particle.Velocity = particle.Velocity * (float)random.NextDouble() * 0.1f;
-                //particle.Acceleration = Trajectory;
-                //particle.Acceleration = particle.Acceleration.Normalize();
-                //particle.Acceleration = particle.Acceleration * (float)random.NextDouble() * 0.1f;
-                particle.Life = random.NextInt64(2,4);
-                //Size is a value between 2 and 5
-                particle.Size = random.NextInt64(2,5);
+
+                particle.Size = random.NextInt64(3, 5);
+                //To prevent the particles clumping together, give them a varied start time
+                particle.VariedStart = random.NextInt64(0, 20000000);
+                particle.ParticleTriangle = new TriangleMeshWithColor()
+                {
+                    Color = "eeffee",
+                    vert1 = new Vector3()
+                    {
+                        x = - 5,
+                        y = - 5,
+                        z = 0
+                    },
+                    vert2 = new Vector3()
+                    {
+                        x = 5,
+                        y = - 5,
+                        z = 0
+                    },
+                    vert3 = new Vector3()
+                    {
+                        x = 0,
+                        y = 5,
+                        z = 0
+                    },
+                    noHidden = true
+                };
+
+                particle.Position = new Vector3()
+                {
+                    x = startX,
+                    y = startY,
+                    z = startz
+                };
+                
                 particle.BirthTime = DateTime.Now;
-                particle.Color = "ff0000";                
-                Particles.Add(particle);                
-            }            
+                particle.noHidden = true;
+                particle.IsRotated = false;
+                particle.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
+                particle.RotationSpeed = new Vector3 { x = random.NextInt64(-5, 5), y = random.NextInt64(-5, 5), z = random.NextInt64(-5, 5) };
+                Particles.Add(particle);
+            }
         }
     }
     public class Particle : IParticle
     {
         public DateTime BirthTime { get; set; } = DateTime.Now;
-        public ITriangleMeshWithColor Position { get; set; }
+        public ITriangleMeshWithColor ParticleTriangle { get; set; }
         public IVector3 Velocity { get; set; }
         public IVector3 Acceleration { get; set; }
         public float Life { get; set; }
         public float Size { get; set; }
         public string Color { get; set; }
+        public bool noHidden { get; set; }
+        public Int64 VariedStart { get; set; }
+        public bool IsRotated { get; set; }
+        public IVector3? Rotation { get; set; }
+        public IVector3? Position { get; set; }
+        public IVector3? RotationSpeed { get; set; }
+        public bool? NoShading { get; set; }
     }
 }

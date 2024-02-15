@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Domain;
 using static Domain._3dSpecificsImplementations;
+using System;
 
 namespace _3dTesting.Helpers
 {
@@ -55,12 +56,13 @@ namespace _3dTesting.Helpers
                             normal2 = new Vector3 { x = triangle.normal2.x, y = triangle.normal2.y, z = triangle.normal2.z },
                             normal3 = new Vector3 { x = triangle.normal3.x, y = triangle.normal3.y, z = triangle.normal3.z },
                             angle = triangle.angle,
-                            Color = triangle.Color,                            
+                            Color = triangle.Color,
+                            noHidden = triangle.noHidden
                         });
                     }
                     objectparts.Add(new _3dObjectPart { PartName = part.PartName, Triangles = Triangles, IsVisible = part.IsVisible});
-                }            
-
+                }
+                
                 theInhabitants.Add(new _3dObject
                 {
                     Position = new Vector3 { x = inhabitant.Position.x, y = inhabitant.Position.y, z = inhabitant.Position.z },
@@ -68,8 +70,8 @@ namespace _3dTesting.Helpers
                     ObjectParts = objectparts,
                     Movement = inhabitant.Movement,
                     Particles = inhabitant.Particles,                    
-                });
-            }                    
+                });                
+            }            
             return theInhabitants;
         }
     }

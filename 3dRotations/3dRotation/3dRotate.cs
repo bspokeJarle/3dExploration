@@ -51,7 +51,7 @@ namespace _3dTesting._3dRotation
             return (Nlv.x * normal.normal1.x) + (Nlv.y * normal.normal1.y) + (Nlv.z * normal.normal1.z);
         }
 
-        private TriangleMeshWithColor RotateOnX(float cosRes,float sinRes, TriangleMeshWithColor coord)
+        public TriangleMeshWithColor RotateOnX(float cosRes,float sinRes, TriangleMeshWithColor coord)
         {
             var triangle = new TriangleMeshWithColor
             { 
@@ -60,10 +60,11 @@ namespace _3dTesting._3dRotation
                 vert3 = { x = coord.vert3.x, y = (coord.vert3.y * cosRes) - (coord.vert3.z * sinRes), z = (coord.vert3.z * cosRes) + (coord.vert3.y * sinRes) }                
             };
             triangle.Color = coord.Color;
+            triangle.noHidden = coord.noHidden;
             return CalculateNormalAndAngle(triangle);            
         }
 
-        private TriangleMeshWithColor RotateOnY(float cosRes, float sinRes, TriangleMeshWithColor coord)
+        public TriangleMeshWithColor RotateOnY(float cosRes, float sinRes, TriangleMeshWithColor coord)
         {            
             var triangle = new TriangleMeshWithColor
             {                
@@ -72,9 +73,10 @@ namespace _3dTesting._3dRotation
                 vert3 = { x = (coord.vert3.x * cosRes) + (coord.vert3.z * sinRes), y = coord.vert3.y, z = (coord.vert3.z * cosRes) - (coord.vert3.x * sinRes) }
             };
             triangle.Color = coord.Color;
+            triangle.noHidden = coord.noHidden;
             return CalculateNormalAndAngle(triangle);
         }
-        private TriangleMeshWithColor RotateOnZ(float cosRes, float sinRes, TriangleMeshWithColor coord)
+        public TriangleMeshWithColor RotateOnZ(float cosRes, float sinRes, TriangleMeshWithColor coord)
         {            
             var triangle = new TriangleMeshWithColor
             {
@@ -83,6 +85,7 @@ namespace _3dTesting._3dRotation
                 vert3 = { x = coord.vert3.x * cosRes - coord.vert3.y * sinRes, y = coord.vert3.y * cosRes + coord.vert3.x * sinRes, z = coord.vert3.z }                
             };
             triangle.Color = coord.Color;
+            triangle.noHidden = coord.noHidden;
             return CalculateNormalAndAngle(triangle);
         }
         public List<ITriangleMeshWithColor> RotateXMesh(List<ITriangleMeshWithColor> X, double angle)

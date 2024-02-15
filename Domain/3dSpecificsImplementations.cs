@@ -36,6 +36,7 @@ namespace Domain
             public Domain.IVector3 vert2 { get; set; }
             public Domain.IVector3 vert3 { get; set; }
             public float angle { get; set; }
+            public bool? noHidden { get; set; }
 
             public TriangleMesh()
             {

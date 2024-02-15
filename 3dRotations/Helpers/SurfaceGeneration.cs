@@ -7,12 +7,15 @@ namespace _3dRotations.Helpers
 {
     public static class SurfaceGeneration
     {
-        const int mapSize = 38;
-        const int tileSize = 38;
+        const int mapSize = 25;
+        const int tileSize = 50;
         const int zFactor = 5;
         public static int[,]? surfaceValues = new int[mapSize, mapSize];
         public static List<ITriangleMeshWithColor> Generate()
         {
+            //todo: Improvements to be made:
+            //todo1: To many mountains, surface should have more flat areas, look at neighbours when randomizing the area so height progression is more even
+            //todo2: Add more colors to the surface, make it look more like a real map
             var random = new Random();
             var newSurface = new List<ITriangleMeshWithColor>();
             //First, generate a random map
@@ -25,7 +28,7 @@ namespace _3dRotations.Helpers
             }
 
             //Ierate 10 times to smooth the map
-            for (int l = 0; l < 10; l++)
+            for (int l = 0; l < 20; l++)
             {
                 //Iterate through the map on y axis
                 for (int i = 1; i < mapSize - 1; i++)
@@ -79,14 +82,14 @@ namespace _3dRotations.Helpers
                     if (accZ == 0 || accZ < 5) color2 = "0000ff";
                     if (ZPostition1 > 5 && ZPostition1 < 10) color1 = "004400";
                     if (ZPostition2 > 5 && ZPostition2 < 10) color2 = "004400";
-                    if (ZPostition1 > 10 && ZPostition1 < 20) color1 = "009900";
-                    if (ZPostition2 > 10 && ZPostition2 < 20) color2 = "009900";
-                    if (ZPostition1 > 20 && ZPostition1 < 30) color1 = "00BB00";
-                    if (ZPostition2 > 20 && ZPostition2 < 30) color2 = "00BB00";
-                    if (ZPostition1 > 30 && ZPostition1 < 40) color1 = "3A1F04";
-                    if (ZPostition2 > 30 && ZPostition2 < 40) color2 = "3A1F04";
-                    if (ZPostition1 > 40 && ZPostition1 < 50) color1 = "2B1700";
-                    if (ZPostition2 > 40 && ZPostition2 < 50) color2 = "2B1700";
+                    if (ZPostition1 > 10 && ZPostition1 < 15) color1 = "009900";
+                    if (ZPostition2 > 10 && ZPostition2 < 15) color2 = "009900";
+                    if (ZPostition1 > 15 && ZPostition1 < 20) color1 = "00BB00";
+                    if (ZPostition2 > 15 && ZPostition2 < 20) color2 = "00BB00";
+                    if (ZPostition1 > 20 && ZPostition1 < 25) color1 = "993300";
+                    if (ZPostition2 > 20 && ZPostition2 < 25) color2 = "993300";
+                    if (ZPostition1 > 25) color1 = "552200";
+                    if (ZPostition2 > 25) color2 = "552200";
 
 
                     var triangle1 = new TriangleMeshWithColor { Color = color1, vert1 = { x = XPosition, y = YPosition, z = ZPostition1 }, vert2 = { x = XPosition2, y = YPosition, z = ZPostition2 }, vert3 = { x = XPosition2, y = YPosition2, z = ZPostition3 } };
