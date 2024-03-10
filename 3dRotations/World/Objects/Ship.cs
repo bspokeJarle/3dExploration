@@ -3,6 +3,7 @@ using Domain;
 using GameAiAndControls.Ai;
 using GameAiAndControls.Controls;
 using System.Collections.Generic;
+using System.Net.NetworkInformation;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.World.Objects
@@ -19,6 +20,7 @@ namespace _3dRotations.World.Objects
             var rearTriangles = RearTriangles();
             var jetMotorTriangle = JetMotorTriangle();
             var jetMotorDirectionGuide = JetMotorDirectionGuide();
+            var shipCrashBox = ShipCrashBoxes();
 
             // Add orb as an inhabitant
             var ship = new _3dObject();
@@ -33,8 +35,24 @@ namespace _3dRotations.World.Objects
             ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             ship.Movement = new ShipControls();    
             ship.Particles = new ParticlesAI();
+            if (shipCrashBox != null) ship.CrashBoxes = shipCrashBox;
             return ship; 
         }
+
+        public static List<List<IVector3>>? ShipCrashBoxes()
+        {
+            //List of crash boxes for the ship, min, max
+            return new List<List<IVector3>>
+            {
+                //TODO: Maybe use three crashboxes in time                
+                new List<IVector3>
+                {
+                    new Vector3 { x = -65, y = -45, z = -45 },
+                    new Vector3 { x = 65, y = 45, z = 45 },
+                }
+            };
+        }
+
         public static List<ITriangleMeshWithColor>? UpperTriangles()
         {
             var upper = new List<ITriangleMeshWithColor>

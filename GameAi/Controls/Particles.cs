@@ -1,10 +1,9 @@
 ﻿using Domain;
-using GameAiAndControls.Controls;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
 
-namespace GameAiAndControls.Ai
+namespace GameAiAndControls.Controls
 {
     //make a class that will spawn particles that follow a trajectory
     public class ParticlesAI : IParticles
@@ -13,11 +12,11 @@ namespace GameAiAndControls.Ai
         private const int screenRefresh = 50;
         private const int MaxParticles = 80;
         public List<IParticle> Particles { get; set; } = new();
-        
-        public IObjectMovement? ParentShip { get;set; }
+
+        public IObjectMovement? ParentShip { get; set; }
 
         public void MoveParticles()
-        {            
+        {
             var deadParticles = new List<IParticle>();
             foreach (var particle in Particles)
             {
@@ -54,7 +53,7 @@ namespace GameAiAndControls.Ai
         }
 
         public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IObjectMovement ParShip)
-        {   
+        {
 
             ParentShip = ParShip;
             if (StartPosition == null && Trajectory == null) return;
@@ -79,9 +78,9 @@ namespace GameAiAndControls.Ai
 
                 //Give the particles a random speed, but in the direction of the trajectory
                 var randomOffset = random.NextInt64(-4, 5);
-                var xSpeed = (startX - guideX) / (particle.Life) + randomOffset;
-                var ySpeed = (startY - guideY) / (particle.Life) + randomOffset;
-                var zSpeed = (startz - guideZ) / (particle.Life) + randomOffset;
+                var xSpeed = (startX - guideX) / particle.Life + randomOffset;
+                var ySpeed = (startY - guideY) / particle.Life + randomOffset;
+                var zSpeed = (startz - guideZ) / particle.Life + randomOffset;
 
                 particle.Velocity = new Vector3()
                 {
@@ -98,14 +97,14 @@ namespace GameAiAndControls.Ai
                     Color = "eeffee",
                     vert1 = new Vector3()
                     {
-                        x = - 5,
-                        y = - 5,
+                        x = -5,
+                        y = -5,
                         z = 0
                     },
                     vert2 = new Vector3()
                     {
                         x = 5,
-                        y = - 5,
+                        y = -5,
                         z = 0
                     },
                     vert3 = new Vector3()
@@ -123,7 +122,7 @@ namespace GameAiAndControls.Ai
                     y = startY,
                     z = startz
                 };
-                
+
                 particle.BirthTime = DateTime.Now;
                 particle.noHidden = true;
                 particle.IsRotated = false;
@@ -143,7 +142,7 @@ namespace GameAiAndControls.Ai
         public float Size { get; set; }
         public string Color { get; set; }
         public bool noHidden { get; set; }
-        public Int64 VariedStart { get; set; }
+        public long VariedStart { get; set; }
         public bool IsRotated { get; set; }
         public IVector3? Rotation { get; set; }
         public IVector3? Position { get; set; }

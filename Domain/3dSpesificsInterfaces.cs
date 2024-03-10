@@ -13,11 +13,16 @@ namespace Domain
 
     public interface I3dObject
     {
+        public string ObjectName { get; set; }
         public List<I3dObjectPart> ObjectParts { get; set; }
         public IVector3? Position { get; set; }
         public IVector3? Rotation { get; set; }
         public IObjectMovement? Movement { get; set; }
         public IParticles? Particles { get; set; }
+        //TODO: Might need to expand with metadata to differ between hits on different crashboxes
+        public List<List<IVector3>> CrashBoxes { get; set; }
+        public bool HasCrashed { get; set; }
+        public int? Mass { get; set; }
         //todo add object relative properties, colors, ai etc    
     }
     public interface I3dObjectPart

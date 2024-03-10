@@ -14,7 +14,7 @@ namespace _3dRotations.Helpers
         public static List<ITriangleMeshWithColor> Generate()
         {
             //todo: Improvements to be made:
-            //todo1: To many mountains, surface should have more flat areas, look at neighbours when randomizing the area so height progression is more even
+            //todo1: Too many mountains, surface should have more flat areas, look at neighbours when randomizing the area so height progression is more even
             //todo2: Add more colors to the surface, make it look more like a real map
             var random = new Random();
             var newSurface = new List<ITriangleMeshWithColor>();
@@ -77,7 +77,7 @@ namespace _3dRotations.Helpers
                     var color2 = "007700";
 
                     var accZ = ZPostition1 + ZPostition2 + ZPostition3 + ZPostition4;
-
+                    //TODO: temporary solution, make a better color scheme
                     if (accZ == 0 || accZ < 5) color1 = "0000ff";
                     if (accZ == 0 || accZ < 5) color2 = "0000ff";
                     if (ZPostition1 > 5 && ZPostition1 < 10) color1 = "004400";
