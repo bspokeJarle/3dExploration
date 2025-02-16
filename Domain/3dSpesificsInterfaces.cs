@@ -1,8 +1,22 @@
 using System;
 using System.Collections.Generic;
+using System.Windows.Media.Imaging;
+using static Domain._3dSpecificsImplementations;
 
 namespace Domain
 {
+    public interface ISurface
+    {
+        public Vector3 GlobalMapPosition { get; set; }
+        public Vector3 GlobalMapRotation { get; set; }
+        public int[,]? Global2DMap { get; set; }
+        public BitmapSource GlobalMapBitmap { get; set; }
+
+        public I3dObject GetSurfaceViewPort();
+
+        public void Create2DMap();
+    }
+
     public interface IObjectMovement
     {
         public I3dObject MoveObject(I3dObject theObject);
@@ -14,6 +28,9 @@ namespace Domain
     public interface I3dObject
     {
         public string ObjectName { get; set; }
+        public int? RotationOffsetX { get; set; }
+        public int? RotationOffsetY { get; set; }
+        public int? RotationOffsetZ { get; set; }
         public List<I3dObjectPart> ObjectParts { get; set; }
         public IVector3? Position { get; set; }
         public IVector3? Rotation { get; set; }
@@ -23,6 +40,7 @@ namespace Domain
         public List<List<IVector3>> CrashBoxes { get; set; }
         public bool HasCrashed { get; set; }
         public int? Mass { get; set; }
+        public ISurface? ParentSurface { get; set; }
         //todo add object relative properties, colors, ai etc    
     }
     public interface I3dObjectPart
@@ -41,7 +59,7 @@ namespace Domain
     {
         public IObjectMovement ParentShip { get; set; }
         public List<IParticle> Particles { get; set; }
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IObjectMovement ParentShip);
+        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IObjectMovement ParentShip, int Thrust);  
         public void MoveParticles();
     }
     public interface IParticle
@@ -59,6 +77,7 @@ namespace Domain
         public IVector3? Rotation { get; set; }
         public IVector3? RotationSpeed { get; set; }
         public bool? NoShading { get; set; }
+        public bool Visible { get; set; }
 
     }
     public interface ITriangleMeshWithColor : ITriangleMesh

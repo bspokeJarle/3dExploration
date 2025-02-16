@@ -1,27 +1,34 @@
 ﻿Changes in this version:
-Enabling multiple ojects with properties and abilities
-	Done
-Render multiple objects and collect them in one view
-	Done
-Read STL files into objects
-	Done
 Start development of a scene setup P.S Early days
-	Done
-As a test, add several objects to the scene	
 	Done
 Add color to objects and shading	
 	Done
 Refactor whole project to make it more suited for game development
 	Done
+	Done it once more
 Game AI and Control is now in a separate project
 	Done
 As a POC start development of ship movement
-	Done
+	Done, got some issues with flipping av ship
+	Moevement of surface is not natural or fluid
 Design main ship
 	Done, first version
 Generate a surface
 	Done, first version
+	Currently some issues with the surface, to much static noise and not enough natural land and water
 Start development of a particle system
 	Done, first version
+	We can have particles on all objects moving towards a point
+	Need to start to apply physics, get them to bounce of the surface
 Enable Crash detection
-	Work in progress!
+	Done, first version
+Clean up MainLoop, make more profesional
+	Done
+Speed up rendering, we need 50-60 fps
+	Done
+Need to look at converting to .net Core
+	Important next step
+Map overlay on screen
+	Done, first version
+FPS overlay and other debug info
+	Done, first version

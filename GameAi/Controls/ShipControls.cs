@@ -1,6 +1,6 @@
 using Domain;
 using Gma.System.MouseKeyHook;
-using System.Linq;
+using System.Diagnostics;
 using System.Windows.Forms;
 
 namespace GameAiAndControls.Controls
@@ -13,69 +13,115 @@ namespace GameAiAndControls.Controls
         public int rotationX = 120;
         public int rotationY = 0;
         public int rotationZ = 0;
+        public int shipY = 0;
         public int zoom = 300;
         public I3dObject ParentObject { get; set; }
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public float Thrust { get; set; } = 0;
+        public bool ThrustOn { get; set; } = false;
 
         public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
-            if (StartCoord!=null) StartCoordinates = StartCoord;
-            if (GuideCoord!=null) GuideCoordinates = GuideCoord;
+            if (StartCoord != null) StartCoordinates = StartCoord;
+            if (GuideCoord != null) GuideCoordinates = GuideCoord;
         }
 
         public ShipControls()
         {
-            //Lets subscribe to global events
             if (_globalHook == null)
             {
-                // Note: for the application hook, use the Hook.AppEvents() instead
                 _globalHook = Hook.GlobalEvents();
-                _globalHook.KeyPress += GlobalHookKeyPress;
+                _globalHook.KeyDown += GlobalHookKeyDown;
+                _globalHook.KeyUp += GlobalHookKeyUp;
                 _globalHook.MouseMove += GlobalHookMouseMovement;
-                _globalHook.MouseClick += GlobalHookMouseClick;
+                _globalHook.MouseDown += GlobalHookMouseDown;
+                _globalHook.MouseUp += GlobalHookMouseUp;
             }
         }
 
-        private void GlobalHookKeyPress(object sender, KeyPressEventArgs e)
+        private void GlobalHookKeyDown(object sender, KeyEventArgs e)
         {
+            if (e.KeyCode == Keys.Left) rotationZ -= 5;
+            if (e.KeyCode == Keys.Right) rotationZ += 5;
+            if (e.KeyCode == Keys.Up) rotationX -= 5;
+            if (e.KeyCode == Keys.Down) rotationX += 5;
+            if (e.KeyCode == Keys.Space) ThrustOn = true;
+        }
+
+        private void GlobalHookKeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Space) ThrustOn = false;
         }
 
         public void GlobalHookMouseMovement(object sender, MouseEventArgs e)
         {
-            //Calculate the difference in mouse movement
             var deltaX = e.X - FormerMouseX;
             var deltaY = e.Y - FormerMouseY;
 
             if (FormerMouseX > 0 && FormerMouseY > 0)
             {
-                rotationY += deltaX / 2;
-                rotationX += deltaY / 2;
-                if (rotationX > 360) rotationX = 0;
-                if (rotationY > 360) rotationY = 0;
+                rotationX += deltaY / 3;
+                rotationZ += deltaX / 3;
+                rotationX %= 360;
+                rotationY %= 360;
+                rotationZ %= 360;
             }
 
-            //When done, store the current mouse position as the former mouse position
             FormerMouseX = e.X;
             FormerMouseY = e.Y;
         }
 
-        public void GlobalHookMouseClick(object sender, MouseEventArgs e)
+        private void GlobalHookMouseDown(object sender, MouseEventArgs e) { ThrustOn = true; }
+        private void GlobalHookMouseUp(object sender, MouseEventArgs e) { ThrustOn = false; Thrust = 0; }
+
+        private void IncreaseThrustAndRelease()
         {
-            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates,this);
+            if (Thrust < 5) Thrust += 0.3f;
+            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, this, (int)Thrust);
+        }
+
+        public void HandleThrust()
+        {
+            var deltaX = rotationX % 360;
+            var deltaY = rotationY % 360;
+            var deltaZ = rotationZ % 360;
+
+            if (deltaX >= 90 && rotationX <= 180)
+            {
+                ParentObject.ParentSurface.GlobalMapPosition.z -= Thrust * 4;
+                ParentObject.ParentSurface.GlobalMapPosition.y += 1f;
+            }
+            if (rotationX >= 0 && rotationX <= 90)
+            {
+                ParentObject.ParentSurface.GlobalMapPosition.z += Thrust * 4;
+                ParentObject.ParentSurface.GlobalMapPosition.y += 4f;
+            }
+            Debug.WriteLine($"Delta X: {deltaX}, Delta Y: {deltaY}, Delta Z: {deltaZ}, Thrust: {Thrust}");
+        }
+
+        public void ApplyGravity()
+        {
+            if (ParentObject?.ParentSurface?.GlobalMapPosition.y >= -75)
+                ParentObject.ParentSurface.GlobalMapPosition.y -= 3f;
+            else
+                ParentObject.Position.y += 3;
+
+            Debug.WriteLine($"Mapy: {ParentObject?.ParentSurface?.GlobalMapPosition.y}");
         }
 
         public I3dObject MoveObject(I3dObject theObject)
         {
-            //If there is no parent object, set the parent object to the object that is being moved
             ParentObject ??= theObject;
-            //If there are particles, move them
-            if (ParentObject.Particles?.Particles.Count > 0)
-            {
-                ParentObject.Particles.MoveParticles();
-            }
+
+            if (Thrust > 0) HandleThrust();
+            if (ThrustOn) IncreaseThrustAndRelease();
+            if (Thrust == 0) ApplyGravity();
+            if (ParentObject.Particles?.Particles.Count > 0) ParentObject.Particles.MoveParticles();
+
             if (theObject.Position != null)
             {
+                theObject.Position.y = ParentObject.Position.y;
                 theObject.Position.z = zoom;
             }
             if (theObject.Rotation != null)

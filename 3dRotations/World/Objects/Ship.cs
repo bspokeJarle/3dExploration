@@ -10,7 +10,7 @@ namespace _3dRotations.World.Objects
 {
     public static class Ship
     {
-        public static _3dObject CreateShip()
+        public static _3dObject CreateShip(ISurface parentSurface)
         {
             //var modelReader = new STLReader("C:\\Users\\kh979\\Documents\\Privat\\Bspoke prosjekter\\3dProsjekt\\3dProsjekt\\3dTesting\\3d objects\\div\\complexorb.stl");
             //var triangles = _3dObjectHelpers.ConvertToTrianglesWithColor(modelReader.ReadFile().ToList(), "FF6644");           
@@ -28,13 +28,14 @@ namespace _3dRotations.World.Objects
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "UpperPart", Triangles = upperTriangles, IsVisible=true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "LowerPart", Triangles = lowerTriangles, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "RearPart", Triangles = rearTriangles, IsVisible = true });
-            ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotor", Triangles = jetMotorTriangle, IsVisible = true });
-            ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotorDirectionGuide", Triangles = jetMotorDirectionGuide, IsVisible = false });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotor", Triangles = jetMotorTriangle!, IsVisible = true });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotorDirectionGuide", Triangles = jetMotorDirectionGuide!, IsVisible = false });
 
-            ship.Position = new Vector3 { x = 0, y = 0, z = 0 };
+            ship.Position = new Vector3 { };
             ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             ship.Movement = new ShipControls();    
             ship.Particles = new ParticlesAI();
+            ship.ParentSurface = parentSurface;
             if (shipCrashBox != null) ship.CrashBoxes = shipCrashBox;
             return ship; 
         }
@@ -44,7 +45,7 @@ namespace _3dRotations.World.Objects
             //List of crash boxes for the ship, min, max
             return new List<List<IVector3>>
             {
-                //TODO: Maybe use three crashboxes in time                
+                //TODO: Maybe use three crashboxes in time, for now only one
                 new List<IVector3>
                 {
                     new Vector3 { x = -65, y = -45, z = -45 },

@@ -6,6 +6,7 @@
     <RootNamespace>_3dTesting</RootNamespace>
     <UseWPF>true</UseWPF>
     <AssemblyName>3dTesting</AssemblyName>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

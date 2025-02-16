@@ -117,7 +117,7 @@ namespace _3dTesting.Helpers
                             normal3 = new Vector3 { x = triangle.normal3.x, y = triangle.normal3.y, z = triangle.normal3.z },
                             angle = triangle.angle,
                             Color = triangle.Color,
-                            noHidden = triangle.noHidden
+                            noHidden = triangle.noHidden,
                         });
                     }
                     objectparts.Add(new _3dObjectPart { PartName = part.PartName, Triangles = Triangles, IsVisible = part.IsVisible });
@@ -133,7 +133,11 @@ namespace _3dTesting.Helpers
                     CrashBoxes = inhabitant.CrashBoxes,
                     HasCrashed = inhabitant.HasCrashed,
                     Mass = inhabitant.Mass,
-                    ObjectName = inhabitant.ObjectName
+                    ObjectName = inhabitant.ObjectName,
+                    ParentSurface = inhabitant.ParentSurface,
+                    RotationOffsetX = inhabitant.RotationOffsetX,
+                    RotationOffsetY = inhabitant.RotationOffsetY,
+                    RotationOffsetZ = inhabitant.RotationOffsetZ
                 });
             }
             return theInhabitants;

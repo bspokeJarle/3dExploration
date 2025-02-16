@@ -1,105 +1,185 @@
-﻿using Domain;
-using System;
-using System.Collections.Generic;
-using static Domain._3dSpecificsImplementations;
+﻿using System;
+//using System.Drawing;
+//using System.Drawing.Imaging;
+using System.Windows.Media.Imaging;
+using System.Windows.Media;
+using System.Windows;
 
 namespace _3dRotations.Helpers
 {
     public static class SurfaceGeneration
     {
-        const int mapSize = 25;
-        const int tileSize = 50;
-        const int zFactor = 5;
-        public static int[,]? surfaceValues = new int[mapSize, mapSize];
-        public static List<ITriangleMeshWithColor> Generate()
+        // ======== CONFIGURABLE PARAMETERS ========
+        const int zFactor = 6; // Scaling factor for terrain height
+        static Random random = new Random();
+        const float perlinScaleMin = 0.008f; // Lower frequency for smoother, more swoopy hills
+        const float perlinScaleMax = 0.012f; // Adjusted for larger terrain variations
+        const double waterPatchProbability = 0.02; // Lower probability for fewer, larger lakes
+        const double plateauProbability = 0.04; // Lower probability for larger, more defined plateaus
+        const float heightExponent = 1.4f; // More exaggerated elevation for natural swoops
+        const int plateauHeight = 10; // Higher plateau levels for distinct flat areas
+
+        public static int[,] ReturnPseudoRandomMap(int mapSize, out int maxHeight)
         {
-            //todo: Improvements to be made:
-            //todo1: Too many mountains, surface should have more flat areas, look at neighbours when randomizing the area so height progression is more even
-            //todo2: Add more colors to the surface, make it look more like a real map
-            var random = new Random();
-            var newSurface = new List<ITriangleMeshWithColor>();
-            //First, generate a random map
+            int[,] surfaceValues = GeneratePerlinNoiseMap(mapSize, out maxHeight);
+            surfaceValues = AddWaterPatches(surfaceValues, mapSize);
+            surfaceValues = SmoothTerrain(surfaceValues, mapSize);
+            GenerateTerrainBitmapSource(surfaceValues, mapSize, maxHeight);
+            return surfaceValues;
+        }
+
+        private static int[,] GeneratePerlinNoiseMap(int mapSize, out int maxHeight)
+        {
+            int[,] map = new int[mapSize, mapSize];
+            maxHeight = 0;
+            float scale = perlinScaleMin + (float)(random.NextDouble() * (perlinScaleMax - perlinScaleMin));
+
             for (int i = 0; i < mapSize; i++)
             {
                 for (int j = 0; j < mapSize; j++)
                 {
-                    surfaceValues[i, j] = random.Next(0, 10);
+                    float perlinValue = (float)random.NextDouble(); // Placeholder for actual Perlin noise function
+                    map[i, j] = (int)(Math.Pow(perlinValue, heightExponent) * 20 * zFactor);
+                    if (map[i, j] > maxHeight) maxHeight = map[i, j];
                 }
             }
+            return map;
+        }
 
-            //Ierate 10 times to smooth the map
-            for (int l = 0; l < 20; l++)
+         private static int[,] AddWaterPatches(int[,] map, int mapSize)
+        {
+            int waterThreshold = (int)(zFactor * 5.0);
+            for (int i = 0; i < mapSize; i++)
             {
-                //Iterate through the map on y axis
-                for (int i = 1; i < mapSize - 1; i++)
+                for (int j = 0; j < mapSize; j++)
                 {
-                    //Iterate through the map on x axis
-                    for (int j = 1; j < mapSize - 1; j++)
+                    if (map[i, j] < waterThreshold || random.NextDouble() < waterPatchProbability)
                     {
-                        var numberOfNeighbours = 0;
-                        if (surfaceValues[i - 1, -1 + j] != 0) numberOfNeighbours++;
-                        if (surfaceValues[i - 1, j] != 0) numberOfNeighbours++;
-                        if (surfaceValues[i - 1, j + 1] != 0) numberOfNeighbours++;
-                        if (surfaceValues[i, j - 1] != 0) numberOfNeighbours++;
-                        if (surfaceValues[i, j + 1] != 0) numberOfNeighbours++;
-                        if (surfaceValues[i + 1, -1 + j] != 0) numberOfNeighbours++;
-                        if (surfaceValues[i + 1, j] != 0) numberOfNeighbours++;
-                        if (surfaceValues[i + 1, j + 1] != 0) numberOfNeighbours++;
-                        if (numberOfNeighbours == 0)
-                        {
-                            surfaceValues[i, j] = (random.Next(1, 9) * zFactor);
-                        }
-                        else if (numberOfNeighbours >= 1 && numberOfNeighbours <= 5) surfaceValues[i, j] = 0;
-                        else if (numberOfNeighbours > 5) surfaceValues[i, j] = (random.Next(1, 9) * zFactor);
+                        map[i, j] = 0;
                     }
                 }
             }
-            //Return the surface as a list of triangles
-            var YPosition = -(tileSize * mapSize / 2);
+            return map;
+        }
+
+        private static int[,] SmoothTerrain(int[,] map, int mapSize)
+        {
+            int[,] newMap = new int[mapSize, mapSize];
             for (int i = 1; i < mapSize - 1; i++)
             {
-                YPosition += tileSize;
-                var XPosition = -(tileSize * mapSize / 2);
-                //Iterate through the map on x axis
                 for (int j = 1; j < mapSize - 1; j++)
                 {
-                    XPosition += tileSize;
-                    //Setup the coordinates for the square
-                    var XPosition2 = XPosition + tileSize;
-                    var YPosition2 = YPosition + tileSize;
-                    var ZPostition1 = surfaceValues[i, j];
-                    var ZPostition2 = surfaceValues[i, j + 1];
-                    var ZPostition3 = surfaceValues[i + 1, j + 1];
-                    var ZPostition4 = surfaceValues[i + 1, j];
-
-                    //Make a square, all squares are made of two triangles and hinged in the left hand upper corner
-                    var color1 = "007700";
-                    var color2 = "007700";
-
-                    var accZ = ZPostition1 + ZPostition2 + ZPostition3 + ZPostition4;
-                    //TODO: temporary solution, make a better color scheme
-                    if (accZ == 0 || accZ < 5) color1 = "0000ff";
-                    if (accZ == 0 || accZ < 5) color2 = "0000ff";
-                    if (ZPostition1 > 5 && ZPostition1 < 10) color1 = "004400";
-                    if (ZPostition2 > 5 && ZPostition2 < 10) color2 = "004400";
-                    if (ZPostition1 > 10 && ZPostition1 < 15) color1 = "009900";
-                    if (ZPostition2 > 10 && ZPostition2 < 15) color2 = "009900";
-                    if (ZPostition1 > 15 && ZPostition1 < 20) color1 = "00BB00";
-                    if (ZPostition2 > 15 && ZPostition2 < 20) color2 = "00BB00";
-                    if (ZPostition1 > 20 && ZPostition1 < 25) color1 = "993300";
-                    if (ZPostition2 > 20 && ZPostition2 < 25) color2 = "993300";
-                    if (ZPostition1 > 25) color1 = "552200";
-                    if (ZPostition2 > 25) color2 = "552200";
-
-
-                    var triangle1 = new TriangleMeshWithColor { Color = color1, vert1 = { x = XPosition, y = YPosition, z = ZPostition1 }, vert2 = { x = XPosition2, y = YPosition, z = ZPostition2 }, vert3 = { x = XPosition2, y = YPosition2, z = ZPostition3 } };
-                    var triangle2 = new TriangleMeshWithColor { Color = color2, vert1 = { x = XPosition, y = YPosition, z = ZPostition1 }, vert2 = { x = XPosition2, y = YPosition2, z = ZPostition3 }, vert3 = { x = XPosition, y = YPosition2, z = ZPostition4 } };
-                    //Add the square to the map
-                    newSurface.Add(triangle1);
-                    newSurface.Add(triangle2);
+                    int sum = 0;
+                    int count = 0;
+                    for (int di = -1; di <= 1; di++)
+                    {
+                        for (int dj = -1; dj <= 1; dj++)
+                        {
+                            sum += map[i + di, j + dj];
+                            count++;
+                        }
+                    }
+                    newMap[i, j] = (sum / count > zFactor * 6.0) ? (int)(zFactor * 5.0 + sum / count * 0.4) : sum / count;
+                    if (random.NextDouble() < plateauProbability)
+                    {
+                        newMap[i, j] = (int)(zFactor * plateauHeight);
+                    }
                 }
             }
-            return newSurface;
+            return newMap;
+        }
+
+        public static BitmapSource GenerateTerrainBitmapSource(int[,] terrainMap, int mapSize, int maxHeight)
+        {
+            WriteableBitmap bitmap = new WriteableBitmap(mapSize, mapSize, 96, 96, PixelFormats.Bgra32, null);
+            int stride = mapSize * 4; // 4 bytes per pixel (BGRA32)
+            byte[] pixelData = new byte[mapSize * mapSize * 4];
+
+            for (int i = 0; i < mapSize; i++)
+            {
+                for (int j = 0; j < mapSize; j++)
+                {
+                    int height = terrainMap[i, j];
+                    Color color = GetTileColor(height, maxHeight);
+
+                    int index = (j * mapSize + i) * 4;
+                    pixelData[index] = color.B; // Blue
+                    pixelData[index + 1] = color.G; // Green
+                    pixelData[index + 2] = color.R; // Red
+                    pixelData[index + 3] = 255; // Alpha
+                }
+            }
+
+            bitmap.WritePixels(new Int32Rect(0, 0, mapSize, mapSize), pixelData, stride, 0);
+            return bitmap;
+        }
+
+        public static int[,] Return2DViewPort(int viewPortSize, int GlobalX, int GlobalZ, int[,] Global2DMap, int tileSize)
+        {
+            if (Global2DMap == null || Global2DMap.Length == 0) return new int[0, 0];
+
+            int mapSize = Global2DMap.GetLength(0);
+            int[,] viewPort = new int[viewPortSize + 3, viewPortSize];
+
+            int MapZindex = GlobalZ / tileSize;
+            int MapXindex = GlobalX / tileSize;
+
+            for (int y = 0; y < viewPortSize + 3; y++)
+            {
+                int globalY = MapZindex + y;
+                if (globalY >= mapSize) break;
+
+                for (int x = 0; x < viewPortSize; x++)
+                {
+                    int globalX = MapXindex + x;
+                    if (globalX >= mapSize) break;
+
+                    viewPort[y, x] = Global2DMap[globalY, globalX];
+                }
+            }
+            return viewPort;
+        }
+
+        private static Color GetTileColor(int height, int maxHeight)
+        {
+            int red, green, blue;
+
+            if (height < maxHeight * 0.05) // Deep Ocean (Very Dark Blue)
+            {
+                red = 0;
+                green = 0;
+                blue = 180 + (int)((height / (maxHeight * 0.05)) * 75); // Darker blue in deeper water
+            }
+            else if (height < maxHeight * 0.15) // Coastal Water (Medium Blue)
+            {
+                red = 0;
+                green = (int)((height / (maxHeight * 0.2)) * 100);
+                blue = 255;
+            }
+            else if (height < maxHeight * 0.4) // Grassland (Green Gradient)
+            {
+                red = 0;
+                green = 150 + ((height - (int)(maxHeight * 0.2)) * 3);
+                blue = 0;
+            }
+            else if (height < maxHeight * 0.7) // Highlands (Brown Gradient)
+            {
+                red = 139 + ((height - (int)(maxHeight * 0.4)) * 3);
+                green = 69 + ((height - (int)(maxHeight * 0.4)) * 2);
+                blue = 19;
+            }
+            else // Mountains (Gray Gradient)
+            {
+                red = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
+                green = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
+                blue = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
+            }
+
+            return Color.FromArgb(255,
+                (byte)Math.Clamp(red, 0, 255),
+                (byte)Math.Clamp(green, 0, 255),
+                (byte)Math.Clamp(blue, 0, 255)
+            );
         }
     }
 }

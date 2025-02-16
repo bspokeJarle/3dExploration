@@ -1,6 +1,9 @@
 ﻿using Domain;
+using Microsoft.Windows.Themes;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Net.Security;
 using static Domain._3dSpecificsImplementations;
 
 namespace GameAiAndControls.Controls
@@ -8,12 +11,12 @@ namespace GameAiAndControls.Controls
     //make a class that will spawn particles that follow a trajectory
     public class ParticlesAI : IParticles
     {
-        private Random random = new();
-        private const int screenRefresh = 50;
-        private const int MaxParticles = 80;
+        private Random random = new();        
+        private const int MaxParticles = 20;
         public List<IParticle> Particles { get; set; } = new();
 
         public IObjectMovement? ParentShip { get; set; }
+        public bool Visible { get; set; }
 
         public void MoveParticles()
         {
@@ -26,6 +29,8 @@ namespace GameAiAndControls.Controls
                 var particleDeathTime = new DateTime(particle.BirthTime.Ticks + Convert.ToInt64(particle.Life * 10000000) + particle.VariedStart);
                 if (particleDeathTime.Ticks > currentDateTime.Ticks)
                 {
+                    particle.Visible = true;
+                    //Set the particle to visible
                     //todo's
                     //move particles according to their velocity, acceleration and direction
                     particle.Position.x -= particle.Velocity.x;
@@ -52,15 +57,23 @@ namespace GameAiAndControls.Controls
             }
         }
 
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IObjectMovement ParShip)
+        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IObjectMovement ParShip, int Thrust)
         {
-
-            ParentShip = ParShip;
-            if (StartPosition == null && Trajectory == null) return;
+            //When button is let go(Thrust=0), clear all particles
+            if (Thrust == 0) {
+                Particles.Clear();
+                Particles.TrimExcess();
+                return;
+            }
+            //To prevent too many particles, limit the amount
             if (Particles.Count > MaxParticles) return;
-            long particleCount = random.NextInt64(20, 50);
+            //No trajectory or start position, no particles
+            if (StartPosition == null && Trajectory == null) return;
+            ParentShip = ParShip;            
+            long particleCount = Thrust * 5;            
             for (int i = 0; i < particleCount; i++)
             {
+                if (Particles.Count > MaxParticles) break;
                 //Todo need to rotate the trajectory and startposition to position the particles according the actualt ship
                 //start position is the center of the engine
                 var startX = (StartPosition.vert1.x + StartPosition.vert2.x + StartPosition.vert3.x) / 3;
@@ -89,28 +102,28 @@ namespace GameAiAndControls.Controls
                     z = zSpeed
                 };
 
-                particle.Size = random.NextInt64(3, 5);
+                particle.Size = random.NextInt64(1, 4);
                 //To prevent the particles clumping together, give them a varied start time
-                particle.VariedStart = random.NextInt64(0, 20000000);
+                particle.VariedStart = random.NextInt64(0, 5000000);
                 particle.ParticleTriangle = new TriangleMeshWithColor()
                 {
                     Color = "eeffee",
                     vert1 = new Vector3()
                     {
-                        x = -5,
-                        y = -5,
+                        x = -particle.Size / 2,
+                        y = -particle.Size / 2,
                         z = 0
                     },
                     vert2 = new Vector3()
                     {
-                        x = 5,
-                        y = -5,
+                        x = particle.Size / 2,
+                        y = -particle.Size / 2,
                         z = 0
                     },
                     vert3 = new Vector3()
                     {
                         x = 0,
-                        y = 5,
+                        y = particle.Size / 2,
                         z = 0
                     },
                     noHidden = true
@@ -126,8 +139,9 @@ namespace GameAiAndControls.Controls
                 particle.BirthTime = DateTime.Now;
                 particle.noHidden = true;
                 particle.IsRotated = false;
-                particle.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
+                particle.Rotation = new Vector3 { x = random.NextInt64(0, 360), y = random.NextInt64(0, 360), z = random.NextInt64(0, 360) };
                 particle.RotationSpeed = new Vector3 { x = random.NextInt64(-5, 5), y = random.NextInt64(-5, 5), z = random.NextInt64(-5, 5) };
+                Visible = false;
                 Particles.Add(particle);
             }
         }
@@ -148,5 +162,6 @@ namespace GameAiAndControls.Controls
         public IVector3? Position { get; set; }
         public IVector3? RotationSpeed { get; set; }
         public bool? NoShading { get; set; }
+        public bool Visible { get; set; }
     }
 }

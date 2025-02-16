@@ -6,8 +6,11 @@ namespace _3dTesting.Helpers
     {
         //Add some brightness to the colors, temp solution
         const int brightness = 8;
-        public static System.Windows.Media.Color getShadeOfColorFromNormal(float normal, string color)
-        {
+        public static string getShadeOfColorFromNormal(float normal, string color)
+        { 
+            if (color==null) color = "#000000";
+            //Remove the # from the color if it exists
+            color = color.Replace("#", "");
             var localNormal = Math.Abs(normal);
             string rs = color[0..2];
             string gs = color[2..4];
@@ -27,7 +30,7 @@ namespace _3dTesting.Helpers
             var bhex = b.ToString("X").PadLeft(2, '0');
             var hex = "#" + rhex + ghex + bhex;
 
-            return (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
+            return hex;
         }
     }
 }
