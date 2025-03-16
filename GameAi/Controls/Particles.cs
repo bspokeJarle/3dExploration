@@ -12,7 +12,7 @@ namespace GameAiAndControls.Controls
     public class ParticlesAI : IParticles
     {
         private Random random = new();        
-        private const int MaxParticles = 20;
+        private const int MaxParticles = 40;
         public List<IParticle> Particles { get; set; } = new();
 
         public IObjectMovement? ParentShip { get; set; }
@@ -57,7 +57,7 @@ namespace GameAiAndControls.Controls
             }
         }
 
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IObjectMovement ParShip, int Thrust)
+        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParShip, int Thrust)
         {
             //When button is let go(Thrust=0), clear all particles
             if (Thrust == 0) {
@@ -136,6 +136,14 @@ namespace GameAiAndControls.Controls
                     z = startz
                 };
 
+                //Particles are positioned in the world, not relative to the ship
+                particle.WorldPosition = new Vector3()
+                {
+                    x = WorldPosition.x,
+                    y = WorldPosition.y,
+                    z = WorldPosition.z
+                };
+
                 particle.BirthTime = DateTime.Now;
                 particle.noHidden = true;
                 particle.IsRotated = false;
@@ -160,6 +168,8 @@ namespace GameAiAndControls.Controls
         public bool IsRotated { get; set; }
         public IVector3? Rotation { get; set; }
         public IVector3? Position { get; set; }
+        public IVector3 WorldPosition { get; set; }
+        public IVector3 GlobalMapPosition { get; set; }
         public IVector3? RotationSpeed { get; set; }
         public bool? NoShading { get; set; }
         public bool Visible { get; set; }

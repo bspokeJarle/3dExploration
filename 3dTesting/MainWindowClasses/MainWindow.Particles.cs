@@ -23,13 +23,13 @@ namespace _3dTesting.MainWindowClasses
             {
                 if (!particle.Visible) continue;
 
-                var particleObject = new _3dObject { ObjectName = "Particle" };
+                var particleObject = new _3dObject { ObjectName = "Particle", WorldPosition = particle.WorldPosition, ParentSurface = inhabitant.ParentSurface };
                 var particleTriangle = RotateParticle(particle.ParticleTriangle, (Vector3)particle.Rotation);
 
                 particleObject.ObjectParts = new List<I3dObjectPart>
-            {
-                new _3dObjectPart { Triangles = new List<ITriangleMeshWithColor> { particleTriangle }, PartName = "Particle", IsVisible = true }
-            };
+                {
+                    new _3dObjectPart { Triangles = new List<ITriangleMeshWithColor> { particleTriangle }, PartName = "Particle", IsVisible = true }
+                };
                 particleObject.Position = new Vector3
                 {
                     x = inhabitant.Position.x + particle.Position.x,

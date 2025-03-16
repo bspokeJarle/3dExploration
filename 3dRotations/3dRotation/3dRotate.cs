@@ -37,7 +37,8 @@ namespace _3dTesting._3dRotation
                 vert2 = RotateToDomain((Vector3)coord.vert2, cosRes, sinRes, axis),
                 vert3 = RotateToDomain((Vector3)coord.vert3, cosRes, sinRes, axis),
                 Color = coord.Color,
-                noHidden = coord.noHidden
+                noHidden = coord.noHidden,
+                landBasedPosition = coord.landBasedPosition
             });
         }
 

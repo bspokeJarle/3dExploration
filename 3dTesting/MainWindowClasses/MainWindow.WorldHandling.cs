@@ -6,6 +6,7 @@ using Domain;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using static Domain._3dSpecificsImplementations;
 
@@ -22,41 +23,61 @@ namespace _3dTesting.MainWindowClasses
             var activeWorld = _3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants);
             var particleObjectList = new List<_3dObject>();
 
-            Parallel.ForEach(activeWorld, inhabitant =>
+             Parallel.ForEach(activeWorld, inhabitant =>
             {
-                // Apply movement updates
-                inhabitant.Movement?.MoveObject(inhabitant);
-
-                // Apply rotation offsets
-                foreach (var part in inhabitant.ObjectParts)
+                //TODO: Get world position and compare to the surface position
+                //If the object is not within the visible field, do not render or rotate it
+                if (inhabitant.CheckInhabitantVisibility())
                 {
-                    for (int i = 0; i < part.Triangles.Count; i++)
+                    // ✅ Apply movement updates
+                    inhabitant.Movement?.MoveObject(inhabitant);
+                    // ✅ Apply rotation offsets only if needed
+                    if (inhabitant.RotationOffsetX > 0 || inhabitant.RotationOffsetY > 0 || inhabitant.RotationOffsetZ > 0)
                     {
-                        var triangle = part.Triangles[i];
-                        GameHelpers.ApplyRotationOffset(ref triangle, inhabitant.RotationOffsetX, inhabitant.RotationOffsetY, inhabitant.RotationOffsetZ);
-                        part.Triangles[i] = triangle;
+                        Parallel.ForEach(inhabitant.ObjectParts, part =>
+                        {
+                            for (int i = 0; i < part.Triangles.Count; i++)
+                            {
+                                var triangles = part.Triangles[i];
+                                GameHelpers.ApplyRotationOffset(ref triangles, inhabitant.RotationOffsetX, inhabitant.RotationOffsetY, inhabitant.RotationOffsetZ);
+                            }
+                        });
                     }
+
+                    // ✅ Rotate all parts in parallel
+                    Parallel.ForEach(inhabitant.ObjectParts, part =>
+                    {
+                        part.Triangles = RotateMesh(part.Triangles, (Vector3)inhabitant.Rotation);
+                        //Landbased objects need to have their triangles set to the surface triangles
+                        if (inhabitant.ObjectName=="Surface") inhabitant.ParentSurface.RotatedSurfaceTriangles = part.Triangles;
+                        SetMovementGuides(inhabitant, part, part.Triangles);
+                    });
+
+                    // ✅ Compute and apply centroid shift only if offsets exist 
+                    if (inhabitant.RotationOffsetX > 0 || inhabitant.RotationOffsetY > 0 || inhabitant.RotationOffsetZ > 0)
+                    {
+                        Vector3 centroid = GameHelpers.ComputeCentroid(inhabitant);
+
+                        Parallel.ForEach(inhabitant.ObjectParts, part =>
+                        {
+                            for (int i = 0; i < part.Triangles.Count; i++)
+                            {
+                                var triangles = part.Triangles[i];
+                                GameHelpers.RecenterTriangle(ref triangles, centroid);
+                            }
+                        });
+                    }
+
+                    // ✅ Handle particles separately
+                    particleManager.HandleParticles(inhabitant, particleObjectList);
                 }
-
-                Parallel.ForEach(inhabitant.ObjectParts, part =>
-                {
-                    var rotatedMesh = RotateMesh(part.Triangles, (Vector3)inhabitant.Rotation);
-
-                    // Set movement guides
-                    SetMovementGuides(inhabitant, part, rotatedMesh);
-
-                    part.Triangles = rotatedMesh;
-                });
-
-                // Handle particles separately
-                particleManager.HandleParticles(inhabitant, particleObjectList);
             });
 
             if (particleObjectList.Count > 0) activeWorld.AddRange(particleObjectList);
             CrashDetection.HandleCrashboxes(activeWorld);
-
             return From3dTo2d.convertTo2dFromObjects(activeWorld);
         }
+
 
         private List<ITriangleMeshWithColor> RotateMesh(List<ITriangleMeshWithColor> mesh, Vector3 rotation)
         {
@@ -65,6 +86,8 @@ namespace _3dTesting.MainWindowClasses
             rotatedMesh = Rotate3d.RotateXMesh(rotatedMesh, rotation.x);
             return rotatedMesh;
         }
+
+        
 
         private void SetMovementGuides(_3dObject inhabitant, I3dObjectPart part, List<ITriangleMeshWithColor> rotatedMesh)
         {

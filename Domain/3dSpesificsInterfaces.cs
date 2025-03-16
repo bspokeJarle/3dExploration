@@ -5,13 +5,19 @@ using static Domain._3dSpecificsImplementations;
 
 namespace Domain
 {
+    public struct SurfaceData
+    {
+        public int mapDepth;
+        public int mapId;
+    }
     public interface ISurface
     {
         public Vector3 GlobalMapPosition { get; set; }
         public Vector3 GlobalMapRotation { get; set; }
-        public int[,]? Global2DMap { get; set; }
+        public SurfaceData[,]? Global2DMap { get; set; }
         public BitmapSource GlobalMapBitmap { get; set; }
 
+        public List<ITriangleMeshWithColor> RotatedSurfaceTriangles { get; set; }
         public I3dObject GetSurfaceViewPort();
 
         public void Create2DMap();
@@ -31,6 +37,7 @@ namespace Domain
         public int? RotationOffsetX { get; set; }
         public int? RotationOffsetY { get; set; }
         public int? RotationOffsetZ { get; set; }
+        public IVector3? WorldPosition { get; set; }
         public List<I3dObjectPart> ObjectParts { get; set; }
         public IVector3? Position { get; set; }
         public IVector3? Rotation { get; set; }
@@ -41,6 +48,8 @@ namespace Domain
         public bool HasCrashed { get; set; }
         public int? Mass { get; set; }
         public ISurface? ParentSurface { get; set; }
+        public int? SurfaceBasedId { get; set; }
+        //public List
         //todo add object relative properties, colors, ai etc    
     }
     public interface I3dObjectPart
@@ -59,7 +68,7 @@ namespace Domain
     {
         public IObjectMovement ParentShip { get; set; }
         public List<IParticle> Particles { get; set; }
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IObjectMovement ParentShip, int Thrust);  
+        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust);  
         public void MoveParticles();
     }
     public interface IParticle
@@ -74,6 +83,9 @@ namespace Domain
         public DateTime BirthTime { get; set; }
         public bool IsRotated { get; set; }
         public IVector3 Position { get; set; }
+        //Where in the world is this specific particle
+        public IVector3 WorldPosition { get; set; }
+        //Where is the actual Map Position of the ship
         public IVector3? Rotation { get; set; }
         public IVector3? RotationSpeed { get; set; }
         public bool? NoShading { get; set; }
@@ -93,6 +105,7 @@ namespace Domain
         public IVector3 vert1 { get; set; }
         public IVector3 vert2 { get; set; }
         public IVector3 vert3 { get; set; }
+        public long? landBasedPosition { get; set; }
         public float angle { get; set; }
         public bool? noHidden { get; set; }
     }

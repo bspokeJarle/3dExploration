@@ -1,6 +1,8 @@
 ﻿Changes in this version:
-Start development of a scene setup P.S Early days
+Start development of a scene setup
 	Done
+Bee able to set objects on the map in a Scene, for instance trees, rocks, houses etc
+	Working on it
 Add color to objects and shading	
 	Done
 Refactor whole project to make it more suited for game development
@@ -13,6 +15,8 @@ As a POC start development of ship movement
 	Moevement of surface is not natural or fluid
 Design main ship
 	Done, first version
+Design ground objects
+	Trees - first version Done
 Generate a surface
 	Done, first version
 	Currently some issues with the surface, to much static noise and not enough natural land and water
@@ -32,3 +36,4 @@ Map overlay on screen
 	Done, first version
 FPS overlay and other debug info
 	Done, first version
+	Bug here now, needs to be fixed

@@ -1,12 +1,23 @@
 using Domain;
 using Gma.System.MouseKeyHook;
+using System;
 using System.Diagnostics;
 using System.Windows.Forms;
 
 namespace GameAiAndControls.Controls
 {
+    // Configurable settings for ship movement
     public class ShipControls : IObjectMovement
     {
+        // Movement settings
+        private const float MaxThrust = 5.0f; // Maximum thrust level
+        private const float ThrustIncreaseRate = 0.3f; // Rate of thrust increase
+        private const float GravityForce = 3.0f; // Gravity force applied when no thrust
+        private const float SpeedMultiplier = 6.0f; // Multiplier for forward speed
+        private const float HeightMultiplier = 2.0f; // Multiplier for height gain
+        private const float HeightReductionFactor = 0.5f; // Reduction factor for height gain when tilted
+        private const int RotationStep = 5; // Angle change per key press
+
         private IKeyboardMouseEvents _globalHook;
         public int FormerMouseX = 0;
         public int FormerMouseY = 0;
@@ -42,16 +53,32 @@ namespace GameAiAndControls.Controls
 
         private void GlobalHookKeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Left) rotationZ -= 5;
-            if (e.KeyCode == Keys.Right) rotationZ += 5;
-            if (e.KeyCode == Keys.Up) rotationX -= 5;
-            if (e.KeyCode == Keys.Down) rotationX += 5;
+            if (e.KeyCode == Keys.Left) rotationZ -= RotationStep;
+            if (e.KeyCode == Keys.Right) rotationZ += RotationStep;
+            if (e.KeyCode == Keys.Up)
+            {
+                float tiltCompensation = MathF.Cos(rotationZ * (MathF.PI / 180f));
+                float lateralCompensation = MathF.Sin(rotationZ * (MathF.PI / 180f));
+                rotationX -= (int)(RotationStep * tiltCompensation);
+                rotationY += (int)(RotationStep * lateralCompensation);
+            }
+            if (e.KeyCode == Keys.Down)
+            {
+                float tiltCompensation = MathF.Cos(rotationZ * (MathF.PI / 180f));
+                float lateralCompensation = MathF.Sin(rotationZ * (MathF.PI / 180f));
+                rotationX += (int)(RotationStep * tiltCompensation);
+                rotationY -= (int)(RotationStep * lateralCompensation);
+            }
             if (e.KeyCode == Keys.Space) ThrustOn = true;
         }
 
         private void GlobalHookKeyUp(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Space) ThrustOn = false;
+            if (e.KeyCode == Keys.Space)
+            {
+                ThrustOn = false;
+                Thrust = 0;
+            }
         }
 
         public void GlobalHookMouseMovement(object sender, MouseEventArgs e)
@@ -61,7 +88,8 @@ namespace GameAiAndControls.Controls
 
             if (FormerMouseX > 0 && FormerMouseY > 0)
             {
-                rotationX += deltaY / 3;
+                rotationX += (int)(deltaY / 3 * MathF.Cos(rotationZ * (MathF.PI / 180f))); // Compensation to prevent flipping
+                rotationY += (int)(deltaY / 3 * MathF.Sin(rotationZ * (MathF.PI / 180f))); // Adjust Y rotation for smoother tilting
                 rotationZ += deltaX / 3;
                 rotationX %= 360;
                 rotationY %= 360;
@@ -77,37 +105,23 @@ namespace GameAiAndControls.Controls
 
         private void IncreaseThrustAndRelease()
         {
-            if (Thrust < 5) Thrust += 0.3f;
-            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, this, (int)Thrust);
+            if (Thrust < MaxThrust) Thrust += ThrustIncreaseRate;
+            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, this.ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust);
         }
 
         public void HandleThrust()
         {
-            var deltaX = rotationX % 360;
-            var deltaY = rotationY % 360;
-            var deltaZ = rotationZ % 360;
+            float forwardFactor = MathF.Sin(rotationX * (MathF.PI / 180f));
+            float upwardFactor = MathF.Cos(rotationX * (MathF.PI / 180f));
+            float directionFactor = MathF.Cos(rotationY * (MathF.PI / 180f));
+            float lateralFactor = MathF.Sin(rotationZ * (MathF.PI / 180f));
+            float thrustFactor = MathF.Cos(rotationX * (MathF.PI / 180f));
+            float speedFactor = MathF.Pow(MathF.Abs(MathF.Sin(rotationX * (MathF.PI / 180f))), 1.2f);
+            float verticalFactor = MathF.Max(0, 1 - MathF.Abs(thrustFactor));
 
-            if (deltaX >= 90 && rotationX <= 180)
-            {
-                ParentObject.ParentSurface.GlobalMapPosition.z -= Thrust * 4;
-                ParentObject.ParentSurface.GlobalMapPosition.y += 1f;
-            }
-            if (rotationX >= 0 && rotationX <= 90)
-            {
-                ParentObject.ParentSurface.GlobalMapPosition.z += Thrust * 4;
-                ParentObject.ParentSurface.GlobalMapPosition.y += 4f;
-            }
-            Debug.WriteLine($"Delta X: {deltaX}, Delta Y: {deltaY}, Delta Z: {deltaZ}, Thrust: {Thrust}");
-        }
-
-        public void ApplyGravity()
-        {
-            if (ParentObject?.ParentSurface?.GlobalMapPosition.y >= -75)
-                ParentObject.ParentSurface.GlobalMapPosition.y -= 3f;
-            else
-                ParentObject.Position.y += 3;
-
-            Debug.WriteLine($"Mapy: {ParentObject?.ParentSurface?.GlobalMapPosition.y}");
+            ParentObject.ParentSurface.GlobalMapPosition.x += Thrust * (SpeedMultiplier/2) * MathF.Sin(rotationY * (MathF.PI / 180f)) * forwardFactor * directionFactor;
+            ParentObject.ParentSurface.GlobalMapPosition.z -= Thrust * SpeedMultiplier * MathF.Cos(rotationY * (MathF.PI / 180f)) * forwardFactor * directionFactor;
+            ParentObject.ParentSurface.GlobalMapPosition.y += Thrust * HeightMultiplier * upwardFactor;
         }
 
         public I3dObject MoveObject(I3dObject theObject)
@@ -131,6 +145,17 @@ namespace GameAiAndControls.Controls
                 theObject.Rotation.z = rotationZ;
             }
             return theObject;
+        }
+
+        public void ApplyGravity()
+        {
+            if (!ThrustOn)
+            {
+                if (ParentObject?.ParentSurface?.GlobalMapPosition.y >= -75)
+                    ParentObject.ParentSurface.GlobalMapPosition.y -= GravityForce;
+                else
+                    ParentObject.Position.y += 3;
+            }
         }
     }
 }

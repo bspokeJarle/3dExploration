@@ -1,9 +1,8 @@
 ﻿using System;
-//using System.Drawing;
-//using System.Drawing.Imaging;
 using System.Windows.Media.Imaging;
 using System.Windows.Media;
 using System.Windows;
+using Domain;
 
 namespace _3dRotations.Helpers
 {
@@ -14,57 +13,58 @@ namespace _3dRotations.Helpers
         static Random random = new Random();
         const float perlinScaleMin = 0.008f; // Lower frequency for smoother, more swoopy hills
         const float perlinScaleMax = 0.012f; // Adjusted for larger terrain variations
-        const double waterPatchProbability = 0.02; // Lower probability for fewer, larger lakes
-        const double plateauProbability = 0.04; // Lower probability for larger, more defined plateaus
-        const float heightExponent = 1.4f; // More exaggerated elevation for natural swoops
+        const double waterPatchProbability = 0.50; // Lower probability for fewer, larger lakes
+        const double plateauProbability = 0.08; // Lower probability for larger, more defined plateaus
+        const float heightExponent = 1.8f; // More exaggerated elevation for natural swoops
         const int plateauHeight = 10; // Higher plateau levels for distinct flat areas
 
-        public static int[,] ReturnPseudoRandomMap(int mapSize, out int maxHeight)
+        public static SurfaceData[,] ReturnPseudoRandomMap(int mapSize, out int maxHeight)
         {
-            int[,] surfaceValues = GeneratePerlinNoiseMap(mapSize, out maxHeight);
+            SurfaceData[,] surfaceValues = GeneratePerlinNoiseMap(mapSize, out maxHeight);
             surfaceValues = AddWaterPatches(surfaceValues, mapSize);
             surfaceValues = SmoothTerrain(surfaceValues, mapSize);
             GenerateTerrainBitmapSource(surfaceValues, mapSize, maxHeight);
             return surfaceValues;
         }
 
-        private static int[,] GeneratePerlinNoiseMap(int mapSize, out int maxHeight)
+        private static SurfaceData[,] GeneratePerlinNoiseMap(int mapSize, out int maxHeight)
         {
-            int[,] map = new int[mapSize, mapSize];
+            SurfaceData[,] map = new SurfaceData[mapSize, mapSize];
             maxHeight = 0;
             float scale = perlinScaleMin + (float)(random.NextDouble() * (perlinScaleMax - perlinScaleMin));
-
+            var mapId = 0;
             for (int i = 0; i < mapSize; i++)
             {
                 for (int j = 0; j < mapSize; j++)
                 {
+                    mapId++;
                     float perlinValue = (float)random.NextDouble(); // Placeholder for actual Perlin noise function
-                    map[i, j] = (int)(Math.Pow(perlinValue, heightExponent) * 20 * zFactor);
-                    if (map[i, j] > maxHeight) maxHeight = map[i, j];
+                    map[i, j] = new SurfaceData { mapDepth = (int)(Math.Pow(perlinValue, heightExponent) * 20 * zFactor), mapId = mapId };
+                    if (map[i, j].mapDepth > maxHeight) maxHeight = map[i, j].mapDepth;
                 }
             }
             return map;
         }
 
-         private static int[,] AddWaterPatches(int[,] map, int mapSize)
+         private static SurfaceData[,] AddWaterPatches(SurfaceData[,] map, int mapSize)
         {
             int waterThreshold = (int)(zFactor * 5.0);
             for (int i = 0; i < mapSize; i++)
             {
                 for (int j = 0; j < mapSize; j++)
                 {
-                    if (map[i, j] < waterThreshold || random.NextDouble() < waterPatchProbability)
+                    if (map[i, j].mapDepth < waterThreshold || random.NextDouble() < waterPatchProbability)
                     {
-                        map[i, j] = 0;
+                        map[i, j].mapDepth = 0;
                     }
                 }
             }
             return map;
         }
 
-        private static int[,] SmoothTerrain(int[,] map, int mapSize)
+        private static SurfaceData[,] SmoothTerrain(SurfaceData[,] map, int mapSize)
         {
-            int[,] newMap = new int[mapSize, mapSize];
+            SurfaceData[,] newMap = new SurfaceData[mapSize, mapSize];
             for (int i = 1; i < mapSize - 1; i++)
             {
                 for (int j = 1; j < mapSize - 1; j++)
@@ -75,21 +75,22 @@ namespace _3dRotations.Helpers
                     {
                         for (int dj = -1; dj <= 1; dj++)
                         {
-                            sum += map[i + di, j + dj];
+                            sum += map[i + di, j + dj].mapDepth;
                             count++;
                         }
                     }
-                    newMap[i, j] = (sum / count > zFactor * 6.0) ? (int)(zFactor * 5.0 + sum / count * 0.4) : sum / count;
+                    newMap[i, j].mapDepth = (sum / count > zFactor * 6.0) ? (int)(zFactor * 5.0 + sum / count * 0.4) : sum / count;
+                    newMap[i, j].mapId = map[i, j].mapId;
                     if (random.NextDouble() < plateauProbability)
                     {
-                        newMap[i, j] = (int)(zFactor * plateauHeight);
+                        newMap[i, j].mapDepth = (int)(zFactor * plateauHeight);
                     }
                 }
             }
             return newMap;
         }
 
-        public static BitmapSource GenerateTerrainBitmapSource(int[,] terrainMap, int mapSize, int maxHeight)
+        public static BitmapSource GenerateTerrainBitmapSource(SurfaceData[,] terrainMap, int mapSize, int maxHeight)
         {
             WriteableBitmap bitmap = new WriteableBitmap(mapSize, mapSize, 96, 96, PixelFormats.Bgra32, null);
             int stride = mapSize * 4; // 4 bytes per pixel (BGRA32)
@@ -99,7 +100,7 @@ namespace _3dRotations.Helpers
             {
                 for (int j = 0; j < mapSize; j++)
                 {
-                    int height = terrainMap[i, j];
+                    int height = terrainMap[i, j].mapDepth;
                     Color color = GetTileColor(height, maxHeight);
 
                     int index = (j * mapSize + i) * 4;
@@ -114,16 +115,16 @@ namespace _3dRotations.Helpers
             return bitmap;
         }
 
-        public static int[,] Return2DViewPort(int viewPortSize, int GlobalX, int GlobalZ, int[,] Global2DMap, int tileSize)
+        public static SurfaceData[,] Return2DViewPort(int viewPortSize, int GlobalX, int GlobalZ, SurfaceData[,] Global2DMap, int tileSize)
         {
-            if (Global2DMap == null || Global2DMap.Length == 0) return new int[0, 0];
+            if (Global2DMap == null || Global2DMap.Length == 0) return new SurfaceData[0, 0];
 
             int mapSize = Global2DMap.GetLength(0);
-            int[,] viewPort = new int[viewPortSize + 3, viewPortSize];
+            SurfaceData[,] viewPort = new SurfaceData[ viewPortSize + 3, viewPortSize];           
 
             int MapZindex = GlobalZ / tileSize;
             int MapXindex = GlobalX / tileSize;
-
+            int mapId = 0;
             for (int y = 0; y < viewPortSize + 3; y++)
             {
                 int globalY = MapZindex + y;
@@ -131,6 +132,7 @@ namespace _3dRotations.Helpers
 
                 for (int x = 0; x < viewPortSize; x++)
                 {
+                    mapId++;
                     int globalX = MapXindex + x;
                     if (globalX >= mapSize) break;
 

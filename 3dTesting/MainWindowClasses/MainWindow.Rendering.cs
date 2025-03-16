@@ -29,15 +29,18 @@ namespace _3dTesting.Rendering
         public void RenderTriangles(List<_2dTriangleMesh> screenCoordinates)
         {
             using (drawingContext = visual.RenderOpen())
-            {
+            { 
                 drawingContext.DrawRectangle(Brushes.Black, null, new Rect(0, 0, 1920, 1080));
 
-                foreach (var triangle in screenCoordinates.OrderBy(z => z.CalculatedZ))
+                //Make a copy of the list to prevent concurrent modification
+                var orderedTriangles = screenCoordinates.ToArray().ToList();
+                orderedTriangles = orderedTriangles.OrderBy(z => z.CalculatedZ).ToList();
+                foreach (var triangle in orderedTriangles)
                 {
-                    if (triangle.CalculatedZ > 1000 || triangle.CalculatedZ < -1000)
+                    if (triangle.CalculatedZ > 1500 || triangle.CalculatedZ < -1500)
                         continue;
 
-                    float zcolorCalculation = ((triangle.CalculatedZ + 1000 + 500) / 2000);
+                    float zcolorCalculation = ((triangle.CalculatedZ + 1050) / 3000);
                     Color color = (Color)ColorConverter.ConvertFromString(
                         Helpers.Colors.getShadeOfColorFromNormal(zcolorCalculation, triangle.Color));
 
@@ -62,7 +65,7 @@ namespace _3dTesting.Rendering
                 ctx.LineTo(p1, true, false);
             }
 
-            drawingContext.DrawGeometry(new SolidColorBrush(color), null, geometry);
+            drawingContext.DrawGeometry(new SolidColorBrush(color), new Pen(new SolidColorBrush(color), 1), geometry);
         }
     }
 }

@@ -9,6 +9,7 @@ namespace _3dTesting._3dWorld
         public int? RotationOffsetY { get; set; }
         public int? RotationOffsetX { get; set; }
         public int? RotationOffsetZ { get; set; }
+        public IVector3? WorldPosition { get; set; }
         public IVector3? Rotation { get; set; }
         public IVector3? Position { get; set; }
         public IObjectMovement? Movement { get; set; }
@@ -18,6 +19,7 @@ namespace _3dTesting._3dWorld
         public int? Mass { get; set; }
         public string ObjectName { get; set; }
         public ISurface? ParentSurface { get; set; }
+        public int? SurfaceBasedId { get; set; }
         //todo add object relative properties, colors, ai etc    
     }
     public class _3dObjectPart : I3dObjectPart

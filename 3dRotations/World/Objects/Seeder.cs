@@ -42,7 +42,8 @@ namespace _3dRotations.World.Objects
             
             seeder.Movement = new SeederControls();
             seeder.Particles = new ParticlesAI();
-            if (seederCrashBox != null) seeder.CrashBoxes = seederCrashBox;           
+            if (seederCrashBox != null) seeder.CrashBoxes = seederCrashBox;
+            seeder.ParentSurface = parentSurface;
             return seeder;
         }
 

@@ -12,6 +12,7 @@ namespace GameAiAndControls.Controls
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
+        
 
         private float Yrotation = 0;
         //private float Xrotation = 0;
@@ -44,7 +45,7 @@ namespace GameAiAndControls.Controls
         public void ReleaseParticles()
         {
             lastRelease = DateTime.Now;
-            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, this, 3);
+            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, 3);
         }
 
         public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)

@@ -27,6 +27,45 @@ namespace _3dTesting.Helpers
             if (offsetZ > 0) { triangle.vert1.z += (float)offsetZ; triangle.vert2.z += (float)offsetZ; triangle.vert3.z += (float)offsetZ; }
         }
 
+        public static Vector3 ComputeCentroid(_3dObject inhabitant)
+        {
+            if (inhabitant.ObjectParts == null || inhabitant.ObjectParts.Count == 0)
+                return new Vector3(0, 0, 0);
+
+            float sumX = 0, sumY = 0, sumZ = 0;
+            int totalVertices = 0;
+
+            foreach (var part in inhabitant.ObjectParts)
+            {
+                foreach (var triangle in part.Triangles)
+                {
+                    sumX += triangle.vert1.x + triangle.vert2.x + triangle.vert3.x;
+                    sumY += triangle.vert1.y + triangle.vert2.y + triangle.vert3.y;
+                    sumZ += triangle.vert1.z + triangle.vert2.z + triangle.vert3.z;
+                    totalVertices += 3;
+                }
+            }
+
+            if (totalVertices == 0) return new Vector3(0, 0, 0);
+
+            return new Vector3(sumX / totalVertices, sumY / totalVertices, sumZ / totalVertices);
+        }
+
+        public static void RecenterTriangle(ref ITriangleMeshWithColor triangle, Vector3 centroid)
+        {
+            triangle.vert1.x -= centroid.x;
+            triangle.vert1.y -= centroid.y;
+            triangle.vert1.z -= centroid.z;
+
+            triangle.vert2.x -= centroid.x;
+            triangle.vert2.y -= centroid.y;
+            triangle.vert2.z -= centroid.z;
+
+            triangle.vert3.x -= centroid.x;
+            triangle.vert3.y -= centroid.y;
+            triangle.vert3.z -= centroid.z;
+        }
+
         /// <summary>
         /// Updates the minimap overlay with the correct cropped portion.
         /// </summary>
