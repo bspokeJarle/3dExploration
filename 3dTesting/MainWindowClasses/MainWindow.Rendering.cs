@@ -37,7 +37,7 @@ namespace _3dTesting.Rendering
                 orderedTriangles = orderedTriangles.OrderBy(z => z.CalculatedZ).ToList();
                 foreach (var triangle in orderedTriangles)
                 {
-                    if (triangle.CalculatedZ > 1500 || triangle.CalculatedZ < -1500)
+                    if (triangle.CalculatedZ > 2200 || triangle.CalculatedZ < -2200)
                         continue;
 
                     float zcolorCalculation = ((triangle.CalculatedZ + 1050) / 3000);

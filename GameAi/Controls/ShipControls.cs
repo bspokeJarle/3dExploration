@@ -114,14 +114,40 @@ namespace GameAiAndControls.Controls
             float forwardFactor = MathF.Sin(rotationX * (MathF.PI / 180f));
             float upwardFactor = MathF.Cos(rotationX * (MathF.PI / 180f));
             float directionFactor = MathF.Cos(rotationY * (MathF.PI / 180f));
-            float lateralFactor = MathF.Sin(rotationZ * (MathF.PI / 180f));
-            float thrustFactor = MathF.Cos(rotationX * (MathF.PI / 180f));
-            float speedFactor = MathF.Pow(MathF.Abs(MathF.Sin(rotationX * (MathF.PI / 180f))), 1.2f);
-            float verticalFactor = MathF.Max(0, 1 - MathF.Abs(thrustFactor));
 
-            ParentObject.ParentSurface.GlobalMapPosition.x += Thrust * (SpeedMultiplier/2) * MathF.Sin(rotationY * (MathF.PI / 180f)) * forwardFactor * directionFactor;
-            ParentObject.ParentSurface.GlobalMapPosition.z -= Thrust * SpeedMultiplier * MathF.Cos(rotationY * (MathF.PI / 180f)) * forwardFactor * directionFactor;
+            var zDiff = Thrust * (SpeedMultiplier / 2 ) * MathF.Cos(rotationY * (MathF.PI / 180f)) * forwardFactor * directionFactor;
+            var xDiff = Thrust * (SpeedMultiplier / 2) * MathF.Sin(rotationY * (MathF.PI / 180f)) * forwardFactor * directionFactor;
+
+            float maxX = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
+                        (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
+
+            float maxZ = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
+                         (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
+
+            ParentObject.ParentSurface.GlobalMapPosition.x = GetWrappedPosition(ParentObject.ParentSurface.GlobalMapPosition.x, xDiff, 75, maxX);
+            ParentObject.ParentSurface.GlobalMapPosition.z = GetWrappedPosition(ParentObject.ParentSurface.GlobalMapPosition.z, -zDiff, 0, maxZ);
+
             ParentObject.ParentSurface.GlobalMapPosition.y += Thrust * HeightMultiplier * upwardFactor;
+        }
+
+        private float GetWrappedPosition(float position, float diff, float minValue, float maxValue)
+        {
+            if (diff != 0)
+            {
+                if (position + diff >= maxValue)
+                {
+                    return minValue; // Wrap around to minimum value
+                }
+                else if (position + diff <= minValue)
+                {
+                    return maxValue; // Wrap around to maximum value
+                }
+                else
+                {
+                    return position + diff; // Move normally
+                }
+            }
+            return position; // No movement, return the same position
         }
 
         public I3dObject MoveObject(I3dObject theObject)

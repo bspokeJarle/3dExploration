@@ -45,11 +45,13 @@ namespace _3dTesting._3dRotation
                         var landBasedPosition = (TriangleMeshWithColor)obj.ParentSurface.RotatedSurfaceTriangles.Where(t => t.landBasedPosition == obj.SurfaceBasedId).FirstOrDefault();
                         if (landBasedPosition != null)
                         {
+                            //Land based objects must be centered around a surface position and then placed according to an offset
                             _3dObjectHelpers.CenterObjectAt(obj, landBasedPosition.vert1);
                             objPosX = screenCenterX;
                             objPosY = screenCenterY;
-                              objPosZ = 0;
+                            objPosZ = 0;
                         }
+                        //Skip if object is landbased and no surface position is found
                         else continue;
                     }
                     else

@@ -17,6 +17,11 @@ namespace Domain
         public SurfaceData[,]? Global2DMap { get; set; }
         public BitmapSource GlobalMapBitmap { get; set; }
 
+        public int SurfaceWidth();
+        public int GlobalMapSize();
+        public int ViewPortSize();
+        public int TileSize();
+
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles { get; set; }
         public I3dObject GetSurfaceViewPort();
 

@@ -4,6 +4,7 @@ using Domain;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
@@ -20,16 +21,22 @@ namespace _3dRotations.World.Objects
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
 
         const int surfaceWidth = 1350;
-        const int globalMapSize = 2500;
+        const int globalMapSize = 2500+(surfaceWidth/tileSize);
         const int viewPortSize = surfaceWidth / tileSize;
-        public const int tileSize = 75;
-        public int maxHeight = 75; //Height elevation for the map
+        const int tileSize = 75;
+        int maxHeight = 75; //Height elevation for the map
+
+        public int SurfaceWidth() {  return surfaceWidth; }
+        public int GlobalMapSize() { return globalMapSize; }
+        public int ViewPortSize() { return viewPortSize; }
+        public int TileSize() { return tileSize; }
 
         public I3dObject GetSurfaceViewPort()
         {
             //TODO: only return surface that is visible in the viewport
             var newSurface = new List<ITriangleMeshWithColor>();
             var surface = new _3dObject();
+ 
             var viewPort = SurfaceGeneration.Return2DViewPort(viewPortSize, (int)GlobalMapPosition.x, (int)GlobalMapPosition.z, Global2DMap, tileSize);
             var ZRemainer = GlobalMapPosition.z % tileSize;
             var XRemainer = GlobalMapPosition.x % tileSize;
@@ -114,8 +121,6 @@ namespace _3dRotations.World.Objects
 
             return $"{Math.Clamp(red, 0, 255):X2}{Math.Clamp(green, 0, 255):X2}{Math.Clamp(blue, 0, 255):X2}";
         }
-
-
 
         public void Create2DMap()
         {

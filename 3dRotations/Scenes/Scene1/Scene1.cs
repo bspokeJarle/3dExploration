@@ -74,7 +74,7 @@ namespace _3dRotations.Scene.Scene1
             //TODO: Find a good place in the map for the tree
             //Alogrithm to find a good place for the trees and spread them around
             //Temp fix now to get the tree on the surface
-            house.SurfaceBasedId = Surface.Global2DMap[93150 / 75, 96900 / 75].mapId;
+            house.SurfaceBasedId = Surface.Global2DMap[93150 / 75, 96800 / 75].mapId;
             house.Position = new Vector3 { x = 0, y = 300, z = 600 };
             house.ObjectName = "House";
             house.Movement = new HouseControls();

@@ -1,22 +1,14 @@
 ﻿Changes in this version:
-Start development of a scene setup
-	Done
 Bee able to set objects on the map in a Scene, for instance trees, rocks, houses etc
-	Working on it
-Add color to objects and shading	
-	Done
-Refactor whole project to make it more suited for game development
-	Done
-	Done it once more
-Game AI and Control is now in a separate project
-	Done
+	Got a house and a tree placed on the map - Done
+	TODO:We need to be able to procedurally place them according to a set of rules
 As a POC start development of ship movement
 	Done, got some issues with flipping av ship
 	Moevement of surface is not natural or fluid
-Design main ship
-	Done, first version
+
 Design ground objects
-	Trees - first version Done
+	Trees - First done
+	House - First done
 Generate a surface
 	Done, first version
 	Currently some issues with the surface, to much static noise and not enough natural land and water
@@ -26,14 +18,30 @@ Start development of a particle system
 	Need to start to apply physics, get them to bounce of the surface
 Enable Crash detection
 	Done, first version
-Clean up MainLoop, make more profesional
-	Done
-Speed up rendering, we need 50-60 fps
-	Done
-Need to look at converting to .net Core
+Need to look at converting to .net 8 - supposed to be faster
 	Important next step
-Map overlay on screen
-	Done, first version
 FPS overlay and other debug info
 	Done, first version
 	Bug here now, needs to be fixed
+
+Done:
+	- Design main ship
+	- When we reach the end of the map we now wrap around to the other side
+	- Generate a screen full at the edges, so we can wrap around
+	- Check the position of the ship and if we are at the edge, reset the position to the other side
+	- Map overlay on screen
+	- Refactor whole project to make it more suited for game development
+	- Game AI and Control is now in a separate project
+	- Start development of ship movement
+	- Design main ship
+	- Design ground objects
+	- Generate a surface
+	- Start development of a particle system
+	- Enable Crash detection
+	- Clean up MainLoop, make more profesional
+	- Speed up rendering, we need 50-60 fps
+	- Map overlay on screen
+	- FPS overlay and other debug info
+	- Add color to objects and shading
+	- Start development of a scene setup
+	- Bee able to set objects on the map in a Scene, for instance trees, rocks, houses etc

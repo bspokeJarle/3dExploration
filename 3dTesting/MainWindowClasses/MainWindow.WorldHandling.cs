@@ -23,7 +23,7 @@ namespace _3dTesting.MainWindowClasses
             var activeWorld = _3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants);
             var particleObjectList = new List<_3dObject>();
 
-             Parallel.ForEach(activeWorld, inhabitant =>
+            Parallel.ForEach(activeWorld, inhabitant =>
             {
                 //TODO: Get world position and compare to the surface position
                 //If the object is not within the visible field, do not render or rotate it

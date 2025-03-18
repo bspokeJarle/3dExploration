@@ -1,8 +1,10 @@
 ﻿using _3dTesting._3dRotation;
 using _3dTesting._3dWorld;
 using Domain;
+using GameAiAndControls.Controls;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json.Nodes;
@@ -30,6 +32,12 @@ namespace _3dTesting.Helpers
         public static bool CheckInhabitantVisibility(this _3dObject inhabitant)
         {
             //All of the onscreen objects have no world position, they are either visible all the time or landbased
+            if (inhabitant.SurfaceBasedId > 0)
+            {
+                //Landbased objects are not visible if not on the current surface
+                if (inhabitant.ParentSurface.RotatedSurfaceTriangles.Where(t => t.landBasedPosition == inhabitant.SurfaceBasedId).FirstOrDefault() != null) return true;
+                else return false;
+            }
             if (inhabitant.WorldPosition.x == 0 && inhabitant.WorldPosition.y == 0 && inhabitant.WorldPosition.z == 0) return true;
  
             var globalMapPosition = inhabitant.ParentSurface.GlobalMapPosition;
@@ -206,6 +214,87 @@ namespace _3dTesting.Helpers
                 });
             }
             return triangleswithcolor;
+        }
+
+        public static List<TriangleMeshWithColor> DeepCopyTriangles(List<TriangleMeshWithColor> originalList)
+        {
+            List<TriangleMeshWithColor> copiedList = new List<TriangleMeshWithColor>();
+
+            foreach (var original in originalList)
+            {
+                var copy = new TriangleMeshWithColor
+                {
+                    Color = original.Color,
+                    normal1 = new Vector3 { x = original.normal1.x, y = original.normal1.y, z = original.normal1.z },
+                    normal2 = new Vector3 { x = original.normal2.x, y = original.normal2.y, z = original.normal2.z },
+                    normal3 = new Vector3 { x = original.normal3.x, y = original.normal3.y, z = original.normal3.z },
+                    vert1 = new Vector3 { x = original.vert1.x, y = original.vert1.y, z = original.vert1.z },
+                    vert2 = new Vector3 { x = original.vert2.x, y = original.vert2.y, z = original.vert2.z },
+                    vert3 = new Vector3 { x = original.vert3.x, y = original.vert3.y, z = original.vert3.z },
+                    landBasedPosition = original.landBasedPosition,
+                    angle = original.angle,
+                    noHidden = original.noHidden
+                };
+
+                copiedList.Add(copy);
+            }
+
+            return copiedList;
+        }
+
+        public static ParticlesAI DeepCopyParticlesAI(ParticlesAI original)
+        {
+            var copy = new ParticlesAI
+            {
+                ParentShip = original.ParentShip, // Keeping reference, change if deep copy is needed
+                Visible = original.Visible,
+                Particles = DeepCopyParticles(original.Particles)
+            };
+
+            return copy;
+        }
+
+        public static List<IParticle> DeepCopyParticles(List<IParticle> originalParticles)
+        {
+            List<IParticle> copiedParticles = new List<IParticle>();
+
+            foreach (var original in originalParticles)
+            {
+                var copy = new Particle // Ensure `Particle` is the concrete class implementing `IParticle`
+                {
+                    ParticleTriangle = new TriangleMeshWithColor
+                    {
+                        Color = original.ParticleTriangle.Color,
+                        normal1 = new Vector3(original.ParticleTriangle.normal1.x, original.ParticleTriangle.normal1.y, original.ParticleTriangle.normal1.z),
+                        normal2 = new Vector3(original.ParticleTriangle.normal2.x, original.ParticleTriangle.normal2.y, original.ParticleTriangle.normal2.z),
+                        normal3 = new Vector3(original.ParticleTriangle.normal3.x, original.ParticleTriangle.normal3.y, original.ParticleTriangle.normal3.z),
+                        vert1 = new Vector3(original.ParticleTriangle.vert1.x, original.ParticleTriangle.vert1.y, original.ParticleTriangle.vert1.z),
+                        vert2 = new Vector3(original.ParticleTriangle.vert2.x, original.ParticleTriangle.vert2.y, original.ParticleTriangle.vert2.z),
+                        vert3 = new Vector3(original.ParticleTriangle.vert3.x, original.ParticleTriangle.vert3.y, original.ParticleTriangle.vert3.z),
+                        landBasedPosition = original.ParticleTriangle.landBasedPosition,
+                        angle = original.ParticleTriangle.angle,
+                        noHidden = original.ParticleTriangle.noHidden
+                    },
+                    Velocity = new Vector3(original.Velocity.x, original.Velocity.y, original.Velocity.z),
+                    Acceleration = new Vector3(original.Acceleration.x, original.Acceleration.y, original.Acceleration.z),
+                    VariedStart = original.VariedStart,
+                    Life = original.Life,
+                    Size = original.Size,
+                    Color = original.Color,
+                    BirthTime = original.BirthTime,
+                    IsRotated = original.IsRotated,
+                    Position = new Vector3(original.Position.x, original.Position.y, original.Position.z),
+                    WorldPosition = new Vector3(original.WorldPosition.x, original.WorldPosition.y, original.WorldPosition.z),
+                    Rotation = original.Rotation != null ? new Vector3(original.Rotation.x, original.Rotation.y, original.Rotation.z) : null,
+                    RotationSpeed = original.RotationSpeed != null ? new Vector3(original.RotationSpeed.x, original.RotationSpeed.y, original.RotationSpeed.z) : null,
+                    NoShading = original.NoShading,
+                    Visible = original.Visible
+                };
+
+                copiedParticles.Add(copy);
+            }
+
+            return copiedParticles;
         }
 
         public static List<_3dObject> DeepCopy3dObjects(List<_3dObject> inhabitants)

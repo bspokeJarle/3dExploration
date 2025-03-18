@@ -19,25 +19,28 @@ namespace _3dTesting.MainWindowClasses
             if (inhabitant.Particles == null || inhabitant.Particles.Particles.Count == 0)
                 return;
 
-            foreach (var particle in inhabitant.Particles.Particles)
+            lock (inhabitant.Particles)
             {
-                if (!particle.Visible) continue;
-
-                var particleObject = new _3dObject { ObjectName = "Particle", WorldPosition = particle.WorldPosition, ParentSurface = inhabitant.ParentSurface };
-                var particleTriangle = RotateParticle(particle.ParticleTriangle, (Vector3)particle.Rotation);
-
-                particleObject.ObjectParts = new List<I3dObjectPart>
+                foreach (var particle in inhabitant.Particles.Particles)
                 {
-                    new _3dObjectPart { Triangles = new List<ITriangleMeshWithColor> { particleTriangle }, PartName = "Particle", IsVisible = true }
-                };
-                particleObject.Position = new Vector3
-                {
-                    x = inhabitant.Position.x + particle.Position.x,
-                    y = inhabitant.Position.y + particle.Position.y,
-                    z = inhabitant.Position.z + particle.Position.z
-                };
-                particleObject.Rotation = particle.Rotation;
-                particleObjectList.Add(particleObject);
+                    if (!particle.Visible) continue;
+
+                    var particleObject = new _3dObject { ObjectName = "Particle", WorldPosition = particle.WorldPosition, ParentSurface = inhabitant.ParentSurface };
+                    var particleTriangle = RotateParticle(particle.ParticleTriangle, (Vector3)particle.Rotation);
+
+                    particleObject.ObjectParts = new List<I3dObjectPart>
+                    {
+                        new _3dObjectPart { Triangles = new List<ITriangleMeshWithColor> { particleTriangle }, PartName = "Particle", IsVisible = true }
+                    };
+                    particleObject.Position = new Vector3
+                    {
+                        x = inhabitant.Position.x + particle.Position.x,
+                        y = inhabitant.Position.y + particle.Position.y,
+                        z = inhabitant.Position.z + particle.Position.z
+                    };
+                    particleObject.Rotation = particle.Rotation;
+                    particleObjectList.Add(particleObject);
+                }
             }
         }
 

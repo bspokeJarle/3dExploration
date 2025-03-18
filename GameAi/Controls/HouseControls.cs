@@ -15,7 +15,7 @@ namespace GameAiAndControls.Controls
         
         private float Yrotation = 0;
         private float Xrotation = 70;
-        private float Zrotation = 0;
+        private float Zrotation = 35;
         
         public I3dObject MoveObject(I3dObject theObject)
         {

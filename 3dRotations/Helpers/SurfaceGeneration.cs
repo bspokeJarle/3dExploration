@@ -17,12 +17,14 @@ namespace _3dRotations.Helpers
         const double plateauProbability = 0.08; // Lower probability for larger, more defined plateaus
         const float heightExponent = 1.8f; // More exaggerated elevation for natural swoops
         const int plateauHeight = 10; // Higher plateau levels for distinct flat areas
+        const int wrapSize = 18; // Edge wrap size for seamless looping
 
         public static SurfaceData[,] ReturnPseudoRandomMap(int mapSize, out int maxHeight)
         {
             SurfaceData[,] surfaceValues = GeneratePerlinNoiseMap(mapSize, out maxHeight);
             surfaceValues = AddWaterPatches(surfaceValues, mapSize);
             surfaceValues = SmoothTerrain(surfaceValues, mapSize);
+            surfaceValues = ApplyEdgeWrapping(surfaceValues, mapSize);
             GenerateTerrainBitmapSource(surfaceValues, mapSize, maxHeight);
             return surfaceValues;
         }
@@ -46,7 +48,55 @@ namespace _3dRotations.Helpers
             return map;
         }
 
-         private static SurfaceData[,] AddWaterPatches(SurfaceData[,] map, int mapSize)
+        private static SurfaceData[,] ApplyEdgeWrapping(SurfaceData[,] map, int mapSize)
+        {
+            SurfaceData[,] wrappedMap = new SurfaceData[mapSize + wrapSize * 2, mapSize + wrapSize * 2];
+
+            // Copy original map
+            for (int i = 0; i < mapSize; i++)
+            {
+                for (int j = 0; j < mapSize; j++)
+                {
+                    wrappedMap[i + wrapSize, j + wrapSize] = map[i, j];
+                }
+            }
+
+            // Copy horizontal edges
+            for (int i = 0; i < mapSize; i++)
+            {
+                for (int j = 0; j < wrapSize; j++)
+                {
+                    wrappedMap[i + wrapSize, j] = map[i, mapSize - wrapSize + j]; // Left wrap
+                    wrappedMap[i + wrapSize, mapSize + wrapSize + j] = map[i, j]; // Right wrap
+                }
+            }
+
+            // Copy vertical edges
+            for (int j = 0; j < mapSize; j++)
+            {
+                for (int i = 0; i < wrapSize; i++)
+                {
+                    wrappedMap[i, j + wrapSize] = map[mapSize - wrapSize + i, j]; // Top wrap
+                    wrappedMap[mapSize + wrapSize + i, j + wrapSize] = map[i, j]; // Bottom wrap
+                }
+            }
+
+            // Copy corners
+            for (int i = 0; i < wrapSize; i++)
+            {
+                for (int j = 0; j < wrapSize; j++)
+                {
+                    wrappedMap[i, j] = map[mapSize - wrapSize + i, mapSize - wrapSize + j]; // Top-left
+                    wrappedMap[i, mapSize + wrapSize + j] = map[mapSize - wrapSize + i, j]; // Top-right
+                    wrappedMap[mapSize + wrapSize + i, j] = map[i, mapSize - wrapSize + j]; // Bottom-left
+                    wrappedMap[mapSize + wrapSize + i, mapSize + wrapSize + j] = map[i, j]; // Bottom-right
+                }
+            }
+
+            return wrappedMap;
+        }
+
+        private static SurfaceData[,] AddWaterPatches(SurfaceData[,] map, int mapSize)
         {
             int waterThreshold = (int)(zFactor * 5.0);
             for (int i = 0; i < mapSize; i++)
@@ -127,7 +177,7 @@ namespace _3dRotations.Helpers
             int mapId = 0;
             for (int y = 0; y < viewPortSize + 3; y++)
             {
-                int globalY = MapZindex + y;
+                int globalY = MapZindex + y; 
                 if (globalY >= mapSize) break;
 
                 for (int x = 0; x < viewPortSize; x++)

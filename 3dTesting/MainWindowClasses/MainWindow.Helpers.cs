@@ -8,6 +8,8 @@ using _3dTesting._3dWorld;
 using Domain;
 using static Domain._3dSpecificsImplementations;
 using System.Windows.Media.Imaging;
+using Windows.Devices.AllJoyn;
+using System.Diagnostics;
 
 
 
@@ -71,9 +73,13 @@ namespace _3dTesting.Helpers
         /// </summary>
         public static void UpdateMapOverlay(System.Windows.Controls.Image mapOverlay, BitmapSource surfaceMapBitmap, int mapX, int mapY)
         {
+            //TODO: Prevent Error when we go out of bounds
+            if ((mapY/75)<=0) mapY=75;
+            //if ((mapY*75)>=(2500*75)) mapY = (2500*75);
             if (surfaceMapBitmap != null && mapOverlay != null)
             {
-                mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect(mapX / 75, mapY / 75, 200, 200));
+                Debug.WriteLine("Overlay MapX: " + mapX/75 + " MapY: " + mapY/75 + " Map");
+                mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect(mapX / 75, mapY / 75, 18, 18));
             }
         }
 
