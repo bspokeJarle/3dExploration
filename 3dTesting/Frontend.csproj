@@ -1,15 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows10.0.17763.0</TargetFramework>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <RootNamespace>_3dTesting</RootNamespace>
     <UseWPF>true</UseWPF>
     <AssemblyName>3dTesting</AssemblyName>
-	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\3dRotations\3dSpesifics.csproj" />
-  </ItemGroup>  
+  </ItemGroup>
 </Project>

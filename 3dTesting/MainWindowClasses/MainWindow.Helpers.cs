@@ -8,7 +8,6 @@ using _3dTesting._3dWorld;
 using Domain;
 using static Domain._3dSpecificsImplementations;
 using System.Windows.Media.Imaging;
-using Windows.Devices.AllJoyn;
 using System.Diagnostics;
 
 
