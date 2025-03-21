@@ -3,9 +3,6 @@ using _3dTesting._3dWorld;
 using Domain;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
 
@@ -14,7 +11,7 @@ namespace _3dRotations.World.Objects
 {
     public class Surface : ISurface
     {
-        public Vector3 GlobalMapPosition { get; set; } = new Vector3 { x = 96000, y = 0, z = 96000 };
+        public Vector3 GlobalMapPosition { get; set; } = new Vector3 { x = 95000, y = 0, z = 95500 };
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = 0, y = 0, z = 0 };
         public SurfaceData[,]? Global2DMap { get; set; } = new SurfaceData[globalMapSize, globalMapSize]; 
         public BitmapSource? GlobalMapBitmap { get; set; }
@@ -30,6 +27,7 @@ namespace _3dRotations.World.Objects
         public int GlobalMapSize() { return globalMapSize; }
         public int ViewPortSize() { return viewPortSize; }
         public int TileSize() { return tileSize; }
+        public int MaxHeight() { return maxHeight; }
 
         public I3dObject GetSurfaceViewPort()
         {
@@ -122,10 +120,10 @@ namespace _3dRotations.World.Objects
             return $"{Math.Clamp(red, 0, 255):X2}{Math.Clamp(green, 0, 255):X2}{Math.Clamp(blue, 0, 255):X2}";
         }
 
-        public void Create2DMap()
+        public void Create2DMap(int? maxTrees,int? maxHouses)
         {
             //Gets the pseudo random map in 2d
-            Global2DMap = SurfaceGeneration.ReturnPseudoRandomMap(globalMapSize, maxHeight: out maxHeight);
+            Global2DMap = SurfaceGeneration.ReturnPseudoRandomMap(globalMapSize, maxHeight: out maxHeight,maxTrees,maxHouses);
             GlobalMapBitmap = SurfaceGeneration.GenerateTerrainBitmapSource(Global2DMap, globalMapSize, maxHeight);
         }
     }

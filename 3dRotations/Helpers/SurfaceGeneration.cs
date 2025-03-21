@@ -3,27 +3,35 @@ using System.Windows.Media.Imaging;
 using System.Windows.Media;
 using System.Windows;
 using Domain;
+using System.Collections.Generic;
 
 namespace _3dRotations.Helpers
 {
     public static class SurfaceGeneration
     {
         // ======== CONFIGURABLE PARAMETERS ========
-        const int zFactor = 6; // Scaling factor for terrain height
+        const int zFactor = 6;
         static Random random = new Random();
-        const float perlinScaleMin = 0.008f; // Lower frequency for smoother, more swoopy hills
-        const float perlinScaleMax = 0.012f; // Adjusted for larger terrain variations
-        const double waterPatchProbability = 0.50; // Lower probability for fewer, larger lakes
-        const double plateauProbability = 0.08; // Lower probability for larger, more defined plateaus
-        const float heightExponent = 1.8f; // More exaggerated elevation for natural swoops
-        const int plateauHeight = 10; // Higher plateau levels for distinct flat areas
-        const int wrapSize = 18; // Edge wrap size for seamless looping
+        const float perlinScaleMin = 0.007f;
+        const float perlinScaleMax = 0.013f;
+        const double waterPatchProbability = 0.50;
+        const float heightExponent = 1.7f;
+        const int wrapSize = 18;
+        const int landingAreaSize = 8;
+        public static int maxTrees { get; set; }
+        public static int maxHouses { get; set; }
+        const int clusterSizeMin = 2;
+        const int clusterSizeMax = 5;
+        public static bool IncludeTestTreesInFrontOfPlatform = false;
 
-        public static SurfaceData[,] ReturnPseudoRandomMap(int mapSize, out int maxHeight)
+        public static SurfaceData[,] ReturnPseudoRandomMap(int mapSize, out int maxHeight, int? maxTs, int? maxHs)
         {
+            maxTrees = maxTs ?? 200;
+            maxHouses = maxHs ?? 50;
             SurfaceData[,] surfaceValues = GeneratePerlinNoiseMap(mapSize, out maxHeight);
             surfaceValues = AddWaterPatches(surfaceValues, mapSize);
-            surfaceValues = SmoothTerrain(surfaceValues, mapSize);
+            surfaceValues = SmoothTerrain(surfaceValues, mapSize, maxHeight);
+            EnsureFlatLandingArea(surfaceValues, mapSize, maxHeight);
             surfaceValues = ApplyEdgeWrapping(surfaceValues, mapSize);
             GenerateTerrainBitmapSource(surfaceValues, mapSize, maxHeight);
             return surfaceValues;
@@ -35,6 +43,7 @@ namespace _3dRotations.Helpers
             maxHeight = 0;
             float scale = perlinScaleMin + (float)(random.NextDouble() * (perlinScaleMax - perlinScaleMin));
             var mapId = 0;
+
             for (int i = 0; i < mapSize; i++)
             {
                 for (int j = 0; j < mapSize; j++)
@@ -45,7 +54,42 @@ namespace _3dRotations.Helpers
                     if (map[i, j].mapDepth > maxHeight) maxHeight = map[i, j].mapDepth;
                 }
             }
+
+            // Add 3-4 larger mountain areas
+            AddMountainRegions(map, mapSize, maxHeight);
+
             return map;
+        }
+
+        // 🌋 **Forces 3-4 larger mountain regions**
+        private static void AddMountainRegions(SurfaceData[,] map, int mapSize, int maxHeight)
+        {
+            int numMountains = 3 + random.Next(2); // Ensures 3-4 mountain regions
+
+            for (int m = 0; m < numMountains; m++)
+            {
+                int centerX = random.Next(mapSize * 3 / 8, mapSize * 5 / 8);
+                int centerY = random.Next(mapSize * 3 / 8, mapSize * 5 / 8);
+                int radius = random.Next(10, 15);
+
+                for (int i = -radius; i <= radius; i++)
+                {
+                    for (int j = -radius; j <= radius; j++)
+                    {
+                        int x = centerX + i;
+                        int y = centerY + j;
+                        if (x >= 0 && x < mapSize && y >= 0 && y < mapSize)
+                        {
+                            double distance = Math.Sqrt(i * i + j * j);
+                            if (distance < radius)
+                            {
+                                int height = (int)(maxHeight * (0.8 + 0.2 * (radius - distance) / radius));
+                                map[x, y].mapDepth = Math.Max(map[x, y].mapDepth, height);
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private static SurfaceData[,] ApplyEdgeWrapping(SurfaceData[,] map, int mapSize)
@@ -112,9 +156,10 @@ namespace _3dRotations.Helpers
             return map;
         }
 
-        private static SurfaceData[,] SmoothTerrain(SurfaceData[,] map, int mapSize)
+        private static SurfaceData[,] SmoothTerrain(SurfaceData[,] map, int mapSize, int maxHeight)
         {
             SurfaceData[,] newMap = new SurfaceData[mapSize, mapSize];
+
             for (int i = 1; i < mapSize - 1; i++)
             {
                 for (int j = 1; j < mapSize - 1; j++)
@@ -129,15 +174,38 @@ namespace _3dRotations.Helpers
                             count++;
                         }
                     }
-                    newMap[i, j].mapDepth = (sum / count > zFactor * 6.0) ? (int)(zFactor * 5.0 + sum / count * 0.4) : sum / count;
-                    newMap[i, j].mapId = map[i, j].mapId;
-                    if (random.NextDouble() < plateauProbability)
+
+                    int avgHeight = sum / count;
+                    newMap[i, j].mapDepth = avgHeight;
+
+                    // Ensure larger flat areas
+                    if (avgHeight < maxHeight * 0.4 && avgHeight > maxHeight * 0.15)
                     {
-                        newMap[i, j].mapDepth = (int)(zFactor * plateauHeight);
+                        newMap[i, j].mapDepth = avgHeight - 2; // Flatten grasslands slightly
                     }
+
+                    newMap[i, j].mapId = map[i, j].mapId;
                 }
             }
             return newMap;
+        }
+
+
+
+        private static void EnsureFlatLandingArea(SurfaceData[,] map, int mapSize, int maxHeight)
+        {
+            int center = mapSize / 2;
+            int startX = center - landingAreaSize / 2;
+            int startY = center - landingAreaSize / 2;
+            int landingHeight = (int)(maxHeight * 0.75); // High flat plateau
+
+            for (int i = startX; i < startX + landingAreaSize; i++)
+            {
+                for (int j = startY; j < startY + landingAreaSize; j++)
+                {
+                    map[i, j].mapDepth = landingHeight;
+                }
+            }
         }
 
         public static BitmapSource GenerateTerrainBitmapSource(SurfaceData[,] terrainMap, int mapSize, int maxHeight)
@@ -170,26 +238,145 @@ namespace _3dRotations.Helpers
             if (Global2DMap == null || Global2DMap.Length == 0) return new SurfaceData[0, 0];
 
             int mapSize = Global2DMap.GetLength(0);
-            SurfaceData[,] viewPort = new SurfaceData[ viewPortSize + 3, viewPortSize];           
+            SurfaceData[,] viewPort = new SurfaceData[viewPortSize, viewPortSize];
 
             int MapZindex = GlobalZ / tileSize;
             int MapXindex = GlobalX / tileSize;
-            int mapId = 0;
-            for (int y = 0; y < viewPortSize + 3; y++)
-            {
-                int globalY = MapZindex + y; 
-                if (globalY >= mapSize) break;
 
+            for (int y = 0; y < viewPortSize; y++)
+            {
+                int globalY = (MapZindex + y) % mapSize; // Wrap around map edges
                 for (int x = 0; x < viewPortSize; x++)
                 {
-                    mapId++;
-                    int globalX = MapXindex + x;
-                    if (globalX >= mapSize) break;
-
+                    int globalX = (MapXindex + x) % mapSize; // Wrap around map edges
                     viewPort[y, x] = Global2DMap[globalY, globalX];
                 }
             }
+
             return viewPort;
+        }
+
+        public static List<(int x, int y, int height)> FindTreePlacementAreas(SurfaceData[,] map, int mapSize, int tileSize, int maxHeight)
+        {
+            List<(int x, int y, int height)> treeLocations = new List<(int x, int y, int height)>();
+            int numberOfTrees = random.Next((int)(maxTrees * 0.9), maxTrees);
+            var landingAreaCenter = GetLandingAreaCenter(map, mapSize, (int)(tileSize * 0.75));
+            int landingX = landingAreaCenter.x;
+            int landingY = landingAreaCenter.y;
+
+            List<(int x, int y)> clusterCenters = new List<(int x, int y)>();
+
+            // Grid-based attempt for even distribution
+            int spacing = 50; // Fixed spacing to cover whole map
+            for (int i = spacing / 2; i < mapSize; i += spacing)
+            {
+                for (int j = spacing / 2; j < mapSize; j += spacing)
+                {
+                    int height = map[i, j].mapDepth;
+                    bool isFlat = Math.Abs(map[i, j].mapDepth - map[i - 1, j].mapDepth) < 10 &&
+                                  Math.Abs(map[i, j].mapDepth - map[i + 1, j].mapDepth) < 10 &&
+                                  Math.Abs(map[i, j].mapDepth - map[i, j - 1].mapDepth) < 10 &&
+                                  Math.Abs(map[i, j].mapDepth - map[i, j + 1].mapDepth) < 10;
+                    bool isAboveWater = height >= (int)(maxHeight * 0.15);
+                    bool isSuitable = isAboveWater && height < (int)(maxHeight * 0.6);
+
+                    if (isFlat && isSuitable)
+                    {
+                        clusterCenters.Add((i, j));
+                    }
+                }
+            }
+
+            if (IncludeTestTreesInFrontOfPlatform)
+            {
+                // Ensure at least 5-10 trees right in front of platform at sweet spot
+                int fixedX = 1274;
+                int fixedY = 1241;
+                for (int t = 0; t < 10; t++)
+                {
+                    int offsetX = random.Next(-2, 3);
+                    int offsetY = random.Next(-2, 3);
+                    int px = Math.Clamp(fixedX + offsetX, 0, mapSize - 1);
+                    int py = Math.Clamp(fixedY + offsetY, 0, mapSize - 1);
+                    int height = map[px, py].mapDepth;
+                    if (height >= (int)(maxHeight * 0.15))
+                    {
+                        treeLocations.Add((px, py, height));
+                    }
+                }
+
+                clusterCenters.Insert(0, (landingX + random.Next(-20, 21), landingY + random.Next(10, 30)));
+            }
+
+            foreach (var (cx, cy) in clusterCenters)
+            {
+                int clusterSize = random.Next(clusterSizeMin, clusterSizeMax + 1);
+                for (int k = 0; k < clusterSize; k++)
+                {
+                    int offsetX = random.Next(-10, 11);
+                    int offsetY = random.Next(-10, 11);
+                    int nx = cx + offsetX;
+                    int ny = cy + offsetY;
+
+                    if (nx >= 10 && nx < mapSize - 10 && ny >= 10 && ny < mapSize - 10)
+                    {
+                        int height = map[nx, ny].mapDepth;
+                        bool isAboveWater = height >= (int)(maxHeight * 0.15);
+                        if (isAboveWater &&
+                            Math.Abs(height - map[nx - 1, ny].mapDepth) < 12 &&
+                            Math.Abs(height - map[nx + 1, ny].mapDepth) < 12 &&
+                            Math.Abs(height - map[nx, ny - 1].mapDepth) < 12 &&
+                            Math.Abs(height - map[nx, ny + 1].mapDepth) < 12)
+                        {
+                            treeLocations.Add((nx, ny, height));
+
+                            if (treeLocations.Count >= numberOfTrees)
+                                return treeLocations;
+                        }
+                    }
+                }
+            }
+
+            return treeLocations;
+        }
+        public static List<(int x, int y, int height)> FindHousePlacementAreas(SurfaceData[,] map, int mapSize)
+        {
+            List<(int x, int y, int height)> houseLocations = new List<(int x, int y, int height)>();
+            int numberOfHouses = random.Next(maxHouses / 2, maxHouses);
+
+            for (int i = 5; i < mapSize - 5; i++)
+            {
+                for (int j = 5; j < mapSize - 5; j++)
+                {
+                    int height = map[i, j].mapDepth;
+                    bool isFlat = Math.Abs(map[i, j].mapDepth - map[i - 1, j].mapDepth) < 2 &&
+                                  Math.Abs(map[i, j].mapDepth - map[i + 1, j].mapDepth) < 2 &&
+                                  Math.Abs(map[i, j].mapDepth - map[i, j - 1].mapDepth) < 2 &&
+                                  Math.Abs(map[i, j].mapDepth - map[i, j + 1].mapDepth) < 2;
+                    bool isSuitable = height >= (mapSize * 0.15) && height < (mapSize * 0.7);
+
+                    if (isFlat && isSuitable && houseLocations.Count < numberOfHouses)
+                    {
+                        houseLocations.Add((i, j, height));
+                    }
+                }
+            }
+            return houseLocations;
+        }
+
+        public static (int x, int y) GetLandingAreaCenter(SurfaceData[,] map, int mapSize, int landingHeight)
+        {
+            for (int i = 0; i < mapSize; i++)
+            {
+                for (int j = 0; j < mapSize; j++)
+                {
+                    if (map[i, j].mapDepth == landingHeight)
+                    {
+                        return (i + landingAreaSize / 2, j + landingAreaSize / 2);
+                    }
+                }
+            }
+            return (mapSize / 2, mapSize / 2); // Default to center if not found
         }
 
         private static Color GetTileColor(int height, int maxHeight)

@@ -28,6 +28,7 @@ namespace _3dTesting.Rendering
 
         public void RenderTriangles(List<_2dTriangleMesh> screenCoordinates)
         {
+            renderingTriangleCount = screenCoordinates.Count;
             using (drawingContext = visual.RenderOpen())
             { 
                 drawingContext.DrawRectangle(Brushes.Black, null, new Rect(0, 0, 1920, 1080));

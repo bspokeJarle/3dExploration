@@ -1,14 +1,10 @@
-﻿using _3dTesting._3dRotation;
-using _3dTesting._3dWorld;
+﻿using _3dTesting._3dWorld;
 using Domain;
 using GameAiAndControls.Controls;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Linq;
-using System.Text.Json.Nodes;
-using System.Windows.Controls;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting.Helpers
@@ -32,12 +28,13 @@ namespace _3dTesting.Helpers
         public static bool CheckInhabitantVisibility(this _3dObject inhabitant)
         {
             //All of the onscreen objects have no world position, they are either visible all the time or landbased
-            if (inhabitant.SurfaceBasedId > 0)
+            if (inhabitant.SurfaceBasedId > 0 && inhabitant.ParentSurface.RotatedSurfaceTriangles!=null)
             {
                 //Landbased objects are not visible if not on the current surface
                 if (inhabitant.ParentSurface.RotatedSurfaceTriangles.Where(t => t.landBasedPosition == inhabitant.SurfaceBasedId).FirstOrDefault() != null) return true;
                 else return false;
             }
+            //These are onscreen objects, always there
             if (inhabitant.WorldPosition.x == 0 && inhabitant.WorldPosition.y == 0 && inhabitant.WorldPosition.z == 0) return true;
  
             var globalMapPosition = inhabitant.ParentSurface.GlobalMapPosition;
@@ -60,20 +57,20 @@ namespace _3dTesting.Helpers
                 return;
 
             //Use offset from specified in the Scene
-            var offset = obj.Position;
+            //var offset = obj.Position;
 
-            // Calculate the geometric center of the object
-            IVector3 objectCenter = GetObjectGeometricCenter(obj);
+            // Center the object at the bottom, meaning place it on top
+            IVector3 objectCenter = GetObjectGeometricCenter(obj,true);
 
             // Compute the shift required
-            float shiftX = targetPosition.x + offset.x - objectCenter.x;
-            float shiftY = targetPosition.y + offset.y - objectCenter.y;
-            float shiftZ = targetPosition.z + offset.z - objectCenter.z;
+            float shiftX = targetPosition.x - objectCenter.x;
+            float shiftY = targetPosition.y - objectCenter.y;
+            float shiftZ = targetPosition.z - objectCenter.z;
+            //float shiftX = targetPosition.x + offset.x - objectCenter.x;
+            //float shiftY = targetPosition.y + offset.y - objectCenter.y;
+            //float shiftZ = targetPosition.z + offset.z - objectCenter.z;
 
-            // Apply the shift to the object's position
-            obj.Position.x += shiftX;
-            obj.Position.y += shiftY;
-            obj.Position.z += shiftZ;
+            Debug.WriteLine($"Targetx:{targetPosition.x} Targety:{targetPosition.y} Targetz:{targetPosition.z}");
 
             // Move all object parts accordingly
             foreach (var part in obj.ObjectParts)
@@ -91,42 +88,45 @@ namespace _3dTesting.Helpers
                     triangle.vert3.x += shiftX;
                     triangle.vert3.y += shiftY;
                     triangle.vert3.z += shiftZ;
+                    //Debug.WriteLine($"vert1x:{triangle.vert1.x} vert1y:{triangle.vert1.y} vert1z:{triangle.vert1.z}");
+                    //Debug.WriteLine($"vert2x:{triangle.vert2.x} vert2y:{triangle.vert2.y} vert2z:{triangle.vert2.z}");
+                    //Debug.WriteLine($"vert2x:{triangle.vert3.x} vert3y:{triangle.vert3.y} vert3z:{triangle.vert3.z}");
                 }
             }
-
-            // Update world position
-            obj.WorldPosition = new Vector3
-            {
-                x = targetPosition.x + offset.x,
-                y = targetPosition.y + offset.y,
-                z = targetPosition.z + offset.z
-            };
         }
 
-        private static IVector3 GetObjectGeometricCenter(I3dObject obj)
+        public static IVector3 GetObjectGeometricCenter(I3dObject obj, bool snapToBottomY = false)
         {
-            if (obj.ObjectParts == null || obj.ObjectParts.Count == 0)
-                return new Vector3 { x = obj.Position.x, y = obj.Position.y, z = obj.Position.z };
-
             float sumX = 0, sumY = 0, sumZ = 0;
-            int vertexCount = 0;
+            int count = 0;
+            float minY = float.MaxValue;
 
             foreach (var part in obj.ObjectParts)
             {
                 foreach (var triangle in part.Triangles)
                 {
-                    sumX += triangle.vert1.x + triangle.vert2.x + triangle.vert3.x;
-                    sumY += triangle.vert1.y + triangle.vert2.y + triangle.vert3.y;
-                    sumZ += triangle.vert1.z + triangle.vert2.z + triangle.vert3.z;
-                    vertexCount += 3;
+                    var vertices = new[] { triangle.vert1, triangle.vert2, triangle.vert3 };
+
+                    foreach (var v in vertices)
+                    {
+                        sumX += v.x;
+                        sumY += v.y;
+                        sumZ += v.z;
+                        count++;
+
+                        if (snapToBottomY)
+                            minY = Math.Min(minY, v.y);
+                    }
                 }
             }
 
+            if (count == 0) return new Vector3();
+
             return new Vector3
             {
-                x = vertexCount > 0 ? sumX / vertexCount : obj.Position.x,
-                y = vertexCount > 0 ? sumY / vertexCount : obj.Position.y,
-                z = vertexCount > 0 ? sumZ / vertexCount : obj.Position.z
+                x = sumX / count,
+                y = snapToBottomY ? minY : sumY / count,
+                z = sumZ / count
             };
         }
 
@@ -299,6 +299,8 @@ namespace _3dTesting.Helpers
 
         public static List<_3dObject> DeepCopy3dObjects(List<_3dObject> inhabitants)
         {
+            //Remove inhabitants that have to long distance to the player
+            inhabitants = inhabitants.Where(i => i.CheckInhabitantVisibility()).ToList();
             //Copy all inhabitants to a new list with no references to the original inhabitants
             var theInhabitants = new List<_3dObject>();
             foreach (var inhabitant in inhabitants)

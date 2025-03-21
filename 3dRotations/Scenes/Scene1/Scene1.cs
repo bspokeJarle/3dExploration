@@ -3,6 +3,8 @@ using _3dTesting._3dWorld;
 using _3dRotations.World.Objects;
 using static Domain._3dSpecificsImplementations;
 using GameAiAndControls.Controls;
+using _3dRotations.Helpers;
+using System.Diagnostics;
 
 namespace _3dRotations.Scene.Scene1
 {
@@ -13,8 +15,8 @@ namespace _3dRotations.Scene.Scene1
         {            
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
-            //Generate 2D map for the surface
-            Surface.Create2DMap();
+            //Generate 2D map for the surface, maxtrees and maxhouses set
+            Surface.Create2DMap(500,50);
 
             //Test if this makes the ship tilt and rotate like it should
             ship.RotationOffsetY = 65;
@@ -52,22 +54,23 @@ namespace _3dRotations.Scene.Scene1
             seeder3.Movement = new SeederControls();
             world.WorldInhabitants.Add(seeder3);
 
-            var tree = Tree.CreateTree(Surface);
-            //Initialize the tree rotation
-            //The tree don't need a world position, it's a surface based object
-            tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-            //Find the surface based id for the tree
-            //TODO: Find a good place in the map for the tree
-            //Alogrithm to find a good place for the trees and spread them around
-            //Temp fix now to get the tree on the surface
-            tree.SurfaceBasedId = Surface.Global2DMap[93075/75,96400/75].mapId;
-            tree.Position = new Vector3 { x = 0, y = 300, z = 300 };
-            tree.ObjectName = "Tree";
-            tree.Movement = new TreeControls();
-            world.WorldInhabitants.Add(tree);
+            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(Surface.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
+            foreach (var treePlacement in treePlacements)
+            {
+                Debug.WriteLine($"Tree placement: {treePlacement.x} {treePlacement.y}");
+                var tree = Tree.CreateTree(Surface);
+                //The tree don't need a world position, it's a surface based object
+                tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                tree.SurfaceBasedId = Surface.Global2DMap[treePlacement.y, treePlacement.x].mapId;
+                //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
+                tree.Position = new Vector3 { x = 0, y = 425 , z = 300 };
+                tree.ObjectName = "Tree";
+                tree.Movement = new TreeControls();
+                if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
+            }
 
             var house = House.CreateHouse(Surface);
-            //Initialize the tree rotation
+            //Initialize the house rotation
             //The tree don't need a world position, it's a surface based object
             house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
             //Find the surface based id for the tree

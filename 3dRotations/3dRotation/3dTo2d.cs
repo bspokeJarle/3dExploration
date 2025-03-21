@@ -47,9 +47,9 @@ namespace _3dTesting._3dRotation
                         {
                             //Land based objects must be centered around a surface position and then placed according to an offset
                             _3dObjectHelpers.CenterObjectAt(obj, landBasedPosition.vert1);
-                            objPosX = screenCenterX;
-                            objPosY = screenCenterY;
-                            objPosZ = 0;
+                            objPosX = screenCenterX + obj.Position.x;
+                            objPosY = screenCenterY + obj.Position.y;
+                            objPosZ = obj.Position.z;
                         }
                         //Skip if object is landbased and no surface position is found
                         else continue;
@@ -58,7 +58,7 @@ namespace _3dTesting._3dRotation
                     {
                         objPosX = screenCenterX + obj.Position.x;
                         objPosY = screenCenterY + obj.Position.y;
-                        objPosZ = 0;
+                        objPosZ = obj.Position.z;
                     }
                 }
                 else
@@ -94,7 +94,7 @@ namespace _3dTesting._3dRotation
 
                         if (triangle.normal1.z > 0 || (triangle.noHidden ?? false))
                         { 
-                             screenCoordinates.Add(new _2dTriangleMesh
+                            screenCoordinates.Add(new _2dTriangleMesh
                             {
                                 X1 = Convert.ToInt32(xc),
                                 Y1 = Convert.ToInt32(yc),

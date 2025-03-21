@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using _3dTesting._3dWorld;
 using Domain;
@@ -11,29 +10,34 @@ namespace _3dTesting.Helpers
     {
         public static void HandleCrashboxes(List<_3dObject> activeWorld)
         {
-            Parallel.ForEach(activeWorld, inhabitant =>
+            int count = activeWorld.Count;
+
+            Parallel.For(0, count, i =>
             {
-                foreach (var otherInhabitant in activeWorld)
+                var inhabitant = activeWorld[i];
+                if (inhabitant == null || inhabitant.CrashBoxes == null) return;
+
+                for (int j = i + 1; j < count; j++)
                 {
-                    if (inhabitant == null || otherInhabitant == null ||
-                        inhabitant == otherInhabitant || otherInhabitant.CrashBoxes == null || inhabitant.CrashBoxes == null)
+                    var otherInhabitant = activeWorld[j];
+                    if (otherInhabitant == null || otherInhabitant.CrashBoxes == null) continue;
+
+                    // Skip particle-to-particle collisions early
+                    if (inhabitant.ObjectName == "Particle" && otherInhabitant.ObjectName == "Particle")
                         continue;
 
-                    foreach (var crashbox in inhabitant.CrashBoxes)
+                    var rotatedCrashboxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation, (Vector3)inhabitant.Position);
+                    var rotatedOtherCrashboxes = RotateAllCrashboxes(otherInhabitant.CrashBoxes, (Vector3)otherInhabitant.Rotation, (Vector3)otherInhabitant.Position);
+
+                    foreach (var crashbox in rotatedCrashboxes)
                     {
-                        foreach (var otherCrashbox in otherInhabitant.CrashBoxes)
+                        foreach (var otherCrashbox in rotatedOtherCrashboxes)
                         {
-                            var rotatedCrashbox = RotateCrashbox(crashbox, (Vector3)inhabitant.Rotation, (Vector3)inhabitant.Position);
-                            var rotatedOtherCrashbox = RotateCrashbox(otherCrashbox, (Vector3)otherInhabitant.Rotation, (Vector3)otherInhabitant.Position);
-
-                            if (_3dObjectHelpers.CheckCollisionBoxVsBox(rotatedCrashbox, rotatedOtherCrashbox))
+                            if (_3dObjectHelpers.CheckCollisionBoxVsBox(crashbox, otherCrashbox))
                             {
-                                // Skip particle-to-particle collisions
-                                if (inhabitant.ObjectName == "Particle" && otherInhabitant.ObjectName == "Particle")
-                                    continue;
-
                                 inhabitant.HasCrashed = true;
                                 otherInhabitant.HasCrashed = true;
+                                return; // Early exit once a collision is found
                             }
                         }
                     }
@@ -41,13 +45,26 @@ namespace _3dTesting.Helpers
             });
         }
 
-        private static List<Vector3> RotateCrashbox(List<IVector3> crashbox, Vector3 rotation, Vector3 position)
+        private static List<List<Vector3>> RotateAllCrashboxes(List<List<IVector3>> crashboxes, Vector3 rotation, Vector3 position)
         {
-            return crashbox.Select(point => RotatePoint(point, rotation, position)).ToList();
+            List<List<Vector3>> rotatedCrashboxes = new List<List<Vector3>>(crashboxes.Count);
+
+            foreach (var crashbox in crashboxes)
+            {
+                List<Vector3> rotated = new List<Vector3>(crashbox.Count);
+                foreach (var point in crashbox)
+                {
+                    rotated.Add(RotatePoint(point, rotation, position));
+                }
+                rotatedCrashboxes.Add(rotated);
+            }
+
+            return rotatedCrashboxes;
         }
 
         private static Vector3 RotatePoint(IVector3 point, Vector3 rotation, Vector3 position)
         {
+            // Maintain your existing logic for rotation using a mesh-based approach
             var singleTriangle = new List<ITriangleMeshWithColor>
             {
                 new TriangleMeshWithColor
@@ -61,7 +78,7 @@ namespace _3dTesting.Helpers
             var rotatedTriangle = GameHelpers.RotateMesh(singleTriangle, rotation);
             var rotatedPoint = rotatedTriangle[0].vert1;
 
-            // Apply the position offset after rotation
+            // Apply position offset after rotation
             rotatedPoint.x += position.x;
             rotatedPoint.y += position.y;
             rotatedPoint.z += position.z;

@@ -1,55 +1,61 @@
 ﻿using _3dTesting._3dRotation;
 using _3dTesting._3dWorld;
 using Domain;
-using System;
+using GameAiAndControls.Controls;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting.MainWindowClasses
 {
     public class ParticleManager
     {
-        private _3dRotate Rotate3d = new _3dRotate();
+        private readonly _3dRotate Rotate3d = new();
 
         public void HandleParticles(_3dObject inhabitant, List<_3dObject> particleObjectList)
         {
-            if (inhabitant.Particles == null || inhabitant.Particles.Particles.Count == 0)
+            if (inhabitant.Particles?.Particles is null || inhabitant.Particles.Particles.Count == 0)
                 return;
 
+            List<Particle> particles;
             lock (inhabitant.Particles)
             {
-                foreach (var particle in inhabitant.Particles.Particles)
+                particles = inhabitant.Particles.Particles.OfType<Particle>().Where(p => p.Visible).ToList();
+            }
+
+            foreach (var particle in particles)
+            {
+                var particleTriangle = RotateParticle(particle.ParticleTriangle, particle.Rotation as Vector3);
+
+                particleObjectList.Add(new _3dObject
                 {
-                    if (!particle.Visible) continue;
-
-                    var particleObject = new _3dObject { ObjectName = "Particle", WorldPosition = particle.WorldPosition, ParentSurface = inhabitant.ParentSurface };
-                    var particleTriangle = RotateParticle(particle.ParticleTriangle, (Vector3)particle.Rotation);
-
-                    particleObject.ObjectParts = new List<I3dObjectPart>
+                    ObjectName = "Particle",
+                    WorldPosition = particle.WorldPosition,
+                    ParentSurface = inhabitant.ParentSurface,
+                    ObjectParts = new List<I3dObjectPart>
                     {
                         new _3dObjectPart { Triangles = new List<ITriangleMeshWithColor> { particleTriangle }, PartName = "Particle", IsVisible = true }
-                    };
-                    particleObject.Position = new Vector3
+                    },
+                    Position = new Vector3
                     {
                         x = inhabitant.Position.x + particle.Position.x,
                         y = inhabitant.Position.y + particle.Position.y,
                         z = inhabitant.Position.z + particle.Position.z
-                    };
-                    particleObject.Rotation = particle.Rotation;
-                    particleObjectList.Add(particleObject);
-                }
+                    },
+                    Rotation = particle.Rotation
+                });
             }
         }
 
         private ITriangleMeshWithColor RotateParticle(ITriangleMeshWithColor particleTriangle, Vector3 rotation)
         {
-            var rotated = Rotate3d.RotateZMesh(new List<ITriangleMeshWithColor> { particleTriangle }, rotation.z).First();
-            rotated = Rotate3d.RotateYMesh(new List<ITriangleMeshWithColor> { rotated }, rotation.y).First();
-            rotated = Rotate3d.RotateXMesh(new List<ITriangleMeshWithColor> { rotated }, rotation.x).First();
-            return rotated;
+            return Rotate3d.RotateXMesh(
+                Rotate3d.RotateYMesh(
+                    Rotate3d.RotateZMesh(new List<ITriangleMeshWithColor> { particleTriangle }, rotation.z),
+                    rotation.y
+                ),
+                rotation.x
+            ).First();
         }
     }
 }

@@ -21,11 +21,12 @@ namespace Domain
         public int GlobalMapSize();
         public int ViewPortSize();
         public int TileSize();
+        public int MaxHeight();
 
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles { get; set; }
         public I3dObject GetSurfaceViewPort();
 
-        public void Create2DMap();
+        public void Create2DMap(int? maxTrees, int? maxHouses);
     }
 
     public interface IObjectMovement

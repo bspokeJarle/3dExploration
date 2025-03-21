@@ -1,11 +1,16 @@
 ﻿Changes in this version:
+Optimize CrashDetection
+	Done, first iteration
+Optimize ParticleSystem
+	Done, first iteration
+Optimize DeepCopy
+	Only copy the objects we see - Done
 Bee able to set objects on the map in a Scene, for instance trees, rocks, houses etc
 	Got a house and a tree placed on the map - Done
 	TODO:We need to be able to procedurally place them according to a set of rules
 As a POC start development of ship movement
 	Done, got some issues with flipping av ship
-	Moevement of surface is not natural or fluid
-
+	Movement of surface is not natural or fluid
 Design ground objects
 	Trees - First done
 	House - First done

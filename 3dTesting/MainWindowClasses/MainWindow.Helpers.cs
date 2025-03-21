@@ -79,7 +79,7 @@ namespace _3dTesting.Helpers
             if (surfaceMapBitmap != null && mapOverlay != null)
             {
                 Debug.WriteLine("Overlay MapX: " + mapX/75 + " MapY: " + mapY/75 + " Map");
-                mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect(mapX / 75, mapY / 75, 18, 18));
+                mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect(mapX / 75, mapY / 75, 72, 72));
             }
         }
 

@@ -15,7 +15,6 @@ namespace GameAiAndControls.Controls
         private const float GravityForce = 3.0f; // Gravity force applied when no thrust
         private const float SpeedMultiplier = 6.0f; // Multiplier for forward speed
         private const float HeightMultiplier = 2.0f; // Multiplier for height gain
-        private const float HeightReductionFactor = 0.5f; // Reduction factor for height gain when tilted
         private const int RotationStep = 5; // Angle change per key press
 
         private IKeyboardMouseEvents _globalHook;
@@ -25,7 +24,7 @@ namespace GameAiAndControls.Controls
         public int rotationY = 0;
         public int rotationZ = 0;
         public int shipY = 0;
-        public int zoom = 300;
+        public int zoom = 150;
         public I3dObject ParentObject { get; set; }
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
