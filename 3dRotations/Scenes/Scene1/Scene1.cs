@@ -39,7 +39,7 @@ namespace _3dRotations.Scene.Scene1
             var seeder2 = Seeder.CreateSeeder(Surface);
             //Initialize the seeder rotation
             seeder2.Rotation = new Vector3 { };
-            seeder2.WorldPosition = new Vector3 { x = 96000, y = 0, z = 92000 };
+            seeder2.WorldPosition = new Vector3 { x = 93250, y = 0, z = 92000 };
             seeder2.Position = new Vector3 { x = -150, y = -100, z = 0 };
             seeder2.ObjectName = "Seeder";
             seeder2.Movement = new SeederControls();
@@ -58,36 +58,43 @@ namespace _3dRotations.Scene.Scene1
             foreach (var treePlacement in treePlacements)
             {
                 Debug.WriteLine($"Tree placement: {treePlacement.x} {treePlacement.y}");
+                //TODO: We need design more trees
                 var tree = Tree.CreateTree(Surface);
                 //The tree don't need a world position, it's a surface based object
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tree.SurfaceBasedId = Surface.Global2DMap[treePlacement.y, treePlacement.x].mapId;
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tree.Position = new Vector3 { x = 0, y = 425 , z = 300 };
+                tree.Position = new Vector3 { x = 75, y = 425 , z = 300 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
             }
 
-            var house = House.CreateHouse(Surface);
-            //Initialize the house rotation
-            //The tree don't need a world position, it's a surface based object
-            house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-            //Find the surface based id for the tree
-            //TODO: Find a good place in the map for the tree
-            //Alogrithm to find a good place for the trees and spread them around
-            //Temp fix now to get the tree on the surface
-            house.SurfaceBasedId = Surface.Global2DMap[93150 / 75, 96800 / 75].mapId;
-            house.Position = new Vector3 { x = 0, y = 300, z = 600 };
-            house.ObjectName = "House";
-            house.Movement = new HouseControls();
-            world.WorldInhabitants.Add(house);
+            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(Surface.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements);
+            foreach (var housePlacement in housePlacements)
+            {
+                Debug.WriteLine($"House placement: {housePlacement.x} {housePlacement.y}");
+
+                var house = House.CreateHouse(Surface);
+                //Initialize the house rotation
+                //The tree don't need a world position, it's a surface based object
+                house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                //Find the surface based id for the tree
+                //TODO: Find a good place in the map for the tree
+                //Alogrithm to find a good place for the trees and spread them around
+                //Temp fix now to get the tree on the surface
+                house.SurfaceBasedId = Surface.Global2DMap[housePlacement.y, housePlacement.x].mapId;
+                house.Position = new Vector3 { x = 75, y = 450, z = 300 };
+                house.ObjectName = "House";
+                house.Movement = new HouseControls();
+                if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
+            }
 
             //Get the surface viewport based on the global Map Position
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
-            surfaceObject.Position = new Vector3 { x = 0, y = 500, z = 300 };
+            surfaceObject.Position = new Vector3 { x = 75, y = 500, z = 300 };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Add crashboxes to the surface, add more crashboxes to the surface for large objects (Mountains etc)

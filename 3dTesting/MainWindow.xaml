@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="3D Game Renderer"
         Height="1024" Width="1280"
+        Background="Black"
         WindowStyle="None" WindowState="Maximized" Cursor="None">
     <Grid Name="MainGrid">
         <!-- Rendered 3D Scene -->

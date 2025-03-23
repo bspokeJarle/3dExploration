@@ -78,7 +78,7 @@ namespace _3dTesting
 
             surfaceMapBitmap = world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapBitmap;
 
-            timer.Interval = TimeSpan.FromMilliseconds(12);
+            timer.Interval = TimeSpan.FromMilliseconds(8);
             timer.Tick += (s, e) => Handle3dWorld();
             timer.Start();
             stopwatch.Start();

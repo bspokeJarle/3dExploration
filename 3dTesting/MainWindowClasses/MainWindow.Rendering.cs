@@ -41,6 +41,12 @@ namespace _3dTesting.Rendering
                     if (triangle.CalculatedZ > 2200 || triangle.CalculatedZ < -2200)
                         continue;
 
+                    //Make sure trianges are not drawn outside the screen
+                    if (triangle.X1 < 0 && triangle.X2 < 0 && triangle.X3 < 0) continue;
+                    if (triangle.X1 > 1920 && triangle.X2 > 1920 && triangle.X3 > 1920) continue;
+                    if (triangle.Y1 < 0 && triangle.Y2 < 0 && triangle.Y3 < 0) continue;
+                    if (triangle.Y1 > 1080 && triangle.Y2 > 1080 && triangle.Y3 > 1080) continue;
+
                     float zcolorCalculation = ((triangle.CalculatedZ + 1050) / 3000);
                     Color color = (Color)ColorConverter.ConvertFromString(
                         Helpers.Colors.getShadeOfColorFromNormal(zcolorCalculation, triangle.Color));

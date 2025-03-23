@@ -22,7 +22,8 @@ namespace _3dRotations.Helpers
         public static int maxHouses { get; set; }
         const int clusterSizeMin = 2;
         const int clusterSizeMax = 5;
-        public static bool IncludeTestTreesInFrontOfPlatform = false;
+        public static bool IncludeTestTreesInFrontOfPlatform = true;
+        public static bool IncludeTestHousesInFrontOfPlatform = true;
 
         public static SurfaceData[,] ReturnPseudoRandomMap(int mapSize, out int maxHeight, int? maxTs, int? maxHs)
         {
@@ -259,7 +260,7 @@ namespace _3dRotations.Helpers
         public static List<(int x, int y, int height)> FindTreePlacementAreas(SurfaceData[,] map, int mapSize, int tileSize, int maxHeight)
         {
             List<(int x, int y, int height)> treeLocations = new List<(int x, int y, int height)>();
-            int numberOfTrees = random.Next((int)(maxTrees * 0.9), maxTrees);
+            int numberOfTrees = random.Next((int)(maxTrees * 0.95), maxTrees); // Slightly increased minimum
             var landingAreaCenter = GetLandingAreaCenter(map, mapSize, (int)(tileSize * 0.75));
             int landingX = landingAreaCenter.x;
             int landingY = landingAreaCenter.y;
@@ -267,7 +268,7 @@ namespace _3dRotations.Helpers
             List<(int x, int y)> clusterCenters = new List<(int x, int y)>();
 
             // Grid-based attempt for even distribution
-            int spacing = 50; // Fixed spacing to cover whole map
+            int spacing = 40; // Reduced spacing for more clusters
             for (int i = spacing / 2; i < mapSize; i += spacing)
             {
                 for (int j = spacing / 2; j < mapSize; j += spacing)
@@ -299,7 +300,7 @@ namespace _3dRotations.Helpers
                     int px = Math.Clamp(fixedX + offsetX, 0, mapSize - 1);
                     int py = Math.Clamp(fixedY + offsetY, 0, mapSize - 1);
                     int height = map[px, py].mapDepth;
-                    if (height >= (int)(maxHeight * 0.15))
+                    if (height >= (int)(maxHeight * 0.15) && height < (int)(maxHeight * 0.6))
                     {
                         treeLocations.Add((px, py, height));
                     }
@@ -308,10 +309,16 @@ namespace _3dRotations.Helpers
                 clusterCenters.Insert(0, (landingX + random.Next(-20, 21), landingY + random.Next(10, 30)));
             }
 
-            foreach (var (cx, cy) in clusterCenters)
+            // Ensure a minimum number of clusters
+            int desiredClusters = numberOfTrees / clusterSizeMax;
+            int clusterIndex = 0;
+
+            while (treeLocations.Count < numberOfTrees && clusterIndex < clusterCenters.Count)
             {
+                var (cx, cy) = clusterCenters[clusterIndex++];
                 int clusterSize = random.Next(clusterSizeMin, clusterSizeMax + 1);
-                for (int k = 0; k < clusterSize; k++)
+
+                for (int k = 0; k < clusterSize && treeLocations.Count < numberOfTrees; k++)
                 {
                     int offsetX = random.Next(-10, 11);
                     int offsetY = random.Next(-10, 11);
@@ -321,17 +328,14 @@ namespace _3dRotations.Helpers
                     if (nx >= 10 && nx < mapSize - 10 && ny >= 10 && ny < mapSize - 10)
                     {
                         int height = map[nx, ny].mapDepth;
-                        bool isAboveWater = height >= (int)(maxHeight * 0.15);
-                        if (isAboveWater &&
+                        bool isAboveWater = height >= (int)(maxHeight * 0.18);
+                        if (isAboveWater && height < (int)(maxHeight * 0.6) &&
                             Math.Abs(height - map[nx - 1, ny].mapDepth) < 12 &&
                             Math.Abs(height - map[nx + 1, ny].mapDepth) < 12 &&
                             Math.Abs(height - map[nx, ny - 1].mapDepth) < 12 &&
                             Math.Abs(height - map[nx, ny + 1].mapDepth) < 12)
                         {
                             treeLocations.Add((nx, ny, height));
-
-                            if (treeLocations.Count >= numberOfTrees)
-                                return treeLocations;
                         }
                     }
                 }
@@ -339,21 +343,28 @@ namespace _3dRotations.Helpers
 
             return treeLocations;
         }
-        public static List<(int x, int y, int height)> FindHousePlacementAreas(SurfaceData[,] map, int mapSize)
+        public static List<(int x, int y, int height)> FindHousePlacementAreas(SurfaceData[,] map, int mapSize, int maxHeight, List<(int x, int y, int height)> existingTrees)
         {
             List<(int x, int y, int height)> houseLocations = new List<(int x, int y, int height)>();
-            int numberOfHouses = random.Next(maxHouses / 2, maxHouses);
+            int numberOfHouses = random.Next((int)(maxHouses * 0.9), maxHouses);
+            HashSet<(int x, int y)> reserved = new HashSet<(int x, int y)>();
+            foreach (var (x, y, _) in existingTrees)
+                reserved.Add((x, y));
 
-            for (int i = 5; i < mapSize - 5; i++)
+            int spacing = 40;
+            for (int i = spacing / 2; i < mapSize; i += spacing)
             {
-                for (int j = 5; j < mapSize - 5; j++)
+                for (int j = spacing / 2; j < mapSize; j += spacing)
                 {
+                    if (reserved.Contains((i, j))) continue;
+
                     int height = map[i, j].mapDepth;
-                    bool isFlat = Math.Abs(map[i, j].mapDepth - map[i - 1, j].mapDepth) < 2 &&
-                                  Math.Abs(map[i, j].mapDepth - map[i + 1, j].mapDepth) < 2 &&
-                                  Math.Abs(map[i, j].mapDepth - map[i, j - 1].mapDepth) < 2 &&
-                                  Math.Abs(map[i, j].mapDepth - map[i, j + 1].mapDepth) < 2;
-                    bool isSuitable = height >= (mapSize * 0.15) && height < (mapSize * 0.7);
+                    bool isFlat = Math.Abs(height - map[i - 1, j].mapDepth) < 5 &&
+                                  Math.Abs(height - map[i + 1, j].mapDepth) < 5 &&
+                                  Math.Abs(height - map[i, j - 1].mapDepth) < 5 &&
+                                  Math.Abs(height - map[i, j + 1].mapDepth) < 5;
+                    bool isAboveWater = height >= (int)(maxHeight * 0.19);
+                    bool isSuitable = isAboveWater && height < (int)(maxHeight * 0.7);
 
                     if (isFlat && isSuitable && houseLocations.Count < numberOfHouses)
                     {
@@ -361,6 +372,28 @@ namespace _3dRotations.Helpers
                     }
                 }
             }
+
+            if (IncludeTestHousesInFrontOfPlatform)
+            {
+                int fixedX = 1274;
+                int fixedY = 1241;
+                for (int h = 0; h < 3; h++)
+                {
+                    int offsetX = random.Next(-2, 3);
+                    int offsetY = random.Next(-2, 3);
+                    int px = Math.Clamp(fixedX + offsetX, 0, mapSize - 1);
+                    int py = Math.Clamp(fixedY + offsetY, 0, mapSize - 1);
+                    if (!reserved.Contains((px, py)))
+                    {
+                        int height = map[px, py].mapDepth;
+                        if (height >= (int)(maxHeight * 0.15) && height < (int)(maxHeight * 0.7))
+                        {
+                            houseLocations.Add((px, py, height));
+                        }
+                    }
+                }
+            }
+
             return houseLocations;
         }
 

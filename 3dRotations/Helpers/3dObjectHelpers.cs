@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Windows.Documents;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting.Helpers
@@ -24,32 +25,45 @@ namespace _3dTesting.Helpers
                 z = globalMapPosition.z - inhabitant.WorldPosition.z
             };
             return localWorldPosition;
-        }   
+        }
         public static bool CheckInhabitantVisibility(this _3dObject inhabitant)
         {
-            //All of the onscreen objects have no world position, they are either visible all the time or landbased
-            if (inhabitant.SurfaceBasedId > 0 && inhabitant.ParentSurface.RotatedSurfaceTriangles!=null)
+            // 1. Land-based check
+            if (inhabitant.SurfaceBasedId > 0 && inhabitant.ParentSurface?.RotatedSurfaceTriangles != null)
             {
-                //Landbased objects are not visible if not on the current surface
-                if (inhabitant.ParentSurface.RotatedSurfaceTriangles.Where(t => t.landBasedPosition == inhabitant.SurfaceBasedId).FirstOrDefault() != null) return true;
-                else return false;
+                bool isOnCurrentSurface = inhabitant.ParentSurface.RotatedSurfaceTriangles
+                    .Any(t => t.landBasedPosition == inhabitant.SurfaceBasedId);
+
+                return isOnCurrentSurface;
             }
-            //These are onscreen objects, always there
-            if (inhabitant.WorldPosition.x == 0 && inhabitant.WorldPosition.y == 0 && inhabitant.WorldPosition.z == 0) return true;
- 
+
+            // 2. Always-visible (onscreen) objects — world position (0, 0, 0)
+            if (inhabitant.WorldPosition.x == 0 &&
+                inhabitant.WorldPosition.y == 0 &&
+                inhabitant.WorldPosition.z == 0)
+            {
+                return true;
+            }
+
+            // 3. Distance-based visibility check
             var globalMapPosition = inhabitant.ParentSurface.GlobalMapPosition;
             var inhabitantPosition = inhabitant.WorldPosition;
 
-            var distance = GetDistance(globalMapPosition, (Vector3)inhabitantPosition);
-            //if (inhabitant.ObjectName=="Seeder") Debug.WriteLine($"Distance: {distance} globalMapPosition: {globalMapPosition.x} {globalMapPosition.y} {globalMapPosition.z} worldPosition: {inhabitantPosition.x} {inhabitantPosition.y} {inhabitantPosition.z} Inhabitant: {inhabitant.ObjectName} ");
-            if (distance > 1400 || distance < -1400) return false;
-            return true;
+            float distance = (float)GetDistance(globalMapPosition, (Vector3)inhabitantPosition);
+
+            return Math.Abs(distance) <= 1400;
         }
+
 
         public static double GetDistance(Vector3 point1, Vector3 point2)
         {
-            return Math.Sqrt(Math.Pow(point1.x - point2.x, 2) + Math.Pow(point1.y - point2.y, 2) + Math.Pow(point1.z - point2.z, 2));
+            float dx = point1.x - point2.x;
+            float dy = point1.y - point2.y;
+            float dz = point1.z - point2.z;
+
+            return Math.Sqrt(dx * dx + dy * dy + dz * dz);
         }
+
 
         public static void CenterObjectAt(I3dObject obj, IVector3 targetPosition)
         {
@@ -57,8 +71,6 @@ namespace _3dTesting.Helpers
                 return;
 
             //Use offset from specified in the Scene
-            //var offset = obj.Position;
-
             // Center the object at the bottom, meaning place it on top
             IVector3 objectCenter = GetObjectGeometricCenter(obj,true);
 
@@ -66,11 +78,8 @@ namespace _3dTesting.Helpers
             float shiftX = targetPosition.x - objectCenter.x;
             float shiftY = targetPosition.y - objectCenter.y;
             float shiftZ = targetPosition.z - objectCenter.z;
-            //float shiftX = targetPosition.x + offset.x - objectCenter.x;
-            //float shiftY = targetPosition.y + offset.y - objectCenter.y;
-            //float shiftZ = targetPosition.z + offset.z - objectCenter.z;
 
-            Debug.WriteLine($"Targetx:{targetPosition.x} Targety:{targetPosition.y} Targetz:{targetPosition.z}");
+            //Debug.WriteLine($"Targetx:{targetPosition.x} Targety:{targetPosition.y} Targetz:{targetPosition.z}");
 
             // Move all object parts accordingly
             foreach (var part in obj.ObjectParts)
@@ -299,19 +308,13 @@ namespace _3dTesting.Helpers
 
         public static List<_3dObject> DeepCopy3dObjects(List<_3dObject> inhabitants)
         {
-            //Remove inhabitants that have to long distance to the player
-            inhabitants = inhabitants.Where(i => i.CheckInhabitantVisibility()).ToList();
-            //Copy all inhabitants to a new list with no references to the original inhabitants
-            var theInhabitants = new List<_3dObject>();
-            foreach (var inhabitant in inhabitants)
-            {
-                var objectparts = new List<I3dObjectPart>();
-                foreach (var part in inhabitant.ObjectParts)
+            return inhabitants
+                .Where(i => i.CheckInhabitantVisibility())
+                .Select(inhabitant =>
                 {
-                    var Triangles = new List<ITriangleMeshWithColor>();
-                    foreach (var triangle in part.Triangles)
+                    var objectParts = inhabitant.ObjectParts.Select(part =>
                     {
-                        Triangles.Add(new TriangleMeshWithColor
+                        var triangles = part.Triangles.Select(triangle => new TriangleMeshWithColor
                         {
                             vert1 = new Vector3 { x = triangle.vert1.x, y = triangle.vert1.y, z = triangle.vert1.z },
                             vert2 = new Vector3 { x = triangle.vert2.x, y = triangle.vert2.y, z = triangle.vert2.z },
@@ -323,31 +326,35 @@ namespace _3dTesting.Helpers
                             angle = triangle.angle,
                             Color = triangle.Color,
                             noHidden = triangle.noHidden
-                        });
-                    }
-                    objectparts.Add(new _3dObjectPart { PartName = part.PartName, Triangles = Triangles, IsVisible = part.IsVisible });
-                }
+                        }).ToList();
 
-                theInhabitants.Add(new _3dObject
-                {
-                    Position = new Vector3 { x = inhabitant.Position.x, y = inhabitant.Position.y, z = inhabitant.Position.z },
-                    Rotation = new Vector3 { x = inhabitant.Rotation.x, y = inhabitant.Rotation.y, z = inhabitant.Rotation.z },
-                    WorldPosition = new Vector3 { x = inhabitant.WorldPosition.x, y = inhabitant.WorldPosition.y, z = inhabitant.WorldPosition.z },
-                    ObjectParts = objectparts,
-                    Movement = inhabitant.Movement,
-                    Particles = inhabitant.Particles,
-                    CrashBoxes = inhabitant.CrashBoxes,
-                    HasCrashed = inhabitant.HasCrashed,
-                    Mass = inhabitant.Mass,
-                    ObjectName = inhabitant.ObjectName,
-                    ParentSurface = inhabitant.ParentSurface,
-                    RotationOffsetX = inhabitant.RotationOffsetX,
-                    RotationOffsetY = inhabitant.RotationOffsetY,
-                    RotationOffsetZ = inhabitant.RotationOffsetZ,
-                    SurfaceBasedId = inhabitant.SurfaceBasedId
-                });
-            }
-            return theInhabitants;
+                        return new _3dObjectPart
+                        {
+                            PartName = part.PartName,
+                            Triangles = triangles.Select(t => (ITriangleMeshWithColor)t).ToList(),
+                            IsVisible = part.IsVisible
+                        };
+                    }).ToList();
+
+                    return new _3dObject
+                    {
+                        Position = new Vector3 { x = inhabitant.Position.x, y = inhabitant.Position.y, z = inhabitant.Position.z },
+                        Rotation = new Vector3 { x = inhabitant.Rotation.x, y = inhabitant.Rotation.y, z = inhabitant.Rotation.z },
+                        WorldPosition = new Vector3 { x = inhabitant.WorldPosition.x, y = inhabitant.WorldPosition.y, z = inhabitant.WorldPosition.z },
+                        ObjectParts = objectParts.Cast<I3dObjectPart>().ToList(),
+                        Movement = inhabitant.Movement,
+                        Particles = inhabitant.Particles,
+                        CrashBoxes = inhabitant.CrashBoxes,
+                        HasCrashed = inhabitant.HasCrashed,
+                        Mass = inhabitant.Mass,
+                        ObjectName = inhabitant.ObjectName,
+                        ParentSurface = inhabitant.ParentSurface,
+                        RotationOffsetX = inhabitant.RotationOffsetX,
+                        RotationOffsetY = inhabitant.RotationOffsetY,
+                        RotationOffsetZ = inhabitant.RotationOffsetZ,
+                        SurfaceBasedId = inhabitant.SurfaceBasedId
+                    };
+                }).ToList();
         }
     }  
 }
