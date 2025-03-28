@@ -47,39 +47,44 @@ namespace _3dTesting.Helpers
                         ? _3dObjectHelpers.FindWorldPosition(otherInhabitant)
                         : (Vector3)otherInhabitant.WorldPosition;
 
-                    //var centered = _3dObjectHelpers.CenterObjectAt(inhabitant, inhabitant.CrashBoxes[0].First());
-                    var rotatedCrashboxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation, (Vector3)inhabitant.Position, inhabitantWorldOffset);
-                    var rotatedOtherCrashboxes = RotateAllCrashboxes(otherInhabitant.CrashBoxes, (Vector3)otherInhabitant.Rotation, (Vector3)otherInhabitant.Position, otherWorldOffset);
+                    var rotatedCrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation, (Vector3)inhabitant.Position, inhabitantWorldOffset);
+                    var rotatedOtherCrashBoxes = RotateAllCrashboxes(otherInhabitant.CrashBoxes, (Vector3)otherInhabitant.Rotation, (Vector3)otherInhabitant.Position, otherWorldOffset);
 
-                    foreach (var crashbox in rotatedCrashboxes)
+                    var surfaceTriangle = inhabitant?.ParentSurface?.RotatedSurfaceTriangles.Find(tri => tri.landBasedPosition == inhabitant.SurfaceBasedId);
+
+                    foreach (var crashBox in rotatedCrashBoxes)
                     {
-                        foreach (var otherCrashbox in rotatedOtherCrashboxes)
+                        foreach (var otherCrashBox in rotatedOtherCrashBoxes)
                         {
                             Logger.Log($"[Check] {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
 
-                            var yMin1 = crashbox.Min(p => p.y);
-                            var yMax1 = crashbox.Max(p => p.y);
-                            var yMin2 = otherCrashbox.Min(p => p.y);
-                            var yMax2 = otherCrashbox.Max(p => p.y);
+                            var yMin1 = crashBox.Min(p => p.y);
+                            var yMax1 = crashBox.Max(p => p.y);
+                            var yMin2 = otherCrashBox.Min(p => p.y);
+                            var yMax2 = otherCrashBox.Max(p => p.y);
 
-                            var xMin1 = crashbox.Min(p => p.x);
-                            var xMax1 = crashbox.Max(p => p.x);
-                            var xMin2 = otherCrashbox.Min(p => p.x);
-                            var xMax2 = otherCrashbox.Max(p => p.x);
+                            var xMin1 = crashBox.Min(p => p.x);
+                            var xMax1 = crashBox.Max(p => p.x);
+                            var xMin2 = otherCrashBox.Min(p => p.x);
+                            var xMax2 = otherCrashBox.Max(p => p.x);
 
-                            var zMin1 = crashbox.Min(p => p.z);
-                            var zMax1 = crashbox.Max(p => p.z);
-                            var zMin2 = otherCrashbox.Min(p => p.z);
-                            var zMax2 = otherCrashbox.Max(p => p.z);
+                            var zMin1 = crashBox.Min(p => p.z);
+                            var zMax1 = crashBox.Max(p => p.z);
+                            var zMin2 = otherCrashBox.Min(p => p.z);
+                            var zMax2 = otherCrashBox.Max(p => p.z);
 
                             Logger.Log($"Y-range: [{yMin1}–{yMax1}] vs [{yMin2}–{yMax2}]");
                             Logger.Log($"X-range: [{xMin1}–{xMax1}] vs [{xMin2}–{xMax2}]");
                             Logger.Log($"Z-range: [{zMin1}–{zMax1}] vs [{zMin2}–{zMax2}]");
 
-                            LogCrashbox("Inhabitant Box", crashbox);
-                            LogCrashbox("Other Box", otherCrashbox);
+                            LogCrashbox("Inhabitant Box", crashBox);
+                            LogCrashbox("Other Box", otherCrashBox);
 
-                            if (_3dObjectHelpers.CheckCollisionBoxVsBox(crashbox, otherCrashbox))
+                            //Surfacebased Crashboxes must be centered and put on top of the surface
+                            //CenterCrashBoxIfSurfaceBased(inhabitant, crashBox);
+                            //CenterCrashBoxIfSurfaceBased(otherInhabitant, otherCrashBox);
+
+                            if (_3dObjectHelpers.CheckCollisionBoxVsBox(crashBox, otherCrashBox))
                             {
                                 Logger.Log($"[COLLISION] {inhabitant.ObjectName} <-> {otherInhabitant.ObjectName}");
                                 inhabitant.HasCrashed = true;
@@ -90,6 +95,16 @@ namespace _3dTesting.Helpers
                     }
                 }
             });
+        }
+
+        private static void CenterCrashBoxIfSurfaceBased(_3dObject obj, List<Vector3> box)
+        {
+            if (obj?.SurfaceBasedId > 0)
+            {
+                var tri = obj.ParentSurface?.RotatedSurfaceTriangles.Find(t => t.landBasedPosition == obj.SurfaceBasedId);
+                if (tri != null)
+                    _3dObjectHelpers.CenterCrashBoxAt(box, tri.vert1);
+            }
         }
 
         private static void LogCrashbox(string label, List<Vector3> box)
@@ -103,6 +118,8 @@ namespace _3dTesting.Helpers
         public static bool IsStatic(string objectName) =>
             objectName == "Tree" || objectName == "Surface" || objectName == "House";
 
+
+        //TODO: Must do some changes here, to center correctly we need to add the world positions and offsets in the end
         private static List<List<Vector3>> RotateAllCrashboxes(List<List<IVector3>> crashboxes, Vector3 rotation, Vector3 position, Vector3 worldPosition)
         {
             var rotatedCrashboxes = new List<List<Vector3>>(crashboxes.Count);

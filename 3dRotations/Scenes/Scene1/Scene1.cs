@@ -28,6 +28,7 @@ namespace _3dRotations.Scene.Scene1
             ship.ObjectName = "Ship";
             world.WorldInhabitants.Add(ship);
 
+            /*
             //Add three seeders
             var seeder = Seeder.CreateSeeder(Surface);
             //Initialize the seeder rotation
@@ -54,7 +55,7 @@ namespace _3dRotations.Scene.Scene1
             seeder3.Position = new Vector3 { x = -150, y = -100, z = 0 };
             seeder3.ObjectName = "Seeder";
             seeder3.Movement = new SeederControls();
-            world.WorldInhabitants.Add(seeder3);
+            world.WorldInhabitants.Add(seeder3);*/
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(Surface.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
             foreach (var treePlacement in treePlacements)

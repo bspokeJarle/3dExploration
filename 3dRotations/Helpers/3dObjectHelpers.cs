@@ -19,8 +19,8 @@ namespace _3dTesting.Helpers
             if (inhabitant.SurfaceBasedId > 0)
             {
                 var surfaceTriangle = inhabitant?.ParentSurface?.RotatedSurfaceTriangles.Find(tri => tri.landBasedPosition == inhabitant.SurfaceBasedId) as TriangleMeshWithColor;
-                Logger.Log($"[FindWorldPosition - Surfacebased position] {inhabitant.ObjectName} {inhabitant.SurfaceBasedId} X:{surfaceTriangle.vert1.x} Y:{surfaceTriangle.vert1.y} Z:{surfaceTriangle.vert1.z} ");
-                return MapIdToWorldPosition((int)inhabitant.SurfaceBasedId, inhabitant.ParentSurface.GlobalMapSize(), inhabitant.ParentSurface.TileSize(), surfaceTriangle, (Vector3)inhabitant.Position);
+                //Logger.Log($"[FindWorldPosition - Surfacebased position] {inhabitant.ObjectName} {inhabitant.SurfaceBasedId} X:{surfaceTriangle.vert1.x} Y:{surfaceTriangle.vert1.y} Z:{surfaceTriangle.vert1.z} ");
+                return MapIdToWorldPosition((int)inhabitant.SurfaceBasedId, inhabitant.ParentSurface.GlobalMapSize(), inhabitant.ParentSurface.TileSize(), surfaceTriangle);
             }
             if (inhabitant.ObjectName == "Ship")
             {
@@ -40,7 +40,7 @@ namespace _3dTesting.Helpers
             };
         }
 
-        public static Vector3 MapIdToWorldPosition(int mapId, int mapSize, int tileSize, TriangleMeshWithColor surfaceTriangle, Vector3 position)
+        public static Vector3 MapIdToWorldPosition(int mapId, int mapSize, int tileSize, TriangleMeshWithColor surfaceTriangle)
         {
             //Map SurfaceBasedId to world position
             int zeroBasedId = mapId - 1;
@@ -48,7 +48,8 @@ namespace _3dTesting.Helpers
             int col = zeroBasedId % mapSize;
 
             //The Y position needs to come from the surface triangle + the position y offsets, on X and Z position offsets comes from the object then is added to the calculation
-            return new Vector3(col * tileSize, surfaceTriangle.vert1.y, row * tileSize);
+            //TODO: Remove test offset
+            return new Vector3(col * tileSize, surfaceTriangle.vert1.y + 500, row * tileSize);
         }
 
         public static Vector3 GetCenterWorldPosition(Vector3 globalMapPosition, Vector3 localSurfacePosition, int screenPixels, int tileSize, Vector3 position)
@@ -118,30 +119,53 @@ namespace _3dTesting.Helpers
             return Math.Sqrt(dx * dx + dy * dy + dz * dz);
         }
 
- /*       public static void CenterCrashBoxesAt(I3dObject obj, IVector3 targetPosition)
+        public static void CenterCrashBoxAt(List<Vector3> crashBox, IVector3 targetPosition)
         {
-            if (obj == null || targetPosition == null)
+            if (crashBox == null || crashBox.Count == 0 || targetPosition == null)
                 return;
 
-            //Use offset from specified in the Scene
-            // Center the object at the bottom, meaning place it on top
-            IVector3 objectCenter = GetObjectGeometricCenter(obj, true);
+            IVector3 boxCenter = GetCrashBoxGeometricCenter(crashBox, snapToBottomY: true);
 
-            // Compute the shift required
-            float shiftX = targetPosition.x - objectCenter.x;
-            float shiftY = targetPosition.y - objectCenter.y;
-            float shiftZ = targetPosition.z - objectCenter.z;
+            float shiftX = targetPosition.x - boxCenter.x;
+            float shiftY = targetPosition.y - boxCenter.y;
+            float shiftZ = targetPosition.z - boxCenter.z;
 
-            foreach (var crashBox in obj.CrashBoxes)
+            for (int i = 0; i < crashBox.Count; i++)
             {
-                foreach (var triangle in crashBox)
+                var point = crashBox[i];
+                crashBox[i] = new Vector3
                 {
-                    triangle.x += shiftX;
-                    triangle.y += shiftY;
-                    triangle.z += shiftZ;
-                }
+                    x = point.x + shiftX,
+                    y = point.y + shiftY,
+                    z = point.z + shiftZ
+                };
             }
-        }*/
+        }
+
+        public static IVector3 GetCrashBoxGeometricCenter(List<Vector3> crashBox, bool snapToBottomY = false)
+        {
+            float sumX = 0, sumY = 0, sumZ = 0;
+            float minY = float.MaxValue;
+
+            foreach (var p in crashBox)
+            {
+                sumX += p.x;
+                sumY += p.y;
+                sumZ += p.z;
+                if (snapToBottomY)
+                    minY = Math.Min(minY, p.y);
+            }
+
+            int count = crashBox.Count;
+            if (count == 0) return new Vector3();
+
+            return new Vector3
+            {
+                x = sumX / count,
+                y = snapToBottomY ? minY : sumY / count,
+                z = sumZ / count
+            };
+        }
 
 
         public static void CenterObjectAt(I3dObject obj, IVector3 targetPosition)
@@ -233,25 +257,6 @@ namespace _3dTesting.Helpers
             var cosRes = Math.Cos(radian);
             return new CosSin { CosRes = (float)cosRes, SinRes = (float)sinRes };
         }
-        /* TODO: Remove???
-        public static bool CheckCollisionPointVsBox(Vector3 Point, List<Vector3> CrashBox)
-        {
-            //Idea comes from here https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
-            var MinX = CrashBox.Select(CrashBox => CrashBox.x).Min();
-            var MaxX = CrashBox.Select(CrashBox => CrashBox.x).Max();
-            var MinY = CrashBox.Select(CrashBox => CrashBox.y).Min();
-            var MaxY = CrashBox.Select(CrashBox => CrashBox.y).Max();
-            var MinZ = CrashBox.Select(CrashBox => CrashBox.z).Min();
-            var MaxZ = CrashBox.Select(CrashBox => CrashBox.z).Max();
-
-            if (Point.x >= MinX &&
-                Point.x <= MaxX &&
-                Point.y >= MinY &&
-                Point.y <= MaxY &&
-                Point.z >= MinZ &&
-                Point.z <= MaxZ) return true;
-            return false;
-        }*/
 
         public static bool CheckCollisionBoxVsBox(List<Vector3> boxA, List<Vector3> boxB)
         {
