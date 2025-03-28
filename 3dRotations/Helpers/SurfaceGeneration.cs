@@ -260,15 +260,16 @@ namespace _3dRotations.Helpers
         public static List<(int x, int y, int height)> FindTreePlacementAreas(SurfaceData[,] map, int mapSize, int tileSize, int maxHeight)
         {
             List<(int x, int y, int height)> treeLocations = new List<(int x, int y, int height)>();
-            int numberOfTrees = random.Next((int)(maxTrees * 0.95), maxTrees); // Slightly increased minimum
+            HashSet<(int x, int y)> used = new HashSet<(int x, int y)>();
+
+            int numberOfTrees = random.Next((int)(maxTrees * 0.95), maxTrees);
             var landingAreaCenter = GetLandingAreaCenter(map, mapSize, (int)(tileSize * 0.75));
             int landingX = landingAreaCenter.x;
             int landingY = landingAreaCenter.y;
 
             List<(int x, int y)> clusterCenters = new List<(int x, int y)>();
+            int spacing = 40;
 
-            // Grid-based attempt for even distribution
-            int spacing = 40; // Reduced spacing for more clusters
             for (int i = spacing / 2; i < mapSize; i += spacing)
             {
                 for (int j = spacing / 2; j < mapSize; j += spacing)
@@ -290,7 +291,6 @@ namespace _3dRotations.Helpers
 
             if (IncludeTestTreesInFrontOfPlatform)
             {
-                // Ensure at least 5-10 trees right in front of platform at sweet spot
                 int fixedX = 1274;
                 int fixedY = 1241;
                 for (int t = 0; t < 10; t++)
@@ -303,13 +303,13 @@ namespace _3dRotations.Helpers
                     if (height >= (int)(maxHeight * 0.15) && height < (int)(maxHeight * 0.6))
                     {
                         treeLocations.Add((px, py, height));
+                        used.Add((px, py));
                     }
                 }
 
                 clusterCenters.Insert(0, (landingX + random.Next(-20, 21), landingY + random.Next(10, 30)));
             }
 
-            // Ensure a minimum number of clusters
             int desiredClusters = numberOfTrees / clusterSizeMax;
             int clusterIndex = 0;
 
@@ -325,7 +325,7 @@ namespace _3dRotations.Helpers
                     int nx = cx + offsetX;
                     int ny = cy + offsetY;
 
-                    if (nx >= 10 && nx < mapSize - 10 && ny >= 10 && ny < mapSize - 10)
+                    if (nx >= 10 && nx < mapSize - 10 && ny >= 10 && ny < mapSize - 10 && !used.Contains((nx, ny)))
                     {
                         int height = map[nx, ny].mapDepth;
                         bool isAboveWater = height >= (int)(maxHeight * 0.18);
@@ -336,6 +336,7 @@ namespace _3dRotations.Helpers
                             Math.Abs(height - map[nx, ny + 1].mapDepth) < 12)
                         {
                             treeLocations.Add((nx, ny, height));
+                            used.Add((nx, ny));
                         }
                     }
                 }
@@ -343,6 +344,7 @@ namespace _3dRotations.Helpers
 
             return treeLocations;
         }
+
         public static List<(int x, int y, int height)> FindHousePlacementAreas(SurfaceData[,] map, int mapSize, int maxHeight, List<(int x, int y, int height)> existingTrees)
         {
             List<(int x, int y, int height)> houseLocations = new List<(int x, int y, int height)>();
@@ -369,6 +371,7 @@ namespace _3dRotations.Helpers
                     if (isFlat && isSuitable && houseLocations.Count < numberOfHouses)
                     {
                         houseLocations.Add((i, j, height));
+                        reserved.Add((i, j));
                     }
                 }
             }
@@ -389,6 +392,7 @@ namespace _3dRotations.Helpers
                         if (height >= (int)(maxHeight * 0.15) && height < (int)(maxHeight * 0.7))
                         {
                             houseLocations.Add((px, py, height));
+                            reserved.Add((px, py));
                         }
                     }
                 }
@@ -397,6 +401,8 @@ namespace _3dRotations.Helpers
             return houseLocations;
         }
 
+        // (Other unchanged methods omitted for brevity...)
+    
         public static (int x, int y) GetLandingAreaCenter(SurfaceData[,] map, int mapSize, int landingHeight)
         {
             for (int i = 0; i < mapSize; i++)

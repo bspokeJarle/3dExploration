@@ -11,24 +11,24 @@ namespace GameAiAndControls.Controls
     {
         // === CONFIGURATION ===
 
-        private const float MaxThrust = 10.0f;                   // Maximum thrust level
-        private const float ThrustIncreaseRate = 0.5f;           // Rate of thrust increase when Space is held
-        private const float GravityAcceleration = 0.3f;          // Acceleration from gravity per tick
-        private const float MaxFallSpeed = 4f;                   // Terminal fall velocity
-        private const float GravityMultiplier = 1.8f;            // Scales gravity strength dynamically
+        private const float MaxThrust = 10.0f;
+        private const float ThrustIncreaseRate = 0.5f;
+        private const float GravityAcceleration = 0.75f; // Increased further for stronger gravity
+        private const float MaxFallSpeed = 6.9f;          // Increased for faster falling
+        private const float GravityMultiplier = 1.8f;
 
-        private const int RotationStep = 5;                      // Angle change per key press
-        private const float DEG2RAD = MathF.PI / 180f;           // Conversion constant
-        private const int ShipCenterY = 0;                       // Visual Y-center for alignment
+        private const int RotationStep = 5;
+        private const float DEG2RAD = MathF.PI / 180f;
+        private const int ShipCenterY = 0;
 
-        private const float SpeedMultiplier = 2.2f;              // Controls horizontal movement speed
-        private const float HeightMultiplier = 0.8f;             // Controls vertical movement gain
-        private const float ThrustAccelerationRate = 12.0f;      // How quickly thrust ramps up when engaged
-        private const float InertiaDrag = 0.92f;                 // Damping applied to movement inertia
-        private const float MaxInertia = 9.0f;                   // Limits on stored inertia speed
+        private const float SpeedMultiplier = 5.6f;          // Increased for faster movement
+        private const float HeightMultiplier = 2.0f;         // Increased for more responsive height
+        private const float ThrustAccelerationRate = 30.0f;  // Increased for quicker thrust buildup
+        private const float InertiaDrag = 0.92f;
+        private const float MaxInertia = 9.0f;
 
-        private const float VerticalThrustSmoothing = 0.6f;      // Reduces height gain from small bursts
-        private const float VerticalLiftAcceleration = 0.06f;    // Gradual increase in vertical lift factor
+        private const float VerticalThrustSmoothing = 0.6f;
+        private const float VerticalLiftAcceleration = 0.15f; // Increased for quicker vertical lift ramp-up
 
         // === INTERNAL STATE ===
 
@@ -39,7 +39,8 @@ namespace GameAiAndControls.Controls
         private float thrustEffect = 0f;
         private float verticalLiftFactor = 0f;
 
-        // Input tracking
+        private DateTime lastUpdateTime = DateTime.Now;
+
         public int FormerMouseX = 0;
         public int FormerMouseY = 0;
         public int rotationX = 120;
@@ -148,11 +149,15 @@ namespace GameAiAndControls.Controls
 
         public I3dObject MoveObject(I3dObject theObject)
         {
+            var now = DateTime.Now;
+            float deltaTime = (float)(now - lastUpdateTime).TotalSeconds;
+            lastUpdateTime = now;
+
             ParentObject ??= theObject;
 
-            if (Thrust > 0) HandleThrust();
+            if (Thrust > 0) HandleThrust(deltaTime);
             if (ThrustOn) IncreaseThrustAndRelease();
-            if (Thrust == 0) ApplyGravity();
+            if (Thrust == 0) ApplyGravity(deltaTime);
             if (ParentObject.Particles?.Particles.Count > 0) ParentObject.Particles.MoveParticles();
 
             if (theObject.Position != null)
@@ -169,11 +174,10 @@ namespace GameAiAndControls.Controls
             return theObject;
         }
 
-        public void HandleThrust()
+        public void HandleThrust(float deltaTime)
         {
-            // Build up thrust over time and smooth vertical gain
-            thrustEffect = MathF.Min(thrustEffect + ThrustAccelerationRate, 1f);
-            verticalLiftFactor = MathF.Min(verticalLiftFactor + VerticalLiftAcceleration, 1f);
+            thrustEffect = MathF.Min(thrustEffect + ThrustAccelerationRate * deltaTime, 1f);
+            verticalLiftFactor = MathF.Min(verticalLiftFactor + VerticalLiftAcceleration * deltaTime, 1f);
 
             float forwardFactor = MathF.Sin(rotationX * DEG2RAD);
             float upwardFactor = MathF.Cos(rotationX * DEG2RAD);
@@ -181,11 +185,10 @@ namespace GameAiAndControls.Controls
             float speedFactor = MathF.Pow(MathF.Abs(forwardFactor), 1.2f);
             float verticalFactor = MathF.Max(0, 1 - MathF.Abs(forwardFactor));
 
-            var zForce = Thrust * thrustEffect * SpeedMultiplier * speedFactor * MathF.Cos(rotationY * DEG2RAD);
-            var xForce = Thrust * thrustEffect * SpeedMultiplier * speedFactor * MathF.Sin(rotationY * DEG2RAD);
-            var yDiff = Thrust * verticalLiftFactor * HeightMultiplier * verticalFactor * VerticalThrustSmoothing;
+            var zForce = Thrust * thrustEffect * SpeedMultiplier * speedFactor * MathF.Cos(rotationY * DEG2RAD) * deltaTime;
+            var xForce = Thrust * thrustEffect * SpeedMultiplier * speedFactor * MathF.Sin(rotationY * DEG2RAD) * deltaTime;
+            var yDiff = Thrust * verticalLiftFactor * HeightMultiplier * verticalFactor * VerticalThrustSmoothing * deltaTime;
 
-            // Accumulate inertia
             inertiaX += xForce;
             inertiaZ += -zForce;
 
@@ -200,7 +203,6 @@ namespace GameAiAndControls.Controls
             ParentObject.ParentSurface.GlobalMapPosition.x = GetWrappedPosition(ParentObject.ParentSurface.GlobalMapPosition.x, inertiaX, 75, maxX);
             ParentObject.ParentSurface.GlobalMapPosition.z = GetWrappedPosition(ParentObject.ParentSurface.GlobalMapPosition.z, inertiaZ, 0, maxZ);
 
-            // Y-position follows ship until centered, then moves background instead
             float delta = ShipCenterY - ParentObject.Position.y;
             if (Math.Abs(delta) > 2f)
             {
@@ -217,13 +219,12 @@ namespace GameAiAndControls.Controls
             return MathF.Min(MathF.Max(value, min), max);
         }
 
-        public void ApplyGravity()
+        public void ApplyGravity(float deltaTime)
         {
             if (!ThrustOn)
             {
-                // Sinusmodulert tyngdekraft for mer realistisk fall
                 float gravityModifier = Clamp(MathF.Sin((rotationX % 180) * DEG2RAD), 0.3f, 1.0f);
-                float adjustedGravity = GravityAcceleration * gravityModifier * GravityMultiplier;
+                float adjustedGravity = GravityAcceleration * gravityModifier * GravityMultiplier * deltaTime;
 
                 fallVelocity = Math.Min(fallVelocity + adjustedGravity, MaxFallSpeed);
                 ParentObject.Position.y += fallVelocity;
@@ -240,7 +241,7 @@ namespace GameAiAndControls.Controls
             else
             {
                 float upwardFactor = MathF.Cos(rotationX * DEG2RAD);
-                float thrustLift = Thrust * upwardFactor * 0.75f;
+                float thrustLift = Thrust * upwardFactor * 0.75f * deltaTime;
                 fallVelocity = Math.Max(fallVelocity - thrustLift, 0f);
             }
         }

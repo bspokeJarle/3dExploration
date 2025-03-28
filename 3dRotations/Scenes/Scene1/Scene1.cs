@@ -5,6 +5,8 @@ using static Domain._3dSpecificsImplementations;
 using GameAiAndControls.Controls;
 using _3dRotations.Helpers;
 using System.Diagnostics;
+using Domain;
+using System.Collections.Generic;
 
 namespace _3dRotations.Scene.Scene1
 {
@@ -21,7 +23,7 @@ namespace _3dRotations.Scene.Scene1
             //Test if this makes the ship tilt and rotate like it should
             ship.RotationOffsetY = 65;
             ship.Rotation = new Vector3 { };
-            ship.WorldPosition = new Vector3 {};
+            ship.WorldPosition = new Vector3 { };
             ship.Position = new Vector3 { };
             ship.ObjectName = "Ship";
             world.WorldInhabitants.Add(ship);
@@ -39,7 +41,7 @@ namespace _3dRotations.Scene.Scene1
             var seeder2 = Seeder.CreateSeeder(Surface);
             //Initialize the seeder rotation
             seeder2.Rotation = new Vector3 { };
-            seeder2.WorldPosition = new Vector3 { x = 93250, y = 0, z = 92000 };
+            seeder2.WorldPosition = new Vector3 { x = 93750, y = 0, z = 93000 };
             seeder2.Position = new Vector3 { x = -150, y = -100, z = 0 };
             seeder2.ObjectName = "Seeder";
             seeder2.Movement = new SeederControls();
@@ -57,7 +59,7 @@ namespace _3dRotations.Scene.Scene1
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(Surface.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
             foreach (var treePlacement in treePlacements)
             {
-                Debug.WriteLine($"Tree placement: {treePlacement.x} {treePlacement.y}");
+                //Debug.WriteLine($"Tree placement: {treePlacement.x} {treePlacement.y}");
                 //TODO: We need design more trees
                 var tree = Tree.CreateTree(Surface);
                 //The tree don't need a world position, it's a surface based object
@@ -73,7 +75,7 @@ namespace _3dRotations.Scene.Scene1
             var housePlacements = SurfaceGeneration.FindHousePlacementAreas(Surface.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements);
             foreach (var housePlacement in housePlacements)
             {
-                Debug.WriteLine($"House placement: {housePlacement.x} {housePlacement.y}");
+                //Debug.WriteLine($"House placement: {housePlacement.x} {housePlacement.y}");
 
                 var house = House.CreateHouse(Surface);
                 //Initialize the house rotation
@@ -98,7 +100,14 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Add crashboxes to the surface, add more crashboxes to the surface for large objects (Mountains etc)
-            surfaceObject.CrashBoxes = new System.Collections.Generic.List<System.Collections.Generic.List<Domain.IVector3>> { new System.Collections.Generic.List<Domain.IVector3> { new Vector3 { x = -625, y = 250, z = -625 }, new Vector3 { x = 625, y = 550, z = 625 } } };
+            surfaceObject.CrashBoxes = new List<List<IVector3>>
+            {
+                new List<IVector3>
+                {
+                    new Vector3 { x = -750, y = -200, z = -750 },  // Mer negativ Y = strekker seg under bakken
+                    new Vector3 { x = 750, y = 800, z = 750 }      // Høyere topp og større XZ-spenn
+                }
+            };
             surfaceObject.Movement = new GroundControls();
             surfaceObject.ParentSurface = Surface;
             world.WorldInhabitants.Add(surfaceObject);

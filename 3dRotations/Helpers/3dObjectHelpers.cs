@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json.Nodes;
 using System.Windows.Documents;
 using static Domain._3dSpecificsImplementations;
 
@@ -12,6 +13,59 @@ namespace _3dTesting.Helpers
 {
     public static class _3dObjectHelpers
     {
+        public static Vector3 FindWorldPosition(_3dObject inhabitant)
+        {
+            //Absolute world position in the map for static and dynamic objects
+            if (inhabitant.SurfaceBasedId > 0)
+            {
+                var surfaceTriangle = inhabitant?.ParentSurface?.RotatedSurfaceTriangles.Find(tri => tri.landBasedPosition == inhabitant.SurfaceBasedId) as TriangleMeshWithColor;
+                Logger.Log($"[FindWorldPosition - Surfacebased position] {inhabitant.ObjectName} {inhabitant.SurfaceBasedId} X:{surfaceTriangle.vert1.x} Y:{surfaceTriangle.vert1.y} Z:{surfaceTriangle.vert1.z} ");
+                return MapIdToWorldPosition((int)inhabitant.SurfaceBasedId, inhabitant.ParentSurface.GlobalMapSize(), inhabitant.ParentSurface.TileSize(), surfaceTriangle, (Vector3)inhabitant.Position);
+            }
+            if (inhabitant.ObjectName == "Ship")
+            {
+                return GetCenterWorldPosition(
+                    inhabitant.ParentSurface.GlobalMapPosition,
+                    inhabitant.ParentSurface.GlobalMapPosition,
+                    inhabitant.ParentSurface.SurfaceWidth(),
+                    inhabitant.ParentSurface.TileSize(),
+                    (Vector3)inhabitant.Position);
+            }
+            return new Vector3
+            {
+                //TODO: Remove the position adding here, should only be world position
+                x = inhabitant.ParentSurface.GlobalMapPosition.x + inhabitant.Position.x,
+                y = inhabitant.ParentSurface.GlobalMapPosition.y + inhabitant.Position.y,
+                z = inhabitant.ParentSurface.GlobalMapPosition.z + inhabitant.Position.z
+            };
+        }
+
+        public static Vector3 MapIdToWorldPosition(int mapId, int mapSize, int tileSize, TriangleMeshWithColor surfaceTriangle, Vector3 position)
+        {
+            //Map SurfaceBasedId to world position
+            int zeroBasedId = mapId - 1;
+            int row = zeroBasedId / mapSize;
+            int col = zeroBasedId % mapSize;
+
+            //The Y position needs to come from the surface triangle + the position y offsets, on X and Z position offsets comes from the object then is added to the calculation
+            return new Vector3(col * tileSize, surfaceTriangle.vert1.y, row * tileSize);
+        }
+
+        public static Vector3 GetCenterWorldPosition(Vector3 globalMapPosition, Vector3 localSurfacePosition, int screenPixels, int tileSize, Vector3 position)
+        {
+            float tilesPerScreen = screenPixels / (float)tileSize;
+            float halfTiles = tilesPerScreen / 2f;
+
+            return new Vector3
+            {
+                x = globalMapPosition.x + halfTiles * tileSize,
+                //TODO:
+                //Use an offset on +300 to make the ship able to crash with surface... Why the offset though?
+                y = position.y + 300,
+                z = globalMapPosition.z + halfTiles * tileSize
+            };
+        }
+
         public static IVector3 GetLocalWorldPosition(this _3dObject inhabitant)
         {
             var globalMapPosition = inhabitant.ParentSurface.GlobalMapPosition;
@@ -64,6 +118,31 @@ namespace _3dTesting.Helpers
             return Math.Sqrt(dx * dx + dy * dy + dz * dz);
         }
 
+ /*       public static void CenterCrashBoxesAt(I3dObject obj, IVector3 targetPosition)
+        {
+            if (obj == null || targetPosition == null)
+                return;
+
+            //Use offset from specified in the Scene
+            // Center the object at the bottom, meaning place it on top
+            IVector3 objectCenter = GetObjectGeometricCenter(obj, true);
+
+            // Compute the shift required
+            float shiftX = targetPosition.x - objectCenter.x;
+            float shiftY = targetPosition.y - objectCenter.y;
+            float shiftZ = targetPosition.z - objectCenter.z;
+
+            foreach (var crashBox in obj.CrashBoxes)
+            {
+                foreach (var triangle in crashBox)
+                {
+                    triangle.x += shiftX;
+                    triangle.y += shiftY;
+                    triangle.z += shiftZ;
+                }
+            }
+        }*/
+
 
         public static void CenterObjectAt(I3dObject obj, IVector3 targetPosition)
         {
@@ -80,7 +159,6 @@ namespace _3dTesting.Helpers
             float shiftZ = targetPosition.z - objectCenter.z;
 
             //Debug.WriteLine($"Targetx:{targetPosition.x} Targety:{targetPosition.y} Targetz:{targetPosition.z}");
-
             // Move all object parts accordingly
             foreach (var part in obj.ObjectParts)
             {
@@ -155,6 +233,7 @@ namespace _3dTesting.Helpers
             var cosRes = Math.Cos(radian);
             return new CosSin { CosRes = (float)cosRes, SinRes = (float)sinRes };
         }
+        /* TODO: Remove???
         public static bool CheckCollisionPointVsBox(Vector3 Point, List<Vector3> CrashBox)
         {
             //Idea comes from here https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
@@ -172,30 +251,21 @@ namespace _3dTesting.Helpers
                 Point.z >= MinZ &&
                 Point.z <= MaxZ) return true;
             return false;
-        }
+        }*/
 
-        public static bool CheckCollisionBoxVsBox(List<Vector3> CheckBox, List<Vector3> CrashBox)
+        public static bool CheckCollisionBoxVsBox(List<Vector3> boxA, List<Vector3> boxB)
         {
-            //Go through all points of the CheckBox and check if they are inside the CrashBox
-            foreach (var Point in CheckBox)
-            {
-                //Idea comes from here https://developer.mozilla.org/en-US/docs/Games/Techniques/3D_collision_detection
-                var MinX = CrashBox.Select(CrashBox => CrashBox.x).Min();
-                var MaxX = CrashBox.Select(CrashBox => CrashBox.x).Max();
-                var MinY = CrashBox.Select(CrashBox => CrashBox.y).Min();
-                var MaxY = CrashBox.Select(CrashBox => CrashBox.y).Max();
-                var MinZ = CrashBox.Select(CrashBox => CrashBox.z).Min();
-                var MaxZ = CrashBox.Select(CrashBox => CrashBox.z).Max();
+            var minA = new Vector3(boxA.Min(p => p.x), boxA.Min(p => p.y), boxA.Min(p => p.z));
+            var maxA = new Vector3(boxA.Max(p => p.x), boxA.Max(p => p.y), boxA.Max(p => p.z));
 
-                if (Point.x >= MinX &&
-                    Point.x <= MaxX &&
-                    Point.y >= MinY &&
-                    Point.y <= MaxY &&
-                    Point.z >= MinZ &&
-                    Point.z <= MaxZ) return true;
+            var minB = new Vector3(boxB.Min(p => p.x), boxB.Min(p => p.y), boxB.Min(p => p.z));
+            var maxB = new Vector3(boxB.Max(p => p.x), boxB.Max(p => p.y), boxB.Max(p => p.z));
 
-            }
-            return false;
+            bool overlapX = maxA.x >= minB.x && minA.x <= maxB.x;
+            bool overlapY = maxA.y >= minB.y && minA.y <= maxB.y;
+            bool overlapZ = maxA.z >= minB.z && minA.z <= maxB.z;
+
+            return overlapX && overlapY && overlapZ;
         }
 
         public static float GetDeepestZ(ITriangleMeshWithColor triangle)
@@ -344,7 +414,11 @@ namespace _3dTesting.Helpers
                         ObjectParts = objectParts.Cast<I3dObjectPart>().ToList(),
                         Movement = inhabitant.Movement,
                         Particles = inhabitant.Particles,
-                        CrashBoxes = inhabitant.CrashBoxes,
+                        CrashBoxes = inhabitant.CrashBoxes
+                          .Select(innerList => innerList
+                              .Select(v => new Vector3 { x = v.x, y = v.y, z = v.z } as IVector3)
+                              .ToList())
+                          .ToList(),
                         HasCrashed = inhabitant.HasCrashed,
                         Mass = inhabitant.Mass,
                         ObjectName = inhabitant.ObjectName,

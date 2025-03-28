@@ -11,6 +11,7 @@ using System.Windows.Input;
 using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
 using _3dTesting.Rendering;
+using _3dTesting._3dWorld;
 
 namespace _3dTesting
 {
@@ -49,6 +50,10 @@ namespace _3dTesting
 
         public MainWindow()
         {
+            //Turn this on when debugging
+            Logger.EnableFileLogging = true;
+            Logger.ClearLog();
+
             InitializeComponent();
             this.PreviewKeyDown += new KeyEventHandler(HandleEsc);
 
@@ -95,7 +100,9 @@ namespace _3dTesting
             frameCount++;
             if (stopwatch.ElapsedMilliseconds >= 1000)
             {
-                Dispatcher.Invoke(() => FpsText.Text = $"FPS: {frameCount} Triangles:{worldRenderer.GetRenderingTriangleCount()}");
+                Dispatcher.Invoke(() =>
+                    FpsText.Text = $"FPS: {frameCount} Triangles:{worldRenderer.GetRenderingTriangleCount()} { gameWorldManager.DebugMessage }"
+                ) ;
                 frameCount = 0;
                 stopwatch.Restart();
             }

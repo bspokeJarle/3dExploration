@@ -8,6 +8,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting.MainWindowClasses
@@ -17,12 +18,14 @@ namespace _3dTesting.MainWindowClasses
         private readonly _3dTo2d From3dTo2d = new();
         private readonly _3dRotate Rotate3d = new();
         private readonly ParticleManager particleManager = new();
+        public string DebugMessage { get; set; }
 
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world)
         {
             var activeWorld = _3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants);
             var particleObjectList = new List<_3dObject>();
             var renderedList = new ConcurrentBag<_3dObject>(); // ✅ Use thread-safe collection
+            DebugMessage = string.Empty;
 
             Parallel.ForEach(activeWorld, inhabitant =>
             {
@@ -71,11 +74,18 @@ namespace _3dTesting.MainWindowClasses
                 Parallel.ForEach(inhabitant.ObjectParts, part =>
                 {
                     part.Triangles = RotateMesh(part.Triangles, (Vector3)inhabitant.Rotation);
-                    if (inhabitant.ObjectName == "Surface")
-                        inhabitant.ParentSurface.RotatedSurfaceTriangles = part.Triangles;
-
+                    if (inhabitant.ObjectName == "Surface") inhabitant.ParentSurface.RotatedSurfaceTriangles = part.Triangles;
                     SetMovementGuides(inhabitant, part, part.Triangles);
                 });
+
+                if (inhabitant.ObjectName == "Surface")
+                {
+                     DebugMessage += $" Surface: Y Pos: {inhabitant.Position.y}";
+                }
+                if (inhabitant.ObjectName == "Ship")
+                {
+                    DebugMessage += $" Ship: Y Pos: {inhabitant.Position.y + 300}";
+                }
 
                 // ✅ Optimize centroid calculation
                 if (hasRotationOffset)
@@ -108,7 +118,8 @@ namespace _3dTesting.MainWindowClasses
             });
 
             if (particleObjectList.Count > 0) activeWorld.AddRange(particleObjectList);
-            CrashDetection.HandleCrashboxes(renderedList.ToList()); // ✅ Convert to List once
+            var safeSnapshotForCollision = _3dObjectHelpers.DeepCopy3dObjects(renderedList.ToList());
+            CrashDetection.HandleCrashboxes(safeSnapshotForCollision); // ✅ Convert to List once
             return From3dTo2d.convertTo2dFromObjects(activeWorld);
         }
 
