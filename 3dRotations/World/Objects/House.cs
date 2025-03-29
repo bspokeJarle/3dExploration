@@ -261,12 +261,16 @@ namespace _3dRotations.World.Objects
 
         public static List<List<IVector3>>? HouseCrashBoxes()
         {
+            float expandX = houseWidth * 0.1f;
+            float expandY = houseDepth * 0.1f;
+            float expandZ = (houseHeight + roofHeight) * 0.1f;
+
             return new List<List<IVector3>>
             {
                 new List<IVector3>
                 {
-                    new Vector3 { x = -houseWidth / 2, y = -houseDepth / 2, z = 0 },
-                    new Vector3 { x = houseWidth / 2, y = houseDepth / 2, z = houseHeight + roofHeight }
+                    new Vector3 { x = -houseWidth / 2 - expandX, y = -houseDepth / 2 - expandY, z = 0 },
+                    new Vector3 { x = houseWidth / 2 + expandX, y = houseDepth / 2 + expandY, z = houseHeight + roofHeight + expandZ }
                 }
             };
         }

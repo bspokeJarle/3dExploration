@@ -13,7 +13,7 @@ namespace _3dTesting.Helpers
 {
     public static class _3dObjectHelpers
     {
-        public static Vector3 FindWorldPosition(_3dObject inhabitant)
+ /*       public static Vector3 FindWorldPosition(_3dObject inhabitant)
         {
             //Absolute world position in the map for static and dynamic objects
             if (inhabitant.SurfaceBasedId > 0)
@@ -38,9 +38,9 @@ namespace _3dTesting.Helpers
                 y = inhabitant.ParentSurface.GlobalMapPosition.y + inhabitant.Position.y,
                 z = inhabitant.ParentSurface.GlobalMapPosition.z + inhabitant.Position.z
             };
-        }
+        }*/
 
-        public static Vector3 MapIdToWorldPosition(int mapId, int mapSize, int tileSize, TriangleMeshWithColor surfaceTriangle)
+       /* public static Vector3 MapIdToWorldPosition(int mapId, int mapSize, int tileSize, TriangleMeshWithColor surfaceTriangle)
         {
             //Map SurfaceBasedId to world position
             int zeroBasedId = mapId - 1;
@@ -50,7 +50,7 @@ namespace _3dTesting.Helpers
             //The Y position needs to come from the surface triangle + the position y offsets, on X and Z position offsets comes from the object then is added to the calculation
             //TODO: Remove test offset
             return new Vector3(col * tileSize, surfaceTriangle.vert1.y + 500, row * tileSize);
-        }
+        }*/
 
         public static Vector3 GetCenterWorldPosition(Vector3 globalMapPosition, Vector3 localSurfacePosition, int screenPixels, int tileSize, Vector3 position)
         {
@@ -119,7 +119,7 @@ namespace _3dTesting.Helpers
             return Math.Sqrt(dx * dx + dy * dy + dz * dz);
         }
 
-        public static void CenterCrashBoxAt(List<Vector3> crashBox, IVector3 targetPosition)
+        /*public static void CenterCrashBoxAt(List<Vector3> crashBox, IVector3 targetPosition)
         {
             if (crashBox == null || crashBox.Count == 0 || targetPosition == null)
                 return;
@@ -140,8 +140,8 @@ namespace _3dTesting.Helpers
                     z = point.z + shiftZ
                 };
             }
-        }
-
+        }*/
+        /*
         public static IVector3 GetCrashBoxGeometricCenter(List<Vector3> crashBox, bool snapToBottomY = false)
         {
             float sumX = 0, sumY = 0, sumZ = 0;
@@ -166,7 +166,7 @@ namespace _3dTesting.Helpers
                 z = sumZ / count
             };
         }
-
+        */
 
         public static void CenterObjectAt(I3dObject obj, IVector3 targetPosition)
         {
@@ -182,8 +182,6 @@ namespace _3dTesting.Helpers
             float shiftY = targetPosition.y - objectCenter.y;
             float shiftZ = targetPosition.z - objectCenter.z;
 
-            //Debug.WriteLine($"Targetx:{targetPosition.x} Targety:{targetPosition.y} Targetz:{targetPosition.z}");
-            // Move all object parts accordingly
             foreach (var part in obj.ObjectParts)
             {
                 foreach (var triangle in part.Triangles)
@@ -199,9 +197,6 @@ namespace _3dTesting.Helpers
                     triangle.vert3.x += shiftX;
                     triangle.vert3.y += shiftY;
                     triangle.vert3.z += shiftZ;
-                    //Debug.WriteLine($"vert1x:{triangle.vert1.x} vert1y:{triangle.vert1.y} vert1z:{triangle.vert1.z}");
-                    //Debug.WriteLine($"vert2x:{triangle.vert2.x} vert2y:{triangle.vert2.y} vert2z:{triangle.vert2.z}");
-                    //Debug.WriteLine($"vert2x:{triangle.vert3.x} vert3y:{triangle.vert3.y} vert3z:{triangle.vert3.z}");
                 }
             }
         }
@@ -241,10 +236,10 @@ namespace _3dTesting.Helpers
             };
         }
 
-        public static TriangleMeshWithColor MapFromVector3ToTMesh(this Vector3 coord)
+        /*public static TriangleMeshWithColor MapFromVector3ToTMesh(this Vector3 coord)
         {
             return new TriangleMeshWithColor { vert1 = coord, vert2 = coord, vert3 = coord };
-        }
+        }*/
         public struct CosSin
         {
             public float CosRes { get; set; }

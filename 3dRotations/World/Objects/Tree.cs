@@ -21,7 +21,7 @@ namespace _3dRotations.World.Objects
             if (trunkTriangles != null)
                 tree.ObjectParts.Add(new _3dObjectPart { PartName = "TreeTrunk", Triangles = trunkTriangles, IsVisible = true });
 
-             if (foliageTriangles != null)
+            if (foliageTriangles != null)
                 tree.ObjectParts.Add(new _3dObjectPart { PartName = "TreeFoliage", Triangles = foliageTriangles, IsVisible = true });
 
             tree.Position = new Vector3 { };
@@ -92,34 +92,38 @@ namespace _3dRotations.World.Objects
 
         public static List<List<IVector3>>? TreeCrashBoxes()
         {
+            float trunkExpand = trunkRadius * 1.2f;
+            float foliageExpand = foliageBaseRadius * 1.2f;
+            float foliageHeightExpanded = foliageHeight * 1.2f;
+
             return new List<List<IVector3>>
             {
                 // Trunk base crash box
                 new List<IVector3>
                 {
-                    new Vector3 { x = -trunkRadius, y = -trunkRadius, z = 0 },
-                    new Vector3 { x = trunkRadius, y = trunkRadius, z = trunkHeight / 2 }
+                    new Vector3 { x = -trunkExpand, y = -trunkExpand, z = 0 },
+                    new Vector3 { x = trunkExpand, y = trunkExpand, z = trunkHeight / 2 }
                 },
 
                 // Mid trunk crash box
                 new List<IVector3>
                 {
-                    new Vector3 { x = -trunkRadius - 1, y = -trunkRadius - 1, z = trunkHeight / 2 },
-                    new Vector3 { x = trunkRadius + 1, y = trunkRadius + 1, z = trunkHeight }
+                    new Vector3 { x = -trunkExpand - 1, y = -trunkExpand - 1, z = trunkHeight / 2 },
+                    new Vector3 { x = trunkExpand + 1, y = trunkExpand + 1, z = trunkHeight }
                 },
 
                 // Foliage base crash box
                 new List<IVector3>
                 {
-                    new Vector3 { x = -foliageBaseRadius, y = -foliageBaseRadius, z = trunkHeight },
-                    new Vector3 { x = foliageBaseRadius, y = foliageBaseRadius, z = trunkHeight + foliageHeight }
+                    new Vector3 { x = -foliageExpand, y = -foliageExpand, z = trunkHeight },
+                    new Vector3 { x = foliageExpand, y = foliageExpand, z = trunkHeight + foliageHeightExpanded }
                 },
 
                 // Upper foliage crash box
                 new List<IVector3>
                 {
-                    new Vector3 { x = -foliageBaseRadius / 2, y = -foliageBaseRadius / 2, z = trunkHeight + foliageHeight },
-                    new Vector3 { x = foliageBaseRadius / 2, y = foliageBaseRadius / 2, z = trunkHeight + foliageHeight * 1.5f }
+                    new Vector3 { x = -foliageExpand / 2, y = -foliageExpand / 2, z = trunkHeight + foliageHeightExpanded },
+                    new Vector3 { x = foliageExpand / 2, y = foliageExpand / 2, z = trunkHeight + foliageHeightExpanded * 1.5f }
                 }
             };
         }
