@@ -31,7 +31,7 @@ namespace _3dRotations.World.Objects
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotor", Triangles = jetMotorTriangle!, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotorDirectionGuide", Triangles = jetMotorDirectionGuide!, IsVisible = false });
 
-            ship.Position = new Vector3 { };
+            ship.ObjectOffsets = new Vector3 { };
             ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             ship.Movement = new ShipControls();    
             ship.Particles = new ParticlesAI();

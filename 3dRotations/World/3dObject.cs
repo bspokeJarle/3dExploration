@@ -11,7 +11,8 @@ namespace _3dTesting._3dWorld
         public int? RotationOffsetZ { get; set; }
         public IVector3? WorldPosition { get; set; }
         public IVector3? Rotation { get; set; }
-        public IVector3? Position { get; set; }
+        public IVector3? ObjectOffsets { get; set; }
+        public IVector3? CrashboxOffsets { get; set; }
         public IObjectMovement? Movement { get; set; }
         public IParticles? Particles { get; set; }
         public List<List<IVector3>> CrashBoxes { get; set; }

@@ -160,10 +160,10 @@ namespace GameAiAndControls.Controls
             if (Thrust == 0) ApplyGravity(deltaTime);
             if (ParentObject.Particles?.Particles.Count > 0) ParentObject.Particles.MoveParticles();
 
-            if (theObject.Position != null)
+            if (theObject.ObjectOffsets != null)
             {
-                theObject.Position.y = ParentObject.Position.y;
-                theObject.Position.z = zoom;
+                theObject.ObjectOffsets.y = ParentObject.ObjectOffsets.y;
+                theObject.ObjectOffsets.z = zoom;
             }
             if (theObject.Rotation != null)
             {
@@ -203,10 +203,10 @@ namespace GameAiAndControls.Controls
             ParentObject.ParentSurface.GlobalMapPosition.x = GetWrappedPosition(ParentObject.ParentSurface.GlobalMapPosition.x, inertiaX, 75, maxX);
             ParentObject.ParentSurface.GlobalMapPosition.z = GetWrappedPosition(ParentObject.ParentSurface.GlobalMapPosition.z, inertiaZ, 0, maxZ);
 
-            float delta = ShipCenterY - ParentObject.Position.y;
+            float delta = ShipCenterY - ParentObject.ObjectOffsets.y;
             if (Math.Abs(delta) > 2f)
             {
-                ParentObject.Position.y += delta * 0.1f + yDiff * 0.1f;
+                ParentObject.ObjectOffsets.y += delta * 0.1f + yDiff * 0.1f;
             }
             else
             {
@@ -227,7 +227,7 @@ namespace GameAiAndControls.Controls
                 float adjustedGravity = GravityAcceleration * gravityModifier * GravityMultiplier * deltaTime;
 
                 fallVelocity = Math.Min(fallVelocity + adjustedGravity, MaxFallSpeed);
-                ParentObject.Position.y += fallVelocity;
+                ParentObject.ObjectOffsets.y += fallVelocity;
 
                 if (ParentObject?.ParentSurface?.GlobalMapPosition.y > -75)
                 {

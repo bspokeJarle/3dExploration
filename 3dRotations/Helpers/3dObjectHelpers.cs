@@ -13,60 +13,6 @@ namespace _3dTesting.Helpers
 {
     public static class _3dObjectHelpers
     {
- /*       public static Vector3 FindWorldPosition(_3dObject inhabitant)
-        {
-            //Absolute world position in the map for static and dynamic objects
-            if (inhabitant.SurfaceBasedId > 0)
-            {
-                var surfaceTriangle = inhabitant?.ParentSurface?.RotatedSurfaceTriangles.Find(tri => tri.landBasedPosition == inhabitant.SurfaceBasedId) as TriangleMeshWithColor;
-                //Logger.Log($"[FindWorldPosition - Surfacebased position] {inhabitant.ObjectName} {inhabitant.SurfaceBasedId} X:{surfaceTriangle.vert1.x} Y:{surfaceTriangle.vert1.y} Z:{surfaceTriangle.vert1.z} ");
-                return MapIdToWorldPosition((int)inhabitant.SurfaceBasedId, inhabitant.ParentSurface.GlobalMapSize(), inhabitant.ParentSurface.TileSize(), surfaceTriangle);
-            }
-            if (inhabitant.ObjectName == "Ship")
-            {
-                return GetCenterWorldPosition(
-                    inhabitant.ParentSurface.GlobalMapPosition,
-                    inhabitant.ParentSurface.GlobalMapPosition,
-                    inhabitant.ParentSurface.SurfaceWidth(),
-                    inhabitant.ParentSurface.TileSize(),
-                    (Vector3)inhabitant.Position);
-            }
-            return new Vector3
-            {
-                //TODO: Remove the position adding here, should only be world position
-                x = inhabitant.ParentSurface.GlobalMapPosition.x + inhabitant.Position.x,
-                y = inhabitant.ParentSurface.GlobalMapPosition.y + inhabitant.Position.y,
-                z = inhabitant.ParentSurface.GlobalMapPosition.z + inhabitant.Position.z
-            };
-        }*/
-
-       /* public static Vector3 MapIdToWorldPosition(int mapId, int mapSize, int tileSize, TriangleMeshWithColor surfaceTriangle)
-        {
-            //Map SurfaceBasedId to world position
-            int zeroBasedId = mapId - 1;
-            int row = zeroBasedId / mapSize;
-            int col = zeroBasedId % mapSize;
-
-            //The Y position needs to come from the surface triangle + the position y offsets, on X and Z position offsets comes from the object then is added to the calculation
-            //TODO: Remove test offset
-            return new Vector3(col * tileSize, surfaceTriangle.vert1.y + 500, row * tileSize);
-        }*/
-
-        public static Vector3 GetCenterWorldPosition(Vector3 globalMapPosition, Vector3 localSurfacePosition, int screenPixels, int tileSize, Vector3 position)
-        {
-            float tilesPerScreen = screenPixels / (float)tileSize;
-            float halfTiles = tilesPerScreen / 2f;
-
-            return new Vector3
-            {
-                x = globalMapPosition.x + halfTiles * tileSize,
-                //TODO:
-                //Use an offset on +300 to make the ship able to crash with surface... Why the offset though?
-                y = position.y + 300,
-                z = globalMapPosition.z + halfTiles * tileSize
-            };
-        }
-
         public static IVector3 GetLocalWorldPosition(this _3dObject inhabitant)
         {
             var globalMapPosition = inhabitant.ParentSurface.GlobalMapPosition;
@@ -117,123 +63,6 @@ namespace _3dTesting.Helpers
             float dz = point1.z - point2.z;
 
             return Math.Sqrt(dx * dx + dy * dy + dz * dz);
-        }
-
-        /*public static void CenterCrashBoxAt(List<Vector3> crashBox, IVector3 targetPosition)
-        {
-            if (crashBox == null || crashBox.Count == 0 || targetPosition == null)
-                return;
-
-            IVector3 boxCenter = GetCrashBoxGeometricCenter(crashBox, snapToBottomY: true);
-
-            float shiftX = targetPosition.x - boxCenter.x;
-            float shiftY = targetPosition.y - boxCenter.y;
-            float shiftZ = targetPosition.z - boxCenter.z;
-
-            for (int i = 0; i < crashBox.Count; i++)
-            {
-                var point = crashBox[i];
-                crashBox[i] = new Vector3
-                {
-                    x = point.x + shiftX,
-                    y = point.y + shiftY,
-                    z = point.z + shiftZ
-                };
-            }
-        }*/
-        /*
-        public static IVector3 GetCrashBoxGeometricCenter(List<Vector3> crashBox, bool snapToBottomY = false)
-        {
-            float sumX = 0, sumY = 0, sumZ = 0;
-            float minY = float.MaxValue;
-
-            foreach (var p in crashBox)
-            {
-                sumX += p.x;
-                sumY += p.y;
-                sumZ += p.z;
-                if (snapToBottomY)
-                    minY = Math.Min(minY, p.y);
-            }
-
-            int count = crashBox.Count;
-            if (count == 0) return new Vector3();
-
-            return new Vector3
-            {
-                x = sumX / count,
-                y = snapToBottomY ? minY : sumY / count,
-                z = sumZ / count
-            };
-        }
-        */
-
-        public static void CenterObjectAt(I3dObject obj, IVector3 targetPosition)
-        {
-            if (obj == null || targetPosition == null)
-                return;
-
-            //Use offset from specified in the Scene
-            // Center the object at the bottom, meaning place it on top
-            IVector3 objectCenter = GetObjectGeometricCenter(obj,true);
-
-            // Compute the shift required
-            float shiftX = targetPosition.x - objectCenter.x;
-            float shiftY = targetPosition.y - objectCenter.y;
-            float shiftZ = targetPosition.z - objectCenter.z;
-
-            foreach (var part in obj.ObjectParts)
-            {
-                foreach (var triangle in part.Triangles)
-                {
-                    triangle.vert1.x += shiftX;
-                    triangle.vert1.y += shiftY;
-                    triangle.vert1.z += shiftZ;
-
-                    triangle.vert2.x += shiftX;
-                    triangle.vert2.y += shiftY;
-                    triangle.vert2.z += shiftZ;
-
-                    triangle.vert3.x += shiftX;
-                    triangle.vert3.y += shiftY;
-                    triangle.vert3.z += shiftZ;
-                }
-            }
-        }
-
-        public static IVector3 GetObjectGeometricCenter(I3dObject obj, bool snapToBottomY = false)
-        {
-            float sumX = 0, sumY = 0, sumZ = 0;
-            int count = 0;
-            float minY = float.MaxValue;
-
-            foreach (var part in obj.ObjectParts)
-            {
-                foreach (var triangle in part.Triangles)
-                {
-                    var vertices = new[] { triangle.vert1, triangle.vert2, triangle.vert3 };
-
-                    foreach (var v in vertices)
-                    {
-                        sumX += v.x;
-                        sumY += v.y;
-                        sumZ += v.z;
-                        count++;
-
-                        if (snapToBottomY)
-                            minY = Math.Min(minY, v.y);
-                    }
-                }
-            }
-
-            if (count == 0) return new Vector3();
-
-            return new Vector3
-            {
-                x = sumX / count,
-                y = snapToBottomY ? minY : sumY / count,
-                z = sumZ / count
-            };
         }
 
         /*public static TriangleMeshWithColor MapFromVector3ToTMesh(this Vector3 coord)
@@ -408,7 +237,8 @@ namespace _3dTesting.Helpers
 
                     return new _3dObject
                     {
-                        Position = new Vector3 { x = inhabitant.Position.x, y = inhabitant.Position.y, z = inhabitant.Position.z },
+                        ObjectOffsets = new Vector3 { x = inhabitant.ObjectOffsets.x, y = inhabitant.ObjectOffsets.y, z = inhabitant.ObjectOffsets.z },
+                        CrashboxOffsets = new Vector3 { x = inhabitant.CrashboxOffsets.x, y = inhabitant.CrashboxOffsets.y, z = inhabitant.CrashboxOffsets.z },
                         Rotation = new Vector3 { x = inhabitant.Rotation.x, y = inhabitant.Rotation.y, z = inhabitant.Rotation.z },
                         WorldPosition = new Vector3 { x = inhabitant.WorldPosition.x, y = inhabitant.WorldPosition.y, z = inhabitant.WorldPosition.z },
                         ObjectParts = objectParts.Cast<I3dObjectPart>().ToList(),
@@ -430,5 +260,5 @@ namespace _3dTesting.Helpers
                     };
                 }).ToList();
         }
-    }  
+    }
 }

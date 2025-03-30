@@ -24,7 +24,9 @@ namespace _3dRotations.Scene.Scene1
             ship.RotationOffsetY = 65;
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
-            ship.Position = new Vector3 { };
+            ship.ObjectOffsets = new Vector3 { };
+            //TODO: Find the right offsets for the ship
+            ship.CrashboxOffsets = new Vector3 { };
             ship.ObjectName = "Ship";
             world.WorldInhabitants.Add(ship);
 
@@ -67,7 +69,9 @@ namespace _3dRotations.Scene.Scene1
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tree.SurfaceBasedId = Surface.Global2DMap[treePlacement.y, treePlacement.x].mapId;
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tree.Position = new Vector3 { x = 75, y = 425 , z = 300 };
+                tree.ObjectOffsets = new Vector3 { x = 75, y = 425 , z = 300 };
+                //TODO need to find the right offsets for tree
+                tree.CrashboxOffsets = new Vector3 { x = 75, y = 425, z = 300 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
@@ -87,7 +91,9 @@ namespace _3dRotations.Scene.Scene1
                 //Alogrithm to find a good place for the trees and spread them around
                 //Temp fix now to get the tree on the surface
                 house.SurfaceBasedId = Surface.Global2DMap[housePlacement.y, housePlacement.x].mapId;
-                house.Position = new Vector3 { x = 75, y = 450, z = 300 };
+                house.ObjectOffsets = new Vector3 { x = 75, y = 450, z = 300 };
+                //TODO need to find the right offsets for house
+                house.CrashboxOffsets = new Vector3 { x = 75, y = 450, z = 300 };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
@@ -97,7 +103,8 @@ namespace _3dRotations.Scene.Scene1
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
-            surfaceObject.Position = new Vector3 { x = 75, y = 500, z = 300 };
+            surfaceObject.ObjectOffsets = new Vector3 { x = 75, y = 500, z = 300 };
+            surfaceObject.CrashboxOffsets = new Vector3 { x = 75, y = 500, z = 300 };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Add crashboxes to the surface, add more crashboxes to the surface for large objects (Mountains etc)

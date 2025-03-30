@@ -80,11 +80,11 @@ namespace _3dTesting.MainWindowClasses
 
                 if (inhabitant.ObjectName == "Surface")
                 {
-                     DebugMessage += $" Surface: Y Pos: {inhabitant.Position.y}";
+                     DebugMessage += $" Surface: Y Pos: {inhabitant.ObjectOffsets.y}";
                 }
                 if (inhabitant.ObjectName == "Ship")
                 {
-                    DebugMessage += $" Ship: Y Pos: {inhabitant.Position.y + 300}";
+                    DebugMessage += $" Ship: Y Pos: {inhabitant.ObjectOffsets.y + 300}";
                 }
 
                 // ✅ Optimize centroid calculation

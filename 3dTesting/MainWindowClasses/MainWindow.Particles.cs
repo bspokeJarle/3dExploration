@@ -36,11 +36,11 @@ namespace _3dTesting.MainWindowClasses
                     {
                         new _3dObjectPart { Triangles = new List<ITriangleMeshWithColor> { particleTriangle }, PartName = "Particle", IsVisible = true }
                     },
-                    Position = new Vector3
+                    ObjectOffsets = new Vector3
                     {
-                        x = inhabitant.Position.x + particle.Position.x,
-                        y = inhabitant.Position.y + particle.Position.y,
-                        z = inhabitant.Position.z + particle.Position.z
+                        x = inhabitant.ObjectOffsets.x + particle.Position.x,
+                        y = inhabitant.ObjectOffsets.y + particle.Position.y,
+                        z = inhabitant.ObjectOffsets.z + particle.Position.z
                     },
                     Rotation = particle.Rotation
                 });

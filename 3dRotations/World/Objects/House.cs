@@ -57,7 +57,7 @@ namespace _3dRotations.World.Objects
             if (houseDetails != null)
                 house.ObjectParts.Add(new _3dObjectPart { PartName = "HouseDetails", Triangles = houseDetails, IsVisible = true });
 
-            house.Position = new Vector3 { };
+            house.ObjectOffsets = new Vector3 { };
             house.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             house.ParentSurface = parentSurface;
             if (houseCrashBox != null) house.CrashBoxes = houseCrashBox;

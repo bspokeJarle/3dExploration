@@ -19,10 +19,10 @@ namespace _3dTesting.Helpers
             int count = activeWorld.Count;
             bool shouldCheckStaticObjects = (DateTime.Now - _lastStaticCheck).TotalMilliseconds > 100;
 
-            Parallel.For(0, count, i =>
+            for (int i = 0; i < count; i++)
             {
                 var inhabitant = activeWorld[i];
-                if (inhabitant == null || inhabitant.CrashBoxes == null) return;
+                if (inhabitant == null || inhabitant.CrashBoxes == null) continue;
 
                 for (int j = i + 1; j < count; j++)
                 {
@@ -36,14 +36,18 @@ namespace _3dTesting.Helpers
                     if (isInhabitantStatic && isOtherStatic) continue;
                     if ((isInhabitantStatic || isOtherStatic) && !shouldCheckStaticObjects) continue;
 
-                    if (isInhabitantStatic || isOtherStatic)
-                        _lastStaticCheck = DateTime.Now;
+                    if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;
 
+                    Logger.Log("----------------------------------------------------");
+                    Logger.Log($"[CrashCheck] Checking Start {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
+
+
+                    Logger.Log($"[CrashCheck] Getting world positions ");
                     ObjectPlacementHelpers.TryGetCrashboxWorldPosition(inhabitant, out var inhabitantWorldOffset);
                     ObjectPlacementHelpers.TryGetCrashboxWorldPosition(otherInhabitant, out var otherWorldOffset);
 
-                    var rotatedCrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation, (Vector3)inhabitant.Position, inhabitantWorldOffset, inhabitant.SurfaceBasedId > 0);
-                    var rotatedOtherCrashBoxes = RotateAllCrashboxes(otherInhabitant.CrashBoxes, (Vector3)otherInhabitant.Rotation, (Vector3)otherInhabitant.Position, otherWorldOffset, otherInhabitant.SurfaceBasedId > 0);
+                    var rotatedCrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation, (Vector3)inhabitant.ObjectOffsets, inhabitantWorldOffset, inhabitant.ObjectName);
+                    var rotatedOtherCrashBoxes = RotateAllCrashboxes(otherInhabitant.CrashBoxes, (Vector3)otherInhabitant.Rotation, (Vector3)otherInhabitant.ObjectOffsets, otherWorldOffset, inhabitant.ObjectName);
 
                     foreach (var crashBox in rotatedCrashBoxes)
                     {
@@ -52,14 +56,13 @@ namespace _3dTesting.Helpers
                             CenterCrashBoxIfSurfaceBased(inhabitant, crashBox);
                             CenterCrashBoxIfSurfaceBased(otherInhabitant, otherCrashBox);
 
-                            if (otherInhabitant.ObjectName == "Surface" &&
-                                (inhabitant.ObjectName == "Tree" || inhabitant.ObjectName == "House"))
-                            {
-                                ObjectPlacementHelpers.LogCrashboxContact(inhabitant.ObjectName, inhabitant, crashBox, otherInhabitant, otherCrashBox);
-                            }
+                            ObjectPlacementHelpers.LogCrashboxContact(inhabitant.ObjectName, inhabitant, crashBox, otherInhabitant, otherCrashBox);
+                            ObjectPlacementHelpers.LogCrashboxAnalysis($"{inhabitant.ObjectName} CrashBox", crashBox);
+                            ObjectPlacementHelpers.LogCrashboxAnalysis($"{otherInhabitant.ObjectName} CrashBox", otherCrashBox);
 
                             if (_3dObjectHelpers.CheckCollisionBoxVsBox(crashBox, otherCrashBox))
                             {
+                                //MessageBox.Show($"[COLLISION] {inhabitant.ObjectName} <-> {otherInhabitant.ObjectName}");
                                 Logger.Log($"[COLLISION] {inhabitant.ObjectName} <-> {otherInhabitant.ObjectName}");
                                 inhabitant.HasCrashed = true;
                                 otherInhabitant.HasCrashed = true;
@@ -67,9 +70,11 @@ namespace _3dTesting.Helpers
                             }
                         }
                     }
+                    Logger.Log($"[CrashCheck] Checking End {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
                 }
-            });
+            }
         }
+
 
         private static void CenterCrashBoxIfSurfaceBased(_3dObject obj, List<Vector3> box)
         {
@@ -84,7 +89,7 @@ namespace _3dTesting.Helpers
         public static bool IsStatic(string objectName) =>
             objectName == "Tree" || objectName == "Surface" || objectName == "House";
 
-        private static List<List<Vector3>> RotateAllCrashboxes(List<List<IVector3>> crashboxes, Vector3 rotation, Vector3 position, Vector3 worldPosition, bool surfaceBased)
+        private static List<List<Vector3>> RotateAllCrashboxes(List<List<IVector3>> crashboxes, Vector3 rotation, Vector3 position, Vector3 worldPosition, string objectName)
         {
             var rotatedCrashboxes = new List<List<Vector3>>(crashboxes.Count);
             foreach (var crashbox in crashboxes)
@@ -92,14 +97,14 @@ namespace _3dTesting.Helpers
                 var rotated = new List<Vector3>(crashbox.Count);
                 foreach (var point in crashbox)
                 {
-                    rotated.Add(RotatePoint(point, rotation, position, worldPosition, surfaceBased));
+                    rotated.Add(RotatePoint(point, rotation, position, worldPosition, objectName));
                 }
                 rotatedCrashboxes.Add(rotated);
             }
             return rotatedCrashboxes;
         }
 
-        private static Vector3 RotatePoint(IVector3 point, Vector3 rotation, Vector3 position, Vector3 worldPosition, bool surfaceBased)
+        private static Vector3 RotatePoint(IVector3 point, Vector3 rotation, Vector3 position, Vector3 worldPosition, string objectName)
         {
             var singleTriangle = new List<ITriangleMeshWithColor>
             {
@@ -115,7 +120,7 @@ namespace _3dTesting.Helpers
             var rotatedPoint = rotatedTriangle[0].vert1;
 
             rotatedPoint.x += worldPosition.x + position.x;
-            rotatedPoint.y += surfaceBased ? worldPosition.y : worldPosition.y + position.y;
+            rotatedPoint.y += worldPosition.y + position.y;
             rotatedPoint.z += worldPosition.z + position.z;
 
             return (Vector3)rotatedPoint;

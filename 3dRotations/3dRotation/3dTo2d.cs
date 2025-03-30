@@ -72,7 +72,7 @@ namespace _3dTesting._3dRotation
                             X3 = Convert.ToInt32(x3),
                             Y3 = Convert.ToInt32(y3),
                             CalculatedZ = ((triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3)
-                                         + (_3dObjectHelpers.GetDeepestZ(triangle) + obj.Position.z),
+                                         + (_3dObjectHelpers.GetDeepestZ(triangle) + obj.ObjectOffsets.z),
                             Normal = triangle.normal1.z,
                             TriangleAngle = triangle.angle,
                             Color = triangle.Color,

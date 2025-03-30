@@ -45,7 +45,8 @@ namespace Domain
         public int? RotationOffsetZ { get; set; }
         public IVector3? WorldPosition { get; set; }
         public List<I3dObjectPart> ObjectParts { get; set; }
-        public IVector3? Position { get; set; }
+        public IVector3? ObjectOffsets { get; set; }
+        public IVector3? CrashboxOffsets { get; set; }
         public IVector3? Rotation { get; set; }
         public IObjectMovement? Movement { get; set; }
         public IParticles? Particles { get; set; }

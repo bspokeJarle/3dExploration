@@ -22,7 +22,7 @@ namespace _3dRotations.World.Objects
             var bomberCrashBox = BomberCrashBoxes();
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "UpperPart", Triangles = upperTriangles, IsVisible = true });
 
-            ship.Position = new Vector3 { x = 0, y = 0, z = 0 };
+            ship.ObjectOffsets = new Vector3 { x = 0, y = 0, z = 0 };
             ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             ship.Movement = new ShipControls();
             ship.Particles = new ParticlesAI();

@@ -24,7 +24,7 @@ namespace _3dRotations.World.Objects
             if (foliageTriangles != null)
                 tree.ObjectParts.Add(new _3dObjectPart { PartName = "TreeFoliage", Triangles = foliageTriangles, IsVisible = true });
 
-            tree.Position = new Vector3 { };
+            tree.ObjectOffsets = new Vector3 { };
             tree.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             tree.ParentSurface = parentSurface;
             if (treeCrashBox != null) tree.CrashBoxes = treeCrashBox;
@@ -92,9 +92,9 @@ namespace _3dRotations.World.Objects
 
         public static List<List<IVector3>>? TreeCrashBoxes()
         {
-            float trunkExpand = trunkRadius * 1.2f;
-            float foliageExpand = foliageBaseRadius * 1.2f;
-            float foliageHeightExpanded = foliageHeight * 1.2f;
+            float trunkExpand = trunkRadius * 2f;
+            float foliageExpand = foliageBaseRadius * 2f;
+            float foliageHeightExpanded = foliageHeight * 2f;
 
             return new List<List<IVector3>>
             {
