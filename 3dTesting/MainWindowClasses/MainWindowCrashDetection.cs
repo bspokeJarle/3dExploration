@@ -38,11 +38,15 @@ namespace _3dTesting.Helpers
 
                     if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;
 
-                    //Logger.Log("----------------------------------------------------");
-                    //Logger.Log($"[CrashCheck] Checking Start {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
+                    if (!RoughAABBOverlap(inhabitant, otherInhabitant))
+                    {
+                        Logger.Log($"[EarlySkip] {inhabitant.ObjectName} vs {otherInhabitant.ObjectName} – No rough AABB overlap.");
+                        continue;
+                    }
 
+                    Logger.Log("----------------------------------------------------");
+                    Logger.Log($"[CrashCheck] Checking Start {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
 
-                    //Logger.Log($"[CrashCheck] Getting world positions ");
                     ObjectPlacementHelpers.TryGetCrashboxWorldPosition(inhabitant, out var inhabitantWorldOffset);
                     ObjectPlacementHelpers.TryGetCrashboxWorldPosition(otherInhabitant, out var otherWorldOffset);
 
@@ -56,13 +60,15 @@ namespace _3dTesting.Helpers
                             CenterCrashBoxIfSurfaceBased(inhabitant, crashBox);
                             CenterCrashBoxIfSurfaceBased(otherInhabitant, otherCrashBox);
 
-                            ObjectPlacementHelpers.LogCrashboxContact(inhabitant.ObjectName, inhabitant, crashBox, otherInhabitant, otherCrashBox);
-                            ObjectPlacementHelpers.LogCrashboxAnalysis($"{inhabitant.ObjectName} CrashBox", crashBox);
-                            ObjectPlacementHelpers.LogCrashboxAnalysis($"{otherInhabitant.ObjectName} CrashBox", otherCrashBox);
+                            if (Logger.EnableFileLogging)
+                            {
+                                ObjectPlacementHelpers.LogCrashboxContact(inhabitant.ObjectName, inhabitant, crashBox, otherInhabitant, otherCrashBox);
+                                ObjectPlacementHelpers.LogCrashboxAnalysis($"{inhabitant.ObjectName} CrashBox", crashBox);
+                                ObjectPlacementHelpers.LogCrashboxAnalysis($"{otherInhabitant.ObjectName} CrashBox", otherCrashBox);
+                            }
 
                             if (_3dObjectHelpers.CheckCollisionBoxVsBox(crashBox, otherCrashBox))
                             {
-                                //MessageBox.Show($"[COLLISION] {inhabitant.ObjectName} <-> {otherInhabitant.ObjectName}");
                                 Logger.Log($"[COLLISION] {inhabitant.ObjectName} <-> {otherInhabitant.ObjectName}");
                                 inhabitant.HasCrashed = true;
                                 otherInhabitant.HasCrashed = true;
@@ -70,11 +76,10 @@ namespace _3dTesting.Helpers
                             }
                         }
                     }
-                    //Logger.Log($"[CrashCheck] Checking End {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
+                    Logger.Log($"[CrashCheck] Checking End {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
                 }
             }
         }
-
 
         private static void CenterCrashBoxIfSurfaceBased(_3dObject obj, List<Vector3> box)
         {
@@ -89,7 +94,7 @@ namespace _3dTesting.Helpers
         public static bool IsStatic(string objectName) =>
             objectName == "Tree" || objectName == "Surface" || objectName == "House";
 
-        private static List<List<Vector3>> RotateAllCrashboxes(List<List<IVector3>> crashboxes, Vector3 rotation, Vector3 position, Vector3 worldPosition, string objectName)
+        private static List<List<Vector3>> RotateAllCrashboxes(List<List<IVector3>> crashboxes, Vector3 rotation, Vector3 objectOffsets, Vector3 worldPosition, string objectName)
         {
             var rotatedCrashboxes = new List<List<Vector3>>(crashboxes.Count);
             foreach (var crashbox in crashboxes)
@@ -97,14 +102,14 @@ namespace _3dTesting.Helpers
                 var rotated = new List<Vector3>(crashbox.Count);
                 foreach (var point in crashbox)
                 {
-                    rotated.Add(RotatePoint(point, rotation, position, worldPosition, objectName));
+                    rotated.Add(RotatePoint(point, rotation, objectOffsets, worldPosition, objectName));
                 }
                 rotatedCrashboxes.Add(rotated);
             }
             return rotatedCrashboxes;
         }
 
-        private static Vector3 RotatePoint(IVector3 point, Vector3 rotation, Vector3 position, Vector3 worldPosition, string objectName)
+        private static Vector3 RotatePoint(IVector3 point, Vector3 rotation, Vector3 objectOffsets, Vector3 worldPosition, string objectName)
         {
             var singleTriangle = new List<ITriangleMeshWithColor>
             {
@@ -119,11 +124,34 @@ namespace _3dTesting.Helpers
             var rotatedTriangle = GameHelpers.RotateMesh(singleTriangle, rotation);
             var rotatedPoint = rotatedTriangle[0].vert1;
 
-            rotatedPoint.x += worldPosition.x + position.x;
-            rotatedPoint.y += worldPosition.y + position.y;
-            rotatedPoint.z += worldPosition.z + position.z;
+            rotatedPoint.x += worldPosition.x + objectOffsets.x;
+            rotatedPoint.y += worldPosition.y + objectOffsets.y;
+            rotatedPoint.z += worldPosition.z + objectOffsets.z;
 
             return (Vector3)rotatedPoint;
+        }
+
+        private static bool RoughAABBOverlap(_3dObject a, _3dObject b, float margin = 150f)
+        {
+            foreach (var boxA in a.CrashBoxes)
+            {
+                foreach (var boxB in b.CrashBoxes)
+                {
+                    var minA = new Vector3(boxA.Min(p => p.x) - margin, boxA.Min(p => p.y) - margin, boxA.Min(p => p.z) - margin);
+                    var maxA = new Vector3(boxA.Max(p => p.x) + margin, boxA.Max(p => p.y) + margin, boxA.Max(p => p.z) + margin);
+
+                    var minB = new Vector3(boxB.Min(p => p.x) - margin, boxB.Min(p => p.y) - margin, boxB.Min(p => p.z) - margin);
+                    var maxB = new Vector3(boxB.Max(p => p.x) + margin, boxB.Max(p => p.y) + margin, boxB.Max(p => p.z) + margin);
+
+                    bool overlapX = maxA.x >= minB.x && minA.x <= maxB.x;
+                    bool overlapY = maxA.y >= minB.y && minA.y <= maxB.y;
+                    bool overlapZ = maxA.z >= minB.z && minA.z <= maxB.z;
+
+                    if (overlapX && overlapY && overlapZ)
+                        return true;
+                }
+            }
+            return false;
         }
     }
 }

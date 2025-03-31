@@ -4,7 +4,6 @@ using _3dRotations.World.Objects;
 using static Domain._3dSpecificsImplementations;
 using GameAiAndControls.Controls;
 using _3dRotations.Helpers;
-using System.Diagnostics;
 using Domain;
 using System.Collections.Generic;
 
@@ -26,17 +25,18 @@ namespace _3dRotations.Scene.Scene1
             ship.WorldPosition = new Vector3 { };
             ship.ObjectOffsets = new Vector3 { };
             //Needs offset that counteracts other offsets for accurate crashbox placement
-            ship.CrashboxOffsets = new Vector3 { x = 525, y = -350, z = 375 };
+            ship.CrashboxOffsets = new Vector3 { x = 525, y = -425, z = 375 };
             ship.ObjectName = "Ship";
             world.WorldInhabitants.Add(ship);
 
-            /*
+            
             //Add three seeders
             var seeder = Seeder.CreateSeeder(Surface);
             //Initialize the seeder rotation
             seeder.Rotation = new Vector3 { };
             seeder.WorldPosition = new Vector3 { x = 96000, y = 0, z = 96000 };
-            seeder.Position = new Vector3 { x = -150, y = -200, z = 0 };
+            seeder.ObjectOffsets = new Vector3 { x = -150, y = -200, z = 0 };
+            seeder.CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 };
             seeder.ObjectName = "Seeder";
             seeder.Movement = new SeederControls();            
             world.WorldInhabitants.Add(seeder);
@@ -45,7 +45,8 @@ namespace _3dRotations.Scene.Scene1
             //Initialize the seeder rotation
             seeder2.Rotation = new Vector3 { };
             seeder2.WorldPosition = new Vector3 { x = 93750, y = 0, z = 93000 };
-            seeder2.Position = new Vector3 { x = -150, y = -100, z = 0 };
+            seeder2.ObjectOffsets = new Vector3 { x = -150, y = -100, z = 0 };
+            seeder2.CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 };
             seeder2.ObjectName = "Seeder";
             seeder2.Movement = new SeederControls();
             world.WorldInhabitants.Add(seeder2);
@@ -54,10 +55,11 @@ namespace _3dRotations.Scene.Scene1
             //Initialize the seeder rotation
             seeder3.Rotation = new Vector3 { };
             seeder3.WorldPosition = new Vector3 { x = 94000, y = 0, z = 90000 };
-            seeder3.Position = new Vector3 { x = -150, y = -100, z = 0 };
+            seeder3.ObjectOffsets = new Vector3 { x = -150, y = -100, z = 0 };
+            seeder3.CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 };
             seeder3.ObjectName = "Seeder";
             seeder3.Movement = new SeederControls();
-            world.WorldInhabitants.Add(seeder3);*/
+            world.WorldInhabitants.Add(seeder3);
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(Surface.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
             foreach (var treePlacement in treePlacements)
@@ -87,13 +89,10 @@ namespace _3dRotations.Scene.Scene1
                 //The tree don't need a world position, it's a surface based object
                 house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 //Find the surface based id for the tree
-                //TODO: Find a good place in the map for the tree
-                //Alogrithm to find a good place for the trees and spread them around
-                //Temp fix now to get the tree on the surface
                 house.SurfaceBasedId = Surface.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 house.ObjectOffsets = new Vector3 { x = 75, y = 450, z = 300 };
                 //TODO need to find the right offsets for house
-                house.CrashboxOffsets = new Vector3 { x = 0, y = -72, z = 0 };
+                house.CrashboxOffsets = new Vector3 { x = 50, y = -180, z = 0 };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);

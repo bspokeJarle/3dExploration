@@ -150,7 +150,7 @@ namespace _3dTesting.Helpers
             if (obj.SurfaceBasedId > 0)
             {
                 var triangle = GetSurfaceTriangle(obj);
-                //Logger.Log($"[WorldPos Surfacebased] {obj.ObjectName} => ({obj.ParentSurface.GlobalMapPosition.x + obj.Position.x}, {triangle.vert1.y + obj.Position.y}, {obj.ParentSurface.GlobalMapPosition.z + obj.Position.z})");       
+                Logger.Log($"[WorldPos Surfacebased] {obj.ObjectName} => ({obj.ParentSurface.GlobalMapPosition.x + obj.ObjectOffsets.x}, {triangle.vert1.y + obj.ObjectOffsets.y}, {obj.ParentSurface.GlobalMapPosition.z + obj.ObjectOffsets.z})");       
                 if (triangle != null)
                 {
                     return new Vector3
@@ -165,22 +165,12 @@ namespace _3dTesting.Helpers
 
             if (obj.ObjectName == "Ship")
             {
-                /*var centerLog = GetCenterWorldPosition(
-                    obj.ParentSurface.GlobalMapPosition,
-                    obj.ParentSurface.SurfaceWidth(),
-                    obj.ParentSurface.TileSize(),
-                    (Vector3)obj.Position);
-
-                Logger.Log($"[WorldPos Ship] {obj.ObjectName} => ({centerLog.x + obj.Position.x}, {centerLog.y + obj.Position.y}, {centerLog.z + obj.Position.z})");*/
-
                 return GetCenterWorldPosition(
                     obj.ParentSurface.GlobalMapPosition,
                     obj.ParentSurface.SurfaceWidth(),
                     obj.ParentSurface.TileSize(),
                     (Vector3)obj.ObjectOffsets,(Vector3)obj.CrashboxOffsets);
             }
-
-            //Logger.Log($"[WorldPos Surface] {obj.ObjectName} => ({obj.ParentSurface.GlobalMapPosition.x + obj.Position.x}, {obj.ParentSurface.GlobalMapPosition.y + obj.Position.y}, {obj.ParentSurface.GlobalMapPosition.z + obj.Position.z})");
 
             return new Vector3
             {
@@ -206,10 +196,7 @@ namespace _3dTesting.Helpers
         public static void CenterCrashBoxAt(List<Vector3> crashBox, IVector3 targetPosition, IVector3 crashboxOffsets)
         {
             // Center crashbox so its BUNN (MinY) plasseres på toppen av bakken (targetPosition.y)
-            // Legg til en ekstra lokal offset om nødvendig
             if (crashBox == null || crashBox.Count == 0 || targetPosition == null) return;
-
-            //float localOffset = -72; // Brukes for å simulere mer realistisk høyde/synk
 
             float minY = crashBox.Min(p => p.y);
             float shiftY = targetPosition.y - minY + crashboxOffsets.y;
