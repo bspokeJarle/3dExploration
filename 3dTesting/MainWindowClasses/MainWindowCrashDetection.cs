@@ -38,11 +38,11 @@ namespace _3dTesting.Helpers
 
                     if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;
 
-                    Logger.Log("----------------------------------------------------");
-                    Logger.Log($"[CrashCheck] Checking Start {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
+                    //Logger.Log("----------------------------------------------------");
+                    //Logger.Log($"[CrashCheck] Checking Start {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
 
 
-                    Logger.Log($"[CrashCheck] Getting world positions ");
+                    //Logger.Log($"[CrashCheck] Getting world positions ");
                     ObjectPlacementHelpers.TryGetCrashboxWorldPosition(inhabitant, out var inhabitantWorldOffset);
                     ObjectPlacementHelpers.TryGetCrashboxWorldPosition(otherInhabitant, out var otherWorldOffset);
 
@@ -70,7 +70,7 @@ namespace _3dTesting.Helpers
                             }
                         }
                     }
-                    Logger.Log($"[CrashCheck] Checking End {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
+                    //Logger.Log($"[CrashCheck] Checking End {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
                 }
             }
         }
@@ -82,7 +82,7 @@ namespace _3dTesting.Helpers
             {
                 var tri = obj.ParentSurface?.RotatedSurfaceTriangles.Find(t => t.landBasedPosition == obj.SurfaceBasedId);
                 if (tri != null)
-                    ObjectPlacementHelpers.CenterCrashBoxAt(box, tri.vert1);
+                    ObjectPlacementHelpers.CenterCrashBoxAt(box, tri.vert1, obj.CrashboxOffsets);
             }
         }
 

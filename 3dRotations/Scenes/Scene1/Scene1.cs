@@ -25,8 +25,8 @@ namespace _3dRotations.Scene.Scene1
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
             ship.ObjectOffsets = new Vector3 { };
-            //TODO: Find the right offsets for the ship
-            ship.CrashboxOffsets = new Vector3 { };
+            //Needs offset that counteracts other offsets for accurate crashbox placement
+            ship.CrashboxOffsets = new Vector3 { x = 525, y = -350, z = 375 };
             ship.ObjectName = "Ship";
             world.WorldInhabitants.Add(ship);
 
@@ -70,8 +70,8 @@ namespace _3dRotations.Scene.Scene1
                 tree.SurfaceBasedId = Surface.Global2DMap[treePlacement.y, treePlacement.x].mapId;
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
                 tree.ObjectOffsets = new Vector3 { x = 75, y = 425 , z = 300 };
-                //TODO need to find the right offsets for tree
-                tree.CrashboxOffsets = new Vector3 { x = 75, y = 425, z = 300 };
+                //Crashbox offsets for Tree, counteract the object offsets
+                tree.CrashboxOffsets = new Vector3 { x = 0, y = -72, z = 0 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
@@ -93,7 +93,7 @@ namespace _3dRotations.Scene.Scene1
                 house.SurfaceBasedId = Surface.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 house.ObjectOffsets = new Vector3 { x = 75, y = 450, z = 300 };
                 //TODO need to find the right offsets for house
-                house.CrashboxOffsets = new Vector3 { x = 75, y = 450, z = 300 };
+                house.CrashboxOffsets = new Vector3 { x = 0, y = -72, z = 0 };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);

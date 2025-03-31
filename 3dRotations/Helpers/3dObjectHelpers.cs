@@ -65,10 +65,6 @@ namespace _3dTesting.Helpers
             return Math.Sqrt(dx * dx + dy * dy + dz * dz);
         }
 
-        /*public static TriangleMeshWithColor MapFromVector3ToTMesh(this Vector3 coord)
-        {
-            return new TriangleMeshWithColor { vert1 = coord, vert2 = coord, vert3 = coord };
-        }*/
         public struct CosSin
         {
             public float CosRes { get; set; }

@@ -22,7 +22,7 @@ namespace _3DSpesificsUnitTests
                 var targetPosition = new Vector3 { x = 95075, y = -298.34863f, z = 93481.57f };
 
                 // Act
-                ObjectPlacementHelpers.CenterCrashBoxAt(crashBox, targetPosition);
+                ObjectPlacementHelpers.CenterCrashBoxAt(crashBox, targetPosition, new Vector3 { x = 0, y = 0, z = 0});
 
                 // Assert: Sjekk at minste Y nå er ca lik target
                 float actualMinY = float.MaxValue;

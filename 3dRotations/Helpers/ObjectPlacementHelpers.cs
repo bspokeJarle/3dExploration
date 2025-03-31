@@ -155,10 +155,10 @@ namespace _3dTesting.Helpers
                 {
                     return new Vector3
                     {
-                        x = obj.ParentSurface.GlobalMapPosition.x,
-                        //Don't set a Y here, since it will be centered around the triangle later
+                        x = obj.ParentSurface.GlobalMapPosition.x + obj.CrashboxOffsets.x,
+                        //Set this to 0 - the Y coordinate will be centered later, so setting anything here is futile
                         y = 0,
-                        z = obj.ParentSurface.GlobalMapPosition.z
+                        z = obj.ParentSurface.GlobalMapPosition.z + obj.CrashboxOffsets.z
                     };
                 }
             }
@@ -177,7 +177,7 @@ namespace _3dTesting.Helpers
                     obj.ParentSurface.GlobalMapPosition,
                     obj.ParentSurface.SurfaceWidth(),
                     obj.ParentSurface.TileSize(),
-                    (Vector3)obj.ObjectOffsets);
+                    (Vector3)obj.ObjectOffsets,(Vector3)obj.CrashboxOffsets);
             }
 
             //Logger.Log($"[WorldPos Surface] {obj.ObjectName} => ({obj.ParentSurface.GlobalMapPosition.x + obj.Position.x}, {obj.ParentSurface.GlobalMapPosition.y + obj.Position.y}, {obj.ParentSurface.GlobalMapPosition.z + obj.Position.z})");
@@ -190,34 +190,31 @@ namespace _3dTesting.Helpers
             };
         }
 
-        public static Vector3 GetCenterWorldPosition(Vector3 globalMapPosition, int screenPixels, int tileSize, Vector3 position)
+        public static Vector3 GetCenterWorldPosition(Vector3 globalMapPosition, int screenPixels, int tileSize, Vector3 position, Vector3 crashboxOffsets)
         {
             float tilesPerScreen = screenPixels / (float)tileSize;
             float halfTiles = tilesPerScreen / 2f;
-            float surfacebasedXOffset = tileSize * 7;
-            float surfacebasedZOffset = tileSize * 5;
-
+ 
             return new Vector3
             {
-                x = globalMapPosition.x + halfTiles * tileSize - position.x - surfacebasedXOffset,
-                //Local position etc will be added in the rotation, negative offset to give correct crashbox position, why offset though?
-                y = globalMapPosition.y - 350,
-                z = globalMapPosition.z + halfTiles * tileSize - position.z - surfacebasedZOffset
+                x = globalMapPosition.x + halfTiles * tileSize - position.x - crashboxOffsets.x,
+                y = globalMapPosition.y + crashboxOffsets.y,
+                z = globalMapPosition.z + halfTiles * tileSize - position.z - crashboxOffsets.z
             };
         }
 
-        public static void CenterCrashBoxAt(List<Vector3> crashBox, IVector3 targetPosition)
+        public static void CenterCrashBoxAt(List<Vector3> crashBox, IVector3 targetPosition, IVector3 crashboxOffsets)
         {
             // Center crashbox so its BUNN (MinY) plasseres på toppen av bakken (targetPosition.y)
             // Legg til en ekstra lokal offset om nødvendig
             if (crashBox == null || crashBox.Count == 0 || targetPosition == null) return;
 
-            float localOffset = -72; // Brukes for å simulere mer realistisk høyde/synk
+            //float localOffset = -72; // Brukes for å simulere mer realistisk høyde/synk
 
             float minY = crashBox.Min(p => p.y);
-            float shiftY = targetPosition.y - minY + localOffset;
+            float shiftY = targetPosition.y - minY + crashboxOffsets.y;
 
-            Logger.Log($"[CenterAt] Target Y: {targetPosition.y}, CrashBox MinY: {minY}, LocalOffset: {localOffset}, Final ShiftY: {shiftY}");
+            Logger.Log($"[CenterAt] Target Y: {targetPosition.y}, CrashBox MinY: {minY}, CrashBoxOffsetY: {crashboxOffsets.y}, Final ShiftY: {shiftY}");
 
             for (int i = 0; i < crashBox.Count; i++)
             {
