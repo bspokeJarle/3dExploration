@@ -2,6 +2,7 @@
 using _3dTesting._3dWorld;
 using Domain;
 using GameAiAndControls.Controls;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using static Domain._3dSpecificsImplementations;
@@ -42,9 +43,33 @@ namespace _3dTesting.MainWindowClasses
                         y = inhabitant.ObjectOffsets.y + particle.Position.y,
                         z = inhabitant.ObjectOffsets.z + particle.Position.z
                     },
+                    CrashBoxes = CreateCrashBoxFromTriangle(particleTriangle),
+                    CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 },
                     Rotation = particle.Rotation
                 });
             }
+        }
+
+        //Creates a crashbox from a triangle
+        private List<List<IVector3>> CreateCrashBoxFromTriangle(ITriangleMeshWithColor triangle)
+        {
+            float minX = MathF.Min(triangle.vert1.x, MathF.Min(triangle.vert2.x, triangle.vert3.x));
+            float maxX = MathF.Max(triangle.vert1.x, MathF.Max(triangle.vert2.x, triangle.vert3.x));
+
+            float minY = MathF.Min(triangle.vert1.y, MathF.Min(triangle.vert2.y, triangle.vert3.y));
+            float maxY = MathF.Max(triangle.vert1.y, MathF.Max(triangle.vert2.y, triangle.vert3.y));
+
+            float minZ = MathF.Min(triangle.vert1.z, MathF.Min(triangle.vert2.z, triangle.vert3.z));
+            float maxZ = MathF.Max(triangle.vert1.z, MathF.Max(triangle.vert2.z, triangle.vert3.z));
+
+            return new List<List<IVector3>>
+            {
+                new List<IVector3>
+                {
+                    new Vector3 { x = minX, y = minY, z = minZ },
+                    new Vector3 { x = maxX, y = maxY, z = maxZ }
+                }
+            };
         }
 
         private ITriangleMeshWithColor RotateParticle(ITriangleMeshWithColor particleTriangle, Vector3 rotation)
