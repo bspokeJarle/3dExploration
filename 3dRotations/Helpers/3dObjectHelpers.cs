@@ -245,7 +245,7 @@ namespace _3dTesting.Helpers
                               .Select(v => new Vector3 { x = v.x, y = v.y, z = v.z } as IVector3)
                               .ToList())
                           .ToList(),
-                        HasCrashed = inhabitant.HasCrashed,
+                        ImpactStatus = inhabitant.ImpactStatus,
                         Mass = inhabitant.Mass,
                         ObjectName = inhabitant.ObjectName,
                         ParentSurface = inhabitant.ParentSurface,

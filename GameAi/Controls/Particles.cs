@@ -7,7 +7,6 @@ public class ParticlesAI : IParticles
 {
     private Random random = new();
 
-    // --- Konfigurasjon ---
     private const int MaxParticlesBase = 30;
     private const int MaxThrustMultiplier = 5;
     private const int MaxDynamicParticles = 60;
@@ -15,7 +14,7 @@ public class ParticlesAI : IParticles
     private const float MaxLife = 5f;
     private const float MinSize = 1f;
     private const float MaxSize = 4f;
-    private const float SpreadIntensity = 3f;        // Mer spredning her!
+    private const float SpreadIntensity = 3f;
     private const float DragFactor = 0.98f;
     private const float BounceLoss = 0.6f;
     private const float LifetimeLossOnBounce = 0.7f;
@@ -39,33 +38,52 @@ public class ParticlesAI : IParticles
             if (deathTimeTicks > currentDateTime.Ticks)
             {
                 particle.Visible = true;
-
                 float lifeProgress = (float)(currentDateTime.Ticks - particle.BirthTime.Ticks - particle.VariedStart) / (particle.Life * 10_000_000);
 
-                // Fade size
                 particle.Size *= 1.0f - FadeFactor * lifeProgress;
 
-                // Fargeovergang
-                if (lifeProgress < 0.5f) particle.Color = "ffff00";       // Gul
-                else if (lifeProgress < 0.8f) particle.Color = "ff6600";  // Oransje
-                else particle.Color = "ff0000";                           // Rød
+                if (lifeProgress < 0.5f) particle.Color = "ffff00";
+                else if (lifeProgress < 0.8f) particle.Color = "ff6600";
+                else particle.Color = "ff0000";
 
-                // Friksjon / drag
                 particle.Velocity.x *= DragFactor;
                 particle.Velocity.y *= DragFactor;
                 particle.Velocity.z *= DragFactor;
 
-                // Akselerasjon
                 particle.Velocity.x += particle.Acceleration.x;
                 particle.Velocity.y += particle.Acceleration.y;
                 particle.Velocity.z += particle.Acceleration.z;
 
-                // Bevegelse
+                // Handle simple bounce if crashed
+                if (particle.ImpactStatus?.HasCrashed == true)
+                {
+                    switch (particle.ImpactStatus.ImpactDirection)
+                    {
+                        case ImpactDirection.Bottom:
+                            particle.Velocity.y = Math.Abs(particle.Velocity.y) * BounceLoss;
+                            break;
+                        case ImpactDirection.Top:
+                            particle.Velocity.y = -Math.Abs(particle.Velocity.y) * BounceLoss;
+                            break;
+                        case ImpactDirection.Left:
+                            particle.Velocity.x = Math.Abs(particle.Velocity.x) * BounceLoss;
+                            break;
+                        case ImpactDirection.Right:
+                            particle.Velocity.x = -Math.Abs(particle.Velocity.x) * BounceLoss;
+                            break;
+                        case ImpactDirection.Center:
+                            particle.Velocity.y *= -BounceLoss;
+                            break;
+                    }
+
+                    particle.Life *= LifetimeLossOnBounce;
+                    particle.ImpactStatus.HasCrashed = false;
+                }
+
                 particle.Position.x -= particle.Velocity.x;
                 particle.Position.y -= particle.Velocity.y;
                 particle.Position.z -= particle.Velocity.z;
 
-                // Kollisjon mot bakken
                 if (particle.Position.y <= 0)
                 {
                     particle.Position.y = 0.1f;
@@ -73,7 +91,6 @@ public class ParticlesAI : IParticles
                     particle.Life *= LifetimeLossOnBounce;
                 }
 
-                // Rotasjon
                 if (particle.Rotation != null && particle.RotationSpeed != null)
                 {
                     particle.Rotation.x += particle.RotationSpeed.x;
@@ -192,4 +209,5 @@ public class Particle : IParticle
     public IVector3? RotationSpeed { get; set; }
     public bool? NoShading { get; set; }
     public bool Visible { get; set; }
+    public IImpactStatus? ImpactStatus { get; set; }
 }

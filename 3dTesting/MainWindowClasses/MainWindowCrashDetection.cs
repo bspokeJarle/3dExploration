@@ -38,47 +38,149 @@ namespace _3dTesting.Helpers
 
                     if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;
 
-                    if (!RoughAABBOverlap(inhabitant, otherInhabitant))
+                    // Handle particles separately
+                    if (inhabitant.ObjectName == "Particle" || otherInhabitant.ObjectName == "Particle")
                     {
-                        Logger.Log($"[EarlySkip] {inhabitant.ObjectName} vs {otherInhabitant.ObjectName} – No rough AABB overlap.");
+                        if (HandleParticleCollision(inhabitant, otherInhabitant)) return;
                         continue;
                     }
 
-                    Logger.Log("----------------------------------------------------");
-                    Logger.Log($"[CrashCheck] Checking Start {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
-
-                    ObjectPlacementHelpers.TryGetCrashboxWorldPosition(inhabitant, out var inhabitantWorldOffset);
-                    ObjectPlacementHelpers.TryGetCrashboxWorldPosition(otherInhabitant, out var otherWorldOffset);
-
-                    var rotatedCrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation, (Vector3)inhabitant.ObjectOffsets, inhabitantWorldOffset, inhabitant.ObjectName);
-                    var rotatedOtherCrashBoxes = RotateAllCrashboxes(otherInhabitant.CrashBoxes, (Vector3)otherInhabitant.Rotation, (Vector3)otherInhabitant.ObjectOffsets, otherWorldOffset, inhabitant.ObjectName);
-
-                    foreach (var crashBox in rotatedCrashBoxes)
-                    {
-                        foreach (var otherCrashBox in rotatedOtherCrashBoxes)
-                        {
-                            CenterCrashBoxIfSurfaceBased(inhabitant, crashBox);
-                            CenterCrashBoxIfSurfaceBased(otherInhabitant, otherCrashBox);
-
-                            if (Logger.EnableFileLogging)
-                            {
-                                ObjectPlacementHelpers.LogCrashboxContact(inhabitant.ObjectName, inhabitant, crashBox, otherInhabitant, otherCrashBox);
-                                ObjectPlacementHelpers.LogCrashboxAnalysis($"{inhabitant.ObjectName} CrashBox", crashBox);
-                                ObjectPlacementHelpers.LogCrashboxAnalysis($"{otherInhabitant.ObjectName} CrashBox", otherCrashBox);
-                            }
-
-                            if (_3dObjectHelpers.CheckCollisionBoxVsBox(crashBox, otherCrashBox))
-                            {
-                                Logger.Log($"[COLLISION] {inhabitant.ObjectName} <-> {otherInhabitant.ObjectName}");
-                                inhabitant.HasCrashed = true;
-                                otherInhabitant.HasCrashed = true;
-                                return;
-                            }
-                        }
-                    }
-                    Logger.Log($"[CrashCheck] Checking End {inhabitant.ObjectName} vs {otherInhabitant.ObjectName}");
+                    if (HandleGeneralCollision(inhabitant, otherInhabitant)) return;
                 }
             }
+        }
+
+        private static bool HandleParticleCollision(_3dObject a, _3dObject b)
+        {
+            var particle = a.ObjectName == "Particle" ? a : b;
+            var other = particle == a ? b : a;
+
+            foreach (var particleBox in particle.CrashBoxes)
+            {
+                var center = new Vector3
+                {
+                    x = particleBox.Average(p => p.x),
+                    y = particleBox.Average(p => p.y),
+                    z = particleBox.Average(p => p.z)
+                };
+
+                foreach (var otherBox in other.CrashBoxes)
+                {
+                    var min = new Vector3(otherBox.Min(p => p.x), otherBox.Min(p => p.y), otherBox.Min(p => p.z));
+                    var max = new Vector3(otherBox.Max(p => p.x), otherBox.Max(p => p.y), otherBox.Max(p => p.z));
+
+                    bool overlapX = center.x >= min.x && center.x <= max.x;
+                    bool overlapY = center.y >= min.y && center.y <= max.y;
+                    bool overlapZ = center.z >= min.z && center.z <= max.z;
+
+                    if (overlapX && overlapY && overlapZ)
+                    {
+                        Logger.Log($"[PARTICLE COLLISION] {particle.ObjectName} <-> {other.ObjectName}");
+
+                        var direction = EstimateDirection(center, min, max);
+
+                        particle.ImpactStatus.HasCrashed = true;
+                        particle.ImpactStatus.ImpactDirection = direction;
+
+                        if (particle.ImpactStatus.SourceParticle?.ImpactStatus != null)
+                        {
+                            particle.ImpactStatus.SourceParticle.ImpactStatus.HasCrashed = true;
+                            particle.ImpactStatus.SourceParticle.ImpactStatus.ImpactDirection = direction;
+                        }
+
+                        if (other.ImpactStatus != null)
+                        {
+                            other.ImpactStatus.HasCrashed = true;
+                            other.ImpactStatus.ImpactDirection = direction;
+                        }
+
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        private static bool HandleGeneralCollision(_3dObject a, _3dObject b)
+        {
+            Logger.Log("----------------------------------------------------");
+            Logger.Log($"[CrashCheck] Checking Start {a.ObjectName} vs {b.ObjectName}");
+
+            ObjectPlacementHelpers.TryGetCrashboxWorldPosition(a, out var worldA);
+            ObjectPlacementHelpers.TryGetCrashboxWorldPosition(b, out var worldB);
+
+            var rotatedA = RotateAllCrashboxes(a.CrashBoxes, (Vector3)a.Rotation, (Vector3)a.ObjectOffsets, worldA, a.ObjectName);
+            var rotatedB = RotateAllCrashboxes(b.CrashBoxes, (Vector3)b.Rotation, (Vector3)b.ObjectOffsets, worldB, b.ObjectName);
+
+            foreach (var boxA in rotatedA)
+            {
+                foreach (var boxB in rotatedB)
+                {
+                    CenterCrashBoxIfSurfaceBased(a, boxA);
+                    CenterCrashBoxIfSurfaceBased(b, boxB);
+
+                    if (Logger.EnableFileLogging)
+                    {
+                        ObjectPlacementHelpers.LogCrashboxContact(a.ObjectName, a, boxA, b, boxB);
+                        ObjectPlacementHelpers.LogCrashboxAnalysis($"{a.ObjectName} CrashBox", boxA);
+                        ObjectPlacementHelpers.LogCrashboxAnalysis($"{b.ObjectName} CrashBox", boxB);
+                    }
+
+                    if (_3dObjectHelpers.CheckCollisionBoxVsBox(boxA, boxB))
+                    {
+                        Logger.Log($"[COLLISION] {a.ObjectName} <-> {b.ObjectName}");
+                        a.ImpactStatus.HasCrashed = true;
+                        b.ImpactStatus.HasCrashed = true;
+
+                        var centerA = GetCenterOfBox(boxA);
+                        var centerB = GetCenterOfBox(boxB);
+
+                        a.ImpactStatus.ImpactDirection = EstimateDirection(centerA, centerB);
+                        b.ImpactStatus.ImpactDirection = EstimateDirection(centerB, centerA);
+
+                        return true;
+                    }
+                }
+            }
+
+            Logger.Log($"[CrashCheck] Checking End {a.ObjectName} vs {b.ObjectName}");
+            return false;
+        }
+
+        private static ImpactDirection EstimateDirection(Vector3 from, Vector3 min, Vector3 max)
+        {
+            var center = new Vector3
+            {
+                x = (min.x + max.x) / 2,
+                y = (min.y + max.y) / 2,
+                z = (min.z + max.z) / 2
+            };
+
+            return EstimateDirection(from, center);
+        }
+
+        private static ImpactDirection EstimateDirection(Vector3 from, Vector3 to)
+        {
+            float dx = from.x - to.x;
+            float dy = from.y - to.y;
+            float dz = from.z - to.z;
+
+            if (Math.Abs(dx) > Math.Abs(dy) && Math.Abs(dx) > Math.Abs(dz))
+                return dx > 0 ? ImpactDirection.Right : ImpactDirection.Left;
+            else if (Math.Abs(dy) > Math.Abs(dz))
+                return dy > 0 ? ImpactDirection.Top : ImpactDirection.Bottom;
+            else
+                return ImpactDirection.Center;
+        }
+
+        private static Vector3 GetCenterOfBox(List<Vector3> box)
+        {
+            return new Vector3
+            {
+                x = box.Average(p => p.x),
+                y = box.Average(p => p.y),
+                z = box.Average(p => p.z)
+            };
         }
 
         private static void CenterCrashBoxIfSurfaceBased(_3dObject obj, List<Vector3> box)
@@ -129,29 +231,6 @@ namespace _3dTesting.Helpers
             rotatedPoint.z += worldPosition.z + objectOffsets.z;
 
             return (Vector3)rotatedPoint;
-        }
-
-        private static bool RoughAABBOverlap(_3dObject a, _3dObject b, float margin = 150f)
-        {
-            foreach (var boxA in a.CrashBoxes)
-            {
-                foreach (var boxB in b.CrashBoxes)
-                {
-                    var minA = new Vector3(boxA.Min(p => p.x) - margin, boxA.Min(p => p.y) - margin, boxA.Min(p => p.z) - margin);
-                    var maxA = new Vector3(boxA.Max(p => p.x) + margin, boxA.Max(p => p.y) + margin, boxA.Max(p => p.z) + margin);
-
-                    var minB = new Vector3(boxB.Min(p => p.x) - margin, boxB.Min(p => p.y) - margin, boxB.Min(p => p.z) - margin);
-                    var maxB = new Vector3(boxB.Max(p => p.x) + margin, boxB.Max(p => p.y) + margin, boxB.Max(p => p.z) + margin);
-
-                    bool overlapX = maxA.x >= minB.x && minA.x <= maxB.x;
-                    bool overlapY = maxA.y >= minB.y && minA.y <= maxB.y;
-                    bool overlapZ = maxA.z >= minB.z && minA.z <= maxB.z;
-
-                    if (overlapX && overlapY && overlapZ)
-                        return true;
-                }
-            }
-            return false;
         }
     }
 }

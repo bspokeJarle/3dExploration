@@ -10,6 +10,7 @@ namespace Domain
         public int mapDepth;
         public int mapId;
     }
+
     public interface ISurface
     {
         public Vector3 GlobalMapPosition { get; set; }
@@ -50,15 +51,32 @@ namespace Domain
         public IVector3? Rotation { get; set; }
         public IObjectMovement? Movement { get; set; }
         public IParticles? Particles { get; set; }
-        //TODO: Might need to expand with metadata to differ between hits on different crashboxes
         public List<List<IVector3>> CrashBoxes { get; set; }
-        public bool HasCrashed { get; set; }
+        public IImpactStatus? ImpactStatus { get; set; }
         public int? Mass { get; set; }
         public ISurface? ParentSurface { get; set; }
         public int? SurfaceBasedId { get; set; }
-        //public List
-        //todo add object relative properties, colors, ai etc    
     }
+
+    public interface IImpactStatus
+    {
+        public bool HasCrashed { get; set; }
+        public string ObjectName { get; set; }
+        public ImpactDirection? ImpactDirection { get; set; }
+        //Particles are temporary objects, so need a referance to the original object to give notice of impact
+        public IParticle? SourceParticle { get; set; }
+
+    }
+
+    public enum ImpactDirection
+    {
+        Top,
+        Bottom,
+        Left,
+        Right,
+        Center
+    }
+
     public interface I3dObjectPart
     {
         public List<ITriangleMeshWithColor> Triangles { get; set; }
@@ -97,6 +115,7 @@ namespace Domain
         public IVector3? RotationSpeed { get; set; }
         public bool? NoShading { get; set; }
         public bool Visible { get; set; }
+        public IImpactStatus? ImpactStatus { get; set; }
 
     }
     public interface ITriangleMeshWithColor : ITriangleMesh

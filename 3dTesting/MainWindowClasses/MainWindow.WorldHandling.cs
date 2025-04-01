@@ -119,6 +119,7 @@ namespace _3dTesting.MainWindowClasses
 
             if (particleObjectList.Count > 0) activeWorld.AddRange(particleObjectList);
             var safeSnapshotForCollision = _3dObjectHelpers.DeepCopy3dObjects(renderedList.ToList());
+            if (particleObjectList.Count > 0) safeSnapshotForCollision.AddRange(particleObjectList);
             CrashDetection.HandleCrashboxes(safeSnapshotForCollision); // ✅ Convert to List once
             return From3dTo2d.convertTo2dFromObjects(activeWorld);
         }

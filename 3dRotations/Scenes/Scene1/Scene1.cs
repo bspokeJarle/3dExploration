@@ -27,6 +27,7 @@ namespace _3dRotations.Scene.Scene1
             //Needs offset that counteracts other offsets for accurate crashbox placement
             ship.CrashboxOffsets = new Vector3 { x = 525, y = -425, z = 375 };
             ship.ObjectName = "Ship";
+            ship.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(ship);
 
             /*
@@ -77,6 +78,7 @@ namespace _3dRotations.Scene.Scene1
                 tree.CrashboxOffsets = new Vector3 { x = 0, y = -72, z = 0 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
+                tree.ImpactStatus = new ImpactStatus { };
                 if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
             }
 
@@ -96,6 +98,7 @@ namespace _3dRotations.Scene.Scene1
                 house.CrashboxOffsets = new Vector3 { x = 50, y = -180, z = 0 };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
+                house.ImpactStatus = new ImpactStatus { };
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
             }
 
@@ -118,6 +121,7 @@ namespace _3dRotations.Scene.Scene1
             };
             surfaceObject.Movement = new GroundControls();
             surfaceObject.ParentSurface = Surface;
+            surfaceObject.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(surfaceObject);
         }
     }

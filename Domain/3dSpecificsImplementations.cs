@@ -8,6 +8,15 @@ namespace Domain
 {
     public class _3dSpecificsImplementations
     {
+
+        public class ImpactStatus : IImpactStatus
+        {
+            public bool HasCrashed { get; set; }
+            public string ObjectName { get; set; }
+            public ImpactDirection? ImpactDirection { get; set; }
+            public IParticle SourceParticle { get; set; }
+        }
+
         public class Vector3 : IVector3
         {
             public Vector3(float xVal = 0, float yVal = 0, float zVal = 0)
