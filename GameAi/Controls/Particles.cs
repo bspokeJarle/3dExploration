@@ -2,49 +2,53 @@
 using static Domain._3dSpecificsImplementations;
 using System.Collections.Generic;
 using System;
+using System.Runtime.CompilerServices;
+using System.Windows;
 
 public class ParticlesAI : IParticles
 {
     private Random random = new();
 
-    private const int MaxParticlesBase = 30;
+    // --- Konfigurasjon ---
+    private const int MaxParticlesBase = 15;
     private const int MaxThrustMultiplier = 5;
-    private const int MaxDynamicParticles = 60;
+    private const int MaxDynamicParticles = 30;
     private const float MinLife = 2f;
-    private const float MaxLife = 5f;
+    private const float MaxLife = 5.5f;
     private const float MinSize = 1f;
     private const float MaxSize = 4f;
     private const float SpreadIntensity = 3f;
     private const float DragFactor = 0.98f;
-    private const float BounceLoss = 0.6f;
-    private const float LifetimeLossOnBounce = 0.7f;
+    private const float BounceLoss = 0.6f; // redusert fra 0.9f for mindre dramatiske sprett
+    private const float LifetimeLossOnBounce = 0.6f;
     private const float AccelerationRandomFactor = 0.1f;
     private const float FadeFactor = 0.01f;
 
     public List<IParticle> Particles { get; set; } = new();
     public IObjectMovement? ParentShip { get; set; }
     public bool Visible { get; set; }
+    public bool EnableParticleLogging { get; set; } = false;
 
     public void MoveParticles()
     {
         var deadParticles = new List<IParticle>();
-        var currentDateTime = DateTime.UtcNow;
+        long currentTicks = DateTime.UtcNow.Ticks;
 
         foreach (var particle in Particles)
         {
-            if (particle.BirthTime.Ticks + particle.VariedStart > currentDateTime.Ticks) continue;
+            if (particle.BirthTime.Ticks + particle.VariedStart > currentTicks) continue;
 
-            var deathTimeTicks = particle.BirthTime.Ticks + Convert.ToInt64(particle.Life * 10_000_000) + particle.VariedStart;
-            if (deathTimeTicks > currentDateTime.Ticks)
+            long lifeTicks = (long)(particle.Life * 10_000_000);
+            long deathTicks = particle.BirthTime.Ticks + lifeTicks + particle.VariedStart;
+
+            if (deathTicks > currentTicks)
             {
                 particle.Visible = true;
-                float lifeProgress = (float)(currentDateTime.Ticks - particle.BirthTime.Ticks - particle.VariedStart) / (particle.Life * 10_000_000);
 
-                particle.Size *= 1.0f - FadeFactor * lifeProgress;
+                float lifeProgress = (float)(currentTicks - particle.BirthTime.Ticks - particle.VariedStart) / lifeTicks;
 
-                if (lifeProgress < 0.5f) particle.Color = "ffff00";
-                else if (lifeProgress < 0.8f) particle.Color = "ff6600";
-                else particle.Color = "ff0000";
+                particle.Size = ApplyFade(particle.Size, lifeProgress);
+                particle.Color = GetColorByLifeProgress(lifeProgress);
 
                 particle.Velocity.x *= DragFactor;
                 particle.Velocity.y *= DragFactor;
@@ -54,42 +58,42 @@ public class ParticlesAI : IParticles
                 particle.Velocity.y += particle.Acceleration.y;
                 particle.Velocity.z += particle.Acceleration.z;
 
-                // Handle simple bounce if crashed
                 if (particle.ImpactStatus?.HasCrashed == true)
                 {
+                    string before = $"Before bounce: Vx={particle.Velocity.x:F2}, Vy={particle.Velocity.y:F2}, Vz={particle.Velocity.z:F2}";
+
                     switch (particle.ImpactStatus.ImpactDirection)
                     {
-                        case ImpactDirection.Bottom:
-                            particle.Velocity.y = Math.Abs(particle.Velocity.y) * BounceLoss;
-                            break;
                         case ImpactDirection.Top:
-                            particle.Velocity.y = -Math.Abs(particle.Velocity.y) * BounceLoss;
+                            if (particle.Velocity.y < 0f)
+                                particle.Velocity.y = Math.Abs(particle.Velocity.y) * BounceLoss;
+                            break;
+                        case ImpactDirection.Bottom:
+                            if (particle.Velocity.y > 0f)
+                                particle.Velocity.y = -Math.Abs(particle.Velocity.y) * BounceLoss;
                             break;
                         case ImpactDirection.Left:
-                            particle.Velocity.x = Math.Abs(particle.Velocity.x) * BounceLoss;
-                            break;
                         case ImpactDirection.Right:
-                            particle.Velocity.x = -Math.Abs(particle.Velocity.x) * BounceLoss;
+                            particle.Velocity.x *= -BounceLoss;
                             break;
                         case ImpactDirection.Center:
-                            particle.Velocity.y *= -BounceLoss;
+                            particle.Velocity.z *= -BounceLoss;
                             break;
                     }
 
                     particle.Life *= LifetimeLossOnBounce;
                     particle.ImpactStatus.HasCrashed = false;
+
+                    if (Logger.EnableFileLogging && EnableParticleLogging)
+                    {
+                        Logger.Log("[Particle Bounce] " + before);
+                        Logger.Log($"After bounce: Vx={particle.Velocity.x:F2}, Vy={particle.Velocity.y:F2}, Vz={particle.Velocity.z:F2}");
+                    }
                 }
 
                 particle.Position.x -= particle.Velocity.x;
                 particle.Position.y -= particle.Velocity.y;
                 particle.Position.z -= particle.Velocity.z;
-
-                if (particle.Position.y <= 0)
-                {
-                    particle.Position.y = 0.1f;
-                    particle.Velocity.y *= -BounceLoss;
-                    particle.Life *= LifetimeLossOnBounce;
-                }
 
                 if (particle.Rotation != null && particle.RotationSpeed != null)
                 {
@@ -110,6 +114,17 @@ public class ParticlesAI : IParticles
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float ApplyFade(float size, float progress) => size * (1.0f - FadeFactor * progress);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static string GetColorByLifeProgress(float progress)
+    {
+        if (progress < 0.5f) return "ffff00";
+        if (progress < 0.8f) return "ff6600";
+        return "ff0000";
+    }
+
     public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParShip, int Thrust)
     {
         if (Thrust == 0)
@@ -126,24 +141,22 @@ public class ParticlesAI : IParticles
         ParentShip = ParShip;
         int particleCount = Thrust * MaxThrustMultiplier;
 
-        for (int i = 0; i < particleCount; i++)
+        float startX = (StartPosition.vert1.x + StartPosition.vert2.x + StartPosition.vert3.x) / 3;
+        float startY = (StartPosition.vert1.y + StartPosition.vert2.y + StartPosition.vert3.y) / 3;
+        float startZ = (StartPosition.vert1.z + StartPosition.vert2.z + StartPosition.vert3.z) / 3;
+
+        float guideX = (Trajectory.vert1.x + Trajectory.vert2.x + Trajectory.vert3.x) / 3;
+        float guideY = (Trajectory.vert1.y + Trajectory.vert2.y + Trajectory.vert3.y) / 3;
+        float guideZ = (Trajectory.vert1.z + Trajectory.vert2.z + Trajectory.vert3.z) / 3;
+
+        for (int i = 0; i < particleCount && Particles.Count < dynamicMaxParticles; i++)
         {
-            if (Particles.Count > dynamicMaxParticles) break;
-
-            var startX = (StartPosition.vert1.x + StartPosition.vert2.x + StartPosition.vert3.x) / 3;
-            var startY = (StartPosition.vert1.y + StartPosition.vert2.y + StartPosition.vert3.y) / 3;
-            var startZ = (StartPosition.vert1.z + StartPosition.vert2.z + StartPosition.vert3.z) / 3;
-
-            var guideX = (Trajectory.vert1.x + Trajectory.vert2.x + Trajectory.vert3.x) / 3;
-            var guideY = (Trajectory.vert1.y + Trajectory.vert2.y + Trajectory.vert3.y) / 3;
-            var guideZ = (Trajectory.vert1.z + Trajectory.vert2.z + Trajectory.vert3.z) / 3;
-
             float life = (float)(random.NextDouble() * (MaxLife - MinLife) + MinLife);
             float size = (float)(random.NextDouble() * (MaxSize - MinSize) + MinSize);
 
-            var offsetX = (float)(random.NextDouble() - 0.5) * SpreadIntensity;
-            var offsetY = (float)(random.NextDouble() - 0.5) * SpreadIntensity;
-            var offsetZ = (float)(random.NextDouble() - 0.5) * SpreadIntensity;
+            float offsetX = (float)(random.NextDouble() - 0.5) * SpreadIntensity;
+            float offsetY = (float)(random.NextDouble() - 0.5) * SpreadIntensity;
+            float offsetZ = (float)(random.NextDouble() - 0.5) * SpreadIntensity;
 
             var velocity = new Vector3
             {
@@ -159,7 +172,21 @@ public class ParticlesAI : IParticles
                 z = (float)(random.NextDouble() - 0.5) * AccelerationRandomFactor
             };
 
-            var particle = new Particle
+            var rotation = new Vector3
+            {
+                x = random.NextInt64(0, 360),
+                y = random.NextInt64(0, 360),
+                z = random.NextInt64(0, 360)
+            };
+
+            var rotationSpeed = new Vector3
+            {
+                x = random.NextInt64(-5, 5),
+                y = random.NextInt64(-5, 5),
+                z = random.NextInt64(-5, 5)
+            };
+
+            Particles.Add(new Particle
             {
                 Life = life,
                 Size = size,
@@ -179,13 +206,12 @@ public class ParticlesAI : IParticles
                 BirthTime = DateTime.UtcNow,
                 noHidden = true,
                 IsRotated = false,
-                Rotation = new Vector3 { x = random.NextInt64(0, 360), y = random.NextInt64(0, 360), z = random.NextInt64(0, 360) },
-                RotationSpeed = new Vector3 { x = random.NextInt64(-5, 5), y = random.NextInt64(-5, 5), z = random.NextInt64(-5, 5) },
+                Rotation = rotation,
+                RotationSpeed = rotationSpeed,
                 Color = "ffff00",
-                Visible = false
-            };
-
-            Particles.Add(particle);
+                Visible = false,
+                ImpactStatus = new ImpactStatus { HasCrashed = false }
+            });
         }
     }
 }

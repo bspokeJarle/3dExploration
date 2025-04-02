@@ -9,6 +9,8 @@ namespace _3dTesting.Helpers
 {
     public static class ObjectPlacementHelpers
     {
+        public static bool EnablePlacementLogging = false;
+
         private static ITriangleMeshWithColor? GetSurfaceTriangle(_3dObject obj)
         {
             return obj?.ParentSurface?.RotatedSurfaceTriangles
@@ -66,11 +68,8 @@ namespace _3dTesting.Helpers
             if (obj == null || targetPosition == null)
                 return;
 
-            //Use offset from specified in the Scene
-            // Center the object at the bottom, meaning place it on top
             IVector3 objectCenter = GetObjectGeometricCenter(obj, true);
 
-            // Compute the shift required
             float shiftX = targetPosition.x - objectCenter.x;
             float shiftY = targetPosition.y - objectCenter.y;
             float shiftZ = targetPosition.z - objectCenter.z;
@@ -150,13 +149,15 @@ namespace _3dTesting.Helpers
             if (obj.SurfaceBasedId > 0)
             {
                 var triangle = GetSurfaceTriangle(obj);
-                Logger.Log($"[WorldPos Surfacebased] {obj.ObjectName} => ({obj.ParentSurface.GlobalMapPosition.x + obj.ObjectOffsets.x}, {triangle.vert1.y + obj.ObjectOffsets.y}, {obj.ParentSurface.GlobalMapPosition.z + obj.ObjectOffsets.z})");       
+                if (EnablePlacementLogging)
+                {
+                    Logger.Log("[WorldPos Surfacebased] " + obj.ObjectName + " => (" + (obj.ParentSurface.GlobalMapPosition.x + obj.ObjectOffsets.x) + ", " + (triangle.vert1.y + obj.ObjectOffsets.y) + ", " + (obj.ParentSurface.GlobalMapPosition.z + obj.ObjectOffsets.z) + ")");
+                }
                 if (triangle != null)
                 {
                     return new Vector3
                     {
                         x = obj.ParentSurface.GlobalMapPosition.x + obj.CrashboxOffsets.x,
-                        //Set this to 0 - the Y coordinate will be centered later, so setting anything here is futile
                         y = 0,
                         z = obj.ParentSurface.GlobalMapPosition.z + obj.CrashboxOffsets.z
                     };
@@ -169,7 +170,7 @@ namespace _3dTesting.Helpers
                     obj.ParentSurface.GlobalMapPosition,
                     obj.ParentSurface.SurfaceWidth(),
                     obj.ParentSurface.TileSize(),
-                    (Vector3)obj.ObjectOffsets,(Vector3)obj.CrashboxOffsets);
+                    (Vector3)obj.ObjectOffsets, (Vector3)obj.CrashboxOffsets);
             }
 
             return new Vector3
@@ -184,7 +185,7 @@ namespace _3dTesting.Helpers
         {
             float tilesPerScreen = screenPixels / (float)tileSize;
             float halfTiles = tilesPerScreen / 2f;
- 
+
             return new Vector3
             {
                 x = globalMapPosition.x + halfTiles * tileSize - position.x - crashboxOffsets.x,
@@ -195,13 +196,15 @@ namespace _3dTesting.Helpers
 
         public static void CenterCrashBoxAt(List<Vector3> crashBox, IVector3 targetPosition, IVector3 crashboxOffsets)
         {
-            // Center crashbox so its BUNN (MinY) plasseres på toppen av bakken (targetPosition.y)
             if (crashBox == null || crashBox.Count == 0 || targetPosition == null) return;
 
             float minY = crashBox.Min(p => p.y);
             float shiftY = targetPosition.y - minY + crashboxOffsets.y;
 
-            Logger.Log($"[CenterAt] Target Y: {targetPosition.y}, CrashBox MinY: {minY}, CrashBoxOffsetY: {crashboxOffsets.y}, Final ShiftY: {shiftY}");
+            if (EnablePlacementLogging)
+            {
+                Logger.Log("[CenterAt] Target Y: " + targetPosition.y + ", CrashBox MinY: " + minY + ", CrashBoxOffsetY: " + crashboxOffsets.y + ", Final ShiftY: " + shiftY);
+            }
 
             for (int i = 0; i < crashBox.Count; i++)
             {
@@ -216,24 +219,26 @@ namespace _3dTesting.Helpers
 
         public static void LogCrashboxContact(string label, _3dObject obj, List<Vector3> crashBox, _3dObject surface, List<Vector3> surfaceBox)
         {
+            if (!EnablePlacementLogging) return;
+
             float minY = crashBox.Min(p => p.y);
             float surfaceMaxY = surfaceBox.Max(p => p.y);
             float deltaY = minY - surfaceMaxY;
 
-            Logger.Log($"[ContactCheck] {label} '{obj.ObjectName}' MinY: {minY} vs Surface MaxY: {surfaceMaxY} => ΔY: {deltaY}");
+            Logger.Log("[ContactCheck] " + label + " '" + obj.ObjectName + "' MinY: " + minY + " vs Surface MaxY: " + surfaceMaxY + " => ∆Y: " + deltaY);
 
             if (Math.Abs(deltaY) < 2.0f)
-                Logger.Log($"[CONTACT] {label} '{obj.ObjectName}' appears to rest on the surface.");
+                Logger.Log("[CONTACT] " + label + " '" + obj.ObjectName + "' appears to rest on the surface.");
             else
-                Logger.Log($"[NO CONTACT] {label} '{obj.ObjectName}' is floating or below surface (ΔY = {deltaY})");
+                Logger.Log("[NO CONTACT] " + label + " '" + obj.ObjectName + "' is floating or below surface (∆Y = " + deltaY + ")");
 
-            LogCrashboxAnalysis($"{label} CrashBox", crashBox);
+            LogCrashboxAnalysis(label + " CrashBox", crashBox);
             LogCrashboxAnalysis("Surface CrashBox", surfaceBox);
         }
 
         public static void LogCrashboxAnalysis(string label, List<Vector3> box)
         {
-            if (box == null || box.Count == 0) return;
+            if (!EnablePlacementLogging || box == null || box.Count == 0) return;
 
             var yMin = box.Min(p => p.y);
             var yMax = box.Max(p => p.y);
@@ -242,11 +247,11 @@ namespace _3dTesting.Helpers
             var zMin = box.Min(p => p.z);
             var zMax = box.Max(p => p.z);
 
-            Logger.Log($"--- {label} ---");
-            Logger.Log($"Y-range: [{yMin}–{yMax}], X-range: [{xMin}–{xMax}], Z-range: [{zMin}–{zMax}]");
+            Logger.Log("--- " + label + " ---");
+            Logger.Log("Y-range: [" + yMin + "–" + yMax + "], X-range: [" + xMin + "–" + xMax + "], Z-range: [" + zMin + "–" + zMax + "]");
             foreach (var p in box)
-                Logger.Log($"(x={p.x}, y={p.y}, z={p.z})");
-            Logger.Log($"--- End of {label} ---\n");
+                Logger.Log("(x=" + p.x + ", y=" + p.y + ", z=" + p.z + ")");
+            Logger.Log("--- End of " + label + " ---\n");
         }
     }
 }

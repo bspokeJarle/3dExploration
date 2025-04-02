@@ -1,11 +1,9 @@
 ﻿using _3dTesting._3dWorld;
 using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
-using Microsoft.VisualBasic.FileIO;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using static Domain._3dSpecificsImplementations;

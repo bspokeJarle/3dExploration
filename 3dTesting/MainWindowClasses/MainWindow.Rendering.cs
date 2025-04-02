@@ -38,7 +38,7 @@ namespace _3dTesting.Rendering
                 orderedTriangles = orderedTriangles.OrderBy(z => z.CalculatedZ).ToList();
                 foreach (var triangle in orderedTriangles)
                 {
-                    if (triangle.CalculatedZ > 2200 || triangle.CalculatedZ < -2200)
+                    if (triangle.CalculatedZ > 2000 || triangle.CalculatedZ < -2000)
                         continue;
 
                     //Make sure trianges are not drawn outside the screen
