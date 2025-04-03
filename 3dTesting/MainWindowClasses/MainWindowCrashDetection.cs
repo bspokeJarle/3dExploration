@@ -12,9 +12,17 @@ namespace _3dTesting.Helpers
     {
         public static DateTime staticOjectLastCheck { get; set; } = new DateTime();
         private static DateTime _lastStaticCheck = DateTime.MinValue;
-        private static bool _skipParticles = false;
+        private static bool _skipParticles = true;
 
-        public static bool EnableLogging = false;
+        public static bool LocalEnableLogging = false;
+        public static double MaxCrashDistance = 750.0;
+
+        private static readonly Dictionary<_3dObject, List<List<Vector3>>> RotatedBoxCache = new();
+        private static int CacheHits = 0;
+        private static int CacheMisses = 0;
+        private static int SkippedByDistance = 0;
+
+        private static bool ShouldLog => Logger.EnableFileLogging && LocalEnableLogging;
 
         public static void HandleCrashboxes(List<_3dObject> activeWorld)
         {
@@ -34,26 +42,72 @@ namespace _3dTesting.Helpers
 
                     bool isInhabitantStatic = IsStatic(inhabitant.ObjectName);
                     bool isOtherStatic = IsStatic(otherInhabitant.ObjectName);
-                    bool isParticle = inhabitant.ObjectName == "Particle" || otherInhabitant.ObjectName == "Particle";
+                    bool isInhabitantParticle = inhabitant.ObjectName == "Particle";
+                    bool isOtherParticle = otherInhabitant.ObjectName == "Particle";
+                    bool isParticle = isInhabitantParticle || isOtherParticle;
+                    bool isBothParticles = isInhabitantParticle && isOtherParticle;
                     bool isShip = inhabitant.ObjectName == "Ship" || otherInhabitant.ObjectName == "Ship";
 
                     if (inhabitant.ObjectName == otherInhabitant.ObjectName) continue;
                     if (isInhabitantStatic && isOtherStatic) continue;
                     if ((isInhabitantStatic || isOtherStatic) && !shouldCheckStaticObjects) continue;
                     if (isParticle && isShip) continue;
+                    if (isBothParticles) continue;
                     if (isParticle && _skipParticles) continue;
 
                     if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;
 
-                    if (isParticle)
+                    var rotatedA = GetOrCacheRotatedBoxes(inhabitant);
+                    var rotatedB = GetOrCacheRotatedBoxes(otherInhabitant);
+
+                    var centerA = GetCenterOfBox(rotatedA[0]);
+                    var centerB = GetCenterOfBox(rotatedB[0]);
+
+                    double distance = _3dObjectHelpers.GetDistance(centerA, centerB);
+                    if (ShouldLog)
                     {
-                        if (HandleParticleCollision(inhabitant, otherInhabitant)) return;
+                        Logger.Log($"[DISTANCE CHECK] {inhabitant.ObjectName} vs {otherInhabitant.ObjectName} = {distance:F2}");
+                    }
+
+                    if (distance > MaxCrashDistance)
+                    {
+                        SkippedByDistance++;
                         continue;
                     }
 
-                    if (HandleGeneralCollision(inhabitant, otherInhabitant)) return;
+                    if (isParticle)
+                    {
+                        if (HandleParticleCollision(inhabitant, otherInhabitant))
+                            continue;
+                    }
+                    else
+                    {
+                        if (HandleGeneralCollision(inhabitant, otherInhabitant))
+                            continue;
+                    }
                 }
             }
+
+            if (ShouldLog)
+            {
+                Logger.Log($"[CACHE] Hits: {CacheHits}, Misses: {CacheMisses}, Efficiency: {(CacheHits + CacheMisses == 0 ? 0 : (int)(100.0 * CacheHits / (CacheHits + CacheMisses)))}%");
+                Logger.Log($"[DISTANCE SKIP] Skipped {SkippedByDistance} pairs due to distance > {MaxCrashDistance}");
+            }
+        }
+
+        private static List<List<Vector3>> GetOrCacheRotatedBoxes(_3dObject obj)
+        {
+            if (RotatedBoxCache.TryGetValue(obj, out var cached))
+            {
+                CacheHits++;
+                return cached.Select(box => box.Select(p => new Vector3 { x = p.x, y = p.y, z = p.z }).ToList()).ToList();
+            }
+
+            ObjectPlacementHelpers.TryGetCrashboxWorldPosition(obj, out var world);
+            var rotated = RotateAllCrashboxes(obj.CrashBoxes, (Vector3)obj.Rotation, (Vector3)obj.ObjectOffsets, world, obj.ObjectName);
+            RotatedBoxCache[obj] = rotated;
+            CacheMisses++;
+            return rotated.Select(box => box.Select(p => new Vector3 { x = p.x, y = p.y, z = p.z }).ToList()).ToList();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -92,7 +146,7 @@ namespace _3dTesting.Helpers
                             other.ImpactStatus.ImpactDirection = direction;
                         }
 
-                        if (EnableLogging)
+                        if (ShouldLog)
                         {
                             Logger.Log($"[PARTICLE COLLISION] {particle.ObjectName} <-> {other.ObjectName} | Direction: {direction}");
                         }
@@ -107,11 +161,13 @@ namespace _3dTesting.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool HandleGeneralCollision(_3dObject a, _3dObject b)
         {
-            ObjectPlacementHelpers.TryGetCrashboxWorldPosition(a, out var worldA);
-            ObjectPlacementHelpers.TryGetCrashboxWorldPosition(b, out var worldB);
+            if (ShouldLog)
+            {
+                Logger.Log($"[CHECK] Trying GeneralCollision: {a.ObjectName} vs {b.ObjectName}");
+            }
 
-            var rotatedA = RotateAllCrashboxes(a.CrashBoxes, (Vector3)a.Rotation, (Vector3)a.ObjectOffsets, worldA, a.ObjectName);
-            var rotatedB = RotateAllCrashboxes(b.CrashBoxes, (Vector3)b.Rotation, (Vector3)b.ObjectOffsets, worldB, b.ObjectName);
+            var rotatedA = GetOrCacheRotatedBoxes(a);
+            var rotatedB = GetOrCacheRotatedBoxes(b);
 
             foreach (var boxA in rotatedA)
             {
@@ -131,7 +187,7 @@ namespace _3dTesting.Helpers
                         a.ImpactStatus.ImpactDirection = EstimateDirection(centerA, centerB);
                         b.ImpactStatus.ImpactDirection = EstimateDirection(centerB, centerA);
 
-                        if (EnableLogging)
+                        if (ShouldLog)
                         {
                             Logger.Log($"[GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName}");
                         }
@@ -168,7 +224,7 @@ namespace _3dTesting.Helpers
             float dz = point.z - center.z;
 
             if (Math.Abs(dy) > Math.Abs(dx) && Math.Abs(dy) > Math.Abs(dz))
-                return dy < 0 ? ImpactDirection.Top : ImpactDirection.Bottom; // Inverted for coordinate system
+                return dy < 0 ? ImpactDirection.Top : ImpactDirection.Bottom;
             else if (Math.Abs(dx) > Math.Abs(dz))
                 return dx > 0 ? ImpactDirection.Right : ImpactDirection.Left;
             else

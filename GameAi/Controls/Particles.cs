@@ -19,7 +19,7 @@ public class ParticlesAI : IParticles
     private const float MaxSize = 4f;
     private const float SpreadIntensity = 3f;
     private const float DragFactor = 0.98f;
-    private const float BounceLoss = 0.6f; // redusert fra 0.9f for mindre dramatiske sprett
+    private const float BounceLoss = 0.4f; // redusert fra 0.9f for mindre dramatiske sprett
     private const float LifetimeLossOnBounce = 0.6f;
     private const float AccelerationRandomFactor = 0.1f;
     private const float FadeFactor = 0.01f;
