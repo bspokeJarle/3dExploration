@@ -3,12 +3,12 @@ Optimize CrashDetection
 	Done, first iteration
 CrashDetection impact objects
 	Objects get information about the impact - first iteration
-	Particles change direction when they hit things - Work in progress
+	Particles change direction when they hit things - Done - first iteration
 Start developing a physics engine
 	First iteration - Work in progress
-	We can now have particles that bounce of the surface
-	Need to add more physics to the particles
-	We can add physics to all objects
+	We can now have particles that bounce of the surface - Done first iteration
+	Need to add more physics to the particles - Work in progress
+	We can add physics to all objects - Work in progress
 Optimize ParticleSystem
 	Done, first iteration
 Optimize DeepCopy

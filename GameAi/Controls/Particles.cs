@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System;
 using System.Runtime.CompilerServices;
 using System.Windows;
+using GameAiAndControls.Physics;
 
 public class ParticlesAI : IParticles
 {
@@ -14,13 +15,13 @@ public class ParticlesAI : IParticles
     private const int MaxThrustMultiplier = 5;
     private const int MaxDynamicParticles = 30;
     private const float MinLife = 2f;
-    private const float MaxLife = 5.5f;
+    private const float MaxLife = 3.5f;
     private const float MinSize = 1f;
     private const float MaxSize = 4f;
     private const float SpreadIntensity = 3f;
     private const float DragFactor = 0.98f;
-    private const float BounceLoss = 0.4f; // redusert fra 0.9f for mindre dramatiske sprett
-    private const float LifetimeLossOnBounce = 0.6f;
+    private const float BounceLoss = 0.1f; // redusert fra 0.9f for mindre dramatiske sprett
+    private const float LifetimeLossOnBounce = 0.8f;
     private const float AccelerationRandomFactor = 0.1f;
     private const float FadeFactor = 0.01f;
 
@@ -236,4 +237,5 @@ public class Particle : IParticle
     public bool? NoShading { get; set; }
     public bool Visible { get; set; }
     public IImpactStatus? ImpactStatus { get; set; }
+    public IPhysics? Physics { get; set; } = new Physics();
 }

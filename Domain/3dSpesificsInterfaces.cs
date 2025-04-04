@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
 
@@ -9,6 +10,24 @@ namespace Domain
     {
         public int mapDepth;
         public int mapId;
+    }
+
+    public interface IPhysics
+    {
+        public void ApplyGravityForce(ref IVector3 worldPosition);
+        public void ApplyDragForce(ref IVector3 worldPosition);
+        public void ApplyThrust(ref IVector3 worldPosition, IVector3 direction);
+
+        public void ApplyRotationDragForce(ref IVector3 rotationVector);
+        public void TiltStabilization(ref IVector3 tiltState);
+        public float Mass { get; set; }
+        public IVector3 Velocity { get; set; }
+        public float Thrust { get; set; }
+        public float Friction { get; set; }
+        public float MaxSpeed { get; set; }
+        public float MaxThrust { get; set; }
+
+        public IVector3 GravitySource { get; set; }
     }
 
     public interface ISurface
@@ -116,7 +135,7 @@ namespace Domain
         public bool? NoShading { get; set; }
         public bool Visible { get; set; }
         public IImpactStatus? ImpactStatus { get; set; }
-
+        public IPhysics? Physics { get; set; }
     }
     public interface ITriangleMeshWithColor : ITriangleMesh
     {
