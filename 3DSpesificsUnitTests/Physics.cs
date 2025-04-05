@@ -1,4 +1,6 @@
-﻿using GameAiAndControls.Physics;
+﻿using Domain;
+using GameAiAndControls.Helpers;
+using GameAiAndControls.Physics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Diagnostics;
 using static Domain._3dSpecificsImplementations;
@@ -8,6 +10,63 @@ namespace _3DSpesificsUnitTests
     [TestClass]
     public class UnitTestPhysics
     {
+        [TestMethod]
+        public void Bounce_Should_Reflect_Correctly_With_ImpactDirectionEnum()
+        {
+            var physics = new Physics
+            {
+                Velocity = new Vector3(-10, -20, 5),
+                EnergyLossFactor = 1f, // To isolate the effect of the normal direction
+                BounceHeightMultiplier = 1f
+            };
+
+            // Test each direction
+            physics.Bounce(new Vector3(0, 0, 0), ImpactDirection.Bottom);
+            Assert.IsTrue(physics.Velocity.y > 0, "Bottom impact should reflect Y positively");
+
+            physics.Velocity = new Vector3(-10, -20, 5);
+            physics.Bounce(new Vector3(0, 0, 0), ImpactDirection.Top);
+            Assert.IsTrue(physics.Velocity.y > 0, "Top impact should reflect Y positively");
+
+            physics.Velocity = new Vector3(-10, -20, 5);
+            physics.Bounce(new Vector3(0, 0, 0), ImpactDirection.Left);
+            Assert.IsTrue(physics.Velocity.x > 0, "Left impact should reflect X positively");
+
+            physics.Velocity = new Vector3(10, -20, 5);
+            physics.Bounce(new Vector3(0, 0, 0), ImpactDirection.Right);
+            Assert.IsTrue(physics.Velocity.x < 0, "Right impact should reflect X negatively");
+
+            physics.Velocity = new Vector3(0, -20, 0);
+            physics.Bounce(new Vector3(0, 0, 0), ImpactDirection.Center);
+            Assert.IsTrue(physics.Velocity.y > 0, "Center impact should bounce upward");
+        }
+
+        [TestMethod]
+        public void Particle_Should_Bounce_In_All_Axes_When_Hitting_Side()
+        {
+            var physics = new Physics
+            {
+                Mass = 1f,
+                GravityStrength = 0f, // Gravity is disabled to test bounce reflection only
+                Friction = 0f,
+                EnergyLossFactor = 0.9f,
+                BounceHeightMultiplier = 2f,
+                Velocity = new Vector3(-10f, -20f, 5f) // Initial diagonal motion
+            };
+
+            var normal = new Vector3(1, 1, -1); // A wall with diagonal orientation
+            normal = (Vector3)PhysicsHelpers.Normalize(normal);
+
+            physics.Bounce(normal);
+
+            var newVel = physics.Velocity;
+
+            Debug.WriteLine($"After bounce: V=({newVel.x:F2}, {newVel.y:F2}, {newVel.z:F2})");
+
+            Assert.IsTrue(newVel.x > 0, "X direction should be reflected");
+            Assert.IsTrue(newVel.y > 0, "Y direction should be reflected and positive (upward)");
+            Assert.IsTrue(newVel.z < 0, "Z direction should be reflected");
+        }
 
         [TestMethod]
         public void Particle_Should_Bounce_AtLeastOnce_When_Crashing()
@@ -24,8 +83,6 @@ namespace _3DSpesificsUnitTests
 
             var position = new Vector3(0, 0, 0);
             float deltaTime = 1f / 60f;
-
-            float bounceStartY = 0f;
             float maxYAfterBounce = 0f;
             float previousBounceHeight = 0f;
             int bounceCount = 0;
@@ -63,16 +120,16 @@ namespace _3DSpesificsUnitTests
                     else if (waitingForFall && position.y < maxYAfterBounce - 0.5f)
                     {
                         float currentBounceHeight = maxYAfterBounce;
-                        System.Diagnostics.Debug.WriteLine($"Sprett {bounceCount}: Høyde = {currentBounceHeight:F2}");
+                        Debug.WriteLine($"Bounce {bounceCount}: Height = {currentBounceHeight:F2}");
 
                         if (bounceCount == 1)
                         {
-                            Assert.IsTrue(currentBounceHeight >= 5f, $"Første sprett var for lav: {currentBounceHeight:F2} enheter");
+                            Assert.IsTrue(currentBounceHeight >= 5f, $"First bounce was too low: {currentBounceHeight:F2} units");
                             previousBounceHeight = currentBounceHeight;
                         }
                         else if (bounceCount == 2)
                         {
-                            Assert.IsTrue(currentBounceHeight < previousBounceHeight, $"Andre sprett var ikke lavere enn første: {currentBounceHeight:F2} vs {previousBounceHeight:F2}");
+                            Assert.IsTrue(currentBounceHeight < previousBounceHeight, $"Second bounce was not lower: {currentBounceHeight:F2} vs {previousBounceHeight:F2}");
                             return;
                         }
 
@@ -81,7 +138,7 @@ namespace _3DSpesificsUnitTests
                 }
             }
 
-            Assert.Fail("Det oppstod ikke minst to synlige sprett");
+            Assert.Fail("There were not at least two visible bounces");
         }
 
         [TestMethod]
@@ -100,8 +157,8 @@ namespace _3DSpesificsUnitTests
 
             position = (Vector3)physics.ApplyGravityForce(position, deltaTime);
 
-            Assert.IsTrue(physics.Velocity.y < 0, "Velocity.y should increase in positive direction (down in this world)");
-            Assert.IsTrue(position.y < 0, "Position.y should move downwards (positive Y)");
+            Assert.IsTrue(physics.Velocity.y < 0, "Velocity.y should be negative (falling downward)");
+            Assert.IsTrue(position.y < 0, "Position.y should move downward");
         }
 
         [TestMethod]
@@ -129,13 +186,13 @@ namespace _3DSpesificsUnitTests
                 GravityStrength = 1000f,
                 Friction = 0.0f,
                 Velocity = new Vector3(0, 0, 0),
-                Acceleration = new Vector3(0, -500, 0) // upward force
+                Acceleration = new Vector3(0, -500, 0) // Upward force
             };
 
             var pos = new Vector3(0, 0, 0);
             var newPos = physics.ApplyForces(pos, 1f / 60f);
 
-            Assert.IsTrue(newPos.y > pos.y, "Should move down (positive Y in this world), gravity stronger than acceleration");
+            Assert.IsTrue(newPos.y > pos.y, "Object should fall due to stronger gravity compared to upward acceleration");
         }
 
         [TestMethod]
@@ -150,7 +207,7 @@ namespace _3DSpesificsUnitTests
             var pos = new Vector3(0, 100, 0);
             var nextPos = physics.ApplyGravityForce(pos, 1f / 60f);
 
-            Assert.AreEqual(2, physics.BounceCooldownFrames, "Cooldown should decrease");
+            Assert.AreEqual(2, physics.BounceCooldownFrames, "Cooldown should decrease by one each frame");
             Assert.AreEqual(pos.y + physics.Velocity.y * (1f / 60f), nextPos.y, 0.01, "Only velocity should be applied during cooldown");
         }
     }

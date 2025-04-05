@@ -29,6 +29,7 @@ namespace Domain
         IVector3 ApplyGravityForce(IVector3 currentPosition, float deltaTime);
         IVector3 ApplyThrust(IVector3 currentPosition, IVector3 direction, float deltaTime);
         IVector3 ApplyRotationDragForce(IVector3 rotationVector);
+        void Bounce(Vector3 normal, ImpactDirection? direction);
         void TiltStabilization(ref IVector3 tiltState);
     }
 
