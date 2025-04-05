@@ -51,7 +51,7 @@ namespace _3dTesting
         public MainWindow()
         {
             //Turn this on when debugging
-            Logger.EnableFileLogging = false;
+            Logger.EnableFileLogging = true;
             Logger.ClearLog();
 
             InitializeComponent();

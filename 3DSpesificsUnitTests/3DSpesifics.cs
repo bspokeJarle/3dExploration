@@ -4,7 +4,7 @@ using _3dTesting.Helpers;
 namespace _3DSpesificsUnitTests
 {
     [TestClass]
-    public class UnitTest
+    public class UnitTest3DSpecifics
     {
         [TestClass]
         public class CrashBoxCenteringTests

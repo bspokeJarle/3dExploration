@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
 
@@ -14,20 +13,23 @@ namespace Domain
 
     public interface IPhysics
     {
-        public void ApplyGravityForce(ref IVector3 worldPosition);
-        public void ApplyDragForce(ref IVector3 worldPosition);
-        public void ApplyThrust(ref IVector3 worldPosition, IVector3 direction);
-
-        public void ApplyRotationDragForce(ref IVector3 rotationVector);
-        public void TiltStabilization(ref IVector3 tiltState);
-        public float Mass { get; set; }
-        public IVector3 Velocity { get; set; }
-        public float Thrust { get; set; }
-        public float Friction { get; set; }
-        public float MaxSpeed { get; set; }
-        public float MaxThrust { get; set; }
-
-        public IVector3 GravitySource { get; set; }
+        float Mass { get; set; }
+        IVector3 Velocity { get; set; }
+        float Thrust { get; set; }
+        float Friction { get; set; }
+        float MaxSpeed { get; set; }
+        float MaxThrust { get; set; }
+        float GravityStrength { get; set; }
+        IVector3 GravitySource { get; set; }
+        IVector3 Acceleration { get; set; }
+        int BounceCooldownFrames { get; set; }
+        float BounceHeightMultiplier { get; set; }
+        IVector3 ApplyDragForce(IVector3 currentPosition, float deltaTime);
+        IVector3 ApplyForces(IVector3 currentPosition, float deltaTime);
+        IVector3 ApplyGravityForce(IVector3 currentPosition, float deltaTime);
+        IVector3 ApplyThrust(IVector3 currentPosition, IVector3 direction, float deltaTime);
+        IVector3 ApplyRotationDragForce(IVector3 rotationVector);
+        void TiltStabilization(ref IVector3 tiltState);
     }
 
     public interface ISurface
@@ -112,7 +114,7 @@ namespace Domain
     {
         public IObjectMovement ParentShip { get; set; }
         public List<IParticle> Particles { get; set; }
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust);  
+        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust);
         public void MoveParticles();
     }
     public interface IParticle
