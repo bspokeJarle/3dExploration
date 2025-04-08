@@ -17,16 +17,6 @@ namespace _3dTesting.Helpers
                 .FirstOrDefault(t => t.landBasedPosition == obj.SurfaceBasedId);
         }
 
-        private static Vector3 GetGlobalMapOffset(_3dObject obj)
-        {
-            return new Vector3
-            {
-                x = obj.ParentSurface.GlobalMapPosition.x,
-                y = obj.ParentSurface.GlobalMapPosition.y,
-                z = obj.ParentSurface.GlobalMapPosition.z
-            };
-        }
-
         public static bool TryGetRenderPosition(_3dObject obj, int screenCenterX, int screenCenterY, out double x, out double y, out double z)
         {
             x = y = z = 0;
@@ -128,24 +118,8 @@ namespace _3dTesting.Helpers
             };
         }
 
-        public static bool TryGetCrashboxWorldPosition(_3dObject obj, out Vector3 position)
-        {
-            position = new Vector3();
-            if (obj == null) return false;
-            var worldPos = GetWorldPosition(obj);
-            position = new Vector3
-            {
-                x = worldPos.x,
-                y = worldPos.y,
-                z = worldPos.z
-            };
-            return true;
-        }
-
         public static Vector3 GetWorldPosition(_3dObject obj)
         {
-            if (obj == null) return new Vector3();
-
             if (obj.SurfaceBasedId > 0)
             {
                 var triangle = GetSurfaceTriangle(obj);
@@ -155,11 +129,14 @@ namespace _3dTesting.Helpers
                 }
                 if (triangle != null)
                 {
+                    //Todo get world position from triangle
+                    var worldPos = GetTileWorldPosition((int)obj.SurfaceBasedId,obj.ParentSurface.GlobalMapSize(),obj.ParentSurface.TileSize());
                     return new Vector3
                     {
-                        x = obj.ParentSurface.GlobalMapPosition.x + obj.CrashboxOffsets.x,
+                        x = worldPos.x,
+                        //CenterAt will provide the Y value
                         y = 0,
-                        z = obj.ParentSurface.GlobalMapPosition.z + obj.CrashboxOffsets.z
+                        z = worldPos.z
                     };
                 }
             }
@@ -172,12 +149,38 @@ namespace _3dTesting.Helpers
                     obj.ParentSurface.TileSize(),
                     (Vector3)obj.ObjectOffsets, (Vector3)obj.CrashboxOffsets);
             }
+            //These are all dynamic objects flying around, like Seeders, Particles etc
+            if (obj.ObjectName!="Surface")
+            {
+                return new Vector3
+                {
+                    x = obj.WorldPosition.x,
+                    y = obj.WorldPosition.y,
+                    z = obj.WorldPosition.z
+                };
+            }
 
             return new Vector3
             {
                 x = obj.ParentSurface.GlobalMapPosition.x,
                 y = obj.ParentSurface.GlobalMapPosition.y,
                 z = obj.ParentSurface.GlobalMapPosition.z
+            };
+        }
+
+        public static Vector3 GetTileWorldPosition(int tileId, int tilesPerRow = 2500, int tileSize = 75)
+        {
+            if (tileId <= 0)
+                throw new ArgumentException("Tile ID must be 1 or higher");
+
+            int row = (tileId - 1) / tilesPerRow;
+            int col = (tileId - 1) % tilesPerRow;
+
+            return new Vector3
+            {
+                x = col * tileSize,
+                y = 0,
+                z = row * tileSize
             };
         }
 
@@ -188,9 +191,9 @@ namespace _3dTesting.Helpers
 
             return new Vector3
             {
-                x = globalMapPosition.x + halfTiles * tileSize - position.x - crashboxOffsets.x,
-                y = globalMapPosition.y + crashboxOffsets.y,
-                z = globalMapPosition.z + halfTiles * tileSize - position.z - crashboxOffsets.z
+                x = globalMapPosition.x + halfTiles * tileSize,
+                y = globalMapPosition.y + position.y,
+                z = globalMapPosition.z + halfTiles * tileSize
             };
         }
 
@@ -216,6 +219,7 @@ namespace _3dTesting.Helpers
                 };
             }
         }
+
 
         public static void LogCrashboxContact(string label, _3dObject obj, List<Vector3> crashBox, _3dObject surface, List<Vector3> surfaceBox)
         {
@@ -247,10 +251,18 @@ namespace _3dTesting.Helpers
             var zMin = box.Min(p => p.z);
             var zMax = box.Max(p => p.z);
 
+            var center = new Vector3
+            {
+                x = box.Average(p => p.x),
+                y = box.Average(p => p.y),
+                z = box.Average(p => p.z)
+            };
+
             Logger.Log("--- " + label + " ---");
             Logger.Log("Y-range: [" + yMin + "–" + yMax + "], X-range: [" + xMin + "–" + xMax + "], Z-range: [" + zMin + "–" + zMax + "]");
+            Logger.Log("Center: (x=" + center.x.ToString("F1") + ", y=" + center.y.ToString("F1") + ", z=" + center.z.ToString("F1") + ")");
             foreach (var p in box)
-                Logger.Log("(x=" + p.x + ", y=" + p.y + ", z=" + p.z + ")");
+                Logger.Log("(x=" + p.x.ToString("F1") + ", y=" + p.y.ToString("F1") + ", z=" + p.z.ToString("F1") + ")");
             Logger.Log("--- End of " + label + " ---\n");
         }
     }

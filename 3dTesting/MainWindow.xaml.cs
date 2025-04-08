@@ -47,6 +47,7 @@ namespace _3dTesting
         public MediaPlayer player = new MediaPlayer();
         public BitmapSource surfaceMapBitmap;
         private Image mapOverlay;
+        private bool isPaused = false;
 
         public MainWindow()
         {
@@ -93,6 +94,9 @@ namespace _3dTesting
         {
             if (e.Key == Key.Escape)
                 Application.Current.Shutdown();
+            //This is the pause the game
+            if (e.Key == Key.LeftCtrl)
+                isPaused = !isPaused;
         }
 
         private void Handle3dWorld()
@@ -113,6 +117,10 @@ namespace _3dTesting
 
             Task.Run(() =>
             {
+                if (isPaused)
+                {
+                    return;
+                }
                 var screenCoordinates = gameWorldManager.UpdateWorld(world);
                 Dispatcher.Invoke(() => worldRenderer.RenderTriangles(screenCoordinates));
             });

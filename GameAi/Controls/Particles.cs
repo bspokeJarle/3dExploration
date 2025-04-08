@@ -19,9 +19,6 @@ public class ParticlesAI : IParticles
     private const float MinSize = 1f;
     private const float MaxSize = 4f;
     private const float SpreadIntensity = 3f;
-    private const float DragFactor = 0.98f;
-    private const float BounceLoss = 0.1f; // redusert fra 0.9f for mindre dramatiske sprett
-    private const float LifetimeLossOnBounce = 0.8f;
     private const float AccelerationRandomFactor = 0.1f;
     private const float FadeFactor = 0.01f;
 
@@ -29,11 +26,17 @@ public class ParticlesAI : IParticles
     public IObjectMovement? ParentShip { get; set; }
     public bool Visible { get; set; }
     public bool EnableParticleLogging { get; set; } = false;
+    private DateTime _lastUpdateTime = DateTime.UtcNow;
 
     public void MoveParticles()
     {
         var deadParticles = new List<IParticle>();
-        long currentTicks = DateTime.UtcNow.Ticks;
+        DateTime now = DateTime.UtcNow;
+        float deltaTime = (float)(now - _lastUpdateTime).TotalSeconds;
+        if (deltaTime <= 0f || deltaTime > 1f) deltaTime = 1f / 60f;
+        _lastUpdateTime = now;
+
+        long currentTicks = now.Ticks;
 
         foreach (var particle in Particles)
         {
@@ -51,50 +54,47 @@ public class ParticlesAI : IParticles
                 particle.Size = ApplyFade(particle.Size, lifeProgress);
                 particle.Color = GetColorByLifeProgress(lifeProgress);
 
-                particle.Velocity.x *= DragFactor;
-                particle.Velocity.y *= DragFactor;
-                particle.Velocity.z *= DragFactor;
-
-                particle.Velocity.x += particle.Acceleration.x;
-                particle.Velocity.y += particle.Acceleration.y;
-                particle.Velocity.z += particle.Acceleration.z;
-
-                if (particle.ImpactStatus?.HasCrashed == true)
+                if (particle.Physics != null)
                 {
-                    string before = $"Before bounce: Vx={particle.Velocity.x:F2}, Vy={particle.Velocity.y:F2}, Vz={particle.Velocity.z:F2}";
-
-                    switch (particle.ImpactStatus.ImpactDirection)
+                    if (particle.ImpactStatus?.HasCrashed == true && particle.ImpactStatus.ImpactDirection != null)
                     {
-                        case ImpactDirection.Top:
-                            if (particle.Velocity.y < 0f)
-                                particle.Velocity.y = Math.Abs(particle.Velocity.y) * BounceLoss;
-                            break;
-                        case ImpactDirection.Bottom:
-                            if (particle.Velocity.y > 0f)
-                                particle.Velocity.y = -Math.Abs(particle.Velocity.y) * BounceLoss;
-                            break;
-                        case ImpactDirection.Left:
-                        case ImpactDirection.Right:
-                            particle.Velocity.x *= -BounceLoss;
-                            break;
-                        case ImpactDirection.Center:
-                            particle.Velocity.z *= -BounceLoss;
-                            break;
+                        if (Logger.EnableFileLogging && EnableParticleLogging)
+                        {
+                            Logger.Log($"[Particle Bounce Triggered]");
+                            Logger.Log($"   Object Name        : {particle.ImpactStatus.ObjectName}");
+                            Logger.Log($"   Position (Local)   : x={particle.Position?.x:F2}, y={particle.Position?.y:F2}, z={particle.Position?.z:F2}");
+                            Logger.Log($"   Impact Direction   : {particle.ImpactStatus.ImpactDirection}");
+                            Logger.Log($"   Velocity Before    : x={particle.Physics.Velocity.x:F2}, y={particle.Physics.Velocity.y:F2}, z={particle.Physics.Velocity.z:F2}");
+                        }
+
+                        particle.Physics.Bounce(new Vector3(0, 0, 0), particle.ImpactStatus.ImpactDirection);
+
+                        if (Logger.EnableFileLogging && EnableParticleLogging)
+                        {
+                            Logger.Log("After Bounce Velocity: " + particle.Physics.Velocity);
+                        }
+
+                        particle.Life *= 0.8f;
+                        particle.ImpactStatus.HasCrashed = false;
                     }
 
-                    particle.Life *= LifetimeLossOnBounce;
-                    particle.ImpactStatus.HasCrashed = false;
-
-                    if (Logger.EnableFileLogging && EnableParticleLogging)
-                    {
-                        Logger.Log("[Particle Bounce] " + before);
-                        Logger.Log($"After bounce: Vx={particle.Velocity.x:F2}, Vy={particle.Velocity.y:F2}, Vz={particle.Velocity.z:F2}");
-                    }
+                    // Apply tested and validated gravity-based physics
+                    particle.Position = particle.Physics.ApplyGravityForce(particle.Position ?? new Vector3(), deltaTime);
                 }
+                else
+                {
+                    particle.Velocity.x += particle.Acceleration.x;
+                    particle.Velocity.y += particle.Acceleration.y;
+                    particle.Velocity.z += particle.Acceleration.z;
 
-                particle.Position.x -= particle.Velocity.x;
-                particle.Position.y -= particle.Velocity.y;
-                particle.Position.z -= particle.Velocity.z;
+                    particle.Velocity.x *= 0.98f;
+                    particle.Velocity.y *= 0.98f;
+                    particle.Velocity.z *= 0.98f;
+
+                    particle.Position.x -= particle.Velocity.x;
+                    particle.Position.y -= particle.Velocity.y;
+                    particle.Position.z -= particle.Velocity.z;
+                }
 
                 if (particle.Rotation != null && particle.RotationSpeed != null)
                 {

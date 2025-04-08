@@ -43,7 +43,12 @@ namespace _3dTesting.MainWindowClasses
                         z = inhabitant.ObjectOffsets.z + particle.Position.z
                     },
                     CrashBoxes = CreateCrashBoxFromTriangle(particleTriangle),
-                    CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 },
+                    CrashboxOffsets = new Vector3 
+                    { 
+                        x = inhabitant.ObjectOffsets.x + particle.Position.x, 
+                        y = inhabitant.ObjectOffsets.y + particle.Position.y, 
+                        z = inhabitant.ObjectOffsets.z + particle.Position.z 
+                    },
                     //Setup the referance to the original particle
                     ImpactStatus = new ImpactStatus { HasCrashed = false, SourceParticle = particle },
                     Rotation = particle.Rotation

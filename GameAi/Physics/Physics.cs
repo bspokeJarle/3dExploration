@@ -8,6 +8,8 @@ namespace GameAiAndControls.Physics
 {
     public class Physics : IPhysics
     {
+        private bool LocalEnableLogging = false;
+
         public float Mass { get; set; } = 1.0f;
         public IVector3 Velocity { get; set; } = new Vector3(0, -90f, 0); // Initial downward velocity for bouncing
         public float Thrust { get; set; }
@@ -57,7 +59,7 @@ namespace GameAiAndControls.Physics
                 return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
             }
 
-            var direction = new Vector3(0, -1, 0);
+            var direction = new Vector3(0, 1, 0);
             var gravityForce = PhysicsHelpers.Multiply(direction, GravityStrength / Mass);
             Velocity = PhysicsHelpers.Add(Velocity, PhysicsHelpers.Multiply(gravityForce, deltaTime));
 
@@ -95,14 +97,16 @@ namespace GameAiAndControls.Physics
         // Reflects velocity along a surface normal and applies energy loss
         public void Bounce(Vector3 normal, ImpactDirection? direction = null)
         {
+            // Coordinate system reminder: -Y is up, +Y is down
+            // Normals are defined to reflect correctly based on incoming direction
             if (direction.HasValue)
             {
                 normal = direction.Value switch
                 {
-                    ImpactDirection.Top => new Vector3(0, -1, 0),
-                    ImpactDirection.Bottom => new Vector3(0, 1, 0),
-                    ImpactDirection.Left => new Vector3(1, 0, 0),
-                    ImpactDirection.Right => new Vector3(-1, 0, 0),
+                    ImpactDirection.Top => new Vector3(0, 1, 0),
+                    ImpactDirection.Bottom => new Vector3(0, -1, 0),
+                    ImpactDirection.Left => new Vector3(-1, 0, 0),
+                    ImpactDirection.Right => new Vector3(1, 0, 0),
                     ImpactDirection.Center => new Vector3(0, 1, 0), // Center assumed to bounce upward
                     _ => normal
                 };
@@ -119,11 +123,17 @@ namespace GameAiAndControls.Physics
             // Dynamically reduce bounce height for next bounce
             BounceHeightMultiplier *= (EnergyLossFactor / BounceHeightMultiplier);
 
-            Debug.WriteLine($"BounceHeightMultiplier now: {BounceHeightMultiplier}");
+            if (Logger.EnableFileLogging && LocalEnableLogging)
+            {
+                Logger.Log($"[Bounce] Direction: {direction}, Normal: {normal}");
+                Logger.Log($"[Bounce] Resulting Velocity: {reflection}");
+                Logger.Log($"[Bounce] New Multiplier: {BounceHeightMultiplier:F3}");
+            }
 
             Velocity = reflection;
             BounceCooldownFrames = 3;
         }
+
 
         public IVector3 ApplyRotationDragForce(IVector3 rotationVector)
         {

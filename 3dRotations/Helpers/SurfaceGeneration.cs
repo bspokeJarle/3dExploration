@@ -293,7 +293,7 @@ namespace _3dRotations.Helpers
             {
                 int fixedX = 1274;
                 int fixedY = 1241;
-                for (int t = 0; t < 10; t++)
+                for (int t = 0; t < 5; t++)
                 {
                     int offsetX = random.Next(-2, 3);
                     int offsetY = random.Next(-2, 3);

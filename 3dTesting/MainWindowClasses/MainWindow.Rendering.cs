@@ -10,6 +10,8 @@ namespace _3dTesting.Rendering
     {
         private readonly DrawingVisualHost visualHost;
         private readonly DrawingVisual visual = new DrawingVisual();
+        private readonly bool _localLoggingEnabled =  false;
+
         private int renderingTriangleCount = 0;
 
         private readonly Dictionary<(float, string), Color> colorCache = new();
@@ -18,29 +20,31 @@ namespace _3dTesting.Rendering
 
         public int GetRenderingTriangleCount() => renderingTriangleCount;
 
-        public WorldRenderer(DrawingVisualHost host)
+        public WorldRenderer(DrawingVisualHost host, bool enableLocalLogging = false)
         {
             visualHost = host;
+            _localLoggingEnabled = enableLocalLogging;
 
-            // Log render tier
-            int tier = (RenderCapability.Tier >> 16);
-            string tierText = tier switch
+            if (ShouldLog())
             {
-                2 => "Render Tier 2 - Full hardware acceleration",
-                1 => "Render Tier 1 - Partial hardware acceleration",
-                0 => "Render Tier 0 - Software rendering only",
-                _ => $"Unknown Render Tier ({tier})"
-            };
+                int tier = (RenderCapability.Tier >> 16);
+                string tierText = tier switch
+                {
+                    2 => "Render Tier 2 - Full hardware acceleration",
+                    1 => "Render Tier 1 - Partial hardware acceleration",
+                    0 => "Render Tier 0 - Software rendering only",
+                    _ => $"Unknown Render Tier ({tier})"
+                };
 
-            Logger.Log($"[WorldRenderer] WPF Render Tier: {tierText}");
-            if (tier < 2)
-                Logger.Log($"[WorldRenderer] ⚠️ Performance Warning: Not using full hardware acceleration!");
+                Logger.Log($"[WorldRenderer] WPF Render Tier: {tierText}");
+                if (tier < 2)
+                    Logger.Log("[WorldRenderer] ⚠️ Performance Warning: Not using full hardware acceleration!");
+            }
 
-            // ✅ Prewarm color cache with commonly used combinations
             PrewarmColorCache();
         }
 
-        // I have been hacked :)
+        private bool ShouldLog() => _localLoggingEnabled && Logger.EnableFileLogging;
 
         private void PrewarmColorCache()
         {
@@ -63,12 +67,10 @@ namespace _3dTesting.Rendering
                     {
                         string formattedZ = roundedZ.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
 
-                        // ✅ Pre-generate color
                         Color color = (Color)ColorConverter.ConvertFromString(
                             Helpers.Colors.getShadeOfColorFromNormal(roundedZ, normalized));
                         colorCache[cacheKey] = color;
 
-                        // ✅ Pre-generate brush
                         if (!brushCache.ContainsKey(color))
                         {
                             SolidColorBrush brush = new SolidColorBrush(color);
@@ -76,7 +78,6 @@ namespace _3dTesting.Rendering
                             brushCache[color] = brush;
                         }
 
-                        // ✅ Pre-generate pen
                         if (!penCache.ContainsKey(color))
                         {
                             Pen pen = new Pen(brushCache[color], 1);
@@ -88,12 +89,14 @@ namespace _3dTesting.Rendering
                     }
                     catch (Exception ex)
                     {
-                        Logger.Log($"[WorldRenderer] ⚠️ Failed to prewarm color ({roundedZ}, {baseColor}): {ex.Message}");
+                        if (ShouldLog())
+                            Logger.Log($"[WorldRenderer] ⚠️ Failed to prewarm color ({roundedZ}, {baseColor}): {ex.Message}");
                     }
                 }
             }
 
-            Logger.Log($"[WorldRenderer] ✅ Prewarmed {generatedCount} colors + brushes + pens.");
+            if (ShouldLog())
+                Logger.Log($"[WorldRenderer] ✅ Prewarmed {generatedCount} colors + brushes + pens.");
         }
 
         public void RenderTriangles(List<_2dTriangleMesh> screenCoordinates)
@@ -102,8 +105,7 @@ namespace _3dTesting.Rendering
             var triangleArray = screenCoordinates.ToArray();
             Array.Sort(triangleArray, (a, b) => a.CalculatedZ.CompareTo(b.CalculatedZ));
 
-            // ✅ Bare lag statistikk hvis logging er aktivert
-            bool trackStats = Logger.EnableFileLogging;
+            bool trackStats = ShouldLog();
             int colorHits = 0, colorMisses = 0;
             int brushHits = 0, brushMisses = 0;
             int penHits = 0, penMisses = 0;
@@ -125,7 +127,6 @@ namespace _3dTesting.Rendering
                     float zKey = (float)Math.Round((triangle.CalculatedZ + 1050) / 3000f, 2);
                     string baseColor = triangle.Color.ToLowerInvariant();
 
-                    // Color
                     if (!colorCache.TryGetValue((zKey, baseColor), out Color color))
                     {
                         color = (Color)ColorConverter.ConvertFromString(
@@ -138,7 +139,6 @@ namespace _3dTesting.Rendering
                         colorHits++;
                     }
 
-                    // Brush
                     if (!brushCache.TryGetValue(color, out SolidColorBrush brush))
                     {
                         brush = new SolidColorBrush(color);
@@ -151,7 +151,6 @@ namespace _3dTesting.Rendering
                         brushHits++;
                     }
 
-                    // Pen
                     if (!penCache.TryGetValue(color, out Pen pen))
                     {
                         pen = new Pen(brush, 1);
@@ -170,14 +169,12 @@ namespace _3dTesting.Rendering
 
             visualHost.AddVisual(visual);
 
-            // ✅ Logg kun hvis loggeren er aktivert
-            if (Logger.EnableFileLogging)
+            if (trackStats)
             {
                 Logger.Log($"[WorldRenderer] Caching stats - Colors: {colorHits} hits / {colorMisses} misses, " +
                            $"Brushes: {brushHits} hits / {brushMisses} misses, Pens: {penHits} hits / {penMisses} misses");
             }
         }
-
 
         private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)
         {

@@ -5,6 +5,7 @@ using _3dTesting._3dWorld;
 using Domain;
 using static Domain._3dSpecificsImplementations;
 using System.Runtime.CompilerServices;
+using System.Net.Security;
 
 namespace _3dTesting.Helpers
 {
@@ -48,6 +49,8 @@ namespace _3dTesting.Helpers
                     bool isBothParticles = isInhabitantParticle && isOtherParticle;
                     bool isShip = inhabitant.ObjectName == "Ship" || otherInhabitant.ObjectName == "Ship";
 
+                    //Empty objectnames should not be accepted
+                    if (string.IsNullOrEmpty(inhabitant.ObjectName) || string.IsNullOrEmpty(otherInhabitant.ObjectName)) continue;
                     if (inhabitant.ObjectName == otherInhabitant.ObjectName) continue;
                     if (isInhabitantStatic && isOtherStatic) continue;
                     if ((isInhabitantStatic || isOtherStatic) && !shouldCheckStaticObjects) continue;
@@ -103,8 +106,8 @@ namespace _3dTesting.Helpers
                 return cached.Select(box => box.Select(p => new Vector3 { x = p.x, y = p.y, z = p.z }).ToList()).ToList();
             }
 
-            ObjectPlacementHelpers.TryGetCrashboxWorldPosition(obj, out var world);
-            var rotated = RotateAllCrashboxes(obj.CrashBoxes, (Vector3)obj.Rotation, (Vector3)obj.ObjectOffsets, world, obj.ObjectName);
+            var world = ObjectPlacementHelpers.GetWorldPosition(obj);
+            var rotated = RotateAllCrashboxes(obj.CrashBoxes, (Vector3)obj.Rotation, (Vector3)obj.CrashboxOffsets, world, obj.ObjectName);
             RotatedBoxCache[obj] = rotated;
             CacheMisses++;
             return rotated.Select(box => box.Select(p => new Vector3 { x = p.x, y = p.y, z = p.z }).ToList()).ToList();
@@ -138,17 +141,21 @@ namespace _3dTesting.Helpers
                         {
                             particle.ImpactStatus.SourceParticle.ImpactStatus.HasCrashed = true;
                             particle.ImpactStatus.SourceParticle.ImpactStatus.ImpactDirection = direction;
+                            particle.ImpactStatus.SourceParticle.ImpactStatus.ObjectName = a.ObjectName;
                         }
 
                         if (other.ImpactStatus != null)
                         {
                             other.ImpactStatus.HasCrashed = true;
                             other.ImpactStatus.ImpactDirection = direction;
+                            other.ImpactStatus.ObjectName = b.ObjectName;
                         }
 
                         if (ShouldLog)
                         {
                             Logger.Log($"[PARTICLE COLLISION] {particle.ObjectName} <-> {other.ObjectName} | Direction: {direction}");
+                            Logger.Log($"[PARTICLE BOX] {string.Join(", ", particleBox.Select(p => $"({p.x}, {p.y}, {p.z})"))}");
+                            Logger.Log($"[OTHER BOX] {string.Join(", ", otherBox.Select(p => $"({p.x}, {p.y}, {p.z})"))}");
                         }
 
                         return true;
@@ -176,6 +183,18 @@ namespace _3dTesting.Helpers
                     CenterCrashBoxIfSurfaceBased(a, boxA);
                     CenterCrashBoxIfSurfaceBased(b, boxB);
 
+                    for (int k = 0; k < a.CrashBoxes.Count; k++)
+                    {
+                        if (a.CrashBoxes[k].Count == 0) continue;
+                        ObjectPlacementHelpers.LogCrashboxAnalysis("Crashbox Inhabitant:" + a.ObjectName, boxA);
+                    }
+
+                    for (int k = 0; k < b.CrashBoxes.Count; k++)
+                    {
+                        if (b.CrashBoxes[k].Count == 0) continue;
+                        ObjectPlacementHelpers.LogCrashboxAnalysis("Crashbox Other Inhabitant:" + b.ObjectName, boxB);
+                    }
+
                     if (_3dObjectHelpers.CheckCollisionBoxVsBox(boxA, boxB))
                     {
                         a.ImpactStatus.HasCrashed = true;
@@ -191,7 +210,6 @@ namespace _3dTesting.Helpers
                         {
                             Logger.Log($"[GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName}");
                         }
-
                         return true;
                     }
                 }
@@ -248,7 +266,7 @@ namespace _3dTesting.Helpers
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void CenterCrashBoxIfSurfaceBased(_3dObject obj, List<Vector3> box)
-        {
+        { 
             if (obj?.SurfaceBasedId > 0)
             {
                 var tri = obj.ParentSurface?.RotatedSurfaceTriangles.Find(t => t.landBasedPosition == obj.SurfaceBasedId);
@@ -261,7 +279,7 @@ namespace _3dTesting.Helpers
             objectName == "Tree" || objectName == "Surface" || objectName == "House";
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static List<List<Vector3>> RotateAllCrashboxes(List<List<IVector3>> crashboxes, Vector3 rotation, Vector3 objectOffsets, Vector3 worldPosition, string objectName)
+        private static List<List<Vector3>> RotateAllCrashboxes(List<List<IVector3>> crashboxes, Vector3 rotation, Vector3 crashBoxOffsets, Vector3 worldPosition, string objectName)
         {
             var rotatedCrashboxes = new List<List<Vector3>>(crashboxes.Count);
             foreach (var crashbox in crashboxes)
@@ -269,7 +287,7 @@ namespace _3dTesting.Helpers
                 var rotated = new List<Vector3>(crashbox.Count);
                 foreach (var point in crashbox)
                 {
-                    rotated.Add(RotatePoint(point, rotation, objectOffsets, worldPosition, objectName));
+                    rotated.Add(RotatePoint(point, rotation, crashBoxOffsets, worldPosition, objectName));
                 }
                 rotatedCrashboxes.Add(rotated);
             }
@@ -277,7 +295,7 @@ namespace _3dTesting.Helpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static Vector3 RotatePoint(IVector3 point, Vector3 rotation, Vector3 objectOffsets, Vector3 worldPosition, string objectName)
+        private static Vector3 RotatePoint(IVector3 point, Vector3 rotation, Vector3 crashBoxOffsets, Vector3 worldPosition, string objectName)
         {
             var singleTriangle = new List<ITriangleMeshWithColor>
             {
@@ -292,9 +310,9 @@ namespace _3dTesting.Helpers
             var rotatedTriangle = GameHelpers.RotateMesh(singleTriangle, rotation);
             var rotatedPoint = rotatedTriangle[0].vert1;
 
-            rotatedPoint.x += worldPosition.x + objectOffsets.x;
-            rotatedPoint.y += worldPosition.y + objectOffsets.y;
-            rotatedPoint.z += worldPosition.z + objectOffsets.z;
+            rotatedPoint.x += worldPosition.x + crashBoxOffsets.x;
+            rotatedPoint.y += worldPosition.y + crashBoxOffsets.y;
+            rotatedPoint.z += worldPosition.z + crashBoxOffsets.z;
 
             return (Vector3)rotatedPoint;
         }

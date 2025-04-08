@@ -29,6 +29,7 @@ namespace Domain
             public float x { get; set; }
             public float y { get; set; }
             public float z { get; set; }
+            public override string ToString() => $"(x={x:F2}, y={y:F2}, z={z:F2})";
         }
 
         public class TriangleMeshWithColor : TriangleMesh, ITriangleMeshWithColor
