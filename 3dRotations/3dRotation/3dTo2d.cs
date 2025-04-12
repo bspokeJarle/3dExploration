@@ -19,27 +19,46 @@ namespace _3dTesting._3dRotation
         private const int screenSizeY = 1024;
         private const int screenCenterX = screenSizeX / 2;
         private const int screenCenterY = screenSizeY / 2;
+        private long CurrentFrame = 0;
 
         public List<_2dTriangleMesh> convertTo2dFromObjects(List<_3dObject> inhabitants)
         {
-            var screenCoordinates = new ConcurrentBag<_2dTriangleMesh>();
+            CurrentFrame++;
+            var screenCoordinates = new List<_2dTriangleMesh>();
 
-            Parallel.ForEach(inhabitants, obj =>
+            foreach (var obj in inhabitants)
             {
-                if (obj == null || !obj.CheckInhabitantVisibility()) return;
+                if (obj == null || !obj.CheckInhabitantVisibility()) continue;
 
                 if (!ObjectPlacementHelpers.TryGetRenderPosition(obj, screenCenterX, screenCenterY, out double screenX, out double screenY, out double screenZ))
-                    return;
+                    continue;
 
+                // 🚫 Ikke parallell – crashboxene blir oppdatert direkte
+                if (obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)
+                {
+                    var offset = obj.ObjectOffsets;
+                    foreach (var box in obj.CrashBoxes)
+                    {
+                        for (int j = 0; j < box.Count; j++)
+                        {
+                            var original = box[j];
+                            box[j] = new Vector3
+                            {
+                                x = original.x + offset.x,
+                                y = original.y + offset.y,
+                                z = original.z + offset.z
+                            };
+                        }
+                    }
+                }
 
                 var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
-                foreach (var tri in projected)
-                    screenCoordinates.Add(tri);
-            });
+                screenCoordinates.AddRange(projected);
+            }
 
-            return screenCoordinates.ToList();
+            return screenCoordinates;
         }
-         
+
         private List<_2dTriangleMesh> ConvertObjectTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ)
         {
             var result = new List<_2dTriangleMesh>();

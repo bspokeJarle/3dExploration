@@ -112,7 +112,13 @@ namespace _3dTesting._3dRotation
         public List<ITriangleMeshWithColor> RotateZMesh(List<ITriangleMeshWithColor> Z, double angle) =>
             RotateMesh(Z, angle, 'Z');
 
-        public Vector3 RotatePoint(float cosRes, float sinRes, Vector3 coord, char axis) =>
-            RotateToDomain(coord, cosRes, sinRes, axis);
+        public IVector3 RotatePoint(double angleInDegrees, IVector3 coord, char axis)
+        {
+            double radians = Math.PI * angleInDegrees / 180.0;
+            float cosRes = (float)Math.Cos(radians);
+            float sinRes = (float)Math.Sin(radians);
+
+            return RotateToDomain((Vector3)coord, cosRes, sinRes, axis);
+        }
     }
 }

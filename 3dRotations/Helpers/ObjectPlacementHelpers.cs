@@ -17,6 +17,16 @@ namespace _3dTesting.Helpers
                 .FirstOrDefault(t => t.landBasedPosition == obj.SurfaceBasedId);
         }
 
+        public static (float x, float y, float z) GetCrashBoxCenter(List<List<IVector3>> crashBoxes)
+        {
+            var allPoints = crashBoxes.SelectMany(box => box).Cast<Vector3>().ToList();
+            return (
+                allPoints.Average(p => p.x),
+                allPoints.Average(p => p.y),
+                allPoints.Average(p => p.z)
+            );
+        }
+
         public static bool TryGetRenderPosition(_3dObject obj, int screenCenterX, int screenCenterY, out double x, out double y, out double z)
         {
             x = y = z = 0;
@@ -32,6 +42,7 @@ namespace _3dTesting.Helpers
                     if (triangle == null) return false;
 
                     CenterObjectAt(obj, triangle.vert1);
+                    CenterCrashBoxesAt(obj, triangle.vert1);
                     x = screenCenterX + obj.ObjectOffsets.x;
                     y = screenCenterY + obj.ObjectOffsets.y;
                     z = obj.ObjectOffsets.z;
@@ -83,6 +94,41 @@ namespace _3dTesting.Helpers
             }
         }
 
+        public static void CenterCrashBoxesAt(_3dObject obj, IVector3 targetPosition)
+        {
+            if (obj?.CrashBoxes == null || obj.CrashBoxes.Count == 0 || targetPosition == null)
+                return;
+
+            var allPoints = obj.CrashBoxes.SelectMany(box => box).Cast<Vector3>().ToList();
+
+            if (allPoints.Count == 0) return;
+
+            var center = new Vector3
+            {
+                x = allPoints.Average(p => p.x),
+                y = allPoints.Min(p => p.y),
+                z = allPoints.Average(p => p.z)
+            };
+
+            float shiftX = targetPosition.x - center.x;
+            float shiftY = targetPosition.y - center.y;
+            float shiftZ = targetPosition.z - center.z;
+
+            for (int i = 0; i < obj.CrashBoxes.Count; i++)
+            {
+                for (int j = 0; j < obj.CrashBoxes[i].Count; j++)
+                {
+                    var p = (Vector3)obj.CrashBoxes[i][j];
+                    obj.CrashBoxes[i][j] = new Vector3
+                    {
+                        x = p.x + shiftX,
+                        y = p.y + shiftY,
+                        z = p.z + shiftZ
+                    };
+                }
+            }
+        }
+
         public static IVector3 GetObjectGeometricCenter(I3dObject obj, bool snapToBottomY = false)
         {
             float sumX = 0, sumY = 0, sumZ = 0;
@@ -118,85 +164,6 @@ namespace _3dTesting.Helpers
             };
         }
 
-        public static Vector3 GetWorldPosition(_3dObject obj)
-        {
-            if (obj.SurfaceBasedId > 0)
-            {
-                var triangle = GetSurfaceTriangle(obj);
-                if (EnablePlacementLogging)
-                {
-                    Logger.Log("[WorldPos Surfacebased] " + obj.ObjectName + " => (" + (obj.ParentSurface.GlobalMapPosition.x + obj.ObjectOffsets.x) + ", " + (triangle.vert1.y + obj.ObjectOffsets.y) + ", " + (obj.ParentSurface.GlobalMapPosition.z + obj.ObjectOffsets.z) + ")");
-                }
-                if (triangle != null)
-                {
-                    //Todo get world position from triangle
-                    var worldPos = GetTileWorldPosition((int)obj.SurfaceBasedId,obj.ParentSurface.GlobalMapSize(),obj.ParentSurface.TileSize());
-                    return new Vector3
-                    {
-                        x = worldPos.x,
-                        //CenterAt will provide the Y value
-                        y = 0,
-                        z = worldPos.z
-                    };
-                }
-            }
-
-            if (obj.ObjectName == "Ship")
-            {
-                return GetCenterWorldPosition(
-                    obj.ParentSurface.GlobalMapPosition,
-                    obj.ParentSurface.SurfaceWidth(),
-                    obj.ParentSurface.TileSize(),
-                    (Vector3)obj.ObjectOffsets, (Vector3)obj.CrashboxOffsets);
-            }
-            //These are all dynamic objects flying around, like Seeders, Particles etc
-            if (obj.ObjectName!="Surface")
-            {
-                return new Vector3
-                {
-                    x = obj.WorldPosition.x,
-                    y = obj.WorldPosition.y,
-                    z = obj.WorldPosition.z
-                };
-            }
-
-            return new Vector3
-            {
-                x = obj.ParentSurface.GlobalMapPosition.x,
-                y = obj.ParentSurface.GlobalMapPosition.y,
-                z = obj.ParentSurface.GlobalMapPosition.z
-            };
-        }
-
-        public static Vector3 GetTileWorldPosition(int tileId, int tilesPerRow = 2500, int tileSize = 75)
-        {
-            if (tileId <= 0)
-                throw new ArgumentException("Tile ID must be 1 or higher");
-
-            int row = (tileId - 1) / tilesPerRow;
-            int col = (tileId - 1) % tilesPerRow;
-
-            return new Vector3
-            {
-                x = col * tileSize,
-                y = 0,
-                z = row * tileSize
-            };
-        }
-
-        public static Vector3 GetCenterWorldPosition(Vector3 globalMapPosition, int screenPixels, int tileSize, Vector3 position, Vector3 crashboxOffsets)
-        {
-            float tilesPerScreen = screenPixels / (float)tileSize;
-            float halfTiles = tilesPerScreen / 2f;
-
-            return new Vector3
-            {
-                x = globalMapPosition.x + halfTiles * tileSize,
-                y = globalMapPosition.y + position.y,
-                z = globalMapPosition.z + halfTiles * tileSize
-            };
-        }
-
         public static void CenterCrashBoxAt(List<Vector3> crashBox, IVector3 targetPosition, IVector3 crashboxOffsets)
         {
             if (crashBox == null || crashBox.Count == 0 || targetPosition == null) return;
@@ -220,25 +187,6 @@ namespace _3dTesting.Helpers
             }
         }
 
-
-        public static void LogCrashboxContact(string label, _3dObject obj, List<Vector3> crashBox, _3dObject surface, List<Vector3> surfaceBox)
-        {
-            if (!EnablePlacementLogging) return;
-
-            float minY = crashBox.Min(p => p.y);
-            float surfaceMaxY = surfaceBox.Max(p => p.y);
-            float deltaY = minY - surfaceMaxY;
-
-            Logger.Log("[ContactCheck] " + label + " '" + obj.ObjectName + "' MinY: " + minY + " vs Surface MaxY: " + surfaceMaxY + " => ∆Y: " + deltaY);
-
-            if (Math.Abs(deltaY) < 2.0f)
-                Logger.Log("[CONTACT] " + label + " '" + obj.ObjectName + "' appears to rest on the surface.");
-            else
-                Logger.Log("[NO CONTACT] " + label + " '" + obj.ObjectName + "' is floating or below surface (∆Y = " + deltaY + ")");
-
-            LogCrashboxAnalysis(label + " CrashBox", crashBox);
-            LogCrashboxAnalysis("Surface CrashBox", surfaceBox);
-        }
 
         public static void LogCrashboxAnalysis(string label, List<Vector3> box)
         {

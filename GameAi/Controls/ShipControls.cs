@@ -48,7 +48,7 @@ namespace GameAiAndControls.Controls
         public int rotationZ = 0;
 
         public int shipY = 0;
-        public int zoom = 75;
+        public int zoom = 300;
 
         public I3dObject ParentObject { get; set; }
         public ITriangleMeshWithColor? StartCoordinates { get; set; }

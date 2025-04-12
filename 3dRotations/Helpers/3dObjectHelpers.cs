@@ -203,7 +203,7 @@ namespace _3dTesting.Helpers
 
         public static List<_3dObject> DeepCopy3dObjects(List<_3dObject> inhabitants)
         {
-            return inhabitants
+            var result = inhabitants
                 .Where(i => i.CheckInhabitantVisibility())
                 .Select(inhabitant =>
                 {
@@ -231,7 +231,7 @@ namespace _3dTesting.Helpers
                         };
                     }).ToList();
 
-                    return new _3dObject
+                    var copy = new _3dObject
                     {
                         ObjectOffsets = new Vector3 { x = inhabitant.ObjectOffsets.x, y = inhabitant.ObjectOffsets.y, z = inhabitant.ObjectOffsets.z },
                         CrashboxOffsets = new Vector3 { x = inhabitant.CrashboxOffsets.x, y = inhabitant.CrashboxOffsets.y, z = inhabitant.CrashboxOffsets.z },
@@ -240,11 +240,7 @@ namespace _3dTesting.Helpers
                         ObjectParts = objectParts.Cast<I3dObjectPart>().ToList(),
                         Movement = inhabitant.Movement,
                         Particles = inhabitant.Particles,
-                        CrashBoxes = inhabitant.CrashBoxes
-                          .Select(innerList => innerList
-                              .Select(v => new Vector3 { x = v.x, y = v.y, z = v.z } as IVector3)
-                              .ToList())
-                          .ToList(),
+                        CrashBoxes = CopyCrashboxes(inhabitant.CrashBoxes),
                         ImpactStatus = inhabitant.ImpactStatus,
                         Mass = inhabitant.Mass,
                         ObjectName = inhabitant.ObjectName,
@@ -254,7 +250,32 @@ namespace _3dTesting.Helpers
                         RotationOffsetZ = inhabitant.RotationOffsetZ,
                         SurfaceBasedId = inhabitant.SurfaceBasedId
                     };
+
+                    return copy;
                 }).ToList();
+
+            return result;
         }
+
+        public static List<List<IVector3>> CopyCrashboxes(List<List<IVector3>> original)
+        {
+            var result = new List<List<IVector3>>(original.Count);
+            foreach (var box in original)
+            {
+                var copiedBox = new List<IVector3>(box.Count);
+                foreach (var point in box)
+                {
+                    copiedBox.Add(new Vector3
+                    {
+                        x = point.x,
+                        y = point.y,
+                        z = point.z
+                    });
+                }
+                result.Add(copiedBox);
+            }
+            return result;
+        }
+
     }
 }

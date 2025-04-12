@@ -6,6 +6,8 @@ using Domain;
 using static Domain._3dSpecificsImplementations;
 using System.Runtime.CompilerServices;
 using System.Net.Security;
+using _3dRotations.World.Objects;
+using System.Windows;
 
 namespace _3dTesting.Helpers
 {
@@ -22,20 +24,21 @@ namespace _3dTesting.Helpers
         private static int CacheHits = 0;
         private static int CacheMisses = 0;
         private static int SkippedByDistance = 0;
+        private static int numFrame = 0;
 
         private static bool ShouldLog => Logger.EnableFileLogging && LocalEnableLogging;
 
         public static void HandleCrashboxes(List<_3dObject> activeWorld)
         {
+            numFrame++;
             int count = activeWorld.Count;
             bool shouldCheckStaticObjects = (DateTime.Now - _lastStaticCheck).TotalMilliseconds > 100;
             _skipParticles = !_skipParticles;
 
-            for (int i = 0; i < count; i++)
+             for (int i = 0; i < count; i++)
             {
                 var inhabitant = activeWorld[i];
                 if (inhabitant == null || inhabitant.CrashBoxes == null) continue;
-
                 for (int j = i + 1; j < count; j++)
                 {
                     var otherInhabitant = activeWorld[j];
@@ -60,16 +63,22 @@ namespace _3dTesting.Helpers
 
                     if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;
 
-                    var rotatedA = GetOrCacheRotatedBoxes(inhabitant);
-                    var rotatedB = GetOrCacheRotatedBoxes(otherInhabitant);
+                    var centerA = GetCenterOfBox(
+                        inhabitant.CrashBoxes
+                        .SelectMany(cb => cb)
+                        .Select(p => new Vector3 { x = p.x, y = p.y, z = p.z })
+                        .ToList());
 
-                    var centerA = GetCenterOfBox(rotatedA[0]);
-                    var centerB = GetCenterOfBox(rotatedB[0]);
+                    var centerB = GetCenterOfBox(
+                        otherInhabitant.CrashBoxes
+                        .SelectMany(cb => cb)
+                        .Select(p => new Vector3 { x = p.x, y = p.y, z = p.z })
+                        .ToList());
 
                     double distance = _3dObjectHelpers.GetDistance(centerA, centerB);
                     if (ShouldLog)
                     {
-                        Logger.Log($"[DISTANCE CHECK] {inhabitant.ObjectName} vs {otherInhabitant.ObjectName} = {distance:F2}");
+                        Logger.Log($"[DISTANCE CHECK] [FRAME:{numFrame}] {inhabitant.ObjectName} vs {otherInhabitant.ObjectName} = {distance:F2}");
                     }
 
                     if (distance > MaxCrashDistance)
@@ -98,21 +107,6 @@ namespace _3dTesting.Helpers
             }
         }
 
-        private static List<List<Vector3>> GetOrCacheRotatedBoxes(_3dObject obj)
-        {
-            if (RotatedBoxCache.TryGetValue(obj, out var cached))
-            {
-                CacheHits++;
-                return cached.Select(box => box.Select(p => new Vector3 { x = p.x, y = p.y, z = p.z }).ToList()).ToList();
-            }
-
-            var world = ObjectPlacementHelpers.GetWorldPosition(obj);
-            var rotated = RotateAllCrashboxes(obj.CrashBoxes, (Vector3)obj.Rotation, (Vector3)obj.CrashboxOffsets, world, obj.ObjectName);
-            RotatedBoxCache[obj] = rotated;
-            CacheMisses++;
-            return rotated.Select(box => box.Select(p => new Vector3 { x = p.x, y = p.y, z = p.z }).ToList()).ToList();
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool HandleParticleCollision(_3dObject a, _3dObject b)
         {
@@ -121,7 +115,8 @@ namespace _3dTesting.Helpers
 
             foreach (var particleBox in particle.CrashBoxes)
             {
-                var center = GetCenterOfBox(particleBox.Cast<Vector3>().ToList());
+                var safeBox = particleBox.Select(v => new Vector3 { x = v.x, y = v.y, z = v.z }).ToList();
+                var center = GetCenterOfBox(safeBox);
 
                 foreach (var otherBox in other.CrashBoxes)
                 {
@@ -172,43 +167,30 @@ namespace _3dTesting.Helpers
             {
                 Logger.Log($"[CHECK] Trying GeneralCollision: {a.ObjectName} vs {b.ObjectName}");
             }
-
-            var rotatedA = GetOrCacheRotatedBoxes(a);
-            var rotatedB = GetOrCacheRotatedBoxes(b);
-
-            foreach (var boxA in rotatedA)
+            foreach (var boxA in a.CrashBoxes)
             {
-                foreach (var boxB in rotatedB)
+                foreach (var boxB in b.CrashBoxes)
                 {
-                    CenterCrashBoxIfSurfaceBased(a, boxA);
-                    CenterCrashBoxIfSurfaceBased(b, boxB);
+                    var safeBoxA = boxA.Select(v => new Vector3 { x = v.x, y = v.y, z = v.z }).ToList();
+                    var safeBoxB = boxB.Select(v => new Vector3 { x = v.x, y = v.y, z = v.z }).ToList();
+                 
+                    ObjectPlacementHelpers.LogCrashboxAnalysis($"[FRAME:{numFrame}] [CrashBoxRef {boxA.GetHashCode()}] Crashbox Inhabitant:" + a.ObjectName, safeBoxA);
+                    ObjectPlacementHelpers.LogCrashboxAnalysis($"[FRAME:{numFrame}] [CrashBoxRef {boxB.GetHashCode()}] Crashbox Other Inhabitant:" + b.ObjectName, safeBoxB);
 
-                    for (int k = 0; k < a.CrashBoxes.Count; k++)
-                    {
-                        if (a.CrashBoxes[k].Count == 0) continue;
-                        ObjectPlacementHelpers.LogCrashboxAnalysis("Crashbox Inhabitant:" + a.ObjectName, boxA);
-                    }
-
-                    for (int k = 0; k < b.CrashBoxes.Count; k++)
-                    {
-                        if (b.CrashBoxes[k].Count == 0) continue;
-                        ObjectPlacementHelpers.LogCrashboxAnalysis("Crashbox Other Inhabitant:" + b.ObjectName, boxB);
-                    }
-
-                    if (_3dObjectHelpers.CheckCollisionBoxVsBox(boxA, boxB))
+                    if (_3dObjectHelpers.CheckCollisionBoxVsBox(safeBoxA,safeBoxB))
                     {
                         a.ImpactStatus.HasCrashed = true;
                         b.ImpactStatus.HasCrashed = true;
 
-                        var centerA = GetCenterOfBox(boxA);
-                        var centerB = GetCenterOfBox(boxB);
+                        var centerA = GetCenterOfBox(safeBoxA);
+                        var centerB = GetCenterOfBox(safeBoxB);
 
                         a.ImpactStatus.ImpactDirection = EstimateDirection(centerA, centerB);
                         b.ImpactStatus.ImpactDirection = EstimateDirection(centerB, centerA);
 
                         if (ShouldLog)
                         {
-                            Logger.Log($"[GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName}");
+                            Logger.Log($"[FRAME:{numFrame}] [GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName}");
                         }
                         return true;
                     }
@@ -218,14 +200,35 @@ namespace _3dTesting.Helpers
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static Vector3 GetCenterOfBox(List<Vector3> box)
+        public static Vector3 GetCenterOfBox(List<Vector3> points)
         {
-            return new Vector3
+            if (points == null || points.Count == 0)
+                return new Vector3();
+
+            float minX = float.MaxValue, maxX = float.MinValue;
+            float minY = float.MaxValue, maxY = float.MinValue;
+            float minZ = float.MaxValue, maxZ = float.MinValue;
+
+            foreach (var p in points)
             {
-                x = box.Average(p => p.x),
-                y = box.Average(p => p.y),
-                z = box.Average(p => p.z)
+                if (p.x < minX) minX = p.x;
+                if (p.x > maxX) maxX = p.x;
+
+                if (p.y < minY) minY = p.y;
+                if (p.y > maxY) maxY = p.y;
+
+                if (p.z < minZ) minZ = p.z;
+                if (p.z > maxZ) maxZ = p.z;
+            }
+
+            var center = new Vector3
+            {
+                x = (minX + maxX) / 2f,
+                y = (minY + maxY) / 2f,
+                z = (minZ + maxZ) / 2f
             };
+
+            return center;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -264,57 +267,8 @@ namespace _3dTesting.Helpers
                 return ImpactDirection.Center;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CenterCrashBoxIfSurfaceBased(_3dObject obj, List<Vector3> box)
-        { 
-            if (obj?.SurfaceBasedId > 0)
-            {
-                var tri = obj.ParentSurface?.RotatedSurfaceTriangles.Find(t => t.landBasedPosition == obj.SurfaceBasedId);
-                if (tri != null)
-                    ObjectPlacementHelpers.CenterCrashBoxAt(box, tri.vert1, obj.CrashboxOffsets);
-            }
-        }
-
         public static bool IsStatic(string objectName) =>
             objectName == "Tree" || objectName == "Surface" || objectName == "House";
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static List<List<Vector3>> RotateAllCrashboxes(List<List<IVector3>> crashboxes, Vector3 rotation, Vector3 crashBoxOffsets, Vector3 worldPosition, string objectName)
-        {
-            var rotatedCrashboxes = new List<List<Vector3>>(crashboxes.Count);
-            foreach (var crashbox in crashboxes)
-            {
-                var rotated = new List<Vector3>(crashbox.Count);
-                foreach (var point in crashbox)
-                {
-                    rotated.Add(RotatePoint(point, rotation, crashBoxOffsets, worldPosition, objectName));
-                }
-                rotatedCrashboxes.Add(rotated);
-            }
-            return rotatedCrashboxes;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static Vector3 RotatePoint(IVector3 point, Vector3 rotation, Vector3 crashBoxOffsets, Vector3 worldPosition, string objectName)
-        {
-            var singleTriangle = new List<ITriangleMeshWithColor>
-            {
-                new TriangleMeshWithColor
-                {
-                    vert1 = new Vector3 { x = point.x, y = point.y, z = point.z },
-                    vert2 = new Vector3 { x = point.x, y = point.y, z = point.z },
-                    vert3 = new Vector3 { x = point.x, y = point.y, z = point.z }
-                }
-            };
-
-            var rotatedTriangle = GameHelpers.RotateMesh(singleTriangle, rotation);
-            var rotatedPoint = rotatedTriangle[0].vert1;
-
-            rotatedPoint.x += worldPosition.x + crashBoxOffsets.x;
-            rotatedPoint.y += worldPosition.y + crashBoxOffsets.y;
-            rotatedPoint.z += worldPosition.z + crashBoxOffsets.z;
-
-            return (Vector3)rotatedPoint;
-        }
     }
 }

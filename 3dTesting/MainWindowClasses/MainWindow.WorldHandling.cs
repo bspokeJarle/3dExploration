@@ -4,10 +4,9 @@ using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using Domain;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 using static Domain._3dSpecificsImplementations;
 
@@ -24,112 +23,106 @@ namespace _3dTesting.MainWindowClasses
         {
             var activeWorld = _3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants);
             var particleObjectList = new List<_3dObject>();
-            var renderedList = new ConcurrentBag<_3dObject>(); // ✅ Use thread-safe collection
+            var renderedList = new List<_3dObject>();
             DebugMessage = string.Empty;
 
-            Parallel.ForEach(activeWorld, inhabitant =>
+            foreach (var inhabitant in activeWorld)
             {
-                if (!inhabitant.CheckInhabitantVisibility()) return; // ✅ Skip non-visible objects
+                if (!inhabitant.CheckInhabitantVisibility()) continue;
 
-                renderedList.Add(inhabitant);
-
-                // ✅ Apply movement updates
                 inhabitant.Movement?.MoveObject(inhabitant);
 
-                // ✅ Optimize rotation offset check
-                bool hasRotationOffset = inhabitant.RotationOffsetX > 0 ||
+                 bool hasRotationOffset = inhabitant.RotationOffsetX > 0 ||
                                          inhabitant.RotationOffsetY > 0 ||
                                          inhabitant.RotationOffsetZ > 0;
 
                 if (hasRotationOffset)
                 {
-                    Parallel.ForEach(inhabitant.ObjectParts, part =>
+                    foreach (var part in inhabitant.ObjectParts)
                     {
-                        if (part.Triangles.Count > 500) // ✅ Only parallelize for large meshes
+                        for (int i = 0; i < part.Triangles.Count; i++)
                         {
-                            Parallel.For(0, part.Triangles.Count, i =>
-                            {
-                                var triangles = part.Triangles[i];
-                                GameHelpers.ApplyRotationOffset(ref triangles,
-                                    inhabitant.RotationOffsetX,
-                                    inhabitant.RotationOffsetY,
-                                    inhabitant.RotationOffsetZ);
-                            });
+                            var triangles = part.Triangles[i];
+                            GameHelpers.ApplyRotationOffset(ref triangles,
+                                inhabitant.RotationOffsetX,
+                                inhabitant.RotationOffsetY,
+                                inhabitant.RotationOffsetZ);
                         }
-                        else
-                        {
-                            for (int i = 0; i < part.Triangles.Count; i++)
-                            {
-                                var triangles = part.Triangles[i];
-                                GameHelpers.ApplyRotationOffset(ref triangles,
-                                    inhabitant.RotationOffsetX,
-                                    inhabitant.RotationOffsetY,
-                                    inhabitant.RotationOffsetZ);
-                            }
-                        }
-                    });
+                    }
                 }
 
-                // ✅ Rotate all parts efficiently
-                Parallel.ForEach(inhabitant.ObjectParts, part =>
+                inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
+
+                foreach (var part in inhabitant.ObjectParts)
                 {
                     part.Triangles = RotateMesh(part.Triangles, (Vector3)inhabitant.Rotation);
-                    if (inhabitant.ObjectName == "Surface") inhabitant.ParentSurface.RotatedSurfaceTriangles = part.Triangles;
+                    if (inhabitant.ObjectName == "Surface")
+                        inhabitant.ParentSurface.RotatedSurfaceTriangles = part.Triangles;
                     SetMovementGuides(inhabitant, part, part.Triangles);
-                });
+                }
 
                 if (inhabitant.ObjectName == "Surface")
-                {
-                     DebugMessage += $" Surface: Y Pos: {inhabitant.ObjectOffsets.y}";
-                }
-                if (inhabitant.ObjectName == "Ship")
-                {
-                    DebugMessage += $" Ship: Y Pos: {inhabitant.ObjectOffsets.y + 300}";
-                }
+                    DebugMessage += $" Surface: Y Pos: {inhabitant.ObjectOffsets.y}";
 
-                // ✅ Optimize centroid calculation
+                if (inhabitant.ObjectName == "Ship")
+                    DebugMessage += $" Ship: Y Pos: {inhabitant.ObjectOffsets.y + 300}";
+
                 if (hasRotationOffset)
                 {
                     Vector3 centroid = GameHelpers.ComputeCentroid(inhabitant);
 
-                    Parallel.ForEach(inhabitant.ObjectParts, part =>
+                    foreach (var part in inhabitant.ObjectParts)
                     {
-                        if (part.Triangles.Count > 500) // ✅ Only parallelize large lists
+                        for (int i = 0; i < part.Triangles.Count; i++)
                         {
-                            Parallel.For(0, part.Triangles.Count, i =>
-                            {
-                                var triangles = part.Triangles[i];
-                                GameHelpers.RecenterTriangle(ref triangles, centroid);
-                            });
+                            var triangles = part.Triangles[i];
+                            GameHelpers.RecenterTriangle(ref triangles, centroid);
                         }
-                        else
-                        {
-                            for (int i = 0; i < part.Triangles.Count; i++)
-                            {
-                                var triangles = part.Triangles[i];
-                                GameHelpers.RecenterTriangle(ref triangles, centroid);
-                            }
-                        }
-                    });
+                    }
                 }
-
-                // ✅ Handle particles
                 particleManager.HandleParticles(inhabitant, particleObjectList);
-            });
+                renderedList.Add(inhabitant);
+            }
 
-            if (particleObjectList.Count > 0) activeWorld.AddRange(particleObjectList);
-            var safeSnapshotForCollision = _3dObjectHelpers.DeepCopy3dObjects(renderedList.ToList());
-            if (particleObjectList.Count > 0) safeSnapshotForCollision.AddRange(particleObjectList);
-            CrashDetection.HandleCrashboxes(safeSnapshotForCollision); // ✅ Convert to List once
-            return From3dTo2d.convertTo2dFromObjects(activeWorld);
+            if (particleObjectList.Count > 0)
+                renderedList.AddRange(particleObjectList);
+             
+            var projectedCoordinates = From3dTo2d.convertTo2dFromObjects(renderedList);
+            CrashDetection.HandleCrashboxes(renderedList);
+            return projectedCoordinates;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private List<List<IVector3>> RotateAllCrashboxes(List<List<IVector3>> crashboxes, Vector3 rotation)
+        {
+            var rotatedCrashboxes = new List<List<IVector3>>(crashboxes.Count);
+            foreach (var crashbox in crashboxes)
+            {
+                var rotated = new List<IVector3>(crashbox.Count);
+                foreach (var point in crashbox)
+                {
+                    rotated.Add(RotatePoint((Vector3)point, rotation));
+                }
+                rotatedCrashboxes.Add(rotated);
+            }
+            return rotatedCrashboxes;
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private IVector3 RotatePoint(Vector3 point, Vector3 rotation)
+        {
+            var rotatedPoint = Rotate3d.RotatePoint(rotation.z, point, 'Z');
+            rotatedPoint = Rotate3d.RotatePoint(rotation.y, rotatedPoint, 'Y');
+            rotatedPoint = Rotate3d.RotatePoint(rotation.x, rotatedPoint, 'X');
+            return rotatedPoint;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private List<ITriangleMeshWithColor> RotateMesh(List<ITriangleMeshWithColor> mesh, Vector3 rotation)
         {
-            var rotatedMesh = Rotate3d.RotateMesh(mesh, rotation.z, 'Z'); // ✅ Rotate around Z-axis first
-            rotatedMesh = Rotate3d.RotateMesh(rotatedMesh, rotation.y, 'Y'); // ✅ Rotate around Y-axis
-            rotatedMesh = Rotate3d.RotateMesh(rotatedMesh, rotation.x, 'X'); // ✅ Rotate around X-axis
+            var rotatedMesh = Rotate3d.RotateMesh(mesh, rotation.z, 'Z');
+            rotatedMesh = Rotate3d.RotateMesh(rotatedMesh, rotation.y, 'Y');
+            rotatedMesh = Rotate3d.RotateMesh(rotatedMesh, rotation.x, 'X');
             return rotatedMesh;
         }
 

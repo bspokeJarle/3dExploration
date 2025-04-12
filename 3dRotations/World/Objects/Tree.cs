@@ -1,6 +1,7 @@
 ﻿using _3dTesting._3dWorld;
 using Domain;
 using System.Collections.Generic;
+using System.Linq;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.World.Objects
@@ -11,6 +12,7 @@ namespace _3dRotations.World.Objects
         private static float trunkHeight = 12f;
         private static float foliageBaseRadius = 8.5f; // Increased foliage mass
         private static float foliageHeight = 3.5f; // Squashed foliage into a denser form
+
         public static _3dObject CreateTree(ISurface parentSurface)
         {
             var trunkTriangles = TrunkTriangles();
@@ -27,8 +29,8 @@ namespace _3dRotations.World.Objects
             tree.ObjectOffsets = new Vector3 { };
             tree.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             tree.ParentSurface = parentSurface;
-            if (treeCrashBox != null) tree.CrashBoxes = treeCrashBox;
 
+            tree.CrashBoxes = treeCrashBox;
             return tree;
         }
 
@@ -98,28 +100,21 @@ namespace _3dRotations.World.Objects
 
             return new List<List<IVector3>>
             {
-                // Trunk base crash box
                 new List<IVector3>
                 {
                     new Vector3 { x = -trunkExpand, y = -trunkExpand, z = 0 },
                     new Vector3 { x = trunkExpand, y = trunkExpand, z = trunkHeight / 2 }
                 },
-
-                // Mid trunk crash box
                 new List<IVector3>
                 {
                     new Vector3 { x = -trunkExpand - 1, y = -trunkExpand - 1, z = trunkHeight / 2 },
                     new Vector3 { x = trunkExpand + 1, y = trunkExpand + 1, z = trunkHeight }
                 },
-
-                // Foliage base crash box
                 new List<IVector3>
                 {
                     new Vector3 { x = -foliageExpand, y = -foliageExpand, z = trunkHeight },
                     new Vector3 { x = foliageExpand, y = foliageExpand, z = trunkHeight + foliageHeightExpanded }
                 },
-
-                // Upper foliage crash box
                 new List<IVector3>
                 {
                     new Vector3 { x = -foliageExpand / 2, y = -foliageExpand / 2, z = trunkHeight + foliageHeightExpanded },

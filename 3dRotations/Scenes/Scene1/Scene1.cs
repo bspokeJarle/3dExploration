@@ -6,6 +6,7 @@ using GameAiAndControls.Controls;
 using _3dRotations.Helpers;
 using Domain;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace _3dRotations.Scene.Scene1
 {
@@ -23,9 +24,7 @@ namespace _3dRotations.Scene.Scene1
             ship.RotationOffsetY = 65;
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
-            ship.ObjectOffsets = new Vector3 { };
-            //Needs offset that counteracts other offsets for accurate crashbox placement
-            ship.CrashboxOffsets = new Vector3 { x = -600, y = -250, z = -100 };
+            ship.CrashboxOffsets = new Vector3 { x = 0,y = 0,z = 0 };
             ship.ObjectName = "Ship";
             ship.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(ship);
@@ -63,9 +62,34 @@ namespace _3dRotations.Scene.Scene1
             world.WorldInhabitants.Add(seeder3);
             */
 
+            //Get the surface viewport based on the global Map Position
+            //Important: In a Scene, Surface should be amongst the first objects added to the world
+            var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
+            surfaceObject.ObjectName = "Surface";
+            //This position and rotation is for the onscreen object, not the map position
+            surfaceObject.ObjectOffsets = new Vector3 { x = 75, y = 500, z = 300 };
+            surfaceObject.CrashboxOffsets = new Vector3 { };
+            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            surfaceObject.WorldPosition = new Vector3 { };
+            //Add crashboxes to the surface, add more crashboxes to the surface for large objects (Mountains etc)
+            surfaceObject.CrashBoxes = new List<List<IVector3>>
+            {
+                new List<IVector3>
+                {
+                    new Vector3 { x = -750, y = 310, z = -750 },  // Mer negativ Y = strekker seg under bakken
+                    new Vector3 { x = 750, y = 900, z = 750 }      // Høyere topp og større XZ-spenn
+                }
+            };
+            surfaceObject.Movement = new GroundControls();
+            surfaceObject.ParentSurface = Surface;
+            surfaceObject.ImpactStatus = new ImpactStatus { };
+            world.WorldInhabitants.Add(surfaceObject);
+
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(Surface.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
+            var treeIndex = 0;
             foreach (var treePlacement in treePlacements)
             {
+                treeIndex++;
                 //Debug.WriteLine($"Tree placement: {treePlacement.x} {treePlacement.y}");
                 //TODO: We need design more trees
                 var tree = Tree.CreateTree(Surface);
@@ -73,9 +97,10 @@ namespace _3dRotations.Scene.Scene1
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tree.SurfaceBasedId = Surface.Global2DMap[treePlacement.y, treePlacement.x].mapId;
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tree.ObjectOffsets = new Vector3 { x = 75, y = 425 , z = 300 };
+                //tree.ObjectOffsets = new Vector3 { x = 75, y = 425 , z = 300 };
+                tree.ObjectOffsets = new Vector3 { x = 75, y = 425, z = 300 };
                 //Crashbox offsets for Tree, counteract the object offsets
-                tree.CrashboxOffsets = new Vector3 { x = 800, y = 80, z = 1330 };
+                tree.CrashboxOffsets = new Vector3 { };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
@@ -95,34 +120,12 @@ namespace _3dRotations.Scene.Scene1
                 house.SurfaceBasedId = Surface.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 house.ObjectOffsets = new Vector3 { x = 75, y = 450, z = 300 };
                 //TODO need to find the right offsets for house
-                house.CrashboxOffsets = new Vector3 { x = 800, y = 50, z = 1350 };
+                house.CrashboxOffsets = new Vector3 { };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
             }
-
-            //Get the surface viewport based on the global Map Position
-            var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
-            surfaceObject.ObjectName = "Surface";
-            //This position and rotation is for the onscreen object, not the map position
-            surfaceObject.ObjectOffsets = new Vector3 { x = 75, y = 500, z = 300 };
-            surfaceObject.CrashboxOffsets = new Vector3 { x = 75, y = 500, z = 300 };
-            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
-            surfaceObject.WorldPosition = new Vector3 { };
-            //Add crashboxes to the surface, add more crashboxes to the surface for large objects (Mountains etc)
-            surfaceObject.CrashBoxes = new List<List<IVector3>>
-            {
-                new List<IVector3>
-                {
-                    new Vector3 { x = -750, y = -200, z = -750 },  // Mer negativ Y = strekker seg under bakken
-                    new Vector3 { x = 750, y = 800, z = 750 }      // Høyere topp og større XZ-spenn
-                }
-            };
-            surfaceObject.Movement = new GroundControls();
-            surfaceObject.ParentSurface = Surface;
-            surfaceObject.ImpactStatus = new ImpactStatus { };
-            world.WorldInhabitants.Add(surfaceObject);
         }
     }
 }
