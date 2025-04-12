@@ -103,8 +103,8 @@ namespace GameAiAndControls.Physics
             {
                 normal = direction.Value switch
                 {
-                    ImpactDirection.Top => new Vector3(0, 1, 0),
-                    ImpactDirection.Bottom => new Vector3(0, -1, 0),
+                    ImpactDirection.Top => new Vector3(0, -1, 0),
+                    ImpactDirection.Bottom => new Vector3(0, 1, 0),
                     ImpactDirection.Left => new Vector3(-1, 0, 0),
                     ImpactDirection.Right => new Vector3(1, 0, 0),
                     ImpactDirection.Center => new Vector3(0, 1, 0), // Center assumed to bounce upward

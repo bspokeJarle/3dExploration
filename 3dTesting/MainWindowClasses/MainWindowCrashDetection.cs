@@ -15,9 +15,9 @@ namespace _3dTesting.Helpers
     {
         public static DateTime staticOjectLastCheck { get; set; } = new DateTime();
         private static DateTime _lastStaticCheck = DateTime.MinValue;
-        private static bool _skipParticles = true;
+        private static bool _skipParticles = false;
 
-        public static bool LocalEnableLogging = false;
+        public static bool LocalEnableLogging = true;
         public static double MaxCrashDistance = 750.0;
 
         private static readonly Dictionary<_3dObject, List<List<Vector3>>> RotatedBoxCache = new();
@@ -89,13 +89,14 @@ namespace _3dTesting.Helpers
 
                     if (isParticle)
                     {
+
                         if (HandleParticleCollision(inhabitant, otherInhabitant))
-                            continue;
+                        continue;
                     }
                     else
                     {
                         if (HandleGeneralCollision(inhabitant, otherInhabitant))
-                            continue;
+                        continue;
                     }
                 }
             }
@@ -110,16 +111,20 @@ namespace _3dTesting.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool HandleParticleCollision(_3dObject a, _3dObject b)
         {
-            var particle = a.ObjectName == "Particle" ? a : b;
-            var other = particle == a ? b : a;
-
-            foreach (var particleBox in particle.CrashBoxes)
+            if (ShouldLog)
             {
+                  Logger.Log($"[CHECK] Trying ParticleCollision: {a.ObjectName} vs {b.ObjectName}");
+            } 
+            var particle  = a.ObjectName == "Particle" ? a : b;
+            var other = particle == a ? b : a;
+             
+            foreach (var particleBox in particle.CrashBoxes)
+            { 
                 var safeBox = particleBox.Select(v => new Vector3 { x = v.x, y = v.y, z = v.z }).ToList();
                 var center = GetCenterOfBox(safeBox);
 
                 foreach (var otherBox in other.CrashBoxes)
-                {
+                { 
                     var min = new Vector3(otherBox.Min(p => p.x), otherBox.Min(p => p.y), otherBox.Min(p => p.z));
                     var max = new Vector3(otherBox.Max(p => p.x), otherBox.Max(p => p.y), otherBox.Max(p => p.z));
 

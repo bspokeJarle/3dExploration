@@ -76,8 +76,8 @@ namespace _3dRotations.Scene.Scene1
             {
                 new List<IVector3>
                 {
-                    new Vector3 { x = -750, y = 310, z = -750 },  // Mer negativ Y = strekker seg under bakken
-                    new Vector3 { x = 750, y = 900, z = 750 }      // Høyere topp og større XZ-spenn
+                    new Vector3 { x = -750, y = 310, z = -950 },  // Mer negativ Y = strekker seg under bakken
+                    new Vector3 { x = 750, y = 900, z = 950 }      // Høyere topp og større XZ-spenn
                 }
             };
             surfaceObject.Movement = new GroundControls();

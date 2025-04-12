@@ -9,7 +9,7 @@ namespace _3dTesting.Helpers
 {
     public static class ObjectPlacementHelpers
     {
-        public static bool EnablePlacementLogging = false;
+        public static bool EnablePlacementLogging = true;
 
         private static ITriangleMeshWithColor? GetSurfaceTriangle(_3dObject obj)
         {

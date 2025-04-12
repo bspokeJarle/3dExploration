@@ -25,7 +25,7 @@ public class ParticlesAI : IParticles
     public List<IParticle> Particles { get; set; } = new();
     public IObjectMovement? ParentShip { get; set; }
     public bool Visible { get; set; }
-    public bool EnableParticleLogging { get; set; } = false;
+    public bool EnableParticleLogging { get; set; } = true;
     private DateTime _lastUpdateTime = DateTime.UtcNow;
 
     public void MoveParticles()
