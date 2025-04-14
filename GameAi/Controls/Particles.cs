@@ -5,6 +5,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using GameAiAndControls.Physics;
+using GameAiAndControls.Helpers;
 
 public class ParticlesAI : IParticles
 {
@@ -14,19 +15,22 @@ public class ParticlesAI : IParticles
     private const int MaxParticlesBase = 15;
     private const int MaxThrustMultiplier = 5;
     private const int MaxDynamicParticles = 30;
-    private const float MinLife = 2f;
+    private const float MinLife = 2.5f;
     private const float MaxLife = 3.5f;
     private const float MinSize = 1f;
     private const float MaxSize = 4f;
-    private const float SpreadIntensity = 3f;
+    private const float SpreadIntensity = 4f;
     private const float AccelerationRandomFactor = 0.1f;
-    private const float FadeFactor = 0.01f;
+    private const float FadeFactor = 0.03f;
+    private const float InitialThrottleFactor = 4f; // New thrust-like impulse
+    public float ThrottleDurationFactor { get; set; } = 0.3f; // Proportion of life spent with thrust boost
 
     public List<IParticle> Particles { get; set; } = new();
     public IObjectMovement? ParentShip { get; set; }
     public bool Visible { get; set; }
     public bool EnableParticleLogging { get; set; } = true;
     private DateTime _lastUpdateTime = DateTime.UtcNow;
+   
 
     public void MoveParticles()
     {
@@ -44,6 +48,7 @@ public class ParticlesAI : IParticles
 
             long lifeTicks = (long)(particle.Life * 10_000_000);
             long deathTicks = particle.BirthTime.Ticks + lifeTicks + particle.VariedStart;
+            long boostTicks = (long)(lifeTicks * ThrottleDurationFactor);
 
             if (deathTicks > currentTicks)
             {
@@ -76,6 +81,17 @@ public class ParticlesAI : IParticles
 
                         particle.Life *= 0.8f;
                         particle.ImpactStatus.HasCrashed = false;
+                    }
+
+
+                    // Apply throttle boost for a percentage of total life duration
+                    long ageTicks = currentTicks - particle.BirthTime.Ticks - particle.VariedStart;
+                    if (ageTicks <= boostTicks)
+                    {
+                        particle.Physics.Velocity = PhysicsHelpers.Add(
+                            particle.Physics.Velocity,
+                            PhysicsHelpers.Multiply(particle.Physics.Velocity, InitialThrottleFactor * deltaTime)
+                        );
                     }
 
                     // Apply tested and validated gravity-based physics
@@ -155,9 +171,11 @@ public class ParticlesAI : IParticles
             float life = (float)(random.NextDouble() * (MaxLife - MinLife) + MinLife);
             float size = (float)(random.NextDouble() * (MaxSize - MinSize) + MinSize);
 
-            float offsetX = (float)(random.NextDouble() - 0.5) * SpreadIntensity;
-            float offsetY = (float)(random.NextDouble() - 0.5) * SpreadIntensity;
-            float offsetZ = (float)(random.NextDouble() - 0.5) * SpreadIntensity;
+            // Use a wider spread to avoid straight-line emission
+            float spread = SpreadIntensity * (float)(random.NextDouble() + 0.5); // Makes it more dynamic (1.5x to 2.0x)
+            float offsetX = (float)(random.NextDouble() - 0.5) * spread;
+            float offsetY = (float)(random.NextDouble() - 0.5) * spread;
+            float offsetZ = (float)(random.NextDouble() - 0.5) * spread;
 
             var velocity = new Vector3
             {
@@ -211,6 +229,12 @@ public class ParticlesAI : IParticles
                 RotationSpeed = rotationSpeed,
                 Color = "ffff00",
                 Visible = false,
+                Physics = new Physics
+                {
+                    Velocity = new Vector3 { x = velocity.x, y = velocity.y, z = velocity.z },
+                    Acceleration = new Vector3 { x = acceleration.x, y = acceleration.y, z = acceleration.z },
+                    GravityStrength = 200f,
+                },
                 ImpactStatus = new ImpactStatus { HasCrashed = false }
             });
         }

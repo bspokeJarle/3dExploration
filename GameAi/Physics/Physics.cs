@@ -19,8 +19,8 @@ namespace GameAiAndControls.Physics
         public float GravityStrength { get; set; } = 200f; // Strong gravity for faster falling
         public IVector3 GravitySource { get; set; } = new Vector3 { x = 0, y = -10f, z = 0 };
         public IVector3 Acceleration { get; set; } = new Vector3(0, 0, 0);
-        public float BounceHeightMultiplier { get; set; } = 2f; // Affects bounce height
-        public float EnergyLossFactor { get; set; } = 0.98f; // Bounce energy retention factor
+        public float BounceHeightMultiplier { get; set; } = 0.6f; // Affects bounce height
+        public float EnergyLossFactor { get; set; } = 1.3f; // Bounce energy retention factor
         public int BounceCooldownFrames { get; set; } = 0;
 
         // Applies drag to the current velocity and returns the updated position
@@ -117,7 +117,7 @@ namespace GameAiAndControls.Physics
 
             // Apply energy loss on X and Z and enforce positive Y bounce
             reflection.x *= EnergyLossFactor;
-            reflection.y = MathF.Abs(reflection.y) * BounceHeightMultiplier;
+            reflection.y -= -MathF.Abs(reflection.y) * BounceHeightMultiplier * EnergyLossFactor;
             reflection.z *= EnergyLossFactor;
 
             // Dynamically reduce bounce height for next bounce
