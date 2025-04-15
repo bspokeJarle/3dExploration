@@ -19,10 +19,10 @@ public class ParticlesAI : IParticles
     private const float MaxLife = 3.5f;
     private const float MinSize = 1f;
     private const float MaxSize = 4f;
-    private const float SpreadIntensity = 4f;
+    private const float SpreadIntensity = 3f;
     private const float AccelerationRandomFactor = 0.1f;
     private const float FadeFactor = 0.03f;
-    private const float InitialThrottleFactor = 4f; // New thrust-like impulse
+    private const float InitialThrottleFactor = 5f; // New thrust-like impulse
     public float ThrottleDurationFactor { get; set; } = 0.3f; // Proportion of life spent with thrust boost
 
     public List<IParticle> Particles { get; set; } = new();
@@ -211,7 +211,7 @@ public class ParticlesAI : IParticles
                 Size = size,
                 Velocity = velocity,
                 Acceleration = acceleration,
-                VariedStart = random.NextInt64(0, 5_000_000),
+                VariedStart = random.NextInt64(0, 500_000),
                 ParticleTriangle = new TriangleMeshWithColor
                 {
                     Color = "eeffee",

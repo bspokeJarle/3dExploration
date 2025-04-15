@@ -89,14 +89,13 @@ namespace _3dTesting.Helpers
 
                     if (isParticle)
                     {
-
-                        if (HandleParticleCollision(inhabitant, otherInhabitant))
-                        continue;
+                         if (HandleParticleCollision(inhabitant, otherInhabitant))
+                         continue;
                     }
                     else
                     {
-                        if (HandleGeneralCollision(inhabitant, otherInhabitant))
-                        continue;
+                         if (HandleGeneralCollision(inhabitant, otherInhabitant))
+                         continue;
                     }
                 }
             }
@@ -216,25 +215,24 @@ namespace _3dTesting.Helpers
 
             foreach (var p in points)
             {
-                if (p.x < minX) minX = p.x;
-                if (p.x > maxX) maxX = p.x;
+                minX = Math.Min(minX, p.x);
+                maxX = Math.Max(maxX, p.x);
 
-                if (p.y < minY) minY = p.y;
-                if (p.y > maxY) maxY = p.y;
+                minY = Math.Min(minY, p.y);
+                maxY = Math.Max(maxY, p.y);
 
-                if (p.z < minZ) minZ = p.z;
-                if (p.z > maxZ) maxZ = p.z;
+                minZ = Math.Min(minZ, p.z);
+                maxZ = Math.Max(maxZ, p.z);
             }
 
-            var center = new Vector3
+            return new Vector3
             {
                 x = (minX + maxX) / 2f,
                 y = (minY + maxY) / 2f,
                 z = (minZ + maxZ) / 2f
             };
-
-            return center;
         }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ImpactDirection EstimateDirectionFromSurface(Vector3 point, Vector3 min, Vector3 max)

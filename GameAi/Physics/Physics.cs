@@ -20,7 +20,7 @@ namespace GameAiAndControls.Physics
         public IVector3 GravitySource { get; set; } = new Vector3 { x = 0, y = -10f, z = 0 };
         public IVector3 Acceleration { get; set; } = new Vector3(0, 0, 0);
         public float BounceHeightMultiplier { get; set; } = 0.6f; // Affects bounce height
-        public float EnergyLossFactor { get; set; } = 1.3f; // Bounce energy retention factor
+        public float EnergyLossFactor { get; set; } = 1.2f; // Bounce energy retention factor
         public int BounceCooldownFrames { get; set; } = 0;
 
         // Applies drag to the current velocity and returns the updated position
