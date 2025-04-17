@@ -12,7 +12,7 @@ namespace GameAiAndControls.Controls
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
-        
+        public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         private float Yrotation = 0;
         //private float Xrotation = 0;

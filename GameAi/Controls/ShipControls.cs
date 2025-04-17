@@ -56,6 +56,7 @@ namespace GameAiAndControls.Controls
 
         public float Thrust { get; set; } = 0;
         public bool ThrustOn { get; set; } = false;
+        public IPhysics Physics { get; set; } = new Physics.Physics();
 
         public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
@@ -210,7 +211,7 @@ namespace GameAiAndControls.Controls
             }
             else
             {
-                ParentObject.ParentSurface.GlobalMapPosition.y += yDiff * 1.5f;
+                ParentObject.ParentSurface.GlobalMapPosition.y += 2.5f;
             }
         }
 

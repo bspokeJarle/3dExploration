@@ -11,6 +11,7 @@ namespace GameAiAndControls.Ai
     {
         public ITriangleMeshWithColor? StartCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public ITriangleMeshWithColor? GuideCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public I3dObject MoveObject(I3dObject theObject)
         {

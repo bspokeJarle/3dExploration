@@ -31,6 +31,7 @@ namespace Domain
         IVector3 ApplyRotationDragForce(IVector3 rotationVector);
         void Bounce(Vector3 normal, ImpactDirection? direction);
         void TiltStabilization(ref IVector3 tiltState);
+        I3dObject ExplodeObject(I3dObject explodingObject, DateTime deltaTime); 
     }
 
     public interface ISurface
@@ -58,6 +59,7 @@ namespace Domain
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
+        public IPhysics Physics { get; set; }
     }
 
     public interface I3dObject

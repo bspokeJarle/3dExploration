@@ -15,6 +15,7 @@ namespace GameAiAndControls.Controls
         public I3dObject ParentObject { get; set; }
 
         public float zPosition { get; set; } = 0;
+        public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public I3dObject MoveObject(I3dObject theObject)
         {

@@ -144,5 +144,10 @@ namespace GameAiAndControls.Physics
         {
             // Not implemented yet
         }
+
+        public I3dObject ExplodeObject(I3dObject explodingObject, DateTime deltaTime)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
