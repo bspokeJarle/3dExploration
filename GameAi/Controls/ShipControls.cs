@@ -1,6 +1,7 @@
 using Domain;
 using Gma.System.MouseKeyHook;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows.Forms;
 
@@ -43,7 +44,7 @@ namespace GameAiAndControls.Controls
 
         public int FormerMouseX = 0;
         public int FormerMouseY = 0;
-        public int rotationX = 120;
+        public int rotationX = 90;
         public int rotationY = 0;
         public int rotationZ = 0;
 
@@ -156,8 +157,12 @@ namespace GameAiAndControls.Controls
 
             ParentObject ??= theObject;
 
-            if (Thrust > 0) HandleThrust(deltaTime);
-            if (ThrustOn) IncreaseThrustAndRelease();
+            if (ThrustOn)
+            {
+                IncreaseThrustAndRelease();
+                HandleThrust(deltaTime); // <-- always apply it when thrust is active
+            }
+
             if (Thrust == 0) ApplyGravity(deltaTime);
             if (ParentObject.Particles?.Particles.Count > 0) ParentObject.Particles.MoveParticles();
 
@@ -180,15 +185,19 @@ namespace GameAiAndControls.Controls
             thrustEffect = MathF.Min(thrustEffect + ThrustAccelerationRate * deltaTime, 1f);
             verticalLiftFactor = MathF.Min(verticalLiftFactor + VerticalLiftAcceleration * deltaTime, 1f);
 
-            float forwardFactor = MathF.Sin(rotationX * DEG2RAD);
-            float upwardFactor = MathF.Cos(rotationX * DEG2RAD);
-            float directionFactor = MathF.Cos(rotationY * DEG2RAD);
-            float speedFactor = MathF.Pow(MathF.Abs(forwardFactor), 1.2f);
-            float verticalFactor = MathF.Max(0, 1 - MathF.Abs(forwardFactor));
+            int angle = (int)(rotationX % 360);
+            if (angle < 0) angle += 360;
+            int lookup = (angle / 10) * 10;
 
-            var zForce = Thrust * thrustEffect * SpeedMultiplier * speedFactor * MathF.Cos(rotationY * DEG2RAD) * deltaTime;
-            var xForce = Thrust * thrustEffect * SpeedMultiplier * speedFactor * MathF.Sin(rotationY * DEG2RAD) * deltaTime;
-            var yDiff = Thrust * verticalLiftFactor * HeightMultiplier * verticalFactor * VerticalThrustSmoothing * deltaTime;
+            if (!ThrustProfile.TryGetValue(lookup, out var factors))
+                factors = (0f, 0f);
+
+            float upwardFactor = factors.upwardFactor;
+            float horizontalSpeedFactor = factors.forwardFactor;
+
+            var zForce = Thrust * thrustEffect * SpeedMultiplier * horizontalSpeedFactor * MathF.Cos(rotationY * DEG2RAD) * deltaTime;
+            var xForce = Thrust * thrustEffect * SpeedMultiplier * horizontalSpeedFactor * MathF.Sin(rotationY * DEG2RAD) * deltaTime;
+            var yDiff = Thrust * verticalLiftFactor * HeightMultiplier * upwardFactor * VerticalThrustSmoothing * deltaTime;
 
             inertiaX += xForce;
             inertiaZ += -zForce;
@@ -205,15 +214,58 @@ namespace GameAiAndControls.Controls
             ParentObject.ParentSurface.GlobalMapPosition.z = GetWrappedPosition(ParentObject.ParentSurface.GlobalMapPosition.z, inertiaZ, 0, maxZ);
 
             float delta = ShipCenterY - ParentObject.ObjectOffsets.y;
+
             if (Math.Abs(delta) > 2f)
             {
-                ParentObject.ObjectOffsets.y += delta * 0.1f + yDiff * 0.1f;
+                float liftAdjust = (upwardFactor > 0f) ? delta * 0.1f : 0f;
+                ParentObject.ObjectOffsets.y += liftAdjust + yDiff * 0.1f;
             }
             else
             {
                 ParentObject.ParentSurface.GlobalMapPosition.y += 2.5f;
             }
         }
+
+        private readonly Dictionary<int, (float upwardFactor, float forwardFactor)> ThrustProfile = new()
+        {
+            {   0, (0.0f, -1.0f) },
+            {  10, (0.0f, -0.9f) },
+            {  20, (0.0f, -0.7f) },
+            {  30, (0.0f, -0.5f) },
+            {  40, (0.0f, -0.3f) },
+            {  50, (0.0f, -0.1f) },
+            {  60, (0.0f,  0.0f) },
+            {  70, (0.2f,  0.0f) },
+            {  80, (0.5f,  0.0f) },
+            {  90, (1.0f,  0.0f) }, // Flat
+            { 100, (0.8f,  0.2f) },
+            { 110, (0.6f,  0.4f) },
+            { 120, (0.4f,  0.6f) }, // Default startup tilt
+            { 130, (0.2f,  0.8f) },
+            { 140, (0.0f,  0.9f) },
+            { 150, (0.0f,  1.0f) },
+            { 160, (0.0f,  1.0f) },
+            { 170, (0.0f,  1.0f) },
+            { 180, (0.0f,  1.0f) }, // Fully forward
+            { 190, (0.0f,  1.0f) },
+            { 200, (0.0f,  1.0f) },
+            { 210, (0.0f,  1.0f) },
+            { 220, (0.0f,  0.9f) },
+            { 230, (0.0f,  0.7f) },
+            { 240, (0.0f,  0.5f) },
+            { 250, (0.0f,  0.3f) },
+            { 260, (0.0f,  0.1f) },
+            { 270, (0.0f,  0.0f) }, // Down
+            { 280, (0.0f, -0.1f) },
+            { 290, (0.0f, -0.3f) },
+            { 300, (0.0f, -0.5f) },
+            { 310, (0.0f, -0.7f) },
+            { 320, (0.0f, -0.9f) },
+            { 330, (0.0f, -1.0f) },
+            { 340, (0.0f, -1.0f) },
+            { 350, (0.0f, -1.0f) },
+        };
+
 
         private float Clamp(float value, float min, float max)
         {
