@@ -32,7 +32,7 @@ namespace _3dTesting.MainWindowClasses
 
                 inhabitant.Movement?.MoveObject(inhabitant);
 
-                 bool hasRotationOffset = inhabitant.RotationOffsetX > 0 ||
+                bool hasRotationOffset = inhabitant.RotationOffsetX > 0 ||
                                          inhabitant.RotationOffsetY > 0 ||
                                          inhabitant.RotationOffsetZ > 0;
 
@@ -65,7 +65,7 @@ namespace _3dTesting.MainWindowClasses
                     DebugMessage += $" Surface: Y Pos: {inhabitant.ObjectOffsets.y}";
 
                 if (inhabitant.ObjectName == "Ship")
-                    DebugMessage += $" Ship: Y Pos: {inhabitant.ObjectOffsets.y + 300}";
+                    DebugMessage += $" Ship: Y Pos: {inhabitant.ObjectOffsets.y + 300} Z Rotation: { inhabitant.Rotation.z }";
 
                 if (hasRotationOffset)
                 {
