@@ -17,7 +17,7 @@ namespace _3dTesting.Helpers
         private static DateTime _lastStaticCheck = DateTime.MinValue;
         private static bool _skipParticles = false;
 
-        public static bool LocalEnableLogging = true;
+        public static bool LocalEnableLogging = false;
         public static double MaxCrashDistance = 750.0;
 
         private static readonly Dictionary<_3dObject, List<List<Vector3>>> RotatedBoxCache = new();

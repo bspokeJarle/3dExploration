@@ -24,7 +24,7 @@ namespace GameAiAndControls.Controls
         private const float DEG2RAD = MathF.PI / 180f;
         private const int ShipCenterY = 0;
 
-        private const float SpeedMultiplier = 5.6f;          // Increased for faster movement
+        private const float SpeedMultiplier = 9.6f;          // Increased for faster movement
         private const float HeightMultiplier = 2.0f;         // Increased for more responsive height
         private const float ThrustAccelerationRate = 30.0f;  // Increased for quicker thrust buildup
         private const float InertiaDrag = 0.92f;
@@ -201,6 +201,17 @@ namespace GameAiAndControls.Controls
                     tri.vert2 = RotateAroundX((Vector3)tri.vert2, cos, sin);
                     tri.vert3 = RotateAroundX((Vector3)tri.vert3, cos, sin);
                     part.Triangles[i] = tri; // apply modified triangle
+                }
+            }
+
+            //Need to tilt the CrashBoxes too.
+            for (int i = 0; i < inhabitant.CrashBoxes.Count; i++)
+            {
+                var crashbox = inhabitant.CrashBoxes[i];
+                for (int j = 0; j < crashbox.Count; j++)
+                {
+                    Vector3 rotated = RotateAroundX((Vector3)crashbox[j], cos, sin);
+                    crashbox[j] = rotated;
                 }
             }
         }

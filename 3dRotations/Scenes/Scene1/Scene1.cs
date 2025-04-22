@@ -20,8 +20,6 @@ namespace _3dRotations.Scene.Scene1
             //Generate 2D map for the surface, maxtrees and maxhouses set
             Surface.Create2DMap(500,50);
 
-            //Test if this makes the ship tilt and rotate like it should
-            ship.RotationOffsetY = 65;
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
             ship.CrashboxOffsets = new Vector3 { x = 0,y = 0,z = 0 };

@@ -32,25 +32,6 @@ namespace _3dTesting.MainWindowClasses
 
                 inhabitant.Movement?.MoveObject(inhabitant);
 
-                bool hasRotationOffset = inhabitant.RotationOffsetX > 0 ||
-                                         inhabitant.RotationOffsetY > 0 ||
-                                         inhabitant.RotationOffsetZ > 0;
-
-                if (hasRotationOffset)
-                {
-                    foreach (var part in inhabitant.ObjectParts)
-                    {
-                        for (int i = 0; i < part.Triangles.Count; i++)
-                        {
-                            var triangles = part.Triangles[i];
-                            GameHelpers.ApplyRotationOffset(ref triangles,
-                                inhabitant.RotationOffsetX,
-                                inhabitant.RotationOffsetY,
-                                inhabitant.RotationOffsetZ);
-                        }
-                    }
-                }
-
                 inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
 
                 foreach (var part in inhabitant.ObjectParts)
@@ -67,19 +48,6 @@ namespace _3dTesting.MainWindowClasses
                 if (inhabitant.ObjectName == "Ship")
                     DebugMessage += $" Ship: Y Pos: {inhabitant.ObjectOffsets.y + 300} Z Rotation: { inhabitant.Rotation.z }";
 
-                if (hasRotationOffset)
-                {
-                    Vector3 centroid = GameHelpers.ComputeCentroid(inhabitant);
-
-                    foreach (var part in inhabitant.ObjectParts)
-                    {
-                        for (int i = 0; i < part.Triangles.Count; i++)
-                        {
-                            var triangles = part.Triangles[i];
-                            GameHelpers.RecenterTriangle(ref triangles, centroid);
-                        }
-                    }
-                }
                 particleManager.HandleParticles(inhabitant, particleObjectList);
                 renderedList.Add(inhabitant);
             }
