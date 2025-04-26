@@ -1,40 +1,32 @@
 using Domain;
 using Gma.System.MouseKeyHook;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using static Domain._3dSpecificsImplementations;
 
 namespace GameAiAndControls.Controls
 {
-    // Configurable settings for ship movement
     public class ShipControls : IObjectMovement
     {
-        // === CONFIGURATION ===
-
         private const float MaxThrust = 10.0f;
         private const float ThrustIncreaseRate = 0.5f;
-        private const float GravityAcceleration = 0.75f; // Increased further for stronger gravity
-        private const float MaxFallSpeed = 6.9f;          // Increased for faster falling
+        private const float GravityAcceleration = 0.75f;
+        private const float MaxFallSpeed = 6.9f;
         private const float GravityMultiplier = 1.8f;
 
         private const int RotationStep = 5;
         private const float DEG2RAD = MathF.PI / 180f;
         private const int ShipCenterY = 0;
 
-        private const float SpeedMultiplier = 9.6f;          // Increased for faster movement
-        private const float HeightMultiplier = 2.0f;         // Increased for more responsive height
-        private const float ThrustAccelerationRate = 30.0f;  // Increased for quicker thrust buildup
+        private const float SpeedMultiplier = 9.6f;
+        private const float HeightMultiplier = 2.0f;
+        private const float ThrustAccelerationRate = 30.0f;
         private const float InertiaDrag = 0.92f;
         private const float MaxInertia = 9.0f;
 
         private const float VerticalThrustSmoothing = 0.6f;
-        private const float VerticalLiftAcceleration = 0.15f; // Increased for quicker vertical lift ramp-up
-
-        // === INTERNAL STATE ===
+        private const float VerticalLiftAcceleration = 0.15f;
 
         private IKeyboardMouseEvents _globalHook;
         private float fallVelocity = 0f;
@@ -63,12 +55,6 @@ namespace GameAiAndControls.Controls
         public bool ThrustOn { get; set; } = false;
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
-        public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
-        {
-            if (StartCoord != null) StartCoordinates = StartCoord;
-            if (GuideCoord != null) GuideCoordinates = GuideCoord;
-        }
-
         public ShipControls()
         {
             if (_globalHook == null)
@@ -82,18 +68,18 @@ namespace GameAiAndControls.Controls
             }
         }
 
+        public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        {
+            if (StartCoord != null) StartCoordinates = StartCoord;
+            if (GuideCoord != null) GuideCoordinates = GuideCoord;
+        }
+
         private void GlobalHookKeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Left) rotationZ -= RotationStep;
             if (e.KeyCode == Keys.Right) rotationZ += RotationStep;
-            if (e.KeyCode == Keys.Up)
-            {
-                tilt += RotationStep;               
-            }
-            if (e.KeyCode == Keys.Down)
-            {
-                tilt -= RotationStep;
-            }
+            if (e.KeyCode == Keys.Up) tilt += RotationStep;
+            if (e.KeyCode == Keys.Down) tilt -= RotationStep;
             if (e.KeyCode == Keys.Space) ThrustOn = true;
         }
 
@@ -127,25 +113,26 @@ namespace GameAiAndControls.Controls
             FormerMouseY = e.Y;
         }
 
-        private void GlobalHookMouseDown(object sender, MouseEventArgs e) { ThrustOn = true; }
+        private void GlobalHookMouseDown(object sender, MouseEventArgs e) => ThrustOn = true;
         private void GlobalHookMouseUp(object sender, MouseEventArgs e) { ThrustOn = false; Thrust = 0; thrustEffect = 0f; verticalLiftFactor = 0f; }
 
         private void IncreaseThrustAndRelease()
         {
             if (Thrust < MaxThrust) Thrust += ThrustIncreaseRate;
 
-            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, this.ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust);
+            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust);
         }
 
-        private float GetWrappedPosition(float position, float diff, float minValue, float maxValue)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float Clamp(float value, float min, float max) => MathF.Min(MathF.Max(value, min), max);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static float GetWrappedPosition(float position, float diff, float minValue, float maxValue)
         {
-            if (diff != 0)
-            {
-                if (position + diff >= maxValue) return minValue;
-                if (position + diff <= minValue) return maxValue;
-                return position + diff;
-            }
-            return position;
+            float newPos = position + diff;
+            if (newPos >= maxValue) return minValue;
+            if (newPos <= minValue) return maxValue;
+            return newPos;
         }
 
         public I3dObject MoveObject(I3dObject theObject)
@@ -186,14 +173,13 @@ namespace GameAiAndControls.Controls
 
         public void ApplyLocalTiltToMesh(int tilt, I3dObject inhabitant)
         {
-            //To prevent flipping in certain angles, we need to rotate the flip internally here before the actual rotation later
             if (ParentObject == null) return;
 
-            float radians = tilt * (MathF.PI / 180f);
+            float radians = tilt * DEG2RAD;
             float cos = MathF.Cos(radians);
             float sin = MathF.Sin(radians);
 
-            foreach (I3dObjectPart part in inhabitant.ObjectParts)
+            foreach (var part in inhabitant.ObjectParts)
             {
                 for (int i = 0; i < part.Triangles.Count; i++)
                 {
@@ -201,18 +187,16 @@ namespace GameAiAndControls.Controls
                     tri.vert1 = RotateAroundX((Vector3)tri.vert1, cos, sin);
                     tri.vert2 = RotateAroundX((Vector3)tri.vert2, cos, sin);
                     tri.vert3 = RotateAroundX((Vector3)tri.vert3, cos, sin);
-                    part.Triangles[i] = tri; // apply modified triangle
+                    part.Triangles[i] = tri;
                 }
             }
 
-            //Need to tilt the CrashBoxes too.
             for (int i = 0; i < inhabitant.CrashBoxes.Count; i++)
             {
                 var crashbox = inhabitant.CrashBoxes[i];
                 for (int j = 0; j < crashbox.Count; j++)
                 {
-                    Vector3 rotated = RotateAroundX((Vector3)crashbox[j], cos, sin);
-                    crashbox[j] = rotated;
+                    crashbox[j] = RotateAroundX((Vector3)crashbox[j], cos, sin);
                 }
             }
         }
@@ -229,12 +213,11 @@ namespace GameAiAndControls.Controls
             thrustEffect = MathF.Min(thrustEffect + ThrustAccelerationRate * deltaTime, 1f);
             verticalLiftFactor = MathF.Min(verticalLiftFactor + VerticalLiftAcceleration * deltaTime, 1f);
 
-            // Kalkuler faktorer basert på tilt-vinkelen
-            float upwardFactor = MathF.Cos(tilt * DEG2RAD);      // Hvor mye thrust som går opp
-            float forwardFactor = MathF.Sin(tilt * DEG2RAD);     // Hvor mye thrust som går frem
-
-            // Beregn thrust-retning basert på rotationZ
+            float tiltRad = tilt * DEG2RAD;
             float rotationRad = rotationZ * DEG2RAD;
+
+            float upwardFactor = MathF.Cos(tiltRad);
+            float forwardFactor = MathF.Sin(tiltRad);
             float dirX = MathF.Sin(rotationRad);
             float dirZ = MathF.Cos(rotationRad);
 
@@ -258,7 +241,7 @@ namespace GameAiAndControls.Controls
 
             float delta = ShipCenterY - ParentObject.ObjectOffsets.y;
 
-            if (Math.Abs(delta) > 2f)
+            if (delta > 2f || delta < -2f)
             {
                 float liftAdjust = (upwardFactor > 0f) ? delta * 0.1f : 0f;
                 ParentObject.ObjectOffsets.y += liftAdjust + yDiff * 0.1f;
@@ -268,17 +251,13 @@ namespace GameAiAndControls.Controls
                 ParentObject.ParentSurface.GlobalMapPosition.y += 2.5f;
             }
         }
-  
-        private float Clamp(float value, float min, float max)
-        {
-            return MathF.Min(MathF.Max(value, min), max);
-        }
 
         public void ApplyGravity(float deltaTime)
         {
             if (!ThrustOn)
             {
-                float gravityModifier = Clamp(MathF.Sin((rotationX % 180) * DEG2RAD), 0.3f, 1.0f);
+                float rotationXMod180Rad = (rotationX % 180) * DEG2RAD;
+                float gravityModifier = Clamp(MathF.Sin(rotationXMod180Rad), 0.3f, 1.0f);
                 float adjustedGravity = GravityAcceleration * gravityModifier * GravityMultiplier * deltaTime;
 
                 fallVelocity = Math.Min(fallVelocity + adjustedGravity, MaxFallSpeed);
