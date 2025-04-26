@@ -3,6 +3,7 @@ using Gma.System.MouseKeyHook;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using static Domain._3dSpecificsImplementations;
@@ -132,6 +133,7 @@ namespace GameAiAndControls.Controls
         private void IncreaseThrustAndRelease()
         {
             if (Thrust < MaxThrust) Thrust += ThrustIncreaseRate;
+
             ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, this.ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust);
         }
 
@@ -148,6 +150,8 @@ namespace GameAiAndControls.Controls
 
         public I3dObject MoveObject(I3dObject theObject)
         {
+            ApplyLocalTiltToMesh(tilt, theObject);
+
             var now = DateTime.Now;
             float deltaTime = (float)(now - lastUpdateTime).TotalSeconds;
             lastUpdateTime = now;
@@ -177,9 +181,6 @@ namespace GameAiAndControls.Controls
                 theObject.Rotation.x = rotationX;
                 theObject.Rotation.z = rotationZ;
             }
-
-            ApplyLocalTiltToMesh(tilt, theObject);
-
             return theObject;
         }
 

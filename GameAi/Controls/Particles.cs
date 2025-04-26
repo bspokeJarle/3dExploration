@@ -103,9 +103,9 @@ public class ParticlesAI : IParticles
                     particle.Velocity.y += particle.Acceleration.y;
                     particle.Velocity.z += particle.Acceleration.z;
 
-                    particle.Velocity.x *= 0.98f;
-                    particle.Velocity.y *= 0.98f;
-                    particle.Velocity.z *= 0.98f;
+                    particle.Velocity.x *= 0.95f;
+                    particle.Velocity.y *= 0.95f;
+                    particle.Velocity.z *= 0.95f;
 
                     particle.Position.x -= particle.Velocity.x;
                     particle.Position.y -= particle.Velocity.y;
@@ -229,11 +229,12 @@ public class ParticlesAI : IParticles
                 RotationSpeed = rotationSpeed,
                 Color = "ffff00",
                 Visible = false,
+                //Physics = null,
                 Physics = new Physics
                 {
                     Velocity = new Vector3 { x = velocity.x, y = velocity.y, z = velocity.z },
                     Acceleration = new Vector3 { x = acceleration.x, y = acceleration.y, z = acceleration.z },
-                    GravityStrength = 200f,
+                    GravityStrength = 1f,
                 },
                 ImpactStatus = new ImpactStatus { HasCrashed = false }
             });

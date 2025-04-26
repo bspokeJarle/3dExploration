@@ -16,11 +16,11 @@ namespace GameAiAndControls.Physics
         public float Friction { get; set; } = 0.0f; // No air resistance for the test
         public float MaxSpeed { get; set; } = 10.0f;
         public float MaxThrust { get; set; } = 20.0f;
-        public float GravityStrength { get; set; } = 200f; // Strong gravity for faster falling
+        public float GravityStrength { get; set; } = 1f; // Strong gravity for faster falling
         public IVector3 GravitySource { get; set; } = new Vector3 { x = 0, y = -10f, z = 0 };
         public IVector3 Acceleration { get; set; } = new Vector3(0, 0, 0);
-        public float BounceHeightMultiplier { get; set; } = 0.6f; // Affects bounce height
-        public float EnergyLossFactor { get; set; } = 1.2f; // Bounce energy retention factor
+        public float BounceHeightMultiplier { get; set; } = 0.8f; // Affects bounce height
+        public float EnergyLossFactor { get; set; } = 0.2f; // Bounce energy retention factor
         public int BounceCooldownFrames { get; set; } = 0;
 
         // Applies drag to the current velocity and returns the updated position
@@ -56,14 +56,28 @@ namespace GameAiAndControls.Physics
             if (BounceCooldownFrames > 0)
             {
                 BounceCooldownFrames--;
-                return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
+                return currentPosition;
             }
 
-            var direction = new Vector3(0, 1, 0);
-            var gravityForce = PhysicsHelpers.Multiply(direction, GravityStrength / Mass);
-            Velocity = PhysicsHelpers.Add(Velocity, PhysicsHelpers.Multiply(gravityForce, deltaTime));
+            // 1. Legg til akselerasjon
+            Velocity.x += Acceleration.x;
+            Velocity.y += Acceleration.y;
+            Velocity.z += Acceleration.z;
 
-            return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
+            // 2. Gravity drar Y *nedover* (altså positiv endring på Velocity.y)
+            Velocity.y += GravityStrength * deltaTime;
+
+            // 3. Påfør friksjon
+            Velocity.x *= 0.95f;
+            Velocity.y *= 0.95f;
+            Velocity.z *= 0.95f;
+
+            // 4. Flytt posisjon motsatt av velocity
+            currentPosition.x -= Velocity.x;
+            currentPosition.y -= Velocity.y;
+            currentPosition.z -= Velocity.z;
+
+            return currentPosition;
         }
 
         // Applies thrust to the object in a specific direction
@@ -97,8 +111,6 @@ namespace GameAiAndControls.Physics
         // Reflects velocity along a surface normal and applies energy loss
         public void Bounce(Vector3 normal, ImpactDirection? direction = null)
         {
-            // Coordinate system reminder: -Y is up, +Y is down
-            // Normals are defined to reflect correctly based on incoming direction
             if (direction.HasValue)
             {
                 normal = direction.Value switch
@@ -107,7 +119,7 @@ namespace GameAiAndControls.Physics
                     ImpactDirection.Bottom => new Vector3(0, 1, 0),
                     ImpactDirection.Left => new Vector3(-1, 0, 0),
                     ImpactDirection.Right => new Vector3(1, 0, 0),
-                    ImpactDirection.Center => new Vector3(0, 1, 0), // Center assumed to bounce upward
+                    ImpactDirection.Center => new Vector3(0, 1, 0),
                     _ => normal
                 };
             }
@@ -115,20 +127,12 @@ namespace GameAiAndControls.Physics
             var dot = PhysicsHelpers.Dot(Velocity, normal);
             var reflection = PhysicsHelpers.Subtract(Velocity, PhysicsHelpers.Multiply(normal, 2 * dot));
 
-            // Apply energy loss on X and Z and enforce positive Y bounce
-            reflection.x *= EnergyLossFactor;
-            reflection.y -= -MathF.Abs(reflection.y) * BounceHeightMultiplier * EnergyLossFactor;
-            reflection.z *= EnergyLossFactor;
+            // Apply energy loss (dampen bounce)
+            reflection.y *= EnergyLossFactor;
 
-            // Dynamically reduce bounce height for next bounce
-            BounceHeightMultiplier *= (EnergyLossFactor / BounceHeightMultiplier);
-
-            if (Logger.EnableFileLogging && LocalEnableLogging)
-            {
-                Logger.Log($"[Bounce] Direction: {direction}, Normal: {normal}");
-                Logger.Log($"[Bounce] Resulting Velocity: {reflection}");
-                Logger.Log($"[Bounce] New Multiplier: {BounceHeightMultiplier:F3}");
-            }
+            // Make sure bounce only pushes UP
+            if (reflection.y > 0f)
+                reflection.y = -reflection.y; // Make it go up (since +Y is down)
 
             Velocity = reflection;
             BounceCooldownFrames = 3;

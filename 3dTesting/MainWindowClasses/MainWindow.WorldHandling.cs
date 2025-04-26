@@ -31,12 +31,12 @@ namespace _3dTesting.MainWindowClasses
                 if (!inhabitant.CheckInhabitantVisibility()) continue;
 
                 inhabitant.Movement?.MoveObject(inhabitant);
-
                 inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
 
                 foreach (var part in inhabitant.ObjectParts)
                 {
                     part.Triangles = RotateMesh(part.Triangles, (Vector3)inhabitant.Rotation);
+                    //Store the RotatedSurfaceTriangles
                     if (inhabitant.ObjectName == "Surface")
                         inhabitant.ParentSurface.RotatedSurfaceTriangles = part.Triangles;
                     SetMovementGuides(inhabitant, part, part.Triangles);
@@ -104,6 +104,7 @@ namespace _3dTesting.MainWindowClasses
                     break;
                 case "SeederParticlesGuide":
                 case "JetMotorDirectionGuide":
+                    Logger.Log($"MainLoop Set Guide after rotation: {rotatedMesh.First().vert1.x + ", " + rotatedMesh.First().vert1.y + ", " + rotatedMesh.First().vert1.z} Inhabitant:{inhabitant.ObjectName} ");
                     inhabitant.Movement.SetStartGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
                     break;
             }
