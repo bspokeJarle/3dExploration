@@ -12,9 +12,9 @@ public class ParticlesAI : IParticles
     private Random random = new();
 
     // --- Konfigurasjon ---
-    private const int MaxParticlesBase = 15;
+    private const int MaxParticlesBase = 12;
     private const int MaxThrustMultiplier = 5;
-    private const int MaxDynamicParticles = 30;
+    private const int MaxDynamicParticles = 25;
     private const float MinLife = 2.5f;
     private const float MaxLife = 3.5f;
     private const float MinSize = 1f;
@@ -28,7 +28,7 @@ public class ParticlesAI : IParticles
     public List<IParticle> Particles { get; set; } = new();
     public IObjectMovement? ParentShip { get; set; }
     public bool Visible { get; set; }
-    public bool EnableParticleLogging { get; set; } = true;
+    public bool EnableParticleLogging { get; set; } = false;
     private DateTime _lastUpdateTime = DateTime.UtcNow;
    
 
@@ -234,7 +234,10 @@ public class ParticlesAI : IParticles
                 {
                     Velocity = new Vector3 { x = velocity.x, y = velocity.y, z = velocity.z },
                     Acceleration = new Vector3 { x = acceleration.x, y = acceleration.y, z = acceleration.z },
-                    GravityStrength = 1f,
+                    Mass = 1f,
+                    GravityStrength = 50f,
+                    Friction = 0.02f,
+                    EnergyLossFactor = 0.28f,
                 },
                 ImpactStatus = new ImpactStatus { HasCrashed = false }
             });

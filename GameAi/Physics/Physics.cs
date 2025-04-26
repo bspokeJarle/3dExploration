@@ -56,16 +56,16 @@ namespace GameAiAndControls.Physics
             if (BounceCooldownFrames > 0)
             {
                 BounceCooldownFrames--;
-                return currentPosition;
+                return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
             }
 
-            // 1. Legg til akselerasjon
+            // 1. Legg til akselerasjon (hvis partikkelen har det)
             Velocity.x += Acceleration.x;
             Velocity.y += Acceleration.y;
             Velocity.z += Acceleration.z;
 
-            // 2. Gravity drar Y *nedover* (altså positiv endring på Velocity.y)
-            Velocity.y += GravityStrength * deltaTime;
+            // 2. Påfør gravity på Y-aksen (GravityStrength drar ned, altså minus siden -Y er opp)
+            Velocity.y -= GravityStrength * deltaTime;
 
             // 3. Påfør friksjon
             Velocity.x *= 0.95f;
@@ -84,7 +84,10 @@ namespace GameAiAndControls.Physics
         public IVector3 ApplyThrust(IVector3 currentPosition, IVector3 direction, float deltaTime)
         {
             if (BounceCooldownFrames > 0)
+            {
+                BounceCooldownFrames--;
                 return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
+            }
 
             if (Thrust <= 0) return currentPosition;
 
@@ -119,22 +122,29 @@ namespace GameAiAndControls.Physics
                     ImpactDirection.Bottom => new Vector3(0, 1, 0),
                     ImpactDirection.Left => new Vector3(-1, 0, 0),
                     ImpactDirection.Right => new Vector3(1, 0, 0),
-                    ImpactDirection.Center => new Vector3(0, 1, 0),
+                    ImpactDirection.Center => new Vector3(0, -1, 0),
                     _ => normal
                 };
             }
 
-            var dot = PhysicsHelpers.Dot(Velocity, normal);
-            var reflection = PhysicsHelpers.Subtract(Velocity, PhysicsHelpers.Multiply(normal, 2 * dot));
+            // Bounce på Y-akse (Top/Bottom)
+            if (normal.y != 0)
+            {
+                Velocity.y = -Velocity.y * EnergyLossFactor;
+            }
 
-            // Apply energy loss (dampen bounce)
-            reflection.y *= EnergyLossFactor;
+            // Bounce på X-akse (Left/Right)
+            if (normal.x != 0)
+            {
+                Velocity.x = -Velocity.x * EnergyLossFactor;
+            }
 
-            // Make sure bounce only pushes UP
-            if (reflection.y > 0f)
-                reflection.y = -reflection.y; // Make it go up (since +Y is down)
+            // Bounce på Z-akse (for front/back treff, hvis vi trenger det)
+            if (normal.z != 0)
+            {
+                Velocity.z = -Velocity.z * EnergyLossFactor;
+            }
 
-            Velocity = reflection;
             BounceCooldownFrames = 3;
         }
 
