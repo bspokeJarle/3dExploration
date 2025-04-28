@@ -25,6 +25,7 @@ namespace _3dRotations.Scene.Scene1
             ship.CrashboxOffsets = new Vector3 { x = 0,y = 0,z = 0 };
             ship.ObjectName = "Ship";
             ship.ImpactStatus = new ImpactStatus { };
+            ship.CrashBoxDebugMode = true;
             world.WorldInhabitants.Add(ship);
 
             /*
@@ -69,18 +70,11 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.CrashboxOffsets = new Vector3 { };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
-            //Add crashboxes to the surface, add more crashboxes to the surface for large objects (Mountains etc)
-            surfaceObject.CrashBoxes = new List<List<IVector3>>
-            {
-                new List<IVector3>
-                {
-                    new Vector3 { x = -750, y = 310, z = -1500 },  // Mer negativ Y = strekker seg under bakken
-                    new Vector3 { x = 750, y = 900, z = 1500 }      // Høyere topp og større XZ-spenn
-                }
-            };
+            //Crashboxes are added n the GetSurfaceViewPort method
             surfaceObject.Movement = new GroundControls();
             surfaceObject.ParentSurface = Surface;
             surfaceObject.ImpactStatus = new ImpactStatus { };
+            surfaceObject.CrashBoxDebugMode = true;
             world.WorldInhabitants.Add(surfaceObject);
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(Surface.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());

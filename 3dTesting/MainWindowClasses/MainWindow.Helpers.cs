@@ -72,14 +72,10 @@ namespace _3dTesting.Helpers
         /// </summary>
         public static void UpdateMapOverlay(System.Windows.Controls.Image mapOverlay, BitmapSource surfaceMapBitmap, int mapX, int mapY)
         {
-            //TODO: Prevent Error when we go out of bounds
-            //if ((mapY/75)<=0) mapY=75;
-            if (surfaceMapBitmap != null && mapOverlay != null)
+             if (surfaceMapBitmap != null && mapOverlay != null)
             {
-                // if (mapX >= 75 * 2425) mapX = 75 * 2425;
-                // if (mapY >= 75 * 2425) mapY = 75 * 2425;
-                //Debug.WriteLine("Overlay MapX: " + mapX / 75 + " MapY: " + mapY / 75 + " Map");
-                mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect(mapX / 75, mapY / 75, 72, 72));
+                 //TODO: Get values from the setup later, hardcoded for now
+                 mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect((mapX-2000) / 75, (mapY-2000) / 75, 72, 72));
             }
         }
 

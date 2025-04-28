@@ -9,6 +9,13 @@ namespace Domain
     {
         public int mapDepth;
         public int mapId;
+
+        public CrashBoxData? crashBox; // Null if not relevant
+        public struct CrashBoxData
+        {
+            public int width; // Tiles in X direction
+            public int height; // Tiles in Z direction
+        }
     }
 
     public interface IPhysics
@@ -80,6 +87,7 @@ namespace Domain
         public int? Mass { get; set; }
         public ISurface? ParentSurface { get; set; }
         public int? SurfaceBasedId { get; set; }
+        public bool? CrashBoxDebugMode { get; set; }
     }
 
     public interface IImpactStatus

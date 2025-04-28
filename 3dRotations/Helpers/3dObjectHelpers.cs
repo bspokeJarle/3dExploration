@@ -248,7 +248,8 @@ namespace _3dTesting.Helpers
                         RotationOffsetX = inhabitant.RotationOffsetX,
                         RotationOffsetY = inhabitant.RotationOffsetY,
                         RotationOffsetZ = inhabitant.RotationOffsetZ,
-                        SurfaceBasedId = inhabitant.SurfaceBasedId
+                        SurfaceBasedId = inhabitant.SurfaceBasedId,
+                        CrashBoxDebugMode = inhabitant.CrashBoxDebugMode
                     };
 
                     return copy;

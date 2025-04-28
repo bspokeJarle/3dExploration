@@ -21,7 +21,7 @@ namespace _3dTesting._3dWorld
         public string ObjectName { get; set; }
         public ISurface? ParentSurface { get; set; }
         public int? SurfaceBasedId { get; set; }
-        //todo add object relative properties, colors, ai etc    
+        public bool? CrashBoxDebugMode { get; set; } 
     }
     public class _3dObjectPart : I3dObjectPart
     {

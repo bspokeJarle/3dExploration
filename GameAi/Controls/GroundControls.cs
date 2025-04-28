@@ -24,7 +24,8 @@ namespace GameAiAndControls.Controls
             {
                 //Replace the surfaces from the new viewport - other objects might have moved surface position
                 var newViewPort = theObject!.ParentSurface!.GetSurfaceViewPort();                
-                theObject.ObjectParts = newViewPort.ObjectParts;                
+                theObject.ObjectParts = newViewPort.ObjectParts; 
+                theObject.CrashBoxes = newViewPort.CrashBoxes;
             }            
             return theObject!;
         }

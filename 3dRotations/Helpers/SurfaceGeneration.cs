@@ -4,6 +4,7 @@ using System.Windows.Media;
 using System.Windows;
 using Domain;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace _3dRotations.Helpers
 {
@@ -34,6 +35,10 @@ namespace _3dRotations.Helpers
             surfaceValues = SmoothTerrain(surfaceValues, mapSize, maxHeight);
             EnsureFlatLandingArea(surfaceValues, mapSize, maxHeight);
             surfaceValues = ApplyEdgeWrapping(surfaceValues, mapSize);
+
+            // Generate crashboxes after terrain is fully built
+            GenerateCrashBoxes(surfaceValues, maxHeight);
+
             GenerateTerrainBitmapSource(surfaceValues, mapSize, maxHeight);
             return surfaceValues;
         }
@@ -62,7 +67,7 @@ namespace _3dRotations.Helpers
             return map;
         }
 
-        // 🌋 **Forces 3-4 larger mountain regions**
+        // **Forces 3-4 larger mountain regions**
         private static void AddMountainRegions(SurfaceData[,] map, int mapSize, int maxHeight)
         {
             int numMountains = 3 + random.Next(2); // Ensures 3-4 mountain regions
@@ -459,5 +464,82 @@ namespace _3dRotations.Helpers
                 (byte)Math.Clamp(blue, 0, 255)
             );
         }
+
+        private static void GenerateCrashBoxes(SurfaceData[,] map, int maxHeight)
+        {
+            int mapSizeX = map.GetLength(0);
+            int mapSizeY = map.GetLength(1);
+            bool[,] visited = new bool[mapSizeX, mapSizeY];
+            int numCrashBoxes = 0;
+            const int MinimumCrashBoxArea = 9; // Example: minimum 9 tiles (3x3 area)
+
+            for (int i = 0; i < mapSizeX; i++)
+            {
+                for (int j = 0; j < mapSizeY; j++)
+                {
+                    if (visited[i, j])
+                        continue;
+
+                    int height = map[i, j].mapDepth;
+
+                    if (IsHighlandOrMountain(height, maxHeight))
+                    {
+                        int width = 1;
+                        int heightBox = 1;
+
+                        // Expand horizontally
+                        while (j + width < mapSizeY && !visited[i, j + width] && IsHighlandOrMountain(map[i, j + width].mapDepth, maxHeight))
+                        {
+                            width++;
+                        }
+
+                        // Expand vertically
+                        bool canExpandDown = true;
+                        while (i + heightBox < mapSizeX && canExpandDown)
+                        {
+                            for (int x = 0; x < width; x++)
+                            {
+                                if (visited[i + heightBox, j + x] || !IsHighlandOrMountain(map[i + heightBox, j + x].mapDepth, maxHeight))
+                                {
+                                    canExpandDown = false;
+                                    break;
+                                }
+                            }
+                            if (canExpandDown) heightBox++;
+                        }
+
+                        int area = width * heightBox;
+
+                        if (area >= MinimumCrashBoxArea)
+                        {
+                            map[i, j].crashBox = new SurfaceData.CrashBoxData
+                            {
+                                width = width,
+                                height = heightBox
+                            };
+                            numCrashBoxes++;
+                        }
+
+                        // Always mark all covered tiles as visited
+                        for (int di = 0; di < heightBox; di++)
+                        {
+                            for (int dj = 0; dj < width; dj++)
+                            {
+                                visited[i + di, j + dj] = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            Debug.WriteLine($"[SurfaceGeneration] Generated {numCrashBoxes} crashboxes.");
+        }
+
+        private static bool IsHighlandOrMountain(int height, int maxHeight)
+        {
+            // Highland starts at 40% of maximum elevation
+            return height >= maxHeight * 0.4;
+        }
+
     }
 }
