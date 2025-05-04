@@ -1,4 +1,5 @@
 ﻿using _3dTesting._3dWorld;
+using _3dTesting.Helpers;
 using Domain;
 using GameAiAndControls.Ai;
 using GameAiAndControls.Controls;
@@ -42,15 +43,12 @@ namespace _3dRotations.World.Objects
 
         public static List<List<IVector3>>? ShipCrashBoxes()
         {
-            //List of crash boxes for the ship, min, max
+            var min = new Vector3 { x = -65, y = -45, z = -45 };
+            var max = new Vector3 { x = 65, y = 45, z = 45 };
+
             return new List<List<IVector3>>
             {
-                //TODO: Maybe use three crashboxes in time, for now only one
-                new List<IVector3>
-                {
-                    new Vector3 { x = -65, y = -45, z = -45 },
-                    new Vector3 { x = 65, y = 45, z = 45 },
-                }
+                _3dObjectHelpers.GenerateCrashBoxCorners(min, max)
             };
         }
 

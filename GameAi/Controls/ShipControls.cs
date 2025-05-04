@@ -137,6 +137,10 @@ namespace GameAiAndControls.Controls
 
         public I3dObject MoveObject(I3dObject theObject)
         {
+            if (theObject.ImpactStatus.HasCrashed == true)
+            {
+                //TODO: Reaction to the crash    
+            }
             ApplyLocalTiltToMesh(tilt, theObject);
 
             var now = DateTime.Now;

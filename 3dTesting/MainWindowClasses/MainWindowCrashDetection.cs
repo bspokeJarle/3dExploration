@@ -17,7 +17,7 @@ namespace _3dTesting.Helpers
         private static DateTime _lastStaticCheck = DateTime.MinValue;
         private static bool _skipParticles = false;
 
-        public static bool LocalEnableLogging = false;
+        public static bool LocalEnableLogging = true;
         public static double MaxCrashDistance = 750.0;
 
         private static readonly Dictionary<_3dObject, List<List<Vector3>>> RotatedBoxCache = new();
@@ -35,7 +35,7 @@ namespace _3dTesting.Helpers
             bool shouldCheckStaticObjects = (DateTime.Now - _lastStaticCheck).TotalMilliseconds > 200;
             _skipParticles = !_skipParticles;
 
-             for (int i = 0; i < count; i++)
+            for (int i = 0; i < count; i++)
             {
                 var inhabitant = activeWorld[i];
                 if (inhabitant == null || inhabitant.CrashBoxes == null) continue;
@@ -185,6 +185,8 @@ namespace _3dTesting.Helpers
                     {
                         a.ImpactStatus.HasCrashed = true;
                         b.ImpactStatus.HasCrashed = true;
+                        a.ImpactStatus.ObjectName = b.ObjectName;
+                        b.ImpactStatus.ObjectName = a.ObjectName;
 
                         var centerA = GetCenterOfBox(safeBoxA);
                         var centerB = GetCenterOfBox(safeBoxB);
@@ -194,6 +196,7 @@ namespace _3dTesting.Helpers
 
                         if (ShouldLog)
                         {
+                            MessageBox.Show($"We have a crash {a.ObjectName} vs {b.ObjectName}  ");
                             Logger.Log($"[FRAME:{numFrame}] [GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName}");
                         }
                         return true;

@@ -19,8 +19,9 @@ namespace _3dTesting.MainWindowClasses
         private readonly ParticleManager particleManager = new();
         public string DebugMessage { get; set; }
 
-        public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world)
+        public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world,ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
+            //var projectedCoordinates = new List<_2dTriangleMesh>();
             var activeWorld = _3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants);
             var particleObjectList = new List<_3dObject>();
             var renderedList = new List<_3dObject>();
@@ -55,7 +56,11 @@ namespace _3dTesting.MainWindowClasses
             if (particleObjectList.Count > 0)
                 renderedList.AddRange(particleObjectList);
              
-            var projectedCoordinates = From3dTo2d.convertTo2dFromObjects(renderedList);
+            projectedCoordinates = From3dTo2d.convertTo2dFromObjects(renderedList, false);
+            var crashBoxDebuggedObjects = renderedList.Where(x => x.CrashBoxDebugMode == true).ToList();
+            //Check if there are any crashboxes to debug
+            if (crashBoxDebuggedObjects.Count>0) crashBoxCoordinates = From3dTo2d.convertTo2dFromObjects(crashBoxDebuggedObjects, true);
+            else crashBoxCoordinates = new List<_2dTriangleMesh>();
             CrashDetection.HandleCrashboxes(renderedList);
             return projectedCoordinates;
         }

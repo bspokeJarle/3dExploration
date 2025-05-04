@@ -1,4 +1,5 @@
 ﻿using _3dTesting._3dWorld;
+using _3dTesting.Helpers;
 using Domain;
 using System.Collections.Generic;
 using System.Linq;
@@ -92,34 +93,37 @@ namespace _3dRotations.World.Objects
             return foliage;
         }
 
-        public static List<List<IVector3>>? TreeCrashBoxes()
+        public static List<List<IVector3>> TreeCrashBoxes()
         {
-            float trunkExpand = trunkRadius * 2f;
-            float foliageExpand = foliageBaseRadius * 2f;
-            float foliageHeightExpanded = foliageHeight * 2f;
+            float trunkExpand = trunkRadius * 2.5f;
+            float foliageExpand = foliageBaseRadius * 2.5f;
+            float foliageHeightExpanded = foliageHeight * 2.5f;
 
             return new List<List<IVector3>>
             {
-                new List<IVector3>
-                {
+                // Trunk lower half
+                _3dObjectHelpers.GenerateCrashBoxCorners(
                     new Vector3 { x = -trunkExpand, y = -trunkExpand, z = 0 },
                     new Vector3 { x = trunkExpand, y = trunkExpand, z = trunkHeight / 2 }
-                },
-                new List<IVector3>
-                {
+                ),
+
+                // Trunk upper half
+                _3dObjectHelpers.GenerateCrashBoxCorners(
                     new Vector3 { x = -trunkExpand - 1, y = -trunkExpand - 1, z = trunkHeight / 2 },
                     new Vector3 { x = trunkExpand + 1, y = trunkExpand + 1, z = trunkHeight }
-                },
-                new List<IVector3>
-                {
+                ),
+
+                // Middle foliage
+                _3dObjectHelpers.GenerateCrashBoxCorners(
                     new Vector3 { x = -foliageExpand, y = -foliageExpand, z = trunkHeight },
                     new Vector3 { x = foliageExpand, y = foliageExpand, z = trunkHeight + foliageHeightExpanded }
-                },
-                new List<IVector3>
-                {
+                ),
+
+                // Top foliage
+                 _3dObjectHelpers.GenerateCrashBoxCorners(
                     new Vector3 { x = -foliageExpand / 2, y = -foliageExpand / 2, z = trunkHeight + foliageHeightExpanded },
                     new Vector3 { x = foliageExpand / 2, y = foliageExpand / 2, z = trunkHeight + foliageHeightExpanded * 1.5f }
-                }
+                )
             };
         }
     }

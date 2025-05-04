@@ -13,6 +13,41 @@ namespace _3dTesting.Helpers
 {
     public static class _3dObjectHelpers
     {
+        public static List<IVector3> GenerateAabbCrashBoxFromRotated(List<IVector3> rotatedPoints)
+        {
+            if (rotatedPoints == null || rotatedPoints.Count < 2)
+                return new List<IVector3>();
+
+            var min = new Vector3
+            {
+                x = rotatedPoints.Min(p => p.x),
+                y = rotatedPoints.Min(p => p.y),
+                z = rotatedPoints.Min(p => p.z)
+            };
+
+            var max = new Vector3
+            {
+                x = rotatedPoints.Max(p => p.x),
+                y = rotatedPoints.Max(p => p.y),
+                z = rotatedPoints.Max(p => p.z)
+            };
+
+            return GenerateCrashBoxCorners(min, max);
+        }
+        public static List<IVector3> GenerateCrashBoxCorners(Vector3 min, Vector3 max)
+        {
+            return new List<IVector3>
+            {
+                new Vector3 { x = min.x, y = max.y, z = min.z }, // Corner 0
+                new Vector3 { x = max.x, y = max.y, z = min.z }, // Corner 1
+                new Vector3 { x = max.x, y = min.y, z = min.z }, // Corner 2
+                new Vector3 { x = min.x, y = min.y, z = min.z }, // Corner 3
+                new Vector3 { x = min.x, y = max.y, z = max.z }, // Corner 4
+                new Vector3 { x = max.x, y = max.y, z = max.z }, // Corner 5
+                new Vector3 { x = max.x, y = min.y, z = max.z }, // Corner 6
+                new Vector3 { x = min.x, y = min.y, z = max.z }  // Corner 7
+            };
+        }
         public static IVector3 GetLocalWorldPosition(this _3dObject inhabitant)
         {
             var globalMapPosition = inhabitant.ParentSurface.GlobalMapPosition;
@@ -234,7 +269,6 @@ namespace _3dTesting.Helpers
                     var copy = new _3dObject
                     {
                         ObjectOffsets = new Vector3 { x = inhabitant.ObjectOffsets.x, y = inhabitant.ObjectOffsets.y, z = inhabitant.ObjectOffsets.z },
-                        CrashboxOffsets = new Vector3 { x = inhabitant.CrashboxOffsets.x, y = inhabitant.CrashboxOffsets.y, z = inhabitant.CrashboxOffsets.z },
                         Rotation = new Vector3 { x = inhabitant.Rotation.x, y = inhabitant.Rotation.y, z = inhabitant.Rotation.z },
                         WorldPosition = new Vector3 { x = inhabitant.WorldPosition.x, y = inhabitant.WorldPosition.y, z = inhabitant.WorldPosition.z },
                         ObjectParts = objectParts.Cast<I3dObjectPart>().ToList(),

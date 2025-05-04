@@ -1,4 +1,5 @@
 ﻿using _3dTesting._3dWorld;
+using _3dTesting.Helpers;
 using Domain;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -265,14 +266,24 @@ namespace _3dRotations.World.Objects
             float expandY = houseDepth * 0.1f;
             float expandZ = (houseHeight + roofHeight) * 0.1f;
 
-            return new List<List<IVector3>>
+            var min = new Vector3
             {
-                new List<IVector3>
-                {
-                    new Vector3 { x = -houseWidth / 2 - expandX, y = -houseDepth / 2 - expandY, z = 0 },
-                    new Vector3 { x = houseWidth / 2 + expandX, y = houseDepth / 2 + expandY, z = houseHeight + roofHeight + expandZ }
-                }
+                x = -houseWidth / 2 - expandX,
+                y = -houseDepth / 2 - expandY,
+                z = 0
             };
+
+            var max = new Vector3
+            {
+                x = houseWidth / 2 + expandX,
+                y = houseDepth / 2 + expandY,
+                z = houseHeight + roofHeight + expandZ
+            };
+
+            // Convert min/max to 8-corner crashbox
+            var crashBoxCorners = _3dObjectHelpers.GenerateCrashBoxCorners(min, max);
+
+            return new List<List<IVector3>> { crashBoxCorners };
         }
     }
 }

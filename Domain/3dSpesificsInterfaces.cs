@@ -15,6 +15,7 @@ namespace Domain
         {
             public int width; // Tiles in X direction
             public int height; // Tiles in Z direction
+            public int boxDepth; // Tiles in Y direction
         }
     }
 

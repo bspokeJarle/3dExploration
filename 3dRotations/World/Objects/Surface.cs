@@ -1,9 +1,11 @@
 ﻿using _3dRotations.Helpers;
 using _3dTesting._3dWorld;
+using _3dTesting.Helpers;
 using Domain;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.Diagnostics;
 using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
 
@@ -58,13 +60,6 @@ namespace _3dRotations.World.Objects
                     var currentTile = viewPort[i, j];
                     var surfaceId = currentTile.mapId;
 
-                    // --- Nytt: CrashBox-sjekk ---
-                    var crashBox = TryCreateCrashBoxFromSurfaceData(viewPort, i, j, tileSize);
-                    if (crashBox != null)
-                    {
-                        viewPortCrashBoxes.Add(crashBox);
-                    }
-
                     // --- Eksisterende logikk: bygge terreng (ikke endret) ---
                     var ZPostition1 = currentTile.mapDepth;
                     var ZPostition2 = viewPort[i, j + 1].mapDepth;
@@ -73,6 +68,30 @@ namespace _3dRotations.World.Objects
 
                     var color1 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, maxHeight);
                     var color2 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, maxHeight);
+
+                    // Create SurfaceCrashbox directly here
+                    if (currentTile.crashBox != null)
+                    {
+                        var box = currentTile.crashBox.Value;
+
+                        var min = new Vector3
+                        {
+                            x = (XPosition - XRemainer) - tileSize,
+                            y = YPosition - ZRemainer,
+                            z = 0 // Sealevel
+                        };
+
+                        var max = new Vector3
+                        {
+                            x = XPosition + ((box.width * tileSize) - XRemainer) - tileSize,
+                            y = YPosition + (box.height * tileSize) - ZRemainer,
+                            z = 460 + currentTile.mapDepth // Max map depth
+                        };
+
+                        var crashBoxCorners = _3dObjectHelpers.GenerateCrashBoxCorners(min, max);
+                        viewPortCrashBoxes.Add(crashBoxCorners);
+                    }
+
 
                     var triangle1 = new TriangleMeshWithColor
                     {
@@ -98,84 +117,23 @@ namespace _3dRotations.World.Objects
             }
 
             surface.ObjectParts.Add(new _3dObjectPart { PartName = "Surface", Triangles = newSurface, IsVisible = true });
+
             surface.CrashBoxes = viewPortCrashBoxes;
-            surface.CrashBoxes.AddRange(GetMainSurfaceCrashBox()); // Legg til hoved-crashboxen
+            //surface.CrashBoxes = new List<List<IVector3>>();
+            surface.CrashBoxes.AddRange(GetMainSurfaceCrashBox());
             return surface;
         }
 
+
         private List<List<IVector3>> GetMainSurfaceCrashBox()
         {
+            var min = new Vector3 { x = -500, y = 50, z = -1000 };
+            var max = new Vector3 { x = 200, y = 750, z = 550 };
+
             return new List<List<IVector3>>
             {
-                new List<IVector3>
-                {
-                    new Vector3 { x = -750, y = 310, z = -1500 },  // Need a bit of thickness to the surface
-                    new Vector3 { x = 750, y = 900, z = 1500 }      // We need a pretty big box for the surface
-                }
+                _3dObjectHelpers.GenerateCrashBoxCorners(min, max)
             };
-        }
-
-        private List<IVector3>? TryCreateCrashBoxFromSurfaceData(
-           SurfaceData[,] viewPort,
-           int i, int j,
-           int tileSize)
-        {
-            var currentTile = viewPort[i, j];
-
-            if (currentTile.crashBox == null)
-                return null;
-
-            var crashInfo = currentTile.crashBox.Value;
-
-            int maxI = viewPort.GetLength(0);
-            int maxJ = viewPort.GetLength(1);
-
-            int width = crashInfo.width;
-            int height = crashInfo.height;
-
-            // Get the real world position from the triangle
-            // We simulate what triangle.vert1.x and triangle.vert1.z would be
-
-            int tilesHalf = viewPort.GetLength(0) / 2;
-
-            var minX = (j - tilesHalf) * tileSize;  // Centering around (0,0)
-            var minZ = (i - tilesHalf) * tileSize;
-
-            var maxX = minX + width * tileSize;
-            var maxZ = minZ + height * tileSize;
-
-            // 🔥 Now calculate real min/max height
-            int maxHeightFound = int.MinValue;
-
-            for (int zi = i; zi < Math.Min(i + height, maxI); zi++)
-            {
-                for (int xj = j; xj < Math.Min(j + width, maxJ); xj++)
-                {
-                    int h = viewPort[zi, xj].mapDepth;
-                    if (h > maxHeightFound) maxHeightFound = h;
-                }
-            }
-
-            const int seaLevel = 0; // or adjust if needed
-            // Add small padding
-            const int paddingXZ = 5;
-            const int paddingY = 10;
-
-            // Expand min and max points slightly
-            var min = new Vector3
-            {
-                x = minX - paddingXZ,
-                y = seaLevel,
-                z = minZ - paddingXZ
-            };
-
-            var max = new Vector3
-            {
-                x = maxX + paddingXZ,
-                y = maxHeightFound + paddingY,
-                z = maxZ + paddingXZ
-            };
-            return new List<IVector3> { min, max };
         }
 
         private static string GetTileColorGradient(int height, int maxHeight)

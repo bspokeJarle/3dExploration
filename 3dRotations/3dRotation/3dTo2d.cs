@@ -4,6 +4,7 @@ using _3dTesting.Helpers;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using static Domain._3dSpecificsImplementations;
@@ -21,7 +22,7 @@ namespace _3dTesting._3dRotation
         private const int screenCenterY = screenSizeY / 2;
         private long CurrentFrame = 0;
 
-        public List<_2dTriangleMesh> convertTo2dFromObjects(List<_3dObject> inhabitants)
+        public List<_2dTriangleMesh> convertTo2dFromObjects(List<_3dObject> inhabitants, bool debugCrashBoxes)
         {
             CurrentFrame++;
             var screenCoordinates = new List<_2dTriangleMesh>();
@@ -33,31 +34,118 @@ namespace _3dTesting._3dRotation
                 if (!ObjectPlacementHelpers.TryGetRenderPosition(obj, screenCenterX, screenCenterY, out double screenX, out double screenY, out double screenZ))
                     continue;
 
-                // 🚫 Ikke parallell – crashboxene blir oppdatert direkte
-                if (obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)
+                // Always update CrashBox positions (ONLY during normal rendering), second time if rendering crashboxes you cannot add offsets once more
+                if (!debugCrashBoxes)
                 {
-                    var offset = obj.ObjectOffsets;
-                    foreach (var box in obj.CrashBoxes)
+                    float surfaceCrashMovementOffset = 0f;
+                    if (obj.ObjectName=="Surface")
                     {
-                        for (int j = 0; j < box.Count; j++)
+                        //When the object is a surface, we need to set the Y offset to the global map position if the Ship leaves the surface behind
+                        surfaceCrashMovementOffset = obj.ParentSurface.GlobalMapPosition.y;
+                    }
+                    if (obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)
+                    {
+                        var offset = obj.ObjectOffsets;
+                        //Add the surfacemovement offset
+                        offset.y += surfaceCrashMovementOffset / 3.5f;
+                        foreach (var box in obj.CrashBoxes)
                         {
-                            var original = box[j];
-                            box[j] = new Vector3
+                            for (int j = 0; j < box.Count; j++)
                             {
-                                x = original.x + offset.x,
-                                y = original.y + offset.y,
-                                z = original.z + offset.z
-                            };
+                                var original = box[j];
+                                box[j] = new Vector3
+                                {
+                                    x = original.x + offset.x,
+                                    y = original.y + offset.y,
+                                    z = original.z + offset.z
+                                };
+                            }
                         }
                     }
                 }
 
-                var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
-                screenCoordinates.AddRange(projected);
+                if (debugCrashBoxes)
+                {
+                    // Project CrashBoxes visually
+                    if (obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)
+                    {
+                        var crashBox2d = ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ);
+                        screenCoordinates.AddRange(crashBox2d);
+                    }
+                }
+                else
+                {
+                    // Project normal 3D triangles
+                    var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
+                    screenCoordinates.AddRange(projected);
+                }
             }
 
             return screenCoordinates;
         }
+
+
+        private List<_2dTriangleMesh> ConvertCrashBoxesTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ)
+        {
+            var result = new List<_2dTriangleMesh>();
+
+            foreach (var crashBox in obj.CrashBoxes)
+            {
+                // Skip if not a valid 8-corner box
+                if (crashBox.Count != 8) continue;
+
+                //var corners = crashBox.Cast<Vector3>().ToList();
+                var corners = _3dObjectHelpers.GenerateAabbCrashBoxFromRotated(crashBox);
+
+
+                var faceTriangles = new (int, int, int)[]
+                {
+                    // Front face
+                    (0, 1, 2), (0, 2, 3),
+                    // Back face
+                    (4, 6, 5), (4, 7, 6),
+                    // Top face
+                    (4, 5, 1), (4, 1, 0),
+                    // Bottom face
+                    (3, 2, 6), (3, 6, 7),
+                    // Left face
+                    (0, 3, 7), (0, 7, 4),
+                    // Right face
+                    (1, 5, 6), (1, 6, 2)
+                };
+
+                foreach (var (i1, i2, i3) in faceTriangles)
+                {
+                    var p1 = ProjectVertex((Vector3)corners[i1], objPosX, objPosY, objPosZ);
+                    var p2 = ProjectVertex((Vector3)corners[i2], objPosX, objPosY, objPosZ);
+                    var p3 = ProjectVertex((Vector3)corners[i3], objPosX, objPosY, objPosZ);
+
+                    var triangle = CreateTriangle(p1, p2, p3, "FF00FF", obj); // Magenta for visibility
+                    result.Add(triangle);
+                }
+            }
+
+            return result;
+        }
+
+
+        // Reuse your existing CreateTriangle helper
+        private _2dTriangleMesh CreateTriangle((double x, double y) p1, (double x, double y) p2, (double x, double y) p3, string color, _3dObject obj)
+        {
+            return new _2dTriangleMesh
+            {
+                X1 = (int)p1.x,
+                Y1 = (int)p1.y,
+                X2 = (int)p2.x,
+                Y2 = (int)p2.y,
+                X3 = (int)p3.x,
+                Y3 = (int)p3.y,
+                Color = color,
+                Normal = 1,
+                PartName = $"CrashBox-{obj.ObjectName}"
+            };
+        }
+
 
         private List<_2dTriangleMesh> ConvertObjectTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ)
         {

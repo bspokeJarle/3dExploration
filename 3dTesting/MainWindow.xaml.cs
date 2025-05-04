@@ -12,6 +12,7 @@ using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
 using _3dTesting.Rendering;
 using _3dTesting._3dWorld;
+using System.Collections.Generic;
 
 namespace _3dTesting
 {
@@ -52,7 +53,7 @@ namespace _3dTesting
         public MainWindow()
         {
             //Turn this on when debugging
-            Logger.EnableFileLogging = false;
+            Logger.EnableFileLogging = true;
             Logger.ClearLog();
 
             InitializeComponent();
@@ -121,8 +122,14 @@ namespace _3dTesting
                 {
                     return;
                 }
-                var screenCoordinates = gameWorldManager.UpdateWorld(world);
+                
+                var screenCoordinates = new List<_Coordinates._2dTriangleMesh>();
+                var crashBoxCoordinates = new List<_Coordinates._2dTriangleMesh>();
+                gameWorldManager.UpdateWorld(world,ref screenCoordinates, ref crashBoxCoordinates);
+                //Check if there are any crashboxes to debug
+                if (crashBoxCoordinates.Count > 0) screenCoordinates.AddRange(crashBoxCoordinates);
                 Dispatcher.Invoke(() => worldRenderer.RenderTriangles(screenCoordinates));
+                //Check if there are any crashboxes to debug
             });
         }
     }

@@ -190,7 +190,19 @@ namespace _3dTesting.Rendering
                 ctx.LineTo(p3, true, false);
             }
 
-            dc.DrawGeometry(brush, pen, geometry);
+            if (triangle.PartName != null && triangle.PartName.StartsWith("CrashBox-"))
+            {
+                // If rendering CrashBoxes -> use semi-transparent brush
+                var transparentBrush = new SolidColorBrush(brush.Color) { Opacity = 0.25 };
+                transparentBrush.Freeze();
+                dc.DrawGeometry(transparentBrush, pen, geometry);
+            }
+            else
+            {
+                // Normal rendering
+                dc.DrawGeometry(brush, pen, geometry);
+            }
         }
+
     }
 }

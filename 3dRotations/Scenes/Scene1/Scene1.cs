@@ -22,7 +22,6 @@ namespace _3dRotations.Scene.Scene1
 
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
-            ship.CrashboxOffsets = new Vector3 { x = 0,y = 0,z = 0 };
             ship.ObjectName = "Ship";
             ship.ImpactStatus = new ImpactStatus { };
             ship.CrashBoxDebugMode = true;
@@ -67,8 +66,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
             surfaceObject.ObjectOffsets = new Vector3 { x = 75, y = 500, z = 300 };
-            surfaceObject.CrashboxOffsets = new Vector3 { };
-            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            surfaceObject.Rotation = new Vector3 { x = 80, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Crashboxes are added n the GetSurfaceViewPort method
             surfaceObject.Movement = new GroundControls();
@@ -96,6 +94,7 @@ namespace _3dRotations.Scene.Scene1
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
+                tree.CrashBoxDebugMode = true;
                 if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
             }
 
@@ -116,6 +115,7 @@ namespace _3dRotations.Scene.Scene1
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };
+                house.CrashBoxDebugMode = true;
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
             }
         }

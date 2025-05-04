@@ -488,7 +488,8 @@ namespace _3dRotations.Helpers
                         int heightBox = 1;
 
                         // Expand horizontally
-                        while (j + width < mapSizeY && !visited[i, j + width] && IsHighlandOrMountain(map[i, j + width].mapDepth, maxHeight))
+                        while (j + width < mapSizeY && !visited[i, j + width] &&
+                               IsHighlandOrMountain(map[i, j + width].mapDepth, maxHeight))
                         {
                             width++;
                         }
@@ -512,15 +513,29 @@ namespace _3dRotations.Helpers
 
                         if (area >= MinimumCrashBoxArea)
                         {
+                            // Highest mapdepth in the area
+                            int maxDepth = int.MinValue;
+                            for (int di = 0; di < heightBox; di++)
+                            {
+                                for (int dj = 0; dj < width; dj++)
+                                {
+                                    int depth = map[i + di, j + dj].mapDepth;
+                                    if (depth > maxDepth) maxDepth = depth;
+                                }
+                            }
+
+                            // Set crashbox
                             map[i, j].crashBox = new SurfaceData.CrashBoxData
                             {
                                 width = width,
-                                height = heightBox
+                                height = heightBox,
+                                boxDepth = maxDepth + 20 //Add some padding
                             };
+
                             numCrashBoxes++;
                         }
 
-                        // Always mark all covered tiles as visited
+                        // Mark the areas visited
                         for (int di = 0; di < heightBox; di++)
                         {
                             for (int dj = 0; dj < width; dj++)
@@ -531,9 +546,9 @@ namespace _3dRotations.Helpers
                     }
                 }
             }
-
             Debug.WriteLine($"[SurfaceGeneration] Generated {numCrashBoxes} crashboxes.");
         }
+
 
         private static bool IsHighlandOrMountain(int height, int maxHeight)
         {
