@@ -55,6 +55,7 @@ namespace GameAiAndControls.Controls
         public float Thrust { get; set; } = 0;
         public bool ThrustOn { get; set; } = false;
         public IPhysics Physics { get; set; } = new Physics.Physics();
+        private bool hasInitialized = false;
 
         public ShipControls()
         {
@@ -138,13 +139,24 @@ namespace GameAiAndControls.Controls
 
         public I3dObject MoveObject(I3dObject theObject)
         {
+            ParentObject ??= theObject;
+            if (!hasInitialized)
+            {
+                //We need to initialize landed
+                hasInitialized = true;
+                Thrust = 0;
+                ThrustOn = false;
+                landed = true;
+                ParentObject.ObjectOffsets.x = 0;
+                ParentObject.ObjectOffsets.y = 200;
+                ParentObject.ObjectOffsets.z = zoom;
+            }
+
             ApplyLocalTiltToMesh(tilt, theObject);
 
             var now = DateTime.Now;
             float deltaTime = (float)(now - lastUpdateTime).TotalSeconds;
             lastUpdateTime = now;
-
-            ParentObject ??= theObject;
 
             if (ThrustOn)
             {
@@ -174,16 +186,24 @@ namespace GameAiAndControls.Controls
 
             if (theObject.ImpactStatus.HasCrashed == true)
             {
-                theObject.ImpactStatus.ObjectHealth -= 10;
+                float landingSpeed = CurrentSpeed;
+
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
                 {
                     //TODO: Here we explode
                 }
                 else
                 {
-                    if (theObject.ImpactStatus.ImpactDirection==ImpactDirection.Top|| theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
+                    if (theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
+                        theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
                     {
-                        landed = true;   
+                        landed = true;
+
+                        // Mer skade ved hard landing
+                        if (landingSpeed > 5f)
+                        {
+                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 2); // eksempel
+                        }
                     }
                 }
                 //Reset this, if it still crashing it will come back
@@ -191,6 +211,16 @@ namespace GameAiAndControls.Controls
             }
 
             return theObject;
+        }
+
+        public float CurrentSpeed
+        {
+            get
+            {
+                float horizontalSpeed = MathF.Sqrt(inertiaX * inertiaX + inertiaZ * inertiaZ);
+                float verticalSpeed = landed ? 0f : MathF.Abs(fallVelocity); // 0 hvis vi har landet
+                return horizontalSpeed + verticalSpeed;
+            }
         }
 
         public void ApplyLocalTiltToMesh(int tilt, I3dObject inhabitant)

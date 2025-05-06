@@ -34,24 +34,24 @@ namespace _3dTesting._3dRotation
                 if (!ObjectPlacementHelpers.TryGetRenderPosition(obj, screenCenterX, screenCenterY, out double screenX, out double screenY, out double screenZ))
                     continue;
 
-                // Juster crashboxer for Surface (egen offset basert på y)
+                // Adjust crashboxes on surface based on ship vs ground height
                 if (obj.ObjectName == "Surface")
                 {
                     ApplySurfaceCrashOffset(obj);
                 }
 
-                // Alltid bruk generell offset på alle crashboxes (inkludert Surface)
+                //All Crashboxes need same offset as the objects
                 ApplyObjectOffsetToCrashBoxes(obj);
 
-                // Debug-visning av crashboxes
+                //Debug visualization of crashboxes
                 if (debugCrashBoxes && obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)
                 {
                     var crashBox2d = ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ);
                     screenCoordinates.AddRange(crashBox2d);
-                    continue; // Hopper over vanlig rendering hvis kun crashbox vises
+                    continue; // Crashboxes will be readied for rendring in a separate call, exit
                 }
 
-                // Vanlig 3D-objektrendering
+                //Standard 3d Rendring
                 var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
                 screenCoordinates.AddRange(projected);
             }

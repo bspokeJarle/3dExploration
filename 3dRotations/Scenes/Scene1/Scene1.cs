@@ -66,7 +66,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
             surfaceObject.ObjectOffsets = new Vector3 { x = 75, y = 500, z = 300 };
-            surfaceObject.Rotation = new Vector3 { x = 80, y = 0, z = 0 };
+            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Crashboxes are added n the GetSurfaceViewPort method
             surfaceObject.Movement = new GroundControls();

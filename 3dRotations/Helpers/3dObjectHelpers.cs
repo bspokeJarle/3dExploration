@@ -121,7 +121,7 @@ namespace _3dTesting.Helpers
             var minB = new Vector3(boxB.Min(p => p.x), boxB.Min(p => p.y), boxB.Min(p => p.z));
             var maxB = new Vector3(boxB.Max(p => p.x), boxB.Max(p => p.y), boxB.Max(p => p.z));
 
-            const float margin = 15f;
+            const float margin = 10f;
 
             bool overlapX = (maxA.x + margin) >= (minB.x - margin) && (minA.x - margin) <= (maxB.x + margin);
             bool overlapY = (maxA.y + margin) >= (minB.y - margin) && (minA.y - margin) <= (maxB.y + margin);
