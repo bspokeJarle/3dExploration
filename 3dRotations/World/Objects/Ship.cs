@@ -43,8 +43,8 @@ namespace _3dRotations.World.Objects
 
         public static List<List<IVector3>>? ShipCrashBoxes()
         {
-            var min = new Vector3 { x = -65, y = -45, z = -45 };
-            var max = new Vector3 { x = 65, y = 45, z = 45 };
+            var min = new Vector3 { x = -75, y = -50, z = -45 };
+            var max = new Vector3 { x = 75, y = 50, z = 45 };
 
             return new List<List<IVector3>>
             {

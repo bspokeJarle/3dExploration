@@ -5,7 +5,8 @@ CrashDetection impact objects
 	Objects get information about the impact - first iteration
 	Particles change direction when they hit things - Done - first iteration
 	Objects get information about the impact - first iteration
-	Debug mode for CrashBoxes, show wireframe of the boxes
+	Debug mode for CrashBoxes, show wireframe of the boxes - first iteration
+	Show a health bar for the ship - first iteration
 Start developing a physics engine
 	First iteration - First iteration done
 	We can now have particles that bounce of the surface - Done first iteration
@@ -29,9 +30,10 @@ Generate a surface
 Start development of a particle system
 	Done, first version
 	We can have particles on all objects moving towards a point
-	Need to start to apply physics, get them to bounce of the surface - Work in progress
+	Need to start to apply physics, get them to bounce of the surface - First iteration
 Enable Crash detection
 	Done, first version - Done
+	Second iteration - Done
 
 Done:
 	- Need to look at converting to .net 8 - supposed to be faster

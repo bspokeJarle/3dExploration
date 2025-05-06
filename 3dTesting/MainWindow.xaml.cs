@@ -13,6 +13,7 @@ using _3dTesting.MainWindowClasses;
 using _3dTesting.Rendering;
 using _3dTesting._3dWorld;
 using System.Collections.Generic;
+using _3dRotations.World.Objects;
 
 namespace _3dTesting
 {
@@ -48,6 +49,7 @@ namespace _3dTesting
         public MediaPlayer player = new MediaPlayer();
         public BitmapSource surfaceMapBitmap;
         private Image mapOverlay;
+        private System.Windows.Shapes.Rectangle healthRectangle;
         private bool isPaused = false;
 
         public MainWindow()
@@ -80,6 +82,20 @@ namespace _3dTesting
                 VerticalAlignment = VerticalAlignment.Top,
                 Opacity = 0.7
             };
+
+            var yellowBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 255, 0));
+            //Update the Ship statistics
+            healthRectangle = new System.Windows.Shapes.Rectangle
+            {
+                Stroke = yellowBrush,
+                Fill = yellowBrush,
+                Width = 200,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Height = 50
+
+            };
+            mainGrid.Children.Add(healthRectangle);
             mainGrid.Children.Add(mapOverlay);
             mainGrid.Children.Add(FpsText);
 
@@ -111,6 +127,9 @@ namespace _3dTesting
                 frameCount = 0;
                 stopwatch.Restart();
             }
+
+            //Show health etc for main ship
+            GameHelpers.UpdateShipStatistics(healthRectangle, world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Ship"));
 
             GameHelpers.UpdateMapOverlay(mapOverlay, surfaceMapBitmap,
                 Convert.ToInt32(world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapPosition.x),

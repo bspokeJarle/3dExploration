@@ -196,7 +196,6 @@ namespace _3dTesting.Helpers
 
                         if (ShouldLog)
                         {
-                            MessageBox.Show($"We have a crash {a.ObjectName} vs {b.ObjectName}  ");
                             Logger.Log($"[FRAME:{numFrame}] [GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName}");
                         }
                         return true;

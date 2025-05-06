@@ -34,51 +34,26 @@ namespace _3dTesting._3dRotation
                 if (!ObjectPlacementHelpers.TryGetRenderPosition(obj, screenCenterX, screenCenterY, out double screenX, out double screenY, out double screenZ))
                     continue;
 
-                // Always update CrashBox positions (ONLY during normal rendering), second time if rendering crashboxes you cannot add offsets once more
-                if (!debugCrashBoxes)
+                // Juster crashboxer for Surface (egen offset basert på y)
+                if (obj.ObjectName == "Surface")
                 {
-                    float surfaceCrashMovementOffset = 0f;
-                    if (obj.ObjectName=="Surface")
-                    {
-                        //When the object is a surface, we need to set the Y offset to the global map position if the Ship leaves the surface behind
-                        surfaceCrashMovementOffset = obj.ParentSurface.GlobalMapPosition.y;
-                    }
-                    if (obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)
-                    {
-                        var offset = obj.ObjectOffsets;
-                        //Add the surfacemovement offset
-                        offset.y += surfaceCrashMovementOffset / 3.5f;
-                        foreach (var box in obj.CrashBoxes)
-                        {
-                            for (int j = 0; j < box.Count; j++)
-                            {
-                                var original = box[j];
-                                box[j] = new Vector3
-                                {
-                                    x = original.x + offset.x,
-                                    y = original.y + offset.y,
-                                    z = original.z + offset.z
-                                };
-                            }
-                        }
-                    }
+                    ApplySurfaceCrashOffset(obj);
                 }
 
-                if (debugCrashBoxes)
+                // Alltid bruk generell offset på alle crashboxes (inkludert Surface)
+                ApplyObjectOffsetToCrashBoxes(obj);
+
+                // Debug-visning av crashboxes
+                if (debugCrashBoxes && obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)
                 {
-                    // Project CrashBoxes visually
-                    if (obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)
-                    {
-                        var crashBox2d = ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ);
-                        screenCoordinates.AddRange(crashBox2d);
-                    }
+                    var crashBox2d = ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ);
+                    screenCoordinates.AddRange(crashBox2d);
+                    continue; // Hopper over vanlig rendering hvis kun crashbox vises
                 }
-                else
-                {
-                    // Project normal 3D triangles
-                    var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
-                    screenCoordinates.AddRange(projected);
-                }
+
+                // Vanlig 3D-objektrendering
+                var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
+                screenCoordinates.AddRange(projected);
             }
 
             return screenCoordinates;
@@ -96,7 +71,6 @@ namespace _3dTesting._3dRotation
 
                 //var corners = crashBox.Cast<Vector3>().ToList();
                 var corners = _3dObjectHelpers.GenerateAabbCrashBoxFromRotated(crashBox);
-
 
                 var faceTriangles = new (int, int, int)[]
                 {
@@ -202,6 +176,46 @@ namespace _3dTesting._3dRotation
         {
             return x >= -(screenSizeX * 0.2) && x <= (screenSizeX * 1.2)
                 && y >= -(screenSizeY * 0.2) && y <= (screenSizeY * 1.2);
+        }
+
+        private void ApplySurfaceCrashOffset(_3dObject obj)
+        {
+            if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) return;
+
+            float surfaceYOffset = obj.ParentSurface.GlobalMapPosition.y;
+            foreach (var box in obj.CrashBoxes)
+            {
+                for (int j = 0; j < box.Count; j++)
+                {
+                    var original = box[j];
+                    box[j] = new Vector3
+                    {
+                        x = original.x,
+                        y = original.y + surfaceYOffset,
+                        z = original.z
+                    };
+                }
+            }
+        }
+
+        private void ApplyObjectOffsetToCrashBoxes(_3dObject obj)
+        {
+            if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) return;
+
+            var offset = obj.ObjectOffsets;
+            foreach (var box in obj.CrashBoxes)
+            {
+                for (int j = 0; j < box.Count; j++)
+                {
+                    var original = box[j];
+                    box[j] = new Vector3
+                    {
+                        x = original.x + offset.x,
+                        y = original.y + offset.y,
+                        z = original.z + offset.z
+                    };
+                }
+            }
         }
     }
 }

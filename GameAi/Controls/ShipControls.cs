@@ -34,6 +34,7 @@ namespace GameAiAndControls.Controls
         private float inertiaZ = 0f;
         private float thrustEffect = 0f;
         private float verticalLiftFactor = 0f;
+        private bool landed = false;
 
         private DateTime lastUpdateTime = DateTime.Now;
 
@@ -137,10 +138,6 @@ namespace GameAiAndControls.Controls
 
         public I3dObject MoveObject(I3dObject theObject)
         {
-            if (theObject.ImpactStatus.HasCrashed == true)
-            {
-                //TODO: Reaction to the crash    
-            }
             ApplyLocalTiltToMesh(tilt, theObject);
 
             var now = DateTime.Now;
@@ -151,6 +148,8 @@ namespace GameAiAndControls.Controls
 
             if (ThrustOn)
             {
+                //If thrust is on, we are not on the ground
+                landed = false;
                 IncreaseThrustAndRelease();
                 HandleThrust(deltaTime);
             }
@@ -172,6 +171,25 @@ namespace GameAiAndControls.Controls
                 theObject.Rotation.x = rotationX;
                 theObject.Rotation.z = rotationZ;
             }
+
+            if (theObject.ImpactStatus.HasCrashed == true)
+            {
+                theObject.ImpactStatus.ObjectHealth -= 10;
+                if (theObject.ImpactStatus.ObjectHealth <= 0)
+                {
+                    //TODO: Here we explode
+                }
+                else
+                {
+                    if (theObject.ImpactStatus.ImpactDirection==ImpactDirection.Top|| theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
+                    {
+                        landed = true;   
+                    }
+                }
+                //Reset this, if it still crashing it will come back
+                theObject.ImpactStatus.HasCrashed = false;
+            }
+
             return theObject;
         }
 
@@ -258,6 +276,8 @@ namespace GameAiAndControls.Controls
 
         public void ApplyGravity(float deltaTime)
         {
+            //If ship has landed and thrust is off, we need to stop the ship
+            if (landed && !ThrustOn) return;
             if (!ThrustOn)
             {
                 float rotationXMod180Rad = (rotationX % 180) * DEG2RAD;

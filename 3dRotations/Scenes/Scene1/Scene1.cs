@@ -24,7 +24,7 @@ namespace _3dRotations.Scene.Scene1
             ship.WorldPosition = new Vector3 { };
             ship.ObjectName = "Ship";
             ship.ImpactStatus = new ImpactStatus { };
-            ship.CrashBoxDebugMode = true;
+            ship.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(ship);
 
             /*
@@ -72,7 +72,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.Movement = new GroundControls();
             surfaceObject.ParentSurface = Surface;
             surfaceObject.ImpactStatus = new ImpactStatus { };
-            surfaceObject.CrashBoxDebugMode = true;
+            surfaceObject.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(surfaceObject);
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(Surface.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
@@ -87,14 +87,13 @@ namespace _3dRotations.Scene.Scene1
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tree.SurfaceBasedId = Surface.Global2DMap[treePlacement.y, treePlacement.x].mapId;
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                //tree.ObjectOffsets = new Vector3 { x = 75, y = 425 , z = 300 };
                 tree.ObjectOffsets = new Vector3 { x = 75, y = 425, z = 300 };
                 //Crashbox offsets for Tree, counteract the object offsets
                 tree.CrashboxOffsets = new Vector3 { };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
-                tree.CrashBoxDebugMode = true;
+                tree.CrashBoxDebugMode = false;
                 if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
             }
 
@@ -115,7 +114,7 @@ namespace _3dRotations.Scene.Scene1
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };
-                house.CrashBoxDebugMode = true;
+                house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
             }
         }

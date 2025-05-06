@@ -60,7 +60,7 @@ namespace _3dRotations.World.Objects
                     var currentTile = viewPort[i, j];
                     var surfaceId = currentTile.mapId;
 
-                    // --- Eksisterende logikk: bygge terreng (ikke endret) ---
+                    // --- Build terrain from map
                     var ZPostition1 = currentTile.mapDepth;
                     var ZPostition2 = viewPort[i, j + 1].mapDepth;
                     var ZPostition3 = viewPort[i + 1, j + 1].mapDepth;
@@ -69,7 +69,7 @@ namespace _3dRotations.World.Objects
                     var color1 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, maxHeight);
                     var color2 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, maxHeight);
 
-                    // Create SurfaceCrashbox directly here
+                    // Create SurfaceCrashbox directly here if needed
                     if (currentTile.crashBox != null)
                     {
                         var box = currentTile.crashBox.Value;
@@ -85,13 +85,12 @@ namespace _3dRotations.World.Objects
                         {
                             x = XPosition + ((box.width * tileSize) - XRemainer) - tileSize,
                             y = YPosition + (box.height * tileSize) - ZRemainer,
-                            z = 460 + currentTile.mapDepth // Max map depth
+                            z = 90 + currentTile.mapDepth // Max map depth
                         };
 
                         var crashBoxCorners = _3dObjectHelpers.GenerateCrashBoxCorners(min, max);
                         viewPortCrashBoxes.Add(crashBoxCorners);
                     }
-
 
                     var triangle1 = new TriangleMeshWithColor
                     {
@@ -117,7 +116,6 @@ namespace _3dRotations.World.Objects
             }
 
             surface.ObjectParts.Add(new _3dObjectPart { PartName = "Surface", Triangles = newSurface, IsVisible = true });
-
             surface.CrashBoxes = viewPortCrashBoxes;
             //surface.CrashBoxes = new List<List<IVector3>>();
             surface.CrashBoxes.AddRange(GetMainSurfaceCrashBox());
@@ -127,8 +125,8 @@ namespace _3dRotations.World.Objects
 
         private List<List<IVector3>> GetMainSurfaceCrashBox()
         {
-            var min = new Vector3 { x = -500, y = 50, z = -1000 };
-            var max = new Vector3 { x = 200, y = 750, z = 550 };
+            var min = new Vector3 { x = -400, y = 0, z = -400 };
+            var max = new Vector3 { x = 400, y = 500, z = 100 };
 
             return new List<List<IVector3>>
             {

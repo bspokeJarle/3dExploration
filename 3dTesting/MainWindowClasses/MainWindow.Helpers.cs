@@ -9,6 +9,8 @@ using Domain;
 using static Domain._3dSpecificsImplementations;
 using System.Windows.Media.Imaging;
 using System.Diagnostics;
+using System.Windows.Controls;
+using System.Windows.Media;
 
 
 
@@ -52,32 +54,27 @@ namespace _3dTesting.Helpers
             return new Vector3(sumX / totalVertices, sumY / totalVertices, sumZ / totalVertices);
         }
 
-        public static void RecenterTriangle(ref ITriangleMeshWithColor triangle, Vector3 centroid)
-        {
-            triangle.vert1.x -= centroid.x;
-            triangle.vert1.y -= centroid.y;
-            triangle.vert1.z -= centroid.z;
-
-            triangle.vert2.x -= centroid.x;
-            triangle.vert2.y -= centroid.y;
-            triangle.vert2.z -= centroid.z;
-
-            triangle.vert3.x -= centroid.x;
-            triangle.vert3.y -= centroid.y;
-            triangle.vert3.z -= centroid.z;
-        }
-
         /// <summary>
         /// Updates the minimap overlay with the correct cropped portion.
         /// </summary>
         public static void UpdateMapOverlay(System.Windows.Controls.Image mapOverlay, BitmapSource surfaceMapBitmap, int mapX, int mapY)
         {
-             if (surfaceMapBitmap != null && mapOverlay != null)
+            if (surfaceMapBitmap != null && mapOverlay != null)
             {
-                 //TODO: Get values from the setup later, hardcoded for now
-                 mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect((mapX-2000) / 75, (mapY-2000) / 75, 72, 72));
+                //TODO: Get values from the setup later, hardcoded for now
+                mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect((mapX - 2000) / 75, (mapY - 2000) / 75, 72, 72));
             }
         }
+
+        public static void UpdateShipStatistics(System.Windows.Shapes.Rectangle healthRectangle, _3dObject ship)
+        {        
+            if (ship.ImpactStatus.ObjectHealth > 0)
+            {
+                healthRectangle.Width = ship.ImpactStatus.ObjectHealth.Value * 2;
+            }
+            else healthRectangle.Width = 1;
+        }
+
 
         /// <summary>
         /// Converts a standard System.Drawing.Bitmap to a WPF BitmapSource.

@@ -98,7 +98,7 @@ namespace Domain
         public ImpactDirection? ImpactDirection { get; set; }
         //Particles are temporary objects, so need a referance to the original object to give notice of impact
         public IParticle? SourceParticle { get; set; }
-
+        public int? ObjectHealth { get; set; }
     }
 
     public enum ImpactDirection
