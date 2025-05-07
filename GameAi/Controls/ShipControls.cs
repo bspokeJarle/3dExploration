@@ -40,7 +40,7 @@ namespace GameAiAndControls.Controls
 
         public int FormerMouseX = 0;
         public int FormerMouseY = 0;
-        public int rotationX = 90;
+        public int rotationX = 70;
         public int rotationY = 0;
         public int rotationZ = 0;
         public int tilt = 0;
@@ -199,7 +199,7 @@ namespace GameAiAndControls.Controls
                     {
                         landed = true;
 
-                        // Mer skade ved hard landing
+                        // More damage on a hard landing
                         if (landingSpeed > 5f)
                         {
                             theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 2); // eksempel
