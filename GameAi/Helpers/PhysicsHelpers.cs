@@ -74,5 +74,86 @@ namespace GameAiAndControls.Helpers
             var reflected = Subtract(velocity, Multiply(normal, 2 * dot));
             return Multiply(reflected, bounceFactor);
         }
+
+        public static IVector3 GetTriangleCenter(TriangleMeshWithColor tri)
+        {
+            return new Vector3(
+                (tri.vert1.x + tri.vert2.x + tri.vert3.x) / 3f,
+                (tri.vert1.y + tri.vert2.y + tri.vert3.y) / 3f,
+                (tri.vert1.z + tri.vert2.z + tri.vert3.z) / 3f
+            );
+        }
+
+        private static readonly Random _random = new();
+
+        public static IVector3 RandomUnitVector()
+        {
+            float x = (float)(_random.NextDouble() * 2 - 1);
+            float y = (float)(_random.NextDouble() * 2 - 1);
+            float z = (float)(_random.NextDouble() * 2 - 1);
+            var vec = new Vector3(x, y, z);
+            return Normalize(vec);
+        }
+
+        public static IVector3 RotateAroundAxis(IVector3 point, IVector3 axis, float angleDegrees, IVector3 origin)
+        {
+            float angleRad = angleDegrees * (MathF.PI / 180f);
+            axis = Normalize(axis);
+
+            // Move so the rotationpoint is at the origin
+            IVector3 translated = Subtract(point,origin);
+
+            float cos = MathF.Cos(angleRad);
+            float sin = MathF.Sin(angleRad);
+
+            IVector3 rotated = new Vector3
+            {
+                x = (cos + (1 - cos) * axis.x * axis.x) * translated.x +
+                    ((1 - cos) * axis.x * axis.y - axis.z * sin) * translated.y +
+                    ((1 - cos) * axis.x * axis.z + axis.y * sin) * translated.z,
+
+                y = ((1 - cos) * axis.y * axis.x + axis.z * sin) * translated.x +
+                    (cos + (1 - cos) * axis.y * axis.y) * translated.y +
+                    ((1 - cos) * axis.y * axis.z - axis.x * sin) * translated.z,
+
+                z = ((1 - cos) * axis.z * axis.x - axis.y * sin) * translated.x +
+                    ((1 - cos) * axis.z * axis.y + axis.x * sin) * translated.y +
+                    (cos + (1 - cos) * axis.z * axis.z) * translated.z
+            };
+
+            return Add(rotated,origin);
+        }
+
+        public static IVector3 CalculateTriangleGeometryCenter(I3dObject obj)
+        {
+            float sumX = 0f, sumY = 0f, sumZ = 0f;
+            int count = 0;
+
+            foreach (var part in obj.ObjectParts)
+            {
+                foreach (var tri in part.Triangles)
+                {
+                    var c = PhysicsHelpers.GetTriangleCenter((TriangleMeshWithColor)tri);
+                    sumX += c.x;
+                    sumY += c.y;
+                    sumZ += c.z;
+                    count++;
+                }
+            }
+
+            if (count == 0) return new Vector3(0, 0, 0);
+            return new Vector3(sumX / count, sumY / count, sumZ / count);
+        }
+
+        public static class RandomHelper
+        {
+            private static readonly Random _random = new();
+
+            public static float Float(float min, float max)
+            {
+                return (float)(_random.NextDouble() * (max - min) + min);
+            }
+        }
+
     }
 }

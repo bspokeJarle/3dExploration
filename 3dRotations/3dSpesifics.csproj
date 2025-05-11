@@ -9,6 +9,7 @@
     <Folder Include="Scenes\Scene2\" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\CommonUtilities\CommonUtilities.csproj" />
     <ProjectReference Include="..\Domain\Domain.csproj" />
     <ProjectReference Include="..\GameAi\GameAiAndControls.csproj" />
   </ItemGroup>

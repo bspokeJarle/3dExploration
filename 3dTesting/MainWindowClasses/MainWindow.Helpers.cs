@@ -4,15 +4,10 @@ using System.Drawing;
 using System.Linq;
 using System.Windows;
 using _3dTesting._3dRotation;
-using _3dTesting._3dWorld;
 using Domain;
 using static Domain._3dSpecificsImplementations;
 using System.Windows.Media.Imaging;
-using System.Diagnostics;
-using System.Windows.Controls;
-using System.Windows.Media;
-
-
+using CommonUtilities._3DHelpers;
 
 namespace _3dTesting.Helpers
 {
@@ -104,7 +99,7 @@ namespace _3dTesting.Helpers
         /// </summary>
         public static List<_3dObject> DeepCopyObjects(List<_3dObject> worldInhabitants)
         {
-            return _3dObjectHelpers.DeepCopy3dObjects(worldInhabitants);
+            return Common3dObjectHelpers.DeepCopy3dObjects(worldInhabitants);
         }
 
         /// <summary>

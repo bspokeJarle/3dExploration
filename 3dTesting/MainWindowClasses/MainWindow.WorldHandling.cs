@@ -1,14 +1,12 @@
 ﻿using _3dTesting._3dRotation;
-using _3dTesting._3dWorld;
 using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using Domain;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Windows.Controls;
 using static Domain._3dSpecificsImplementations;
+using CommonUtilities._3DHelpers;
 
 namespace _3dTesting.MainWindowClasses
 {
@@ -18,11 +16,12 @@ namespace _3dTesting.MainWindowClasses
         private readonly _3dRotate Rotate3d = new();
         private readonly ParticleManager particleManager = new();
         public string DebugMessage { get; set; }
+        private bool enableLocalLogging = false;
 
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world,ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
             //var projectedCoordinates = new List<_2dTriangleMesh>();
-            var activeWorld = _3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants);
+            var activeWorld = Common3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants);
             var particleObjectList = new List<_3dObject>();
             var renderedList = new List<_3dObject>();
             DebugMessage = string.Empty;
@@ -109,7 +108,7 @@ namespace _3dTesting.MainWindowClasses
                     break;
                 case "SeederParticlesGuide":
                 case "JetMotorDirectionGuide":
-                    Logger.Log($"MainLoop Set Guide after rotation: {rotatedMesh.First().vert1.x + ", " + rotatedMesh.First().vert1.y + ", " + rotatedMesh.First().vert1.z} Inhabitant:{inhabitant.ObjectName} ");
+                    if (enableLocalLogging) Logger.Log($"MainLoop Set Guide after rotation: {rotatedMesh.First().vert1.x + ", " + rotatedMesh.First().vert1.y + ", " + rotatedMesh.First().vert1.z} Inhabitant:{inhabitant.ObjectName} ");
                     inhabitant.Movement.SetStartGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
                     break;
             }

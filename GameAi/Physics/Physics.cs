@@ -1,14 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using CommonUtilities._3DHelpers;
 using Domain;
 using GameAiAndControls.Helpers;
 using static Domain._3dSpecificsImplementations;
+using static GameAiAndControls.Helpers.PhysicsHelpers;
 
 namespace GameAiAndControls.Physics
 {
     public class Physics : IPhysics
     {
-        private bool LocalEnableLogging = false;
+        private bool LocalEnableLogging = true;
 
         public float Mass { get; set; } = 1.0f;
         public IVector3 Velocity { get; set; } = new Vector3(0, -90f, 0); // Initial downward velocity for bouncing
@@ -159,9 +163,136 @@ namespace GameAiAndControls.Physics
             // Not implemented yet
         }
 
-        public I3dObject ExplodeObject(I3dObject explodingObject, DateTime deltaTime)
+        private class ExplodingTriangle
         {
-            throw new NotImplementedException();
+            public TriangleMeshWithColor Triangle;
+            public Vector3 Direction;
+            public Vector3 RotationAxis;
+            public float Speed;
+            public float RotationSpeed;
+            public float ElapsedTime;
+            public float Duration = 2.0f;
+            public Vector3 Center;
+            public int PartIndex = 0;
+            public int TriangleIndex;
+        }
+
+        private List<ExplodingTriangle> _explodingTriangles = new();
+        private bool _isExploding = false;
+
+        public I3dObject ExplodeObject(I3dObject originalObject, float explosionForce = 200f)
+        {
+            _explodingTriangles.Clear();
+            _isExploding = true;
+
+            // Make a deep copy of the object
+            var explodingObject = Common3dObjectHelpers.DeepCopySingleObject(originalObject);
+
+            // Calculate center of object for explosion origin
+            var center = CalculateTriangleGeometryCenter(explodingObject);
+
+            var sharedTriangles = new List<TriangleMeshWithColor>();
+            int partIndex = 0;
+            int triangleIndex;
+
+            foreach (var part in explodingObject.ObjectParts)
+            {
+                triangleIndex = 0;
+
+                foreach (var triangle in part.Triangles.OfType<TriangleMeshWithColor>())
+                {
+                    // Create a new triangle instance (shared between renderer and explosion logic)
+                    var tri = new TriangleMeshWithColor
+                    {
+                        vert1 = triangle.vert1,
+                        vert2 = triangle.vert2,
+                        vert3 = triangle.vert3,
+                        normal1 = triangle.normal1,
+                        normal2 = triangle.normal2,
+                        normal3 = triangle.normal3,
+                        Color = triangle.Color,
+                        angle = triangle.angle,
+                        landBasedPosition = triangle.landBasedPosition,
+                        noHidden = true
+                    };
+
+                    var triCenter = GetTriangleCenter(tri);
+                    var direction = Normalize(Subtract(triCenter, center));
+                    var rotationAxis = RandomUnitVector();
+
+                    _explodingTriangles.Add(new ExplodingTriangle
+                    {
+                        Triangle = tri,
+                        Direction = (Vector3)direction,
+                        RotationAxis = (Vector3)rotationAxis,
+                        Speed = RandomHelper.Float(explosionForce * 0.5f, explosionForce),
+                        RotationSpeed = RandomHelper.Float(30f, 120f),
+                        Center = (Vector3)triCenter,
+                        ElapsedTime = 0f,
+                        PartIndex = partIndex,           // ✅ Needed for write-back
+                        TriangleIndex = triangleIndex    // ✅ Needed for write-back
+                    });
+
+                    sharedTriangles.Add(tri);
+                    triangleIndex++;
+                }
+
+                partIndex++;
+            }
+
+            explodingObject.ObjectParts.Clear();
+            explodingObject.ObjectParts.Add(new _3dObjectPart
+            {
+                PartName = "ExplodingPart",
+                Triangles = sharedTriangles.Cast<ITriangleMeshWithColor>().ToList(),
+                IsVisible = true
+            });
+
+            return explodingObject;
+        }
+
+
+        public I3dObject UpdateExplosion(I3dObject explodingObject, DateTime deltaTime)
+        {
+            if (!_isExploding || _explodingTriangles.Count == 0)
+                return explodingObject;
+
+            Logger.Log($"[UPDATE] Explosion update called. Triangles: {_explodingTriangles.Count}");
+
+            float frameTime = 1f / 60f; // Fixed frame rate per update tick
+
+            foreach (var exploding in _explodingTriangles)
+            {
+                if (exploding.ElapsedTime >= exploding.Duration)
+                    continue;
+
+                exploding.ElapsedTime += frameTime;
+
+                // Move the triangle outward along its direction vector
+                var move = PhysicsHelpers.Multiply(exploding.Direction, exploding.Speed * frameTime);
+                exploding.Triangle.vert1 = PhysicsHelpers.Add(exploding.Triangle.vert1, move);
+                exploding.Triangle.vert2 = PhysicsHelpers.Add(exploding.Triangle.vert2, move);
+                exploding.Triangle.vert3 = PhysicsHelpers.Add(exploding.Triangle.vert3, move);
+
+                // Rotate triangle around its center
+                float angle = exploding.RotationSpeed * frameTime;
+                exploding.Triangle.vert1 = PhysicsHelpers.RotateAroundAxis(exploding.Triangle.vert1, exploding.RotationAxis, angle, exploding.Center);
+                exploding.Triangle.vert2 = PhysicsHelpers.RotateAroundAxis(exploding.Triangle.vert2, exploding.RotationAxis, angle, exploding.Center);
+                exploding.Triangle.vert3 = PhysicsHelpers.RotateAroundAxis(exploding.Triangle.vert3, exploding.RotationAxis, angle, exploding.Center);
+
+                // Update the Triangles inside the Mesh
+                explodingObject.ObjectParts[exploding.PartIndex].Triangles[exploding.TriangleIndex] = exploding.Triangle;
+            }
+
+            // Log a few triangle positions for debugging
+            foreach (var (t, index) in _explodingTriangles.Select((et, i) => (et, i)))
+            {
+                if (index >= 3) break;
+
+                Logger.Log($"[UPDATE] T{index}: Elapsed={t.ElapsedTime:F2} v1=({t.Triangle.vert1.x:F2}, {t.Triangle.vert1.y:F2}, {t.Triangle.vert1.z:F2})");
+            }
+
+            return explodingObject;
         }
     }
 }

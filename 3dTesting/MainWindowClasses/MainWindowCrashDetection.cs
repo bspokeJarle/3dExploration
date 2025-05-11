@@ -177,9 +177,12 @@ namespace _3dTesting.Helpers
                 {
                     var safeBoxA = boxA.Select(v => new Vector3 { x = v.x, y = v.y, z = v.z }).ToList();
                     var safeBoxB = boxB.Select(v => new Vector3 { x = v.x, y = v.y, z = v.z }).ToList();
-                 
-                    ObjectPlacementHelpers.LogCrashboxAnalysis($"[FRAME:{numFrame}] [CrashBoxRef {boxA.GetHashCode()}] Crashbox Inhabitant:" + a.ObjectName, safeBoxA);
-                    ObjectPlacementHelpers.LogCrashboxAnalysis($"[FRAME:{numFrame}] [CrashBoxRef {boxB.GetHashCode()}] Crashbox Other Inhabitant:" + b.ObjectName, safeBoxB);
+
+                    if (ShouldLog)
+                    {
+                        ObjectPlacementHelpers.LogCrashboxAnalysis($"[FRAME:{numFrame}] [CrashBoxRef {boxA.GetHashCode()}] Crashbox Inhabitant:" + a.ObjectName, safeBoxA);
+                        ObjectPlacementHelpers.LogCrashboxAnalysis($"[FRAME:{numFrame}] [CrashBoxRef {boxB.GetHashCode()}] Crashbox Other Inhabitant:" + b.ObjectName, safeBoxB);
+                    }
 
                     if (_3dObjectHelpers.CheckCollisionBoxVsBox(safeBoxA,safeBoxB))
                     {

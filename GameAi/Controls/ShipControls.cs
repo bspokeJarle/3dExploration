@@ -56,6 +56,8 @@ namespace GameAiAndControls.Controls
         public bool ThrustOn { get; set; } = false;
         public IPhysics Physics { get; set; } = new Physics.Physics();
         private bool hasInitialized = false;
+        private bool hasExploded = false;
+        private DateTime ExplosionDeltaTime = DateTime.Now;
 
         public ShipControls()
         {
@@ -140,9 +142,9 @@ namespace GameAiAndControls.Controls
         public I3dObject MoveObject(I3dObject theObject)
         {
             ParentObject ??= theObject;
+
             if (!hasInitialized)
             {
-                //We need to initialize landed
                 hasInitialized = true;
                 Thrust = 0;
                 ThrustOn = false;
@@ -150,6 +152,17 @@ namespace GameAiAndControls.Controls
                 ParentObject.ObjectOffsets.x = 0;
                 ParentObject.ObjectOffsets.y = 200;
                 ParentObject.ObjectOffsets.z = zoom;
+            }
+
+            // Only update explosion if it has already started
+            if (hasExploded)
+            {
+                Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
+
+                if (ParentObject.Particles?.Particles.Count > 0)
+                    ParentObject.Particles.MoveParticles();
+
+                return ParentObject;
             }
 
             ApplyLocalTiltToMesh(tilt, theObject);
@@ -160,7 +173,6 @@ namespace GameAiAndControls.Controls
 
             if (ThrustOn)
             {
-                //If thrust is on, we are not on the ground
                 landed = false;
                 IncreaseThrustAndRelease();
                 HandleThrust(deltaTime);
@@ -190,7 +202,16 @@ namespace GameAiAndControls.Controls
 
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
                 {
-                    //TODO: Here we explode
+                    //Release some particles at the explosion
+                    Thrust = 10;
+                    ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust);
+
+                    hasExploded = true;
+                    ExplosionDeltaTime = DateTime.Now;
+
+                    var explodedVersion = Physics.ExplodeObject(theObject, 200f);
+                    ParentObject = explodedVersion;
+                    return ParentObject;
                 }
                 else
                 {
@@ -199,14 +220,13 @@ namespace GameAiAndControls.Controls
                     {
                         landed = true;
 
-                        // More damage on a hard landing
                         if (landingSpeed > 5f)
                         {
-                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 2); // eksempel
+                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 2);
                         }
                     }
                 }
-                //Reset this, if it still crashing it will come back
+
                 theObject.ImpactStatus.HasCrashed = false;
             }
 

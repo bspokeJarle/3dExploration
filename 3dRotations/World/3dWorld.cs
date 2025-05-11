@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Windows.Media.Media3D;
+using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting._3dWorld
 {

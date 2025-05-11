@@ -1,12 +1,8 @@
-﻿using _3dTesting._3dWorld;
-using _3dTesting._Coordinates;
+﻿using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
+using CommonUtilities._3DHelpers;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting._3dRotation

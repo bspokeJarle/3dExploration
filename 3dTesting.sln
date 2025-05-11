@@ -16,7 +16,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GameAiAndControls", "GameAi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Domain", "Domain\Domain.csproj", "{D5F25B1D-887E-4601-AC03-6B0182D5B48A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "3DSpesificsUnitTests", "3DSpesificsUnitTests\3DSpesificsUnitTests.csproj", "{36DEC7E9-CCED-4ED7-974E-5C95CBBD1492}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "3DSpesificsUnitTests", "3DSpesificsUnitTests\3DSpesificsUnitTests.csproj", "{36DEC7E9-CCED-4ED7-974E-5C95CBBD1492}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonUtilities", "CommonUtilities\CommonUtilities.csproj", "{8D3F087E-742C-403A-97F2-E95BA74595D5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -44,6 +46,10 @@ Global
 		{36DEC7E9-CCED-4ED7-974E-5C95CBBD1492}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36DEC7E9-CCED-4ED7-974E-5C95CBBD1492}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36DEC7E9-CCED-4ED7-974E-5C95CBBD1492}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8D3F087E-742C-403A-97F2-E95BA74595D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D3F087E-742C-403A-97F2-E95BA74595D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D3F087E-742C-403A-97F2-E95BA74595D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D3F087E-742C-403A-97F2-E95BA74595D5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

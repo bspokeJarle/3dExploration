@@ -3,6 +3,7 @@ using _3dTesting.Helpers;
 using STL_Tools;
 using System;
 using System.Linq;
+using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.World.Objects
 {
