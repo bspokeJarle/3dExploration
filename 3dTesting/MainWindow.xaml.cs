@@ -90,7 +90,7 @@ namespace _3dTesting
                 Stroke = yellowBrush,
                 Fill = yellowBrush,
                 Width = 200,
-                HorizontalAlignment = HorizontalAlignment.Right,
+                HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Top,
                 Height = 50
 

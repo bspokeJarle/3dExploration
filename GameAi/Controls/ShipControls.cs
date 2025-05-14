@@ -124,7 +124,9 @@ namespace GameAiAndControls.Controls
         {
             if (Thrust < MaxThrust) Thrust += ThrustIncreaseRate;
 
-            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust);
+            Logger.Log($"Releasing particles on Thrust. Guide: {GuideCoordinates.vert1.x} * {GuideCoordinates.vert1.y} * {GuideCoordinates.vert1.z}, StartCoordinates: {StartCoordinates.vert1.x} * {StartCoordinates.vert1.y} * {StartCoordinates.vert1.z} ,  GlobalMapPositions: {ParentObject.ParentSurface.GlobalMapPosition.x} * {ParentObject.ParentSurface.GlobalMapPosition.y} * {ParentObject.ParentSurface.GlobalMapPosition.z} Thrust: {Thrust} ");
+
+            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust, false);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -154,19 +156,6 @@ namespace GameAiAndControls.Controls
                 ParentObject.ObjectOffsets.z = zoom;
             }
 
-            // Only update explosion if it has already started
-            if (hasExploded)
-            {
-                Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
-
-                if (ParentObject.Particles?.Particles.Count > 0)
-                    ParentObject.Particles.MoveParticles();
-
-                return ParentObject;
-            }
-
-            ApplyLocalTiltToMesh(tilt, theObject);
-
             var now = DateTime.Now;
             float deltaTime = (float)(now - lastUpdateTime).TotalSeconds;
             lastUpdateTime = now;
@@ -190,6 +179,19 @@ namespace GameAiAndControls.Controls
                 theObject.ObjectOffsets.z = zoom;
             }
 
+            // Only update explosion if it has already started
+            if (hasExploded)
+            {
+                Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
+
+                if (theObject.Particles?.Particles.Count > 0)
+                    theObject.Particles.MoveParticles();
+
+                //return ParentObject;
+            }
+
+            if (!hasExploded) ApplyLocalTiltToMesh(tilt, theObject);
+
             if (theObject.Rotation != null)
             {
                 theObject.Rotation.x = rotationX;
@@ -202,16 +204,17 @@ namespace GameAiAndControls.Controls
 
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
                 {
-                    //Release some particles at the explosion
+                    //Release some particles at the explosion, set fixed thrust level
                     Thrust = 10;
-                    ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust);
+                    Logger.Log($"Releasing particles after crash. Guide: {GuideCoordinates.vert1.x} * {GuideCoordinates.vert1.y} * {GuideCoordinates.vert1.z}, StartCoordinates: {StartCoordinates.vert1.x} * {StartCoordinates.vert1.y} * {StartCoordinates.vert1.z} ,  GlobalMapPositions: {ParentObject.ParentSurface.GlobalMapPosition.x} * {ParentObject.ParentSurface.GlobalMapPosition.y} * {ParentObject.ParentSurface.GlobalMapPosition.z} Thrust: {Thrust} ");
+                    ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust, true);
 
                     hasExploded = true;
                     ExplosionDeltaTime = DateTime.Now;
 
                     var explodedVersion = Physics.ExplodeObject(theObject, 200f);
+
                     ParentObject = explodedVersion;
-                    return ParentObject;
                 }
                 else
                 {
@@ -222,7 +225,7 @@ namespace GameAiAndControls.Controls
 
                         if (landingSpeed > 5f)
                         {
-                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 2);
+                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 3);
                         }
                     }
                 }

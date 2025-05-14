@@ -18,7 +18,7 @@ namespace _3dTesting._3dRotation
         private const int screenCenterY = screenSizeY / 2;
         private long CurrentFrame = 0;
 
-        public List<_2dTriangleMesh> convertTo2dFromObjects(List<_3dObject> inhabitants, bool debugCrashBoxes)
+        public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, bool debugCrashBoxes)
         {
             CurrentFrame++;
             var screenCoordinates = new List<_2dTriangleMesh>();

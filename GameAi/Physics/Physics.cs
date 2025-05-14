@@ -12,7 +12,7 @@ namespace GameAiAndControls.Physics
 {
     public class Physics : IPhysics
     {
-        private bool LocalEnableLogging = true;
+        private bool LocalEnableLogging = false;
 
         public float Mass { get; set; } = 1.0f;
         public IVector3 Velocity { get; set; } = new Vector3(0, -90f, 0); // Initial downward velocity for bouncing
@@ -185,23 +185,18 @@ namespace GameAiAndControls.Physics
             _explodingTriangles.Clear();
             _isExploding = true;
 
-            // Make a deep copy of the object
             var explodingObject = Common3dObjectHelpers.DeepCopySingleObject(originalObject);
-
-            // Calculate center of object for explosion origin
             var center = CalculateTriangleGeometryCenter(explodingObject);
 
             var sharedTriangles = new List<TriangleMeshWithColor>();
             int partIndex = 0;
-            int triangleIndex;
 
             foreach (var part in explodingObject.ObjectParts)
             {
-                triangleIndex = 0;
+                int triangleIndex = 0;
 
                 foreach (var triangle in part.Triangles.OfType<TriangleMeshWithColor>())
                 {
-                    // Create a new triangle instance (shared between renderer and explosion logic)
                     var tri = new TriangleMeshWithColor
                     {
                         vert1 = triangle.vert1,
@@ -217,7 +212,16 @@ namespace GameAiAndControls.Physics
                     };
 
                     var triCenter = GetTriangleCenter(tri);
-                    var direction = Normalize(Subtract(triCenter, center));
+                    var rawDir = Subtract(triCenter, center);
+                    var direction = Normalize(rawDir);
+
+                    // --- Her justeres retningen ---
+                    if (direction.y < 0) direction.y *= 0.25f; // Demp nedover
+                    if (direction.y < 0.05f) direction.y += 0.1f; // Løft litt
+                    direction.x *= 1.3f; // Mer sideveis
+                    direction.z *= 1.3f;
+                    direction = Normalize(direction); // Re-normaliser
+
                     var rotationAxis = RandomUnitVector();
 
                     _explodingTriangles.Add(new ExplodingTriangle
@@ -229,8 +233,8 @@ namespace GameAiAndControls.Physics
                         RotationSpeed = RandomHelper.Float(30f, 120f),
                         Center = (Vector3)triCenter,
                         ElapsedTime = 0f,
-                        PartIndex = partIndex,           // ✅ Needed for write-back
-                        TriangleIndex = triangleIndex    // ✅ Needed for write-back
+                        PartIndex = partIndex,
+                        TriangleIndex = triangleIndex
                     });
 
                     sharedTriangles.Add(tri);
@@ -252,12 +256,16 @@ namespace GameAiAndControls.Physics
         }
 
 
+
         public I3dObject UpdateExplosion(I3dObject explodingObject, DateTime deltaTime)
         {
             if (!_isExploding || _explodingTriangles.Count == 0)
                 return explodingObject;
 
-            Logger.Log($"[UPDATE] Explosion update called. Triangles: {_explodingTriangles.Count}");
+            if (Logger.EnableFileLogging && LocalEnableLogging)
+            {
+                Logger.Log($"[UPDATE] Explosion update called. Triangles: {_explodingTriangles.Count}");
+            }
 
             float frameTime = 1f / 60f; // Fixed frame rate per update tick
 
@@ -289,7 +297,10 @@ namespace GameAiAndControls.Physics
             {
                 if (index >= 3) break;
 
-                Logger.Log($"[UPDATE] T{index}: Elapsed={t.ElapsedTime:F2} v1=({t.Triangle.vert1.x:F2}, {t.Triangle.vert1.y:F2}, {t.Triangle.vert1.z:F2})");
+                if (Logger.EnableFileLogging && LocalEnableLogging)
+                {
+                    Logger.Log($"[UPDATE] T{index}: Elapsed={t.ElapsedTime:F2} v1=({t.Triangle.vert1.x:F2}, {t.Triangle.vert1.y:F2}, {t.Triangle.vert1.z:F2})");
+                }
             }
 
             return explodingObject;

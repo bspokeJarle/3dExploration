@@ -127,7 +127,7 @@ namespace Domain
     {
         public IObjectMovement ParentShip { get; set; }
         public List<IParticle> Particles { get; set; }
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust);
+        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust,bool? explosion);
         public void MoveParticles();
     }
     public interface IParticle

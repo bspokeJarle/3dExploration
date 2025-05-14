@@ -53,12 +53,15 @@ namespace _3dTesting.MainWindowClasses
             }
 
             if (particleObjectList.Count > 0)
+            {
                 renderedList.AddRange(particleObjectList);
+                DebugMessage += $" Number of Particles on screen {particleObjectList.Count}";
+            }
              
-            projectedCoordinates = From3dTo2d.convertTo2dFromObjects(renderedList, false);
+            projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, false);
             var crashBoxDebuggedObjects = renderedList.Where(x => x.CrashBoxDebugMode == true).ToList();
             //Check if there are any crashboxes to debug
-            if (crashBoxDebuggedObjects.Count>0) crashBoxCoordinates = From3dTo2d.convertTo2dFromObjects(crashBoxDebuggedObjects, true);
+            if (crashBoxDebuggedObjects.Count>0) crashBoxCoordinates = From3dTo2d.ConvertTo2dFromObjects(crashBoxDebuggedObjects, true);
             else crashBoxCoordinates = new List<_2dTriangleMesh>();
             CrashDetection.HandleCrashboxes(renderedList);
             return projectedCoordinates;

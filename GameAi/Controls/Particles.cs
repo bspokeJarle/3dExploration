@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using GameAiAndControls.Physics;
 using GameAiAndControls.Helpers;
+using System.Dynamic;
 
 public class ParticlesAI : IParticles
 {
@@ -42,6 +43,8 @@ public class ParticlesAI : IParticles
         float deltaTime = (float)(now - _lastUpdateTime).TotalSeconds;
         if (deltaTime <= 0f || deltaTime > 1f) deltaTime = 1f / 60f;
         _lastUpdateTime = now;
+
+        var numLogParticles = 0;
 
         foreach (var particle in Particles)
         {
@@ -92,6 +95,18 @@ public class ParticlesAI : IParticles
                     }
 
                     particle.Position = particle.Physics.ApplyGravityForce(particle.Position ?? new Vector3(), deltaTime);
+                    if (EnableParticleLogging && Logger.EnableFileLogging)
+                    {
+                        numLogParticles++;
+                        if (numLogParticles > 3)
+                        {
+                            if (Logger.EnableFileLogging && EnableParticleLogging)
+                            {
+                                Logger.Log($"Particle Position: {particle.Position} Visible:{particle.Visible}");
+                                Logger.Log($"Particle Velocity: {particle.Physics.Velocity} Visible:{particle.Visible}");
+                            }
+                        }
+                    }
                 }
                 else
                 {
@@ -138,7 +153,22 @@ public class ParticlesAI : IParticles
         return "ff0000";
     }
 
-    public void ReleaseParticles(ITriangleMeshWithColor trajectory, ITriangleMeshWithColor startPosition, IVector3 worldPosition, IObjectMovement parentShip, int thrust)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static float Clamp(float value, float min, float max) => MathF.Min(MathF.Max(value, min), max);
+
+    private Vector3 GetRandomExplosionDirection()
+    {
+        double theta = random.NextDouble() * 2 * Math.PI;
+        double phi = random.NextDouble() * Math.PI;
+
+        float x = (float)(Math.Sin(phi) * Math.Cos(theta));
+        float y = (float)(Math.Cos(phi));
+        float z = (float)(Math.Sin(phi) * Math.Sin(theta));
+
+        return new Vector3(x, y, z);
+    }
+
+    public void ReleaseParticles(ITriangleMeshWithColor trajectory, ITriangleMeshWithColor startPosition, IVector3 worldPosition, IObjectMovement parentShip, int thrust, bool? explosion)
     {
         if (thrust == 0)
         {
@@ -153,6 +183,9 @@ public class ParticlesAI : IParticles
 
         ParentShip = parentShip;
         int particleCount = Math.Min(thrust * MaxThrustMultiplier, dynamicMaxParticles - Particles.Count);
+        //More particles when exploding
+        if (explosion == true) particleCount *= 2;
+
 
         var startPos = new Vector3(
             (startPosition.vert1.x + startPosition.vert2.x + startPosition.vert3.x) / 3,
@@ -166,22 +199,63 @@ public class ParticlesAI : IParticles
             (trajectory.vert1.z + trajectory.vert2.z + trajectory.vert3.z) / 3
         );
 
+        //When exploding start the particles a bit further up
+        if (explosion != null && explosion == true) startPos.y -= 150f;
+
+        if (Logger.EnableFileLogging && EnableParticleLogging)
+        {
+            Logger.Log($"[PARTICLES] Releasing {particleCount} particles. Start: ({startPos.x:F2}, {startPos.y:F2}, {startPos.z:F2}), Guide: ({guidePos.x:F2}, {guidePos.y:F2}, {guidePos.z:F2}), World: ({worldPosition.x:F2}, {worldPosition.y:F2}, {worldPosition.z:F2})");
+        }
+
         for (int i = 0; i < particleCount; i++)
         {
             float life = (float)(random.NextDouble() * (MaxLife - MinLife) + MinLife);
             float size = (float)(random.NextDouble() * (MaxSize - MinSize) + MinSize);
             float spread = SpreadIntensity * (float)(random.NextDouble() + 0.5);
+            //When exploding have a much bigger spread
+            if (explosion != null && explosion == true) spread = spread * 2.5f;
+            if (explosion != null && explosion == true) size = size * 1.5f;
 
             float offsetX = (float)(random.NextDouble() - 0.5) * spread;
             float offsetY = (float)(random.NextDouble() - 0.5) * spread;
             float offsetZ = (float)(random.NextDouble() - 0.5) * spread;
 
-            var velocity = new Vector3
+            Vector3 velocity;
+
+            /*var velocity = new Vector3
             {
                 x = (startPos.x - guidePos.x) / life + offsetX,
                 y = (startPos.y - guidePos.y) / life + offsetY,
                 z = (startPos.z - guidePos.z) / life + offsetZ
-            };
+            };*/
+
+            if (explosion == true)
+            {
+                var dir = GetRandomExplosionDirection();
+
+                // Litt overvekt oppover, begrens nedover
+                dir.y = MathF.Abs(dir.y) * 0.5f + 0.5f;
+
+                velocity = new Vector3
+                {
+                    x = dir.x * spread,
+                    y = dir.y * spread,
+                    z = dir.z * spread
+                };
+            }
+            else
+            {
+                velocity = new Vector3
+                {
+                    x = (startPos.x - guidePos.x) / life + offsetX,
+                    y = (startPos.y - guidePos.y) / life + offsetY,
+                    z = (startPos.z - guidePos.z) / life + offsetZ
+                };
+            }
+
+            velocity.x = Clamp(velocity.x, -10f, 10f);
+            velocity.y = Clamp(velocity.y, -10f, 10f);
+            velocity.z = Clamp(velocity.z, -10f, 10f);
 
             var acceleration = new Vector3
             {
@@ -214,6 +288,7 @@ public class ParticlesAI : IParticles
                 RotationSpeed = new Vector3(random.NextInt64(-5, 5), random.NextInt64(-5, 5), random.NextInt64(-5, 5)),
                 Color = "ffff00",
                 Visible = false,
+                //Physics = null,
                 Physics = new Physics
                 {
                     Velocity = new Vector3 { x = velocity.x, y = velocity.y, z = velocity.z },
