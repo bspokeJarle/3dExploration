@@ -60,7 +60,11 @@ public class ParticlesAI : IParticles
                 float lifeProgress = (float)(currentTicks - particle.BirthTime.Ticks - particle.VariedStart) / lifeTicks;
 
                 particle.Size = ApplyFade(particle.Size, lifeProgress);
-                particle.Color = GetColorByLifeProgress(lifeProgress);
+                particle.ParticleTriangle.Color = GetColorByLifeProgress(lifeProgress);
+                if (Logger.EnableFileLogging && EnableParticleLogging)
+                {
+                    Logger.Log($"Particle Color: {particle.ParticleTriangle.Color}");
+                }
 
                 if (particle.Physics != null)
                 {
@@ -148,9 +152,29 @@ public class ParticlesAI : IParticles
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static string GetColorByLifeProgress(float progress)
     {
-        if (progress < 0.5f) return "ffff00";
-        if (progress < 0.8f) return "ff6600";
-        return "ff0000";
+        // Clamp the progress between 0 and 1
+        progress = Clamp(progress, 0f, 1f);
+
+        int r, g, b;
+
+        if (progress < 0.5f)
+        {
+            // Yellow (255,255,0) to Red (255,0,0)
+            float t = progress / 0.5f;
+            r = 255;
+            g = (int)(255 * (1 - t)); // Fade green from 255 to 0
+            b = 0;
+        }
+        else
+        {
+            // Red (255,0,0) to Burnt (80,40,0)
+            float t = (progress - 0.5f) / 0.5f;
+            r = (int)(255 - (175 * t)); // Red from 255 to 80
+            g = (int)(0 + (40 * t));    // Green from 0 to 40
+            b = 0;
+        }
+
+        return $"{PhysicsHelpers.ClampColor(r):X2}{PhysicsHelpers.ClampColor(g):X2}{PhysicsHelpers.ClampColor(b):X2}".ToLower();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -221,19 +245,11 @@ public class ParticlesAI : IParticles
             float offsetZ = (float)(random.NextDouble() - 0.5) * spread;
 
             Vector3 velocity;
-
-            /*var velocity = new Vector3
-            {
-                x = (startPos.x - guidePos.x) / life + offsetX,
-                y = (startPos.y - guidePos.y) / life + offsetY,
-                z = (startPos.z - guidePos.z) / life + offsetZ
-            };*/
-
             if (explosion == true)
             {
                 var dir = GetRandomExplosionDirection();
 
-                // Litt overvekt oppover, begrens nedover
+                // Try to bias upward flying particles
                 dir.y = MathF.Abs(dir.y) * 0.5f + 0.5f;
 
                 velocity = new Vector3
@@ -264,13 +280,17 @@ public class ParticlesAI : IParticles
                 z = (float)(random.NextDouble() - 0.5) * AccelerationRandomFactor
             };
 
+            var variedStart = random.NextInt64(0, 500_000);
+            //Explosion particles should start at the same time
+            if (explosion!=null && explosion == true) variedStart = 0;
+
             Particles.Add(new Particle
             {
                 Life = life,
                 Size = size,
                 Velocity = velocity,
                 Acceleration = acceleration,
-                VariedStart = random.NextInt64(0, 500_000),
+                VariedStart = variedStart,
                 ParticleTriangle = new TriangleMeshWithColor
                 {
                     Color = "eeffee",
@@ -286,7 +306,7 @@ public class ParticlesAI : IParticles
                 IsRotated = false,
                 Rotation = new Vector3(random.NextInt64(0, 360), random.NextInt64(0, 360), random.NextInt64(0, 360)),
                 RotationSpeed = new Vector3(random.NextInt64(-5, 5), random.NextInt64(-5, 5), random.NextInt64(-5, 5)),
-                Color = "ffff00",
+                Color = "ff0000",
                 Visible = false,
                 //Physics = null,
                 Physics = new Physics

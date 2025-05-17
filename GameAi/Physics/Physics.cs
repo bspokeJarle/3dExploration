@@ -171,10 +171,11 @@ namespace GameAiAndControls.Physics
             public float Speed;
             public float RotationSpeed;
             public float ElapsedTime;
-            public float Duration = 2.0f;
+            public float Duration = 1.5f; // Adjusted for faster fading
             public Vector3 Center;
-            public int PartIndex = 0;
+            public int PartIndex;
             public int TriangleIndex;
+            public string OriginalColor; // NEW: reference color
         }
 
         private List<ExplodingTriangle> _explodingTriangles = new();
@@ -234,7 +235,8 @@ namespace GameAiAndControls.Physics
                         Center = (Vector3)triCenter,
                         ElapsedTime = 0f,
                         PartIndex = partIndex,
-                        TriangleIndex = triangleIndex
+                        TriangleIndex = triangleIndex,
+                        OriginalColor = triangle.Color // Store original color for fading
                     });
 
                     sharedTriangles.Add(tri);
@@ -262,48 +264,59 @@ namespace GameAiAndControls.Physics
             if (!_isExploding || _explodingTriangles.Count == 0)
                 return explodingObject;
 
-            if (Logger.EnableFileLogging && LocalEnableLogging)
-            {
-                Logger.Log($"[UPDATE] Explosion update called. Triangles: {_explodingTriangles.Count}");
-            }
-
-            float frameTime = 1f / 60f; // Fixed frame rate per update tick
+            float frameTime = 1f / 60f; // Fixed timestep
 
             foreach (var exploding in _explodingTriangles)
             {
+                // Progress is capped between 0 and 1
+                float progress = Clamp(exploding.ElapsedTime / exploding.Duration, 0f, 1f);
+
+                // Apply color transition based on progress
+                exploding.Triangle.Color = GetExplosionColor(progress, exploding.Triangle.Color);
+
+                if (Logger.EnableFileLogging)
+                {
+                    Logger.Log($"[EXPLOSION] TriangleIndex={exploding.TriangleIndex} " +
+                               $"Elapsed={exploding.ElapsedTime:F2}, " +
+                               $"Duration={exploding.Duration:F2}, " +
+                               $"Progress={progress:F2}, " +
+                               $"Color={exploding.Triangle.Color}");
+                }
+
+                // Skip movement if done
                 if (exploding.ElapsedTime >= exploding.Duration)
                     continue;
 
+                // Move and rotate
                 exploding.ElapsedTime += frameTime;
 
-                // Move the triangle outward along its direction vector
-                var move = PhysicsHelpers.Multiply(exploding.Direction, exploding.Speed * frameTime);
-                exploding.Triangle.vert1 = PhysicsHelpers.Add(exploding.Triangle.vert1, move);
-                exploding.Triangle.vert2 = PhysicsHelpers.Add(exploding.Triangle.vert2, move);
-                exploding.Triangle.vert3 = PhysicsHelpers.Add(exploding.Triangle.vert3, move);
+                var move = Multiply(exploding.Direction, exploding.Speed * frameTime);
+                exploding.Triangle.vert1 = Add(exploding.Triangle.vert1, move);
+                exploding.Triangle.vert2 = Add(exploding.Triangle.vert2, move);
+                exploding.Triangle.vert3 = Add(exploding.Triangle.vert3, move);
 
-                // Rotate triangle around its center
                 float angle = exploding.RotationSpeed * frameTime;
-                exploding.Triangle.vert1 = PhysicsHelpers.RotateAroundAxis(exploding.Triangle.vert1, exploding.RotationAxis, angle, exploding.Center);
-                exploding.Triangle.vert2 = PhysicsHelpers.RotateAroundAxis(exploding.Triangle.vert2, exploding.RotationAxis, angle, exploding.Center);
-                exploding.Triangle.vert3 = PhysicsHelpers.RotateAroundAxis(exploding.Triangle.vert3, exploding.RotationAxis, angle, exploding.Center);
+                exploding.Triangle.vert1 = RotateAroundAxis(exploding.Triangle.vert1, exploding.RotationAxis, angle, exploding.Center);
+                exploding.Triangle.vert2 = RotateAroundAxis(exploding.Triangle.vert2, exploding.RotationAxis, angle, exploding.Center);
+                exploding.Triangle.vert3 = RotateAroundAxis(exploding.Triangle.vert3, exploding.RotationAxis, angle, exploding.Center);
 
-                // Update the Triangles inside the Mesh
+                // Apply updated triangle
                 explodingObject.ObjectParts[exploding.PartIndex].Triangles[exploding.TriangleIndex] = exploding.Triangle;
             }
 
-            // Log a few triangle positions for debugging
-            foreach (var (t, index) in _explodingTriangles.Select((et, i) => (et, i)))
-            {
-                if (index >= 3) break;
-
-                if (Logger.EnableFileLogging && LocalEnableLogging)
-                {
-                    Logger.Log($"[UPDATE] T{index}: Elapsed={t.ElapsedTime:F2} v1=({t.Triangle.vert1.x:F2}, {t.Triangle.vert1.y:F2}, {t.Triangle.vert1.z:F2})");
-                }
-            }
-
             return explodingObject;
+        }
+
+        private static string GetExplosionColor(float progress, string originalHex)
+        {
+            if (progress < 0.10f)
+                return LerpColorHex(originalHex, "ffff00", progress / 0.10f); // original → yellow
+            else if (progress < 0.35f)
+                return LerpColorHex("ffff00", "ff0000", (progress - 0.10f) / 0.25f); // yellow → red
+            else if (progress < 0.7f)
+                return LerpColorHex("ff0000", "330000", (progress - 0.35f) / 0.35f); // red → dark red
+            else
+                return LerpColorHex("330000", "000000", (progress - 0.7f) / 0.3f); // dark red → black
         }
     }
 }

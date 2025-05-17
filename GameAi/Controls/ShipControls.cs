@@ -198,7 +198,7 @@ namespace GameAiAndControls.Controls
                 theObject.Rotation.z = rotationZ;
             }
 
-            if (theObject.ImpactStatus.HasCrashed == true)
+            if (theObject.ImpactStatus.HasCrashed == true && hasExploded == false)
             {
                 float landingSpeed = CurrentSpeed;
 

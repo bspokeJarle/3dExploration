@@ -6,6 +6,44 @@ namespace GameAiAndControls.Helpers
 {
     public class PhysicsHelpers
     {
+        public static float Clamp(float value, float min, float max)
+        {
+            return MathF.Min(MathF.Max(value, min), max);
+        }
+
+        public static int Clamp(int value, int min, int max)
+        {
+            return Math.Min(Math.Max(value, min), max);
+        }
+
+        public static string LerpColorHex(string hexFrom, string hexTo, float t)
+        {
+            t = Clamp(t, 0f, 1f);
+
+            int r1 = Convert.ToInt32(hexFrom.Substring(0, 2), 16);
+            int g1 = Convert.ToInt32(hexFrom.Substring(2, 2), 16);
+            int b1 = Convert.ToInt32(hexFrom.Substring(4, 2), 16);
+
+            int r2 = Convert.ToInt32(hexTo.Substring(0, 2), 16);
+            int g2 = Convert.ToInt32(hexTo.Substring(2, 2), 16);
+            int b2 = Convert.ToInt32(hexTo.Substring(4, 2), 16);
+
+            int r = (int)(r1 + (r2 - r1) * t);
+            int g = (int)(g1 + (g2 - g1) * t);
+            int b = (int)(b1 + (b2 - b1) * t);
+
+            r = Clamp(r, 0, 255);
+            g = Clamp(g, 0, 255);
+            b = Clamp(b, 0, 255);
+
+            return $"{r:X2}{g:X2}{b:X2}";
+        }
+
+        public static int ClampColor(int value)
+        {
+            return Math.Max(0, Math.Min(255, value));
+        }
+
         public static IVector3 Subtract(IVector3 a, IVector3 b)
         {
             return new Vector3(

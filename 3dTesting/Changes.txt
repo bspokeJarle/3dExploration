@@ -6,7 +6,9 @@ CrashDetection impact objects
 	Objects get information about the impact - first iteration
 	Debug mode for CrashBoxes, show wireframe of the boxes - first iteration
 	Show a health bar for the ship - first iteration
-	Permit landing on flat areas - Work in progress
+	Permit landing on flat areas - first iteration
+	Explode objects when they get hit - first iteration
+	Explode objects release particles - first iteration
 Start developing a physics engine
 	First iteration - First iteration done
 	We can now have particles that bounce of the surface - Done first iteration

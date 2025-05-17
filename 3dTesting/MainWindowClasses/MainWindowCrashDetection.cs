@@ -32,7 +32,7 @@ namespace _3dTesting.Helpers
         {
             numFrame++;
             int count = activeWorld.Count;
-            bool shouldCheckStaticObjects = (DateTime.Now - _lastStaticCheck).TotalMilliseconds > 200;
+            bool shouldCheckStaticObjects = (DateTime.Now - _lastStaticCheck).TotalMilliseconds > 100;
             _skipParticles = !_skipParticles;
 
             for (int i = 0; i < count; i++)
