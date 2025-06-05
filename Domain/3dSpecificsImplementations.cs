@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 namespace Domain
 {
     public class _3dSpecificsImplementations
-    {
+    {         
+            
         public class _3dObject : I3dObject
         {
             public List<I3dObjectPart> ObjectParts { get; set; } = new();
@@ -42,6 +43,7 @@ namespace Domain
             public ImpactDirection? ImpactDirection { get; set; }
             public IParticle SourceParticle { get; set; }
             public int? ObjectHealth { get; set; } = 100;
+            public bool HasExploded { get; set; }
         }
 
         public class Vector3 : IVector3

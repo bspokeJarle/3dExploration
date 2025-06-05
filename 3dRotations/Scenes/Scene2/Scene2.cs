@@ -10,9 +10,11 @@ using System.Diagnostics;
 
 namespace _3dRotations.Scene.Scene1
 {
-    public class Scene1:IScene
+    public class Scene2:IScene
     {
         Surface Surface = new();
+
+        //TODO: Just a copy for now this Scene
         public void SetupScene(I3dWorld world)
         {            
             //Add ship as first inhabitant

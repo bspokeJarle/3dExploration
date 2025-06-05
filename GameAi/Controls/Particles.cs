@@ -318,7 +318,7 @@ public class ParticlesAI : IParticles
                     Friction = 0.02f,
                     EnergyLossFactor = 0.28f,
                 },
-                ImpactStatus = new ImpactStatus { HasCrashed = false }
+                ImpactStatus = new ImpactStatus { HasCrashed = false, HasExploded = false }
             });
         }
     }

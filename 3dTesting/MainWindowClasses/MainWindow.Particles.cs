@@ -50,7 +50,7 @@ namespace _3dTesting.MainWindowClasses
                         z = inhabitant.ObjectOffsets.z + particle.Position.z 
                     },
                     //Setup the referance to the original particle
-                    ImpactStatus = new ImpactStatus { HasCrashed = false, SourceParticle = particle },
+                    ImpactStatus = new ImpactStatus { HasCrashed = false, SourceParticle = particle, HasExploded = false },
                     Rotation = particle.Rotation
                 });
             }

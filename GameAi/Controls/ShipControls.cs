@@ -123,9 +123,7 @@ namespace GameAiAndControls.Controls
         private void IncreaseThrustAndRelease()
         {
             if (Thrust < MaxThrust) Thrust += ThrustIncreaseRate;
-
-            Logger.Log($"Releasing particles on Thrust. Guide: {GuideCoordinates.vert1.x} * {GuideCoordinates.vert1.y} * {GuideCoordinates.vert1.z}, StartCoordinates: {StartCoordinates.vert1.x} * {StartCoordinates.vert1.y} * {StartCoordinates.vert1.z} ,  GlobalMapPositions: {ParentObject.ParentSurface.GlobalMapPosition.x} * {ParentObject.ParentSurface.GlobalMapPosition.y} * {ParentObject.ParentSurface.GlobalMapPosition.z} Thrust: {Thrust} ");
-
+             
             ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust, false);
         }
 
@@ -187,7 +185,6 @@ namespace GameAiAndControls.Controls
                 if (theObject.Particles?.Particles.Count > 0)
                     theObject.Particles.MoveParticles();
 
-                //return ParentObject;
             }
 
             if (!hasExploded) ApplyLocalTiltToMesh(tilt, theObject);
@@ -206,7 +203,6 @@ namespace GameAiAndControls.Controls
                 {
                     //Release some particles at the explosion, set fixed thrust level
                     Thrust = 10;
-                    Logger.Log($"Releasing particles after crash. Guide: {GuideCoordinates.vert1.x} * {GuideCoordinates.vert1.y} * {GuideCoordinates.vert1.z}, StartCoordinates: {StartCoordinates.vert1.x} * {StartCoordinates.vert1.y} * {StartCoordinates.vert1.z} ,  GlobalMapPositions: {ParentObject.ParentSurface.GlobalMapPosition.x} * {ParentObject.ParentSurface.GlobalMapPosition.y} * {ParentObject.ParentSurface.GlobalMapPosition.z} Thrust: {Thrust} ");
                     ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust, true);
 
                     hasExploded = true;
@@ -225,7 +221,7 @@ namespace GameAiAndControls.Controls
 
                         if (landingSpeed > 5f)
                         {
-                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 3);
+                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 4);
                         }
                     }
                 }

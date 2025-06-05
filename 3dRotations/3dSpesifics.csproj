@@ -6,7 +6,8 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
   <ItemGroup>
-    <Folder Include="Scenes\Scene2\" />
+    <Folder Include="Scenes\Intro\" />
+    <Folder Include="Scenes\Outtro\" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CommonUtilities\CommonUtilities.csproj" />

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Windows.Documents;
 using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
 
@@ -17,6 +18,26 @@ namespace Domain
             public int height; // Tiles in Z direction
             public int boxDepth; // Tiles in Y direction
         }
+    }
+
+    public interface ISceneHandler
+    {
+        public void SetupActiveScene(I3dWorld  world);
+
+        public void ResetActiveScene(I3dWorld world);
+
+        public void NextScene(I3dWorld world);
+    }
+    public interface IScene
+    {
+        public void SetupScene(I3dWorld world);
+    }
+
+    public interface I3dWorld
+    {
+        public List<I3dObject> WorldInhabitants { get; set; }
+        public ISceneHandler SceneHandler { get; set; }
+
     }
 
     public interface IPhysics
@@ -94,6 +115,7 @@ namespace Domain
 
     public interface IImpactStatus
     {
+        public bool HasExploded { get; set; }
         public bool HasCrashed { get; set; }
         public string ObjectName { get; set; }
         public ImpactDirection? ImpactDirection { get; set; }

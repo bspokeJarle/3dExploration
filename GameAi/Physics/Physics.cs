@@ -267,14 +267,14 @@ namespace GameAiAndControls.Physics
             float frameTime = 1f / 60f; // Fixed timestep
 
             foreach (var exploding in _explodingTriangles)
-            {
+            { 
                 // Progress is capped between 0 and 1
                 float progress = Clamp(exploding.ElapsedTime / exploding.Duration, 0f, 1f);
 
                 // Apply color transition based on progress
                 exploding.Triangle.Color = GetExplosionColor(progress, exploding.Triangle.Color);
 
-                if (Logger.EnableFileLogging)
+                if (Logger.EnableFileLogging && LocalEnableLogging)
                 {
                     Logger.Log($"[EXPLOSION] TriangleIndex={exploding.TriangleIndex} " +
                                $"Elapsed={exploding.ElapsedTime:F2}, " +
@@ -283,9 +283,12 @@ namespace GameAiAndControls.Physics
                                $"Color={exploding.Triangle.Color}");
                 }
 
-                // Skip movement if done
+                // Skip movement if done, set Explosion to finished, reset Scene
                 if (exploding.ElapsedTime >= exploding.Duration)
+                {
+                    if (explodingObject.ImpactStatus!=null) explodingObject.ImpactStatus.HasExploded = true;
                     continue;
+                }
 
                 // Move and rotate
                 exploding.ElapsedTime += frameTime;

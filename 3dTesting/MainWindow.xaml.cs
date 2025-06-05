@@ -11,9 +11,7 @@ using System.Windows.Input;
 using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
 using _3dTesting.Rendering;
-using _3dTesting._3dWorld;
 using System.Collections.Generic;
-using _3dRotations.World.Objects;
 
 namespace _3dTesting
 {
@@ -129,7 +127,7 @@ namespace _3dTesting
             }
 
             //Show health etc for main ship
-            GameHelpers.UpdateShipStatistics(healthRectangle, world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Ship"));
+            GameHelpers.UpdateShipStatistics(healthRectangle, (Domain._3dSpecificsImplementations._3dObject)world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Ship"));
 
             GameHelpers.UpdateMapOverlay(mapOverlay, surfaceMapBitmap,
                 Convert.ToInt32(world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapPosition.x),

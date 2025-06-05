@@ -54,6 +54,7 @@ namespace _3dTesting.Helpers
         /// </summary>
         public static void UpdateMapOverlay(System.Windows.Controls.Image mapOverlay, BitmapSource surfaceMapBitmap, int mapX, int mapY)
         {
+            if (mapX == 0 || mapY == 0) return; // Avoid division by zero or invalid map coordinates 
             if (surfaceMapBitmap != null && mapOverlay != null)
             {
                 //TODO: Get values from the setup later, hardcoded for now
@@ -62,7 +63,8 @@ namespace _3dTesting.Helpers
         }
 
         public static void UpdateShipStatistics(System.Windows.Shapes.Rectangle healthRectangle, _3dObject ship)
-        {        
+        {  
+            if (ship==null||ship.ImpactStatus==null) return;
             if (ship.ImpactStatus.ObjectHealth > 0)
             {
                 healthRectangle.Width = ship.ImpactStatus.ObjectHealth.Value * 2;

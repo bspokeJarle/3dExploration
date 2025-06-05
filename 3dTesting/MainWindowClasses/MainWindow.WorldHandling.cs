@@ -21,7 +21,7 @@ namespace _3dTesting.MainWindowClasses
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world,ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
             //var projectedCoordinates = new List<_2dTriangleMesh>();
-            var activeWorld = Common3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants);
+            var activeWorld = Common3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants.Cast<_3dObject>().ToList());
             var particleObjectList = new List<_3dObject>();
             var renderedList = new List<_3dObject>();
             DebugMessage = string.Empty;
@@ -57,7 +57,16 @@ namespace _3dTesting.MainWindowClasses
                 renderedList.AddRange(particleObjectList);
                 DebugMessage += $" Number of Particles on screen {particleObjectList.Count}";
             }
-             
+
+            var ship = activeWorld.FirstOrDefault(x => x.ObjectName == "Ship");
+            if (ship!=null && ship.ImpactStatus.HasExploded)
+            {
+                //When explosion has happened, reset the scene
+                world.WorldInhabitants.Clear();
+                world.SceneHandler.ResetActiveScene(world);
+                return new List<_2dTriangleMesh>();
+            }
+
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, false);
             var crashBoxDebuggedObjects = renderedList.Where(x => x.CrashBoxDebugMode == true).ToList();
             //Check if there are any crashboxes to debug
