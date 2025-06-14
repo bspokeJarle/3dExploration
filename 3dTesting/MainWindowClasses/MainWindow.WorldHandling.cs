@@ -1,12 +1,12 @@
 ﻿using _3dTesting._3dRotation;
 using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
+using CommonUtilities._3DHelpers;
 using Domain;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using static Domain._3dSpecificsImplementations;
-using CommonUtilities._3DHelpers;
 
 namespace _3dTesting.MainWindowClasses
 {
@@ -20,7 +20,6 @@ namespace _3dTesting.MainWindowClasses
 
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world,ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
-            //var projectedCoordinates = new List<_2dTriangleMesh>();
             var activeWorld = Common3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants.Cast<_3dObject>().ToList());
             var particleObjectList = new List<_3dObject>();
             var renderedList = new List<_3dObject>();
@@ -61,10 +60,12 @@ namespace _3dTesting.MainWindowClasses
             var ship = activeWorld.FirstOrDefault(x => x.ObjectName == "Ship");
             if (ship!=null && ship.ImpactStatus.HasExploded)
             {
-                //When explosion has happened, reset the scene
+                //Dispose the ship movement to free resources
+                ship.Movement.Dispose();
                 world.WorldInhabitants.Clear();
+                //When explosion has happened, reset the scene
                 world.SceneHandler.ResetActiveScene(world);
-                return new List<_2dTriangleMesh>();
+                return [];
             }
 
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, false);

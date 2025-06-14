@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Documents;
 using System.Windows.Media.Imaging;
+using Gma.System.MouseKeyHook;
 using static Domain._3dSpecificsImplementations;
 
 namespace Domain
@@ -90,6 +91,7 @@ namespace Domain
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
         public IPhysics Physics { get; set; }
+        public void Dispose();
     }
 
     public interface I3dObject

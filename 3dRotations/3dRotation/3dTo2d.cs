@@ -37,7 +37,10 @@ namespace _3dTesting._3dRotation
                 }
 
                 //All Crashboxes need same offset as the objects
-                ApplyObjectOffsetToCrashBoxes(obj);
+                if (!debugCrashBoxes)
+                {
+                    ApplyObjectOffsetToCrashBoxes(obj);
+                }
 
                 //Debug visualization of crashboxes
                 if (debugCrashBoxes && obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)

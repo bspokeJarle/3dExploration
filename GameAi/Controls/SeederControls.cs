@@ -1,4 +1,5 @@
 ﻿using Domain;
+using Gma.System.MouseKeyHook;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -53,5 +54,11 @@ namespace GameAiAndControls.Controls
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
         }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
+
     }
 }

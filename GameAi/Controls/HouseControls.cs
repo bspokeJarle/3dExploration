@@ -1,4 +1,5 @@
 ﻿using Domain;
+using Gma.System.MouseKeyHook;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -40,5 +41,11 @@ namespace GameAiAndControls.Controls
         public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
         }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
+
     }
 }

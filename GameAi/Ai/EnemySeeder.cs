@@ -1,4 +1,5 @@
 ﻿using Domain;
+using Gma.System.MouseKeyHook;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +13,11 @@ namespace GameAiAndControls.Ai
         public ITriangleMeshWithColor? StartCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public ITriangleMeshWithColor? GuideCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
 
         public I3dObject MoveObject(I3dObject theObject)
         {

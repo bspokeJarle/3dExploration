@@ -4,6 +4,7 @@ using System;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using static Domain._3dSpecificsImplementations;
+using GameAiAndControls.Input;
 
 namespace GameAiAndControls.Controls
 {
@@ -28,7 +29,6 @@ namespace GameAiAndControls.Controls
         private const float VerticalThrustSmoothing = 0.6f;
         private const float VerticalLiftAcceleration = 0.15f;
 
-        private IKeyboardMouseEvents _globalHook;
         private float fallVelocity = 0f;
         private float inertiaX = 0f;
         private float inertiaZ = 0f;
@@ -61,15 +61,13 @@ namespace GameAiAndControls.Controls
 
         public ShipControls()
         {
-            if (_globalHook == null)
-            {
-                _globalHook = Hook.GlobalEvents();
-                _globalHook.KeyDown += GlobalHookKeyDown;
-                _globalHook.KeyUp += GlobalHookKeyUp;
-                _globalHook.MouseMove += GlobalHookMouseMovement;
-                _globalHook.MouseDown += GlobalHookMouseDown;
-                _globalHook.MouseUp += GlobalHookMouseUp;
-            }
+            var hook = InputManager.SharedHook;
+
+            hook.KeyDown += GlobalHookKeyDown;
+            hook.KeyUp += GlobalHookKeyUp;
+            hook.MouseMove += GlobalHookMouseMovement;
+            hook.MouseDown += GlobalHookMouseDown;
+            hook.MouseUp += GlobalHookMouseUp;
         }
 
         public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
@@ -351,6 +349,17 @@ namespace GameAiAndControls.Controls
                 float thrustLift = Thrust * upwardFactor * 0.75f * deltaTime;
                 fallVelocity = Math.Max(fallVelocity - thrustLift, 0f);
             }
+        }
+
+        public void Dispose()
+        {
+            var hook = InputManager.SharedHook;
+
+            hook.KeyDown -= GlobalHookKeyDown;
+            hook.KeyUp -= GlobalHookKeyUp;
+            hook.MouseMove -= GlobalHookMouseMovement;
+            hook.MouseDown -= GlobalHookMouseDown;
+            hook.MouseUp -= GlobalHookMouseUp;
         }
     }
 }

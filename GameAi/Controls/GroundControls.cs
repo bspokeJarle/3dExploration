@@ -1,4 +1,5 @@
 ﻿using Domain;
+using Gma.System.MouseKeyHook;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +17,11 @@ namespace GameAiAndControls.Controls
 
         public float zPosition { get; set; } = 0;
         public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
 
         public I3dObject MoveObject(I3dObject theObject)
         {
