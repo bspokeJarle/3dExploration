@@ -9,6 +9,15 @@
         <!-- Rendered 3D Scene -->
         <Image Name="RenderImage" Stretch="Uniform"/>
 
+        <!-- Fade Overlay -->
+        <Rectangle x:Name="FadeOverlay"
+           Fill="Black"
+           Opacity="0"
+           Visibility="Collapsed"
+           Panel.ZIndex="99"
+           HorizontalAlignment="Stretch"
+           VerticalAlignment="Stretch"/>
+
         <!-- FPS Counter (TextBlock) -->
         <TextBlock Name="FpsText"
                    Foreground="White"

@@ -17,6 +17,8 @@ namespace _3dTesting.MainWindowClasses
         private readonly ParticleManager particleManager = new();
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
+        public bool FadeOutWorld { get; set; } = false;
+        public bool FadeInWorld { get; set; } = false;
 
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world,ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
@@ -58,8 +60,16 @@ namespace _3dTesting.MainWindowClasses
             }
 
             var ship = activeWorld.FirstOrDefault(x => x.ObjectName == "Ship");
+            if (ship != null && ship.ImpactStatus.ObjectHealth<=0 && !FadeOutWorld)
+            {
+                //When the ship health is 0, start the fade out effect (explosion will also be triggered)
+                FadeOutWorld = true;
+            }
             if (ship!=null && ship.ImpactStatus.HasExploded)
             {
+                //When the ship has exploded, start the fade in effect, should take longer than fade out
+                FadeOutWorld = false;
+                FadeInWorld = true;
                 //Dispose the ship movement to free resources
                 ship.Movement.Dispose();
                 world.WorldInhabitants.Clear();

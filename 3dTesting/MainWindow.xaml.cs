@@ -12,6 +12,7 @@ using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
 using _3dTesting.Rendering;
 using System.Collections.Generic;
+using System.Windows.Media.Animation;
 
 namespace _3dTesting
 {
@@ -64,6 +65,17 @@ namespace _3dTesting
             mainGrid.Children.Add(visualHost);
             worldRenderer = new WorldRenderer(visualHost);
 
+            FadeOverlay = new System.Windows.Shapes.Rectangle
+            {
+                Fill = Brushes.Black,
+                Opacity = 0,
+                Visibility = Visibility.Collapsed,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
+            Panel.SetZIndex(FadeOverlay, int.MaxValue);
+            mainGrid.Children.Add(FadeOverlay);
+
             FpsText = new TextBlock
             {
                 Foreground = Brushes.White,
@@ -103,6 +115,7 @@ namespace _3dTesting
             timer.Tick += (s, e) => Handle3dWorld();
             timer.Start();
             stopwatch.Start();
+
         }
 
         private void HandleEsc(object sender, KeyEventArgs e)
@@ -114,8 +127,69 @@ namespace _3dTesting
                 isPaused = !isPaused;
         }
 
-        private void Handle3dWorld()
+        private bool isFading = false;
+        public async Task FadeOutAsync(float durationSeconds = 1.0f)
         {
+            FadeOverlay.Visibility = Visibility.Visible;
+
+            var animation = new DoubleAnimation
+            {
+                From = 0,
+                To = 1,
+                Duration = TimeSpan.FromSeconds(durationSeconds),
+                FillBehavior = FillBehavior.HoldEnd
+            };
+
+            var tcs = new TaskCompletionSource<bool>();
+            animation.Completed += (s, e) => tcs.SetResult(true);
+            FadeOverlay.BeginAnimation(UIElement.OpacityProperty, animation);
+
+            await tcs.Task;
+        }
+
+        public async Task FadeInAsync(float durationSeconds = 1.0f)
+        {
+            FadeOverlay.Visibility = Visibility.Visible;
+            FadeOverlay.Opacity = 1;
+
+            var animation = new DoubleAnimation
+            {
+                From = 1,
+                To = 0,
+                Duration = TimeSpan.FromSeconds(durationSeconds),
+                FillBehavior = FillBehavior.Stop
+            };
+
+            var tcs = new TaskCompletionSource<bool>();
+            animation.Completed += (s, e) =>
+            {
+                FadeOverlay.Visibility = Visibility.Collapsed;
+                FadeOverlay.Opacity = 0;
+                tcs.SetResult(true);
+            };
+
+            FadeOverlay.BeginAnimation(UIElement.OpacityProperty, animation);
+
+            await tcs.Task;
+        }
+
+        private async void Handle3dWorld()
+        {
+            //TODO: Should wait until we actually have the new Scene
+            if (!isPaused && gameWorldManager.FadeInWorld && isFading && world.WorldInhabitants.Count>100)
+            {
+                await FadeInAsync(1.5f);
+                gameWorldManager.FadeInWorld = false;
+                isFading = false;
+            }
+
+            if (!isPaused && gameWorldManager.FadeOutWorld && !isFading)
+            {
+                isFading = true;
+                await FadeOutAsync(1.0f);
+                gameWorldManager.FadeOutWorld = false;
+            }
+
             frameCount++;
             if (stopwatch.ElapsedMilliseconds >= 1000)
             {
@@ -133,19 +207,19 @@ namespace _3dTesting
                 Convert.ToInt32(world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapPosition.x),
                 Convert.ToInt32(world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapPosition.z));
 
-            Task.Run(() =>
+            _ = Task.Run(() =>
             {
                 if (isPaused)
                 {
                     return;
                 }
-                
+
                 var screenCoordinates = new List<_Coordinates._2dTriangleMesh>();
                 var crashBoxCoordinates = new List<_Coordinates._2dTriangleMesh>();
-                gameWorldManager.UpdateWorld(world,ref screenCoordinates, ref crashBoxCoordinates);
+                gameWorldManager.UpdateWorld(world, ref screenCoordinates, ref crashBoxCoordinates);
                 //Check if there are any crashboxes to debug
                 if (crashBoxCoordinates.Count > 0) screenCoordinates.AddRange(crashBoxCoordinates);
-                Dispatcher.Invoke(() => worldRenderer.RenderTriangles(screenCoordinates));
+                if (!isFading) Dispatcher.Invoke(() => worldRenderer.RenderTriangles(screenCoordinates));
                 //Check if there are any crashboxes to debug
             });
         }
