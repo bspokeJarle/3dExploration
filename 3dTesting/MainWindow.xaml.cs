@@ -50,6 +50,7 @@ namespace _3dTesting
         private Image mapOverlay;
         private System.Windows.Shapes.Rectangle healthRectangle;
         private bool isPaused = false;
+        private DateTime fadeOutTrigged = DateTime.MinValue;
 
         public MainWindow()
         {
@@ -185,9 +186,21 @@ namespace _3dTesting
 
             if (!isPaused && gameWorldManager.FadeOutWorld && !isFading)
             {
-                isFading = true;
-                await FadeOutAsync(1.0f);
-                gameWorldManager.FadeOutWorld = false;
+                // Delay fade out until the ship is finished exploding
+                if (fadeOutTrigged == DateTime.MinValue)
+                {
+                    fadeOutTrigged = DateTime.Now;
+                    return; // wait until next tick
+                }
+
+                // Wait 2 seconds before starting fade out
+                if (DateTime.Now >= fadeOutTrigged.AddSeconds(1.2))
+                {
+                    isFading = true;
+                    await FadeOutAsync(1.0f);
+                    gameWorldManager.FadeOutWorld = false;
+                    fadeOutTrigged = DateTime.MinValue; // reset for next time
+                }
             }
 
             frameCount++;

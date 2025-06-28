@@ -171,7 +171,7 @@ namespace GameAiAndControls.Physics
             public float Speed;
             public float RotationSpeed;
             public float ElapsedTime;
-            public float Duration = 1.5f; // Adjusted for faster fading
+            public float Duration = 1.2f; // Adjusted for faster fading
             public Vector3 Center;
             public int PartIndex;
             public int TriangleIndex;

@@ -56,7 +56,7 @@ namespace GameAiAndControls.Controls
         public bool ThrustOn { get; set; } = false;
         public IPhysics Physics { get; set; } = new Physics.Physics();
         private bool hasInitialized = false;
-        private bool hasExploded = false;
+        private bool isExploding = false;
         private DateTime ExplosionDeltaTime = DateTime.Now;
 
         public ShipControls()
@@ -176,7 +176,7 @@ namespace GameAiAndControls.Controls
             }
 
             // Only update explosion if it has already started
-            if (hasExploded)
+            if (isExploding)
             {
                 Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
 
@@ -185,7 +185,7 @@ namespace GameAiAndControls.Controls
 
             }
 
-            if (!hasExploded) ApplyLocalTiltToMesh(tilt, theObject);
+            if (!isExploding) ApplyLocalTiltToMesh(tilt, theObject);
 
             if (theObject.Rotation != null)
             {
@@ -193,7 +193,7 @@ namespace GameAiAndControls.Controls
                 theObject.Rotation.z = rotationZ;
             }
 
-            if (theObject.ImpactStatus.HasCrashed == true && hasExploded == false)
+            if (theObject.ImpactStatus.HasCrashed == true && isExploding == false)
             {
                 float landingSpeed = CurrentSpeed;
 
@@ -203,7 +203,7 @@ namespace GameAiAndControls.Controls
                     Thrust = 10;
                     ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust, true);
 
-                    hasExploded = true;
+                    isExploding = true;
                     ExplosionDeltaTime = DateTime.Now;
 
                     var explodedVersion = Physics.ExplodeObject(theObject, 200f);
