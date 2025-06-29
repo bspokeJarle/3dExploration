@@ -37,9 +37,16 @@ namespace _3dTesting.MainWindowClasses
                 foreach (var part in inhabitant.ObjectParts)
                 {
                     part.Triangles = RotateMesh(part.Triangles, (Vector3)inhabitant.Rotation);
-                    //Store the RotatedSurfaceTriangles
+
+                    // Store the RotatedSurfaceTriangles
                     if (inhabitant.ObjectName == "Surface")
+                    {
                         inhabitant.ParentSurface.RotatedSurfaceTriangles = part.Triangles;
+
+                        // Build fast lookup set
+                        inhabitant.ParentSurface.LandBasedIds = [.. part.Triangles.Select(t => t.landBasedPosition)];
+                    }
+
                     SetMovementGuides(inhabitant, part, part.Triangles);
                 }
 

@@ -1,8 +1,9 @@
+using Gma.System.MouseKeyHook;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Documents;
 using System.Windows.Media.Imaging;
-using Gma.System.MouseKeyHook;
 using static Domain._3dSpecificsImplementations;
 
 namespace Domain
@@ -79,6 +80,8 @@ namespace Domain
         public int MaxHeight();
 
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles { get; set; }
+        public HashSet<long?> LandBasedIds { get; set; }
+
         public I3dObject GetSurfaceViewPort();
 
         public void Create2DMap(int? maxTrees, int? maxHouses);

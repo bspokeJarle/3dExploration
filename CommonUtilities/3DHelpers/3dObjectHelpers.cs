@@ -9,12 +9,9 @@ namespace CommonUtilities._3DHelpers
         public static bool CheckInhabitantVisibility(this _3dObject inhabitant)
         {
             // 1. Land-based check
-            if (inhabitant.SurfaceBasedId > 0 && inhabitant.ParentSurface?.RotatedSurfaceTriangles != null)
+            if (inhabitant.SurfaceBasedId > 0 && inhabitant.ParentSurface?.LandBasedIds != null)
             {
-                bool isOnCurrentSurface = inhabitant.ParentSurface.RotatedSurfaceTriangles
-                    .Any(t => t.landBasedPosition == inhabitant.SurfaceBasedId);
-
-                return isOnCurrentSurface;
+                return inhabitant.ParentSurface.LandBasedIds.Contains(inhabitant.SurfaceBasedId);
             }
 
             // 2. Always-visible (onscreen) objects — world position (0, 0, 0)

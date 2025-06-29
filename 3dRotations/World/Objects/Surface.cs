@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
 
@@ -19,6 +20,7 @@ namespace _3dRotations.World.Objects
         public SurfaceData[,]? Global2DMap { get; set; } = new SurfaceData[globalMapSize, globalMapSize]; 
         public BitmapSource? GlobalMapBitmap { get; set; }
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
+        public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();
 
         const int surfaceWidth = 1350;
         const int globalMapSize = 2500+(surfaceWidth/tileSize);
