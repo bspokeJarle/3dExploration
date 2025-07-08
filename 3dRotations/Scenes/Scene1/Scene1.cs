@@ -18,7 +18,7 @@ namespace _3dRotations.Scene.Scene1
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
-            Surface.Create2DMap(500,50);
+            Surface.Create2DMap(50000,25000);
 
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -27,9 +27,9 @@ namespace _3dRotations.Scene.Scene1
             ship.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(ship);
 
-            /*
+            
             //Add three seeders
-            var seeder = Seeder.CreateSeeder(Surface);
+            /*var seeder = Seeder.CreateSeeder(Surface);
             //Initialize the seeder rotation
             seeder.Rotation = new Vector3 { };
             seeder.WorldPosition = new Vector3 { x = 96000, y = 0, z = 96000 };
@@ -57,8 +57,8 @@ namespace _3dRotations.Scene.Scene1
             seeder3.CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 };
             seeder3.ObjectName = "Seeder";
             seeder3.Movement = new SeederControls();
-            world.WorldInhabitants.Add(seeder3);
-            */
+            world.WorldInhabitants.Add(seeder3);*/
+            
 
             //Get the surface viewport based on the global Map Position
             //Important: In a Scene, Surface should be amongst the first objects added to the world

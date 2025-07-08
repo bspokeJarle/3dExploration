@@ -26,6 +26,14 @@ namespace _3dRotations.Helpers
         public static bool IncludeTestTreesInFrontOfPlatform = true;
         public static bool IncludeTestHousesInFrontOfPlatform = true;
 
+        public enum TerrainType
+        {
+            Water,      // Deep Ocean, Coastal Water
+            Grassland,  // Suitable for tree placement
+            Highlands,  // Suitable for trees in higher altitudes
+            Mountains   // Not suitable for tree placement
+        }
+
         public static SurfaceData[,] ReturnPseudoRandomMap(int mapSize, out int maxHeight, int? maxTs, int? maxHs)
         {
             maxTrees = maxTs ?? 200;
@@ -262,6 +270,30 @@ namespace _3dRotations.Helpers
             return viewPort;
         }
 
+        public static TerrainType GetTerrainType(int height, int maxHeight)
+        {
+            if (height < maxHeight * 0.05) // Deep Ocean (Very Dark Blue)
+            {
+                return TerrainType.Water;
+            }
+            else if (height < maxHeight * 0.15) // Coastal Water (Medium Blue)
+            {
+                return TerrainType.Water;
+            }
+            else if (height < maxHeight * 0.4) // Grassland (Green)
+            {
+                return TerrainType.Grassland;
+            }
+            else if (height < maxHeight * 0.7) // Highlands (Brown)
+            {
+                return TerrainType.Highlands;
+            }
+            else // Mountains (Gray)
+            {
+                return TerrainType.Mountains;
+            }
+        }
+
         public static List<(int x, int y, int height)> FindTreePlacementAreas(SurfaceData[,] map, int mapSize, int tileSize, int maxHeight)
         {
             List<(int x, int y, int height)> treeLocations = new List<(int x, int y, int height)>();
@@ -275,6 +307,7 @@ namespace _3dRotations.Helpers
             List<(int x, int y)> clusterCenters = new List<(int x, int y)>();
             int spacing = 40;
 
+            // Look for potential tree placement locations (flat, above water, suitable height)
             for (int i = spacing / 2; i < mapSize; i += spacing)
             {
                 for (int j = spacing / 2; j < mapSize; j += spacing)
@@ -284,37 +317,56 @@ namespace _3dRotations.Helpers
                                   Math.Abs(map[i, j].mapDepth - map[i + 1, j].mapDepth) < 10 &&
                                   Math.Abs(map[i, j].mapDepth - map[i, j - 1].mapDepth) < 10 &&
                                   Math.Abs(map[i, j].mapDepth - map[i, j + 1].mapDepth) < 10;
-                    bool isAboveWater = height >= (int)(maxHeight * 0.15);
-                    bool isSuitable = isAboveWater && height < (int)(maxHeight * 0.6);
 
-                    if (isFlat && isSuitable)
+                    // Add a buffer to avoid placing trees near the water
+                    bool isAboveWater = height >= (int)(maxHeight * 0.20); // Adjusted minimum height for water buffer
+                    bool isSuitable = isAboveWater && height < (int)(maxHeight * 0.6); // Suitable height range
+
+                    // Get terrain type based on height using the reusable method
+                    TerrainType terrainType = GetTerrainType(height, maxHeight);
+
+                    // Only add clusters if the terrain is suitable (not water)
+                    bool isGrasslandOrHighTerrain = terrainType == TerrainType.Grassland || terrainType == TerrainType.Highlands;
+
+                    if (isFlat && isSuitable && isGrasslandOrHighTerrain)
                     {
                         clusterCenters.Add((i, j));
                     }
                 }
             }
 
-            if (IncludeTestTreesInFrontOfPlatform)
-            {
-                int fixedX = 1274;
-                int fixedY = 1241;
-                for (int t = 0; t < 5; t++)
-                {
-                    int offsetX = random.Next(-2, 3);
-                    int offsetY = random.Next(-2, 3);
-                    int px = Math.Clamp(fixedX + offsetX, 0, mapSize - 1);
-                    int py = Math.Clamp(fixedY + offsetY, 0, mapSize - 1);
-                    int height = map[px, py].mapDepth;
-                    if (height >= (int)(maxHeight * 0.15) && height < (int)(maxHeight * 0.6))
-                    {
-                        treeLocations.Add((px, py, height));
-                        used.Add((px, py));
-                    }
-                }
+            // Apply the tree placement logic across the whole map
+            int spreadWidth = 30; // Spread width for horizontal placement
+            int spreadHeight = 60; // Spread height for vertical placement
 
-                clusterCenters.Insert(0, (landingX + random.Next(-20, 21), landingY + random.Next(10, 30)));
+            // Place trees across the whole map using the same logic as in front of the platform
+            for (int t = 0; t < numberOfTrees; t++)
+            {
+                // Random horizontal placement within the spread range (for the whole map)
+                int offsetX = random.Next(0, mapSize);
+                // Random vertical placement within the spread range
+                int offsetY = random.Next(0, mapSize);
+
+                int px = Math.Clamp(offsetX, 0, mapSize - 1);
+                int py = Math.Clamp(offsetY, 0, mapSize - 1);
+
+                int height = map[px, py].mapDepth;
+
+                // Get terrain type based on height using the reusable method
+                TerrainType terrainType = GetTerrainType(height, maxHeight);
+
+                // Only place trees on suitable terrain (Grassland or Highlands) with buffer to water
+                bool isGrasslandOrHighlands = terrainType == TerrainType.Grassland || terrainType == TerrainType.Highlands;
+                bool isAboveWater = height >= (int)(maxHeight * 0.20) && height < (int)(maxHeight * 0.7); // Added buffer to water
+
+                if (isAboveWater && isGrasslandOrHighlands)
+                {
+                    treeLocations.Add((px, py, height));
+                    used.Add((px, py));
+                }
             }
 
+            // Continue with cluster generation for the rest of the map
             int desiredClusters = numberOfTrees / clusterSizeMax;
             int clusterIndex = 0;
 
@@ -333,8 +385,15 @@ namespace _3dRotations.Helpers
                     if (nx >= 10 && nx < mapSize - 10 && ny >= 10 && ny < mapSize - 10 && !used.Contains((nx, ny)))
                     {
                         int height = map[nx, ny].mapDepth;
-                        bool isAboveWater = height >= (int)(maxHeight * 0.18);
-                        if (isAboveWater && height < (int)(maxHeight * 0.6) &&
+
+                        // Get terrain type based on height using the reusable method
+                        TerrainType terrainType = GetTerrainType(height, maxHeight);
+                        bool isGrasslandOrHighlands = terrainType == TerrainType.Grassland || terrainType == TerrainType.Highlands;
+
+                        // Only place trees on suitable terrain (Grassland or Highlands) with valid height and buffer
+                        bool isAboveWater = height >= (int)(maxHeight * 0.30) && height < (int)(maxHeight * 0.9); // Added buffer
+
+                        if (height >= (int)(maxHeight * 0.18) && height < (int)(maxHeight * 0.6) && isGrasslandOrHighlands && isAboveWater &&
                             Math.Abs(height - map[nx - 1, ny].mapDepth) < 12 &&
                             Math.Abs(height - map[nx + 1, ny].mapDepth) < 12 &&
                             Math.Abs(height - map[nx, ny - 1].mapDepth) < 12 &&
@@ -355,32 +414,44 @@ namespace _3dRotations.Helpers
             List<(int x, int y, int height)> houseLocations = new List<(int x, int y, int height)>();
             int numberOfHouses = random.Next((int)(maxHouses * 0.9), maxHouses);
             HashSet<(int x, int y)> reserved = new HashSet<(int x, int y)>();
+
+            // Mark the existing tree locations as reserved
             foreach (var (x, y, _) in existingTrees)
                 reserved.Add((x, y));
 
             int spacing = 40;
+
+            // Look for potential house placement locations
             for (int i = spacing / 2; i < mapSize; i += spacing)
             {
                 for (int j = spacing / 2; j < mapSize; j += spacing)
                 {
-                    if (reserved.Contains((i, j))) continue;
+                    if (reserved.Contains((i, j))) continue;  // Skip already reserved spots
 
                     int height = map[i, j].mapDepth;
                     bool isFlat = Math.Abs(height - map[i - 1, j].mapDepth) < 5 &&
                                   Math.Abs(height - map[i + 1, j].mapDepth) < 5 &&
                                   Math.Abs(height - map[i, j - 1].mapDepth) < 5 &&
                                   Math.Abs(height - map[i, j + 1].mapDepth) < 5;
-                    bool isAboveWater = height >= (int)(maxHeight * 0.19);
-                    bool isSuitable = isAboveWater && height < (int)(maxHeight * 0.7);
 
-                    if (isFlat && isSuitable && houseLocations.Count < numberOfHouses)
+                    // Check if the height is suitable for placement (above water, and not too high)
+                    bool isAboveWater = height >= (int)(maxHeight * 0.20);  // Increased buffer to avoid close proximity to water
+                    bool isSuitable = isAboveWater && height < (int)(maxHeight * 0.7);  // Suitable height range
+
+                    // Classify terrain using the GetTerrainType method (same as trees)
+                    TerrainType terrainType = GetTerrainType(height, maxHeight);
+                    bool isGrasslandOrHighlands = terrainType == TerrainType.Grassland || terrainType == TerrainType.Highlands;
+
+                    // Only add house if terrain is suitable (Grassland or Highlands)
+                    if (isFlat && isSuitable && isGrasslandOrHighlands && houseLocations.Count < numberOfHouses)
                     {
                         houseLocations.Add((i, j, height));
-                        reserved.Add((i, j));
+                        reserved.Add((i, j));  // Mark this spot as reserved
                     }
                 }
             }
 
+            // Add test houses in front of the platform (if enabled)
             if (IncludeTestHousesInFrontOfPlatform)
             {
                 int fixedX = 1274;
@@ -391,13 +462,20 @@ namespace _3dRotations.Helpers
                     int offsetY = random.Next(-2, 3);
                     int px = Math.Clamp(fixedX + offsetX, 0, mapSize - 1);
                     int py = Math.Clamp(fixedY + offsetY, 0, mapSize - 1);
-                    if (!reserved.Contains((px, py)))
+
+                    if (!reserved.Contains((px, py)))  // Ensure the position isn't already reserved
                     {
                         int height = map[px, py].mapDepth;
-                        if (height >= (int)(maxHeight * 0.15) && height < (int)(maxHeight * 0.7))
+                        bool isAboveWater = height >= (int)(maxHeight * 0.15) && height < (int)(maxHeight * 0.7);  // Ensure it's above water
+
+                        // Only place houses if the terrain is suitable (Grassland or Highlands)
+                        TerrainType terrainType = GetTerrainType(height, maxHeight);
+                        bool isGrasslandOrHighlands = terrainType == TerrainType.Grassland || terrainType == TerrainType.Highlands;
+
+                        if (isAboveWater && isGrasslandOrHighlands)
                         {
                             houseLocations.Add((px, py, height));
-                            reserved.Add((px, py));
+                            reserved.Add((px, py));  // Mark the spot as reserved
                         }
                     }
                 }
@@ -406,8 +484,9 @@ namespace _3dRotations.Helpers
             return houseLocations;
         }
 
+
         // (Other unchanged methods omitted for brevity...)
-    
+
         public static (int x, int y) GetLandingAreaCenter(SurfaceData[,] map, int mapSize, int landingHeight)
         {
             for (int i = 0; i < mapSize; i++)
@@ -423,39 +502,39 @@ namespace _3dRotations.Helpers
             return (mapSize / 2, mapSize / 2); // Default to center if not found
         }
 
+
         private static Color GetTileColor(int height, int maxHeight)
         {
             int red, green, blue;
 
-            if (height < maxHeight * 0.05) // Deep Ocean (Very Dark Blue)
+            // Use terrain type for the color logic
+            TerrainType terrainType = GetTerrainType(height, maxHeight);
+
+            switch (terrainType)
             {
-                red = 0;
-                green = 0;
-                blue = 180 + (int)((height / (maxHeight * 0.05)) * 75); // Darker blue in deeper water
-            }
-            else if (height < maxHeight * 0.15) // Coastal Water (Medium Blue)
-            {
-                red = 0;
-                green = (int)((height / (maxHeight * 0.2)) * 100);
-                blue = 255;
-            }
-            else if (height < maxHeight * 0.4) // Grassland (Green Gradient)
-            {
-                red = 0;
-                green = 150 + ((height - (int)(maxHeight * 0.2)) * 3);
-                blue = 0;
-            }
-            else if (height < maxHeight * 0.7) // Highlands (Brown Gradient)
-            {
-                red = 139 + ((height - (int)(maxHeight * 0.4)) * 3);
-                green = 69 + ((height - (int)(maxHeight * 0.4)) * 2);
-                blue = 19;
-            }
-            else // Mountains (Gray Gradient)
-            {
-                red = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
-                green = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
-                blue = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
+                case TerrainType.Water:
+                    red = 0;
+                    green = 0;
+                    blue = 180 + (int)((height / (maxHeight * 0.05)) * 75);
+                    break;
+                case TerrainType.Grassland:
+                    red = 0;
+                    green = 150 + ((height - (int)(maxHeight * 0.2)) * 3);
+                    blue = 0;
+                    break;
+                case TerrainType.Highlands:
+                    red = 139 + ((height - (int)(maxHeight * 0.4)) * 3);
+                    green = 69 + ((height - (int)(maxHeight * 0.4)) * 2);
+                    blue = 19;
+                    break;
+                case TerrainType.Mountains:
+                    red = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
+                    green = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
+                    blue = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
+                    break;
+                default:
+                    red = green = blue = 0;
+                    break;
             }
 
             return Color.FromArgb(255,

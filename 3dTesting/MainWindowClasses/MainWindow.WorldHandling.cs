@@ -22,8 +22,10 @@ namespace _3dTesting.MainWindowClasses
 
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world,ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
-            var activeWorld = Common3dObjectHelpers.DeepCopy3dObjects(world.WorldInhabitants.Cast<_3dObject>().ToList());
-            var particleObjectList = new List<_3dObject>();
+            var activeWorld = Common3dObjectHelpers.DeepCopy3dObjects(
+                world.WorldInhabitants.Cast<_3dObject>()
+                .Where(inhabitant => inhabitant.CheckInhabitantVisibility())
+                .ToList()); var particleObjectList = new List<_3dObject>();
             var renderedList = new List<_3dObject>();
             DebugMessage = string.Empty;
 

@@ -27,6 +27,11 @@ namespace _3dTesting._3dRotation
             {
                 if (obj == null || !obj.CheckInhabitantVisibility()) continue;
 
+                if (obj.ObjectName == "Tree")
+                {
+                    var test = "";
+                }
+
                 if (!ObjectPlacementHelpers.TryGetRenderPosition(obj, screenCenterX, screenCenterY, out double screenX, out double screenY, out double screenZ))
                     continue;
 
@@ -47,12 +52,13 @@ namespace _3dTesting._3dRotation
                 {
                     var crashBox2d = ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ);
                     screenCoordinates.AddRange(crashBox2d);
-                    continue; // Crashboxes will be readied for rendring in a separate call, exit
                 }
-
-                //Standard 3d Rendring
-                var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
-                screenCoordinates.AddRange(projected);
+                else
+                {
+                    //Standard 3d Rendring
+                    var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
+                    screenCoordinates.AddRange(projected);
+                }
             }
 
             return screenCoordinates;
