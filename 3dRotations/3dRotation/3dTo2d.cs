@@ -27,11 +27,6 @@ namespace _3dTesting._3dRotation
             {
                 if (obj == null || !obj.CheckInhabitantVisibility()) continue;
 
-                if (obj.ObjectName == "Tree")
-                {
-                    var test = "";
-                }
-
                 if (!ObjectPlacementHelpers.TryGetRenderPosition(obj, screenCenterX, screenCenterY, out double screenX, out double screenY, out double screenZ))
                     continue;
 

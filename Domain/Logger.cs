@@ -7,9 +7,9 @@ using System.Linq;
 public static class Logger
 {
     public static bool EnableFileLogging = false;
-    private static readonly string LogFilePath = @"C:\Temp\CrashDetectionLog.txt";
+    private static readonly string LogFilePath = @"C:\Temp\OmegaStrainLogging.txt";
 
-    public static int MaxLogLines = 2000;
+    public static int MaxLogLines = 5000;
     private static readonly List<string> _logBuffer = new();
     private static readonly object _lock = new();
     private static readonly int _flushThreshold = 100;

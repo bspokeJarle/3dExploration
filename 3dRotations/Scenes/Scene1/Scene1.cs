@@ -7,6 +7,7 @@ using _3dRotations.Helpers;
 using Domain;
 using System.Collections.Generic;
 using System.Diagnostics;
+using _3dTesting.Helpers;
 
 namespace _3dRotations.Scene.Scene1
 {
@@ -18,7 +19,7 @@ namespace _3dRotations.Scene.Scene1
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
-            Surface.Create2DMap(50000,25000);
+            Surface.Create2DMap(30000,15000);
 
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -86,8 +87,10 @@ namespace _3dRotations.Scene.Scene1
                 //The tree don't need a world position, it's a surface based object
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tree.SurfaceBasedId = Surface.Global2DMap[treePlacement.y, treePlacement.x].mapId;
+                Surface.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
+
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tree.ObjectOffsets = new Vector3 { x = 75, y = 425, z = 300 };
+                tree.ObjectOffsets = new Vector3 { x = 75, y = 430, z = 300 };
                 //Crashbox offsets for Tree, counteract the object offsets
                 tree.CrashboxOffsets = new Vector3 { };
                 tree.ObjectName = "Tree";
@@ -108,6 +111,8 @@ namespace _3dRotations.Scene.Scene1
                 house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 //Find the surface based id for the tree
                 house.SurfaceBasedId = Surface.Global2DMap[housePlacement.y, housePlacement.x].mapId;
+                Surface.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
+
                 house.ObjectOffsets = new Vector3 { x = 75, y = 450, z = 300 };
                 //TODO need to find the right offsets for house
                 house.CrashboxOffsets = new Vector3 { };

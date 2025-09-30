@@ -4,7 +4,7 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <RootNamespace>_3dTesting</RootNamespace>
     <UseWPF>true</UseWPF>
-    <AssemblyName>3dTesting</AssemblyName>
+    <AssemblyName>TheOmegaStrain</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>

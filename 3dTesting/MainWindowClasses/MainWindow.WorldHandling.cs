@@ -20,16 +20,37 @@ namespace _3dTesting.MainWindowClasses
         public bool FadeOutWorld { get; set; } = false;
         public bool FadeInWorld { get; set; } = false;
 
+        private readonly object _lock = new object();  // Lock object for thread safety
+
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world,ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
-            var activeWorld = Common3dObjectHelpers.DeepCopy3dObjects(
-                world.WorldInhabitants.Cast<_3dObject>()
-                .Where(inhabitant => inhabitant.CheckInhabitantVisibility())
-                .ToList()); var particleObjectList = new List<_3dObject>();
+            var deepCopiedWorld = new List<_3dObject>();
+            var activeWorld = new List<_3dObject>();
+            lock (_lock)
+            {
+                // Filter and cast the world inhabitants to _3dObject, then snapshot them
+                activeWorld = world.WorldInhabitants
+                    .Where(inhabitant =>
+                    {
+                        // Filter only the objects that are of type _3dObject and visible
+                        if (inhabitant is _3dObject concreteInhabitant)
+                        {
+                            return concreteInhabitant.CheckInhabitantVisibility(); // Apply the visibility check
+                        }
+                        return false; // If not of type _3dObject, exclude
+                    })
+                    .Cast<_3dObject>() // Cast to _3dObject to safely use _3dObject methods
+                    .ToList(); // Create a snapshot (materialized list) of the filtered objects
+
+                // Now perform the deep copy on the snapshot of visible objects
+                deepCopiedWorld = Common3dObjectHelpers.DeepCopy3dObjects(activeWorld);
+            }
+
+            var particleObjectList = new List<_3dObject>();
             var renderedList = new List<_3dObject>();
             DebugMessage = string.Empty;
 
-            foreach (var inhabitant in activeWorld)
+            foreach (var inhabitant in deepCopiedWorld)
             {
                 if (!inhabitant.CheckInhabitantVisibility()) continue;
 

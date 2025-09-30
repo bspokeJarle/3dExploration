@@ -1,12 +1,8 @@
 ﻿using _3dRotations.Helpers;
-using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
 using Domain;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel.Design;
-using System.Diagnostics;
-using System.Linq;
 using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
 
@@ -17,11 +13,12 @@ namespace _3dRotations.World.Objects
     {
         public Vector3 GlobalMapPosition { get; set; } = new Vector3 { x = 95100, y = 0, z = 95200 };
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = 0, y = 0, z = 0 };
-        public SurfaceData[,]? Global2DMap { get; set; } = new SurfaceData[globalMapSize, globalMapSize]; 
+        public SurfaceData[,]? Global2DMap { get; set; } = new SurfaceData[globalMapSize, globalMapSize];
         public BitmapSource? GlobalMapBitmap { get; set; }
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
         public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();
 
+        const bool debugSurfaceBasedObjects = false; // Set to true to debug surface based objects
         const int surfaceWidth = 1350;
         const int globalMapSize = 2500+(surfaceWidth/tileSize);
         const int viewPortSize = surfaceWidth / tileSize;
@@ -70,6 +67,13 @@ namespace _3dRotations.World.Objects
 
                     var color1 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, maxHeight);
                     var color2 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, maxHeight);
+
+                    if (currentTile.hasLandbasedObject && debugSurfaceBasedObjects)
+                    {
+                        //Just for debugging, tiles with trees or houses need a different color
+                        color1 = "FF0000"; // Red for land-based tiles
+                        color2 = "FF0000"; // Red for land-based tiles
+                    }                    
 
                     // Create SurfaceCrashbox directly here if needed
                     if (currentTile.crashBox != null)
