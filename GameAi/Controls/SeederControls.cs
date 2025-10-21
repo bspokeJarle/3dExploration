@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Domain._3dSpecificsImplementations;
 
 namespace GameAiAndControls.Controls
 {
@@ -16,12 +17,16 @@ namespace GameAiAndControls.Controls
         public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         private float Yrotation = 0;
-        //private float Xrotation = 0;
         private float Xrotation = 90;
         private float Zrotation = 0;
         
         private DateTime lastRelease = DateTime.Now;
         private readonly long releaseInterval = 10000000 * 10;
+
+        private bool _syncInitialized = false;
+        private float _syncY = 0;
+        //Factor to stay in sync with surface movement
+        private float _syncFactor = 2.5f;
 
         public I3dObject MoveObject(I3dObject theObject)
         {
@@ -38,9 +43,28 @@ namespace GameAiAndControls.Controls
                 ParentObject.Particles.MoveParticles();
             }
             //For now, just rotate the object at a fixed speed
-            Zrotation += 2;
+            //Zrotation += 2;
             //Xrotation += 2;
+            SyncMovement(theObject);
             return theObject;
+        }
+
+        public void SyncMovement(I3dObject theObject)
+        {
+            if (!_syncInitialized)
+            {               
+                _syncInitialized = true;
+                _syncY = theObject.ObjectOffsets.y;
+            }
+
+            theObject.ObjectOffsets = new Vector3()
+            {
+                x = theObject.ObjectOffsets.x,
+                y = (theObject.ParentSurface.GlobalMapPosition.y * _syncFactor) + _syncY,
+                z = theObject.ObjectOffsets.z
+            };
+
+            Logger.Log($"Seeder Y position: {theObject.ObjectOffsets.y} surface at {theObject.ParentSurface.GlobalMapPosition.y}");
         }
 
         public void ReleaseParticles()

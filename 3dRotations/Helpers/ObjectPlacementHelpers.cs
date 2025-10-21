@@ -56,8 +56,8 @@ namespace _3dTesting.Helpers
             }
             else
             {
-                x = screenCenterX + localWorldPosition.x + obj.ObjectOffsets.x;
-                y = screenCenterY + localWorldPosition.y + obj.ObjectOffsets.y;
+                x = screenCenterX - localWorldPosition.x + obj.ObjectOffsets.x;
+                y = screenCenterY - localWorldPosition.y + obj.ObjectOffsets.y;
                 z = localWorldPosition.z + obj.ObjectOffsets.z;
             }
 

@@ -219,7 +219,7 @@ namespace GameAiAndControls.Controls
 
                         if (landingSpeed > 5f)
                         {
-                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 4);
+                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 5);
                         }
                     }
                 }
