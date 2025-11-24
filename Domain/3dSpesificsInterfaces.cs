@@ -1,10 +1,9 @@
-using Gma.System.MouseKeyHook;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Windows.Documents;
 using System.Windows.Media.Imaging;
+using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 using static Domain._3dSpecificsImplementations;
+
 
 namespace Domain
 {
@@ -93,7 +92,8 @@ namespace Domain
         public I3dObject MoveObject(I3dObject theObject);
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
-        public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
         public IPhysics Physics { get; set; }
         public void Dispose();
     }
@@ -111,6 +111,7 @@ namespace Domain
         public IVector3? Rotation { get; set; }
         public IObjectMovement? Movement { get; set; }
         public IParticles? Particles { get; set; }
+        public IWeapon? WeaponSystems { get; set; }
         public List<List<IVector3>> CrashBoxes { get; set; }
         public IImpactStatus? ImpactStatus { get; set; }
         public int? Mass { get; set; }
@@ -151,6 +152,26 @@ namespace Domain
         public float y { get; set; }
         public float z { get; set; }
     }
+
+    public interface IWeapon
+    {
+        public IWeapon FireWeapon(IVector3 Trajectory, IVector3 StartPosition, IVector3 WorldPosition, WeaponType weaponType, I3dObject parentShip, int tilt);
+        public IObjectMovement ParentShip { get; set; }
+        public void MoveWeapon();
+        public IEnumerable<I3dObject> Get3DObjects();
+        public List<List<IVector3>> GetCrashBoxes();
+
+        public List<IActiveWeapon> ActiveWeapons { get; set; }
+    }
+    public interface IActiveWeapon  
+    {
+        public I3dObject WeaponObject { get; set; }
+        public DateTime FiredTime { get; set; }
+        public IVector3 Velocity { get; set; }
+        public IVector3 Acceleration { get; set; }
+        public IImpactStatus? ImpactStatus { get; set; }
+    }
+
     public interface IParticles
     {
         public IObjectMovement ParentShip { get; set; }

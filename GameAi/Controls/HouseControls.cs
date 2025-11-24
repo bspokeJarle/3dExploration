@@ -38,7 +38,7 @@ namespace GameAiAndControls.Controls
         {
         }
 
-        public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
         }
 
@@ -47,5 +47,9 @@ namespace GameAiAndControls.Controls
             throw new NotImplementedException();
         }
 
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

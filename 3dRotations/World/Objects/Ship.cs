@@ -1,10 +1,7 @@
-﻿using _3dTesting._3dWorld;
-using _3dTesting.Helpers;
+﻿using _3dTesting.Helpers;
 using Domain;
-using GameAiAndControls.Ai;
 using GameAiAndControls.Controls;
 using System.Collections.Generic;
-using System.Net.NetworkInformation;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.World.Objects
@@ -27,24 +24,28 @@ namespace _3dRotations.World.Objects
             var crashBoxes = new List<List<IVector3>>();
             if (shipCrashBox != null) crashBoxes.AddRange(shipCrashBox);
             if (topCannonCrashBox != null) crashBoxes.AddRange(topCannonCrashBox);
+            var topCannonDirectionGuide = CannonDirectionGuide();
+
 
             // Add orb as an inhabitant
             var ship = new _3dObject();
-            if (upperTriangles==null||lowerTriangles==null||rearTriangles==null) return ship;
-            ship.ObjectParts.Add(new _3dObjectPart { PartName = "UpperPart", Triangles = upperTriangles, IsVisible=true });
+            if (upperTriangles == null || lowerTriangles == null || rearTriangles == null) return ship;
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "UpperPart", Triangles = upperTriangles, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "LowerPart", Triangles = lowerTriangles, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "RearPart", Triangles = rearTriangles, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotor", Triangles = jetMotorTriangle!, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotorDirectionGuide", Triangles = jetMotorDirectionGuide!, IsVisible = false });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "TopCannon", Triangles = cannon!, IsVisible = true });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "WeaponDirectionGuide", Triangles = topCannonDirectionGuide!, IsVisible = false });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "WeaponStartGuide", Triangles = CannonStartGuide()!, IsVisible = false });
 
             ship.ObjectOffsets = new Vector3 { };
             ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
-            ship.Movement = new ShipControls();    
+            ship.Movement = new ShipControls();
             ship.Particles = new ParticlesAI();
             ship.ParentSurface = parentSurface;
             if (shipCrashBox != null) ship.CrashBoxes = crashBoxes;
-            return ship; 
+            return ship;
         }
 
         public static List<List<IVector3>>? ShipCrashBoxes()
@@ -192,7 +193,7 @@ namespace _3dRotations.World.Objects
             var upper = new List<ITriangleMeshWithColor>
             {
                 //Three upper triangles
-                new TriangleMeshWithColor { Color = "007700", vert1 = { x = -50, y = -50, z = 0 }, vert2 = { x = 0, y = 50, z = 25 }, vert3 = { x = -65, y = 45, z = 0 } },                
+                new TriangleMeshWithColor { Color = "007700", vert1 = { x = -50, y = -50, z = 0 }, vert2 = { x = 0, y = 50, z = 25 }, vert3 = { x = -65, y = 45, z = 0 } },
                 new TriangleMeshWithColor { Color = "00ff00", vert1 = { x = 0, y = 50, z = 25 }, vert2 = { x = -50, y = -50, z = 0 }, vert3 = { x = 50, y = -50, z = 0 } },
                 new TriangleMeshWithColor { Color = "007700", vert1 = { x = 0, y = 50, z = 25 }, vert2 =  { x = 50, y = -50, z = 0 } , vert3 = { x = 65, y = 45, z = 0 } },
             };
@@ -203,12 +204,12 @@ namespace _3dRotations.World.Objects
             var lower = new List<ITriangleMeshWithColor>
             {
                 //Six bottom triangles
-                new TriangleMeshWithColor { Color = "007799", vert1 = { x = -65, y = 45, z = 0 } , vert2 = { x = 0, y = 50, z = -25 }, vert3 = { x = -50, y = -50, z = 0 } },                
+                new TriangleMeshWithColor { Color = "007799", vert1 = { x = -65, y = 45, z = 0 } , vert2 = { x = 0, y = 50, z = -25 }, vert3 = { x = -50, y = -50, z = 0 } },
                 new TriangleMeshWithColor { Color = "007799", vert1 = { x = 50, y = -50, z = 0 }, vert2 = { x = 0, y = 50, z = -25 } , vert3 = { x = 65, y = 45, z = 0 } },
 
                 new TriangleMeshWithColor { Color = "00ff99", vert1 = { x = -50, y = -50, z = 0 } , vert2 = { x = -25, y = 0, z = -12 } , vert3 = { x = 0, y = -50, z = 0 } },
                 new TriangleMeshWithColor { Color = "00ff99", vert1 = { x = 0, y = -50, z = 0 } , vert2 = { x = 25, y = 0, z = -12 } , vert3 = { x = 50, y = -50, z = 0 } },
-                new TriangleMeshWithColor { Color = "00ff99", vert1 = { x = -25, y = 0, z = -12 } , vert2 = { x = 25, y = 0, z = -12 } , vert3 = { x = 0, y = -50, z = 0 }},                
+                new TriangleMeshWithColor { Color = "00ff99", vert1 = { x = -25, y = 0, z = -12 } , vert2 = { x = 25, y = 0, z = -12 } , vert3 = { x = 0, y = -50, z = 0 }},
             };
             return lower;
         }
@@ -228,6 +229,48 @@ namespace _3dRotations.World.Objects
                 new TriangleMeshWithColor { Color = "ffffff", vert1 = { x = 12, y = 0, z = -100 }, vert2 = { x = -12, y = 0, z = -100 }, vert3 = { x = 0, y = 50, z = -100 } },
             };
             return jet;
+        }
+
+        public static List<ITriangleMeshWithColor>? CannonStartGuide()
+        {
+            // 30 units *inside* the cannon tip: front (muzzle) is at y = -45 → -45 + 30 = -15
+            const float yInside = -15f;   // inside the barrel (toward +Y)
+            const float widthX = 8f;     // narrower than muzzle to stay well inside
+            const float zBase = 28f;    // cannon height
+            const float zTipUp = 50f;    // vertical tip for visibility
+
+            return new List<ITriangleMeshWithColor>
+            {
+                new TriangleMeshWithColor
+                {
+                    Color = "ffffff",
+                    // Flat, far-style guide: all verts share same Y (yInside)
+                    vert1 = { x =  widthX, y = yInside, z =  zBase  },
+                    vert2 = { x = -widthX, y = yInside, z =  zBase  },
+                    vert3 = { x =       0, y = yInside, z =  zTipUp }
+                }
+            };
+        }
+
+        public static List<ITriangleMeshWithColor>? CannonDirectionGuide()
+        {
+            const float yFar = -200f; // far ahead of the muzzle along -Y
+            const float widthX = 12f;   // half-width in X
+            const float zBase = 28f;   // cannon height
+            const float zTipUp = 58f;   // tip offset in Z to form a tall triangle
+
+            var guide = new List<ITriangleMeshWithColor>
+            {
+                new TriangleMeshWithColor
+                {
+                    Color = "ffffff",
+                    // Base edge (left→right) and an upward tip in Z, all at the same far Y
+                    vert1 = { x =  widthX, y = yFar, z =  zBase     },
+                    vert2 = { x = -widthX, y = yFar, z =  zBase     },
+                    vert3 = { x =       0, y = yFar, z =  zTipUp    }
+                }
+            };
+            return guide;
         }
 
         public static List<ITriangleMeshWithColor>? RearTriangles()

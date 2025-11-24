@@ -213,12 +213,15 @@ namespace _3dTesting
                 stopwatch.Restart();
             }
 
-            //Show health etc for main ship
-            GameHelpers.UpdateShipStatistics(healthRectangle, (Domain._3dSpecificsImplementations._3dObject)world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Ship"));
+            if (!isFading)
+            {
+                //Show health etc for main ship
+                GameHelpers.UpdateShipStatistics(healthRectangle, (Domain._3dSpecificsImplementations._3dObject)world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Ship"));
 
-            GameHelpers.UpdateMapOverlay(mapOverlay, surfaceMapBitmap,
-                Convert.ToInt32(world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapPosition.x),
-                Convert.ToInt32(world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapPosition.z));
+                GameHelpers.UpdateMapOverlay(mapOverlay, surfaceMapBitmap,
+                    Convert.ToInt32(world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapPosition.x),
+                    Convert.ToInt32(world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapPosition.z));
+            }
 
             _ = Task.Run(() =>
             {

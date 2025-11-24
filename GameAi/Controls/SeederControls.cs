@@ -27,6 +27,7 @@ namespace GameAiAndControls.Controls
         private float _syncY = 0;
         //Factor to stay in sync with surface movement
         private float _syncFactor = 2.5f;
+        private bool enableLogging = false;
 
         public I3dObject MoveObject(I3dObject theObject)
         {
@@ -63,8 +64,10 @@ namespace GameAiAndControls.Controls
                 y = (theObject.ParentSurface.GlobalMapPosition.y * _syncFactor) + _syncY,
                 z = theObject.ObjectOffsets.z
             };
-
-            Logger.Log($"Seeder Y position: {theObject.ObjectOffsets.y} surface at {theObject.ParentSurface.GlobalMapPosition.y}");
+            if (enableLogging)
+            {
+                Logger.Log($"Seeder Y position: {theObject.ObjectOffsets.y} surface at {theObject.ParentSurface.GlobalMapPosition.y}");
+            }
         }
 
         public void ReleaseParticles()
@@ -73,7 +76,7 @@ namespace GameAiAndControls.Controls
             ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, 3, null);
         }
 
-        public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
@@ -84,5 +87,9 @@ namespace GameAiAndControls.Controls
             throw new NotImplementedException();
         }
 
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        {
+            //No implementation needed
+        }
     }
 }

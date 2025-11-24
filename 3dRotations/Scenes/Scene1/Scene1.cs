@@ -8,6 +8,7 @@ using Domain;
 using System.Collections.Generic;
 using System.Diagnostics;
 using _3dTesting.Helpers;
+using _3dRotations.World.Objects;
 
 namespace _3dRotations.Scene.Scene1
 {
@@ -20,12 +21,13 @@ namespace _3dRotations.Scene.Scene1
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
             Surface.Create2DMap(30000,15000);
-
+            var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
             ship.ObjectName = "Ship";
             ship.ImpactStatus = new ImpactStatus { };
             ship.CrashBoxDebugMode = false;
+            ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
            
             var seeder = Seeder.CreateSeeder(Surface);

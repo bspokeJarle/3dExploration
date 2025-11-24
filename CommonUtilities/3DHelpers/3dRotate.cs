@@ -1,12 +1,10 @@
 ﻿using Domain;
-using System;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using static Domain._3dSpecificsImplementations;
 
-namespace _3dTesting._3dRotation
+namespace CommonUtilities._3DHelpers
 {
-    public class _3dRotate
+    public class _3dRotationCommon
     {
         private static readonly System.Numerics.Vector3 LightVector = new System.Numerics.Vector3(0, 0, 250);
 

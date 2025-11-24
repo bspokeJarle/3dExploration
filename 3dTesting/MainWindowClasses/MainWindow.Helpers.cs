@@ -13,7 +13,7 @@ namespace _3dTesting.Helpers
 {
     public static class GameHelpers
     {
-        private static _3dRotate Rotate3d = new _3dRotate();
+        private static _3dRotationCommon Rotate3d = new _3dRotationCommon();
 
         /// <summary>
         /// Applies the rotation offset to prevent flipping when rotating.

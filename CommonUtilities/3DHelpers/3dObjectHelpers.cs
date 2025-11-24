@@ -175,6 +175,7 @@ namespace CommonUtilities._3DHelpers
                 RotationOffsetZ = original.RotationOffsetZ,
                 SurfaceBasedId = original.SurfaceBasedId,
                 CrashBoxDebugMode = original.CrashBoxDebugMode,
+                WeaponSystems = original.WeaponSystems,
                 CrashBoxes = new List<List<IVector3>>() // tom liste – eksploderende objekter trenger ikke kollisjon
             };
 

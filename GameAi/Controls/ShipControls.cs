@@ -5,6 +5,7 @@ using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using static Domain._3dSpecificsImplementations;
 using GameAiAndControls.Input;
+using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 
 namespace GameAiAndControls.Controls
 {
@@ -51,6 +52,9 @@ namespace GameAiAndControls.Controls
         public I3dObject ParentObject { get; set; }
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColor? WeaponStartCoordinates { get; set; }
+        public ITriangleMeshWithColor? WeaponGuideCoordinates { get; set; }
+
 
         public float Thrust { get; set; } = 0;
         public bool ThrustOn { get; set; } = false;
@@ -70,7 +74,7 @@ namespace GameAiAndControls.Controls
             hook.MouseUp += GlobalHookMouseUp;
         }
 
-        public void SetStartGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
@@ -83,6 +87,7 @@ namespace GameAiAndControls.Controls
             if (e.KeyCode == Keys.Up) tilt += RotationStep;
             if (e.KeyCode == Keys.Down) tilt -= RotationStep;
             if (e.KeyCode == Keys.Space) ThrustOn = true;
+            if (e.KeyCode == Keys.RShiftKey) FireWeapon();
         }
 
         private void GlobalHookKeyUp(object sender, KeyEventArgs e)
@@ -117,6 +122,19 @@ namespace GameAiAndControls.Controls
 
         private void GlobalHookMouseDown(object sender, MouseEventArgs e) => ThrustOn = true;
         private void GlobalHookMouseUp(object sender, MouseEventArgs e) { ThrustOn = false; Thrust = 0; thrustEffect = 0f; verticalLiftFactor = 0f; }
+
+        private void FireWeapon()
+        {
+            //Fire weapon from ship
+            var rot = new Vector3
+            {
+                x = rotationX + tilt,
+                y = rotationY,
+                z = rotationZ
+            };
+            ParentObject.Rotation = rot;
+            ParentObject.WeaponSystems?.FireWeapon(WeaponGuideCoordinates.vert1,WeaponStartCoordinates.vert1,ParentObject.ParentSurface.GlobalMapPosition,WeaponType.Lazer,ParentObject, tilt);
+        }            
 
         private void IncreaseThrustAndRelease()
         {
@@ -219,14 +237,15 @@ namespace GameAiAndControls.Controls
 
                         if (landingSpeed > 5f)
                         {
-                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 5);
+                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
                         }
                     }
                 }
 
                 theObject.ImpactStatus.HasCrashed = false;
             }
-
+            //The weapon needs to move as well
+            if (theObject.WeaponSystems!=null) theObject.WeaponSystems.MoveWeapon();
             return theObject;
         }
 
@@ -360,6 +379,12 @@ namespace GameAiAndControls.Controls
             hook.MouseMove -= GlobalHookMouseMovement;
             hook.MouseDown -= GlobalHookMouseDown;
             hook.MouseUp -= GlobalHookMouseUp;
+        }
+
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        {
+            if (StartCoord != null) WeaponStartCoordinates = StartCoord;
+            if (GuideCoord != null) WeaponGuideCoordinates = GuideCoord;
         }
     }
 }

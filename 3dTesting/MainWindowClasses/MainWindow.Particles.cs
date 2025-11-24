@@ -1,5 +1,6 @@
 ﻿using _3dTesting._3dRotation;
 using _3dTesting._3dWorld;
+using CommonUtilities._3DHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ namespace _3dTesting.MainWindowClasses
 {
     public class ParticleManager
     {
-        private readonly _3dRotate Rotate3d = new();
+        private readonly _3dRotationCommon Rotate3d = new();
 
         public void HandleParticles(_3dObject inhabitant, List<_3dObject> particleObjectList)
         {

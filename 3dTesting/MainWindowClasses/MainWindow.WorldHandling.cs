@@ -13,8 +13,9 @@ namespace _3dTesting.MainWindowClasses
     public class GameWorldManager
     {
         private readonly _3dTo2d From3dTo2d = new();
-        private readonly _3dRotate Rotate3d = new();
+        private readonly _3dRotationCommon Rotate3d = new();
         private readonly ParticleManager particleManager = new();
+        private readonly WeaponsManager weaponsManager = new();
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
         public bool FadeOutWorld { get; set; } = false;
@@ -22,7 +23,7 @@ namespace _3dTesting.MainWindowClasses
 
         private readonly object _lock = new object();  // Lock object for thread safety
 
-        public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world,ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
+        public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
             var deepCopiedWorld = new List<_3dObject>();
             var activeWorld = new List<_3dObject>();
@@ -47,6 +48,7 @@ namespace _3dTesting.MainWindowClasses
             }
 
             var particleObjectList = new List<_3dObject>();
+            var weaponObjectList = new List<_3dObject>();
             var renderedList = new List<_3dObject>();
             DebugMessage = string.Empty;
 
@@ -77,9 +79,10 @@ namespace _3dTesting.MainWindowClasses
                     DebugMessage += $" Surface: Y Pos: {inhabitant.ObjectOffsets.y}";
 
                 if (inhabitant.ObjectName == "Ship")
-                    DebugMessage += $" Ship: Y Pos: {inhabitant.ObjectOffsets.y + 300} Z Rotation: { inhabitant.Rotation.z }";
+                    DebugMessage += $" Ship: Y Pos: {inhabitant.ObjectOffsets.y + 300} Z Rotation: {inhabitant.Rotation.z}";
 
                 particleManager.HandleParticles(inhabitant, particleObjectList);
+                weaponsManager.HandleWeapons(inhabitant, weaponObjectList);
                 renderedList.Add(inhabitant);
             }
 
@@ -88,14 +91,19 @@ namespace _3dTesting.MainWindowClasses
                 renderedList.AddRange(particleObjectList);
                 DebugMessage += $" Number of Particles on screen {particleObjectList.Count}";
             }
+            if (weaponObjectList.Count > 0)
+            {
+                renderedList.AddRange(weaponObjectList);
+                DebugMessage += $" Number of Weapons on screen {weaponObjectList.Count}";
+            }
 
             var ship = activeWorld.FirstOrDefault(x => x.ObjectName == "Ship");
-            if (ship != null && ship.ImpactStatus.ObjectHealth<=0 && !FadeOutWorld)
+            if (ship != null && ship.ImpactStatus.ObjectHealth <= 0 && !FadeOutWorld)
             {
                 //When the ship health is 0, start the fade out effect (explosion will also be triggered)
                 FadeOutWorld = true;
             }
-            if (ship!=null && ship.ImpactStatus.HasExploded)
+            if (ship != null && ship.ImpactStatus.HasExploded)
             {
                 //When the ship has exploded, start the fade in effect, should take longer than fade out
                 FadeOutWorld = false;
@@ -111,7 +119,7 @@ namespace _3dTesting.MainWindowClasses
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, false);
             var crashBoxDebuggedObjects = renderedList.Where(x => x.CrashBoxDebugMode == true).ToList();
             //Check if there are any crashboxes to debug
-            if (crashBoxDebuggedObjects.Count>0) crashBoxCoordinates = From3dTo2d.ConvertTo2dFromObjects(crashBoxDebuggedObjects, true);
+            if (crashBoxDebuggedObjects.Count > 0) crashBoxCoordinates = From3dTo2d.ConvertTo2dFromObjects(crashBoxDebuggedObjects, true);
             else crashBoxCoordinates = new List<_2dTriangleMesh>();
             CrashDetection.HandleCrashboxes(renderedList);
             return projectedCoordinates;
@@ -157,12 +165,21 @@ namespace _3dTesting.MainWindowClasses
             {
                 case "SeederParticlesStartGuide":
                 case "JetMotor":
-                    inhabitant.Movement.SetStartGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    inhabitant.Movement.SetParticleGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
                     break;
                 case "SeederParticlesGuide":
+                case "WeaponDirectionGuide":
+                    inhabitant.Movement.SetWeaponGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
+                    break;
+
+                case "WeaponStartGuide":
+
+                    inhabitant.Movement.SetWeaponGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    break;
+
                 case "JetMotorDirectionGuide":
                     if (enableLocalLogging) Logger.Log($"MainLoop Set Guide after rotation: {rotatedMesh.First().vert1.x + ", " + rotatedMesh.First().vert1.y + ", " + rotatedMesh.First().vert1.z} Inhabitant:{inhabitant.ObjectName} ");
-                    inhabitant.Movement.SetStartGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
+                    inhabitant.Movement.SetParticleGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
                     break;
             }
         }
