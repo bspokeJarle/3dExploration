@@ -12,6 +12,9 @@
     <ProjectReference Include="..\GameAudio\GameAudio.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="GameObjects\seeder_ball.stl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\OmegaStrain_Explosion_Main.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
