@@ -21,7 +21,12 @@ namespace GameAudioInstances
 
             var json = File.ReadAllText(jsonPath);
 
-            var root = JsonSerializer.Deserialize<SoundConfigRoot>(json)
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
+
+            var root = JsonSerializer.Deserialize<SoundConfigRoot>(json, options)
                        ?? throw new InvalidOperationException("Failed to deserialize sounds.json");
 
             _byId = new Dictionary<string, SoundDefinition>(StringComparer.OrdinalIgnoreCase);

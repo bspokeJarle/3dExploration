@@ -14,7 +14,7 @@ namespace _3dRotations.World.Objects
     {
         public static _3dObject CreateSeeder(ISurface parentSurface)
         {
-            var modelReader = new STLReader("C:\\Users\\jarle\\Documents\\Privat\\Bspoke prosjekter\\3dProsjekt\\3dProsjekt\\3dTesting\\3d objects\\div\\seeder_ball.stl");
+            var modelReader = new STLReader("GameObjects\\seeder_ball.stl");
             var seederTriangles = _3dObjectHelpers.ConvertToTrianglesWithColor(modelReader.ReadFile().ToList(), "FF6644");
             var whiteTriangles = new List<ITriangleMeshWithColor>();
             var blueTriangles = new List<ITriangleMeshWithColor>();
