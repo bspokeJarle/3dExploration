@@ -30,7 +30,7 @@ namespace _3dRotations.Scene.Scene1
             ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
            
-            var seeder = Seeder.CreateSeeder(Surface);
+            /*var seeder = Seeder.CreateSeeder(Surface);
             //Initialize the seeder rotation
             seeder.Rotation = new Vector3 { };
             seeder.WorldPosition = new Vector3 { x = 95700, y = 0, z = 92000 };
@@ -58,7 +58,7 @@ namespace _3dRotations.Scene.Scene1
             seeder3.CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 };
             seeder3.ObjectName = "Seeder";
             seeder3.Movement = new SeederControls();
-            world.WorldInhabitants.Add(seeder3);    
+            world.WorldInhabitants.Add(seeder3);*/
 
             //Get the surface viewport based on the global Map Position
             //Important: In a Scene, Surface should be amongst the first objects added to the world

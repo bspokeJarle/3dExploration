@@ -3,6 +3,7 @@ using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
 using Domain;
+using GameAudioInstances;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -16,6 +17,9 @@ namespace _3dTesting.MainWindowClasses
         private readonly _3dRotationCommon Rotate3d = new();
         private readonly ParticleManager particleManager = new();
         private readonly WeaponsManager weaponsManager = new();
+        IAudioPlayer audioPlayer = new NAudioAudioPlayer("Soundeffects");
+        ISoundRegistry soundRegistry = new JsonSoundRegistry("Soundeffects\\sounds.json");
+
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
         public bool FadeOutWorld { get; set; } = false;
@@ -56,7 +60,7 @@ namespace _3dTesting.MainWindowClasses
             {
                 if (!inhabitant.CheckInhabitantVisibility()) continue;
 
-                inhabitant.Movement?.MoveObject(inhabitant);
+                inhabitant.Movement?.MoveObject(inhabitant, audioPlayer, soundRegistry);
                 inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
 
                 foreach (var part in inhabitant.ObjectParts)

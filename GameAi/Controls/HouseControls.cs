@@ -19,7 +19,7 @@ namespace GameAiAndControls.Controls
         private float Xrotation = 70;
         private float Zrotation = 35;
         
-        public I3dObject MoveObject(I3dObject theObject)
+        public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             //TODO: In time I want the trees to have animations on the branches, now nothing
             //Set parent object
@@ -48,6 +48,11 @@ namespace GameAiAndControls.Controls
         }
 
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             throw new NotImplementedException();
         }

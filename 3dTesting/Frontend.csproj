@@ -9,5 +9,20 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\3dRotations\3dSpesifics.csproj" />
+    <ProjectReference Include="..\GameAudio\GameAudio.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="Soundeffects\OmegaStrain_Explosion_Main.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_Laser_Main.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_Rocket_Main.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\sounds.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 </Project>

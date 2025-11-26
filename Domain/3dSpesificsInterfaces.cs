@@ -89,7 +89,8 @@ namespace Domain
 
     public interface IObjectMovement
     {
-        public I3dObject MoveObject(I3dObject theObject);
+        public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry);
+        public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry);
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);

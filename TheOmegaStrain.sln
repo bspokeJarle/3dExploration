@@ -20,6 +20,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "3DSpesificsUnitTests", "3DS
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CommonUtilities", "CommonUtilities\CommonUtilities.csproj", "{8D3F087E-742C-403A-97F2-E95BA74595D5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameAudio", "GameAudio\GameAudio.csproj", "{568C8E62-ADEF-4FDF-B7A6-27FF04A3F293}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,6 +52,10 @@ Global
 		{8D3F087E-742C-403A-97F2-E95BA74595D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8D3F087E-742C-403A-97F2-E95BA74595D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8D3F087E-742C-403A-97F2-E95BA74595D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{568C8E62-ADEF-4FDF-B7A6-27FF04A3F293}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{568C8E62-ADEF-4FDF-B7A6-27FF04A3F293}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{568C8E62-ADEF-4FDF-B7A6-27FF04A3F293}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{568C8E62-ADEF-4FDF-B7A6-27FF04A3F293}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

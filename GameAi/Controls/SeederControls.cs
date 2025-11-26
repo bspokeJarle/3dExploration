@@ -29,7 +29,7 @@ namespace GameAiAndControls.Controls
         private float _syncFactor = 2.5f;
         private bool enableLogging = false;
 
-        public I3dObject MoveObject(I3dObject theObject)
+        public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             if (lastRelease.Ticks + releaseInterval < DateTime.Now.Ticks) ReleaseParticles();
             //Set parent object
@@ -90,6 +90,11 @@ namespace GameAiAndControls.Controls
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
             //No implementation needed
+        }
+
+        public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
+        {
+            throw new NotImplementedException();
         }
     }
 }

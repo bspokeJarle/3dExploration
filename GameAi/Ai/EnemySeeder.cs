@@ -14,12 +14,17 @@ namespace GameAiAndControls.Ai
         public ITriangleMeshWithColor? GuideCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
+        public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             throw new NotImplementedException();
         }
 
-        public I3dObject MoveObject(I3dObject theObject)
+        public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             throw new NotImplementedException();
         }

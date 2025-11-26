@@ -1,11 +1,10 @@
-using Domain;
-using Gma.System.MouseKeyHook;
+﻿using Domain;
+using GameAiAndControls.Input;
 using System;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
-using static Domain._3dSpecificsImplementations;
-using GameAiAndControls.Input;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
+using static Domain._3dSpecificsImplementations;
 
 namespace GameAiAndControls.Controls
 {
@@ -29,6 +28,12 @@ namespace GameAiAndControls.Controls
 
         private const float VerticalThrustSmoothing = 0.6f;
         private const float VerticalLiftAcceleration = 0.15f;
+
+        // Audio setup (gjøres lazy via ConfigureAudio)
+        private IAudioPlayer? _audio;
+        private SoundDefinition? _rocketSound;
+        private SoundDefinition? _explosionSound;
+        private IAudioInstance? _rocketInstance;
 
         private float fallVelocity = 0f;
         private float inertiaX = 0f;
@@ -55,7 +60,6 @@ namespace GameAiAndControls.Controls
         public ITriangleMeshWithColor? WeaponStartCoordinates { get; set; }
         public ITriangleMeshWithColor? WeaponGuideCoordinates { get; set; }
 
-
         public float Thrust { get; set; } = 0;
         public bool ThrustOn { get; set; } = false;
         public IPhysics Physics { get; set; } = new Physics.Physics();
@@ -74,6 +78,20 @@ namespace GameAiAndControls.Controls
             hook.MouseUp += GlobalHookMouseUp;
         }
 
+        public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
+        {
+            // allerede konfigurert? gjør ingenting
+            if (_audio != null || _rocketSound != null || _explosionSound != null)
+                return;
+
+            if (audioPlayer == null || soundRegistry == null)
+                return;
+
+            _audio = audioPlayer;
+            _rocketSound = soundRegistry.Get("rocket_main");
+            _explosionSound = soundRegistry.Get("explosion_main");
+        }
+
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
             if (StartCoord != null) StartCoordinates = StartCoord;
@@ -86,7 +104,23 @@ namespace GameAiAndControls.Controls
             if (e.KeyCode == Keys.Right) rotationZ += RotationStep;
             if (e.KeyCode == Keys.Up) tilt += RotationStep;
             if (e.KeyCode == Keys.Down) tilt -= RotationStep;
-            if (e.KeyCode == Keys.Space) ThrustOn = true;
+
+            if (e.KeyCode == Keys.Space)
+            {
+                ThrustOn = true;
+
+                // Start rocket-loop hvis audio er konfigurert
+                if (_audio != null && _rocketSound != null)
+                {
+                    if (_rocketInstance == null || !_rocketInstance.IsPlaying)
+                    {
+                        _rocketInstance = _audio.Play(
+                            _rocketSound,
+                            AudioPlayMode.SegmentedLoop);
+                    }
+                }
+            }
+
             if (e.KeyCode == Keys.RShiftKey) FireWeapon();
         }
 
@@ -98,6 +132,13 @@ namespace GameAiAndControls.Controls
                 Thrust = 0;
                 thrustEffect = 0f;
                 verticalLiftFactor = 0f;
+
+                // Stopp rocket-loop hvis den spiller
+                if (_rocketInstance != null)
+                {
+                    _rocketInstance.Stop(playEndSegment: true);
+                    _rocketInstance = null;
+                }
             }
         }
 
@@ -121,11 +162,24 @@ namespace GameAiAndControls.Controls
         }
 
         private void GlobalHookMouseDown(object sender, MouseEventArgs e) => ThrustOn = true;
-        private void GlobalHookMouseUp(object sender, MouseEventArgs e) { ThrustOn = false; Thrust = 0; thrustEffect = 0f; verticalLiftFactor = 0f; }
+
+        private void GlobalHookMouseUp(object sender, MouseEventArgs e)
+        {
+            ThrustOn = false;
+            Thrust = 0;
+            thrustEffect = 0f;
+            verticalLiftFactor = 0f;
+
+            if (_rocketInstance != null)
+            {
+                _rocketInstance.Stop(playEndSegment: true);
+                _rocketInstance = null;
+            }
+        }
 
         private void FireWeapon()
         {
-            //Fire weapon from ship
+            // Fire weapon from ship
             var rot = new Vector3
             {
                 x = rotationX + tilt,
@@ -133,14 +187,26 @@ namespace GameAiAndControls.Controls
                 z = rotationZ
             };
             ParentObject.Rotation = rot;
-            ParentObject.WeaponSystems?.FireWeapon(WeaponGuideCoordinates.vert1,WeaponStartCoordinates.vert1,ParentObject.ParentSurface.GlobalMapPosition,WeaponType.Lazer,ParentObject, tilt);
-        }            
+            ParentObject.WeaponSystems?.FireWeapon(
+                WeaponGuideCoordinates.vert1,
+                WeaponStartCoordinates.vert1,
+                ParentObject.ParentSurface.GlobalMapPosition,
+                WeaponType.Lazer,
+                ParentObject,
+                tilt);
+        }
 
         private void IncreaseThrustAndRelease()
         {
             if (Thrust < MaxThrust) Thrust += ThrustIncreaseRate;
-             
-            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust, false);
+
+            ParentObject?.Particles?.ReleaseParticles(
+                GuideCoordinates,
+                StartCoordinates,
+                ParentObject.ParentSurface.GlobalMapPosition,
+                this,
+                (int)Thrust,
+                false);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -155,8 +221,12 @@ namespace GameAiAndControls.Controls
             return newPos;
         }
 
-        public I3dObject MoveObject(I3dObject theObject)
+        // Merk: du har endret signatur her – sørg for at IObjectMovement matcher!
+        public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            // Lazy audio-konfig – gjøres første gang MoveObject kalles
+            ConfigureAudio(audioPlayer, soundRegistry);
+
             ParentObject ??= theObject;
 
             if (!hasInitialized)
@@ -200,10 +270,10 @@ namespace GameAiAndControls.Controls
 
                 if (theObject.Particles?.Particles.Count > 0)
                     theObject.Particles.MoveParticles();
-
             }
 
-            if (!isExploding) ApplyLocalTiltToMesh(tilt, theObject);
+            if (!isExploding)
+                ApplyLocalTiltToMesh(tilt, theObject);
 
             if (theObject.Rotation != null)
             {
@@ -217,15 +287,38 @@ namespace GameAiAndControls.Controls
 
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
                 {
-                    //Release some particles at the explosion, set fixed thrust level
+                    // Stop rocket-loop før eksplosjon
+                    if (_rocketInstance != null)
+                    {
+                        _rocketInstance.Stop(playEndSegment: false);
+                        _rocketInstance = null;
+                    }
+
+                    // 🔊 Spill eksplosjon hvis audio er konfigurert
+                    if (_audio != null && _explosionSound != null)
+                    {
+                        _audio.PlayOneShot(
+                            _explosionSound,
+                            new AudioPlayOptions
+                            {
+                                VolumeOverride = 1.0f
+                            });
+                    }
+
+                    // Release some particles at the explosion, set fixed thrust level
                     Thrust = 10;
-                    ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, (int)Thrust, true);
+                    ParentObject?.Particles?.ReleaseParticles(
+                        GuideCoordinates,
+                        StartCoordinates,
+                        ParentObject.ParentSurface.GlobalMapPosition,
+                        this,
+                        (int)Thrust,
+                        true);
 
                     isExploding = true;
                     ExplosionDeltaTime = DateTime.Now;
 
                     var explodedVersion = Physics.ExplodeObject(theObject, 200f);
-
                     ParentObject = explodedVersion;
                 }
                 else
@@ -244,8 +337,11 @@ namespace GameAiAndControls.Controls
 
                 theObject.ImpactStatus.HasCrashed = false;
             }
-            //The weapon needs to move as well
-            if (theObject.WeaponSystems!=null) theObject.WeaponSystems.MoveWeapon();
+
+            // The weapon needs to move as well
+            if (theObject.WeaponSystems != null)
+                theObject.WeaponSystems.MoveWeapon();
+
             return theObject;
         }
 
