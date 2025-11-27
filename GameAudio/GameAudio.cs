@@ -84,10 +84,12 @@ namespace GameAudioInstances
 
             if (_mode == AudioPlayMode.SegmentedLoop && _loopProvider != null && playEndSegment)
             {
+                Logger.Log(@"Audio:Requested stop with EndSegment.");
                 _loopProvider.RequestStopWithEndSegment();
             }
             else
             {
+                Logger.Log(@"Audio:IsPlaying set to false.");
                 _isPlaying = false;
                 _owner.InternalStopInstance(this);
             }
@@ -141,16 +143,12 @@ namespace GameAudioInstances
             if (!System.IO.File.Exists(fullPath))
                 throw new System.IO.FileNotFoundException($"Audio file not found: {fullPath}");
 
-            // Read file – AudioFileReader gives us float samples and handles format conversion.
+            // LES FIL – AudioFileReader er både WaveStream og ISampleProvider
             var fileReader = new AudioFileReader(fullPath);
-            var source = fileReader.ToSampleProvider();
 
-            // Resample to mixer format if needed.
-            ISampleProvider sample = source;
-            if (!sample.WaveFormat.Equals(_mixer.WaveFormat))
-            {
-                sample = new WdlResamplingSampleProvider(sample, _mixer.WaveFormat.SampleRate);
-            }
+            // Normaliser til mixer-format (44100 Hz, 2 kanaler)
+            ISampleProvider source = fileReader;
+            ISampleProvider sample = NormalizeToMixerFormat(source);
 
             // Volume
             float baseVolume = definition.Settings.Volume;
@@ -162,25 +160,27 @@ namespace GameAudioInstances
                 Volume = baseVolume
             };
 
-            // Speed: currently just logical, hook to varispeed in future.
+            // Speed (logisk, brukes senere hvis du vil styre pitch)
             float speed;
             if (options?.SpeedOverride is { } speedOverride)
                 speed = speedOverride;
             else
                 speed = definition.Speed.GetRandomizedSpeed(_rng);
 
-            // Segment handling
+            // Segment-handling
             SegmentedLoopSampleProvider? loopProvider = null;
             ISampleProvider pipeline = volumeProvider;
 
             if (mode == AudioPlayMode.SegmentedLoop)
             {
                 loopProvider = new SegmentedLoopSampleProvider(
-                    volumeProvider,
+                    volumeProvider,      // det som faktisk går til mixeren
+                    fileReader,          // selve fila – for CurrentTime / seeking
                     definition.Segments,
                     _mixer.WaveFormat);
 
                 pipeline = loopProvider;
+                Logger.Log(@"Audio: Playing segmented loop.");
             }
 
             var instance = new NAudioAudioInstance(
@@ -194,9 +194,8 @@ namespace GameAudioInstances
                 speed);
 
             _instances[instance.Id] = instance;
-
             _mixer.AddMixerInput(pipeline);
-
+            Logger.Log(@"Audio: Play end of method.");
             return instance;
         }
 
@@ -224,6 +223,39 @@ namespace GameAudioInstances
             _instances.Clear();
         }
 
+        private ISampleProvider NormalizeToMixerFormat(ISampleProvider source)
+        {
+            ISampleProvider sample = source;
+
+            // 1) Kanal-konvertering (mono ↔ stereo)
+            if (sample.WaveFormat.Channels != _mixer.WaveFormat.Channels)
+            {
+                if (sample.WaveFormat.Channels == 1 && _mixer.WaveFormat.Channels == 2)
+                {
+                    // Mono -> Stereo
+                    sample = new MonoToStereoSampleProvider(sample);
+                }
+                else if (sample.WaveFormat.Channels == 2 && _mixer.WaveFormat.Channels == 1)
+                {
+                    // Stereo -> Mono
+                    sample = new StereoToMonoSampleProvider(sample);
+                }
+                else
+                {
+                    throw new NotSupportedException(
+                        $"Unsupported channel config: source={sample.WaveFormat.Channels}, mixer={_mixer.WaveFormat.Channels}");
+                }
+            }
+
+            // 2) Sample rate-konvertering
+            if (sample.WaveFormat.SampleRate != _mixer.WaveFormat.SampleRate)
+            {
+                sample = new WdlResamplingSampleProvider(sample, _mixer.WaveFormat.SampleRate);
+            }
+
+            return sample;
+        }
+
         public void Update(double deltaTimeSeconds)
         {
             // If you later need per-frame bookkeeping, you can put it here.
@@ -246,50 +278,101 @@ namespace GameAudioInstances
     /// </summary>
     internal sealed class SegmentedLoopSampleProvider : ISampleProvider
     {
-        private readonly ISampleProvider _source;
+        private readonly ISampleProvider _source;     // Normalized audio (matches mixer format)
+        private readonly AudioFileReader _file;       // Underlying file for time/seek
         private readonly WaveFormat _format;
         private readonly SoundSegments _segments;
 
-        private enum PlayState
-        {
-            Start,
-            Loop,
-            End,
-            Finished
-        }
-
-        private PlayState _state = PlayState.Start;
         private bool _stopRequested;
+        private bool _finished;
 
-        public SegmentedLoopSampleProvider(ISampleProvider source, SoundSegments segments, WaveFormat targetFormat)
+        private readonly TimeSpan _loopStartTs;
+        private readonly TimeSpan _loopEndTs;
+        private readonly TimeSpan _endTs;
+
+        public SegmentedLoopSampleProvider(
+            ISampleProvider source,
+            AudioFileReader file,
+            SoundSegments segments,
+            WaveFormat targetFormat)
         {
             _source = source;
-            _format = targetFormat;
+            _file = file;
             _segments = segments;
+            _format = targetFormat;
+
+            _loopStartTs = TimeSpan.FromSeconds(_segments.LoopStart);
+            _loopEndTs = TimeSpan.FromSeconds(_segments.LoopEnd);
+            _endTs = TimeSpan.FromSeconds(_segments.End);
+
+            // Start på "start"-segmentet
+            _file.CurrentTime = TimeSpan.FromSeconds(_segments.Start);
         }
 
         public WaveFormat WaveFormat => _format;
 
-        public bool IsLooping => _state == PlayState.Loop && !_stopRequested;
+        public bool IsLooping => !_stopRequested && !_finished;
 
+        /// <summary>
+        /// Called when we want to stop looping and play the end tail.
+        /// </summary>
         public void RequestStopWithEndSegment()
         {
             _stopRequested = true;
+
+            var now = _file.CurrentTime;
+
+            // Hvis vi fortsatt er i start/loop-området når vi stopper,
+            // hopper vi rett til loopEnd slik at tailen blir kort og konsistent.
+            if (now < _loopEndTs)
+            {
+                Logger.Log(
+                    $"Audio: SegmentedLoop - stop requested at t={now.TotalSeconds:F2}s, " +
+                    $"jumping to loopEnd={_segments.LoopEnd:F2}s for short tail.");
+
+                _file.CurrentTime = _loopEndTs;
+            }
+            else
+            {
+                Logger.Log(
+                    $"Audio: SegmentedLoop - stop requested at t={now.TotalSeconds:F2}s, already in tail.");
+            }
         }
 
         public int Read(float[] buffer, int offset, int count)
         {
-            if (_state == PlayState.Finished)
+            if (_finished)
                 return 0;
 
-            // Simplified: just pass-through from source.
-            // Later you can implement sample-accurate start/loop/end behavior
-            // using a WaveStream and segment times from _segments.
             int read = _source.Read(buffer, offset, count);
             if (read == 0)
             {
-                _state = PlayState.Finished;
+                Logger.Log("Audio: SegmentedLoop - source returned 0, marking as finished.");
+                _finished = true;
                 return 0;
+            }
+
+            // Debug: hvor i fila er vi nå?
+            var t = _file.CurrentTime.TotalSeconds;
+
+            if (!_stopRequested)
+            {
+                if (_file.CurrentTime >= _loopEndTs)
+                {
+                    Logger.Log($"Audio: SegmentedLoop - looping back at t={t:F2}s -> loopStart={_segments.LoopStart:F2}s");
+                    _file.CurrentTime = _loopStartTs;
+                }
+            }
+            else
+            {
+                if (_file.CurrentTime >= _endTs)
+                {
+                    Logger.Log($"Audio: SegmentedLoop - reached end segment at t={t:F2}s, finishing.");
+                    _finished = true;
+
+                    for (int i = offset; i < offset + read; i++)
+                        buffer[i] = 0f;
+                }
             }
 
             return read;

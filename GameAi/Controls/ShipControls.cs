@@ -33,6 +33,7 @@ namespace GameAiAndControls.Controls
         private IAudioPlayer? _audio;
         private SoundDefinition? _rocketSound;
         private SoundDefinition? _explosionSound;
+        private SoundDefinition? _lazerSound;
         private IAudioInstance? _rocketInstance;
 
         private float fallVelocity = 0f;
@@ -90,6 +91,7 @@ namespace GameAiAndControls.Controls
             _audio = audioPlayer;
             _rocketSound = soundRegistry.Get("rocket_main");
             _explosionSound = soundRegistry.Get("explosion_main");
+            _lazerSound = soundRegistry.Get("lazer_main");
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
@@ -107,18 +109,25 @@ namespace GameAiAndControls.Controls
 
             if (e.KeyCode == Keys.Space)
             {
-                ThrustOn = true;
-
-                // Start rocket-loop hvis audio er konfigurert
-                if (_audio != null && _rocketSound != null)
+                if (ThrustOn == false)
                 {
-                    if (_rocketInstance == null || !_rocketInstance.IsPlaying)
+                    // Hvis en gammel instans fortsatt henger igjen (tail spiller):
+                    if (_rocketInstance != null)
                     {
+                        Logger.Log("Audio: Force-stopping previous rocket instance before starting new.");
+                        _rocketInstance.Stop(playEndSegment: false); // hard cut på gammel tail
+                        _rocketInstance = null;
+                    }
+
+                    if (_audio != null && _rocketSound != null)
+                    {
+                        Logger.Log("Audio: Starting new rocket segmented loop.");
                         _rocketInstance = _audio.Play(
                             _rocketSound,
                             AudioPlayMode.SegmentedLoop);
                     }
                 }
+                ThrustOn = true;
             }
 
             if (e.KeyCode == Keys.RShiftKey) FireWeapon();
@@ -137,7 +146,6 @@ namespace GameAiAndControls.Controls
                 if (_rocketInstance != null)
                 {
                     _rocketInstance.Stop(playEndSegment: true);
-                    _rocketInstance = null;
                 }
             }
         }
@@ -194,6 +202,17 @@ namespace GameAiAndControls.Controls
                 WeaponType.Lazer,
                 ParentObject,
                 tilt);
+
+            if (_audio != null && _lazerSound != null)
+            {
+                _audio.PlayOneShot(
+                    _lazerSound,
+                    new AudioPlayOptions
+                    {
+                        // valgfritt – vi kan tweake dette senere
+                        VolumeOverride = 0.9f
+                    });
+            }
         }
 
         private void IncreaseThrustAndRelease()

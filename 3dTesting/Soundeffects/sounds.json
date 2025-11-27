@@ -1,7 +1,7 @@
 {
   "sounds": [
     {
-      "id": "laser_main",
+      "id": "lazer_main",
       "usage": "Lazer",
       "file": "OmegaStrain_Laser_Main.wav",
 
@@ -36,7 +36,7 @@
         "start": 0.0,
         "loopStart": 2.0,
         "loopEnd": 8.0,
-        "end": 10.62
+        "end": 8.6
       },
 
       "settings": {
