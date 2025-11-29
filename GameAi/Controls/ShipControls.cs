@@ -190,7 +190,7 @@ namespace GameAiAndControls.Controls
             // Fire weapon from ship
             var rot = new Vector3
             {
-                x = rotationX + tilt,
+                x = rotationX,
                 y = rotationY,
                 z = rotationZ
             };
