@@ -129,6 +129,14 @@ namespace Domain
         /// Stop all currently playing sounds.
         /// </summary>
         void StopAll();
+        /// <summary>
+        /// Start playing music
+        /// </summary>
+        void PlayMusic(SoundDefinition definition, float? volumeOverride = null);
+        /// <summary>
+        /// Stop playing music
+        /// </summary>
+        void StopMusic();
 
         /// <summary>
         /// Optionally called every frame if the implementation needs

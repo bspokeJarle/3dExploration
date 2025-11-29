@@ -24,7 +24,7 @@ namespace GameAudioInstances
         private float _currentSpeed;
         private Vector3 _worldPosition;
         private bool _isPlaying;
-        private readonly AudioPlayMode _mode;
+        private readonly AudioPlayMode _mode;        
 
         public Guid Id { get; } = Guid.NewGuid();
 
@@ -114,6 +114,9 @@ namespace GameAudioInstances
 
         private readonly string _audioBasePath;
         private readonly Random _rng = new();
+
+        private NAudioAudioInstance? _musicInstance;
+        private float _musicVolume = 0.6f;
 
         public NAudioAudioPlayer(string audioBasePath)
         {
@@ -221,6 +224,75 @@ namespace GameAudioInstances
             }
 
             _instances.Clear();
+        }
+
+        /// <summary>
+        /// Plays background music using segmented loop.
+        /// The SoundDefinition's segments (start, loopStart, loopEnd, end)
+        /// define which part of the file is used.
+        /// Any previously playing music instance is stopped first.
+        /// </summary>
+        public void PlayMusic(SoundDefinition definition, float? volumeOverride = null)
+        {
+            // Stopp eventuell gammel musikk først
+            if (_musicInstance != null)
+            {
+                Logger.Log("Audio: Stopping previous music instance before starting new.");
+                _musicInstance.Stop(playEndSegment: false); // ikke tail på musikkbytte
+                _musicInstance = null;
+            }
+
+            // Bestem volum
+            float vol = volumeOverride ?? definition.Settings.Volume;
+            if (vol < 0f) vol = 0f;
+            if (vol > 1f) vol = 1f;
+            _musicVolume = vol;
+
+            Logger.Log(
+                $"Audio: PlayMusic id={definition.Id}, " +
+                $"segments: start={definition.Segments.Start:F2}, " +
+                $"loopStart={definition.Segments.LoopStart:F2}, " +
+                $"loopEnd={definition.Segments.LoopEnd:F2}, end={definition.Segments.End:F2}");
+
+            // Viktig: Segmentert loop – da brukes segments.start/loopStart/loopEnd
+            var instance = Play(
+                definition,
+                AudioPlayMode.SegmentedLoop,
+                new AudioPlayOptions
+                {
+                    VolumeOverride = vol
+                    // SpeedOverride kan være null → bruker definition.Speed/base
+                });
+
+            // Vi vet at Play() i vår implem faktisk returnerer NAudioAudioInstance
+            _musicInstance = instance as NAudioAudioInstance;
+        }
+
+        /// <summary>
+        /// Stops the currently playing music, if any.
+        /// </summary>
+        public void StopMusic()
+        {
+            if (_musicInstance != null)
+            {
+                Logger.Log("Audio: Stopping music instance.");
+                _musicInstance.Stop(playEndSegment: false);
+                _musicInstance = null;
+            }
+        }
+
+        /// <summary>
+        /// Adjusts music volume at runtime.
+        /// </summary>
+        public void SetMusicVolume(float volume)
+        {
+            _musicVolume = Math.Clamp(volume, 0f, 1f);
+
+            if (_musicInstance != null)
+            {
+                Logger.Log($"Audio: Setting music volume to {_musicVolume:F2}.");
+                _musicInstance.SetVolume(_musicVolume);
+            }
         }
 
         private ISampleProvider NormalizeToMixerFormat(ISampleProvider source)

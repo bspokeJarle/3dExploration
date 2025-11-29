@@ -19,6 +19,8 @@ namespace _3dTesting.MainWindowClasses
         private readonly WeaponsManager weaponsManager = new();
         IAudioPlayer audioPlayer = new NAudioAudioPlayer("Soundeffects");
         ISoundRegistry soundRegistry = new JsonSoundRegistry("Soundeffects\\sounds.json");
+        static SoundDefinition musicDef { get; set; } = null;
+        static bool musicIsPlaying { get; set; } = false;
 
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
@@ -28,7 +30,7 @@ namespace _3dTesting.MainWindowClasses
         private readonly object _lock = new object();  // Lock object for thread safety
 
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
-        {
+        {            
             var deepCopiedWorld = new List<_3dObject>();
             var activeWorld = new List<_3dObject>();
             lock (_lock)
@@ -126,7 +128,19 @@ namespace _3dTesting.MainWindowClasses
             if (crashBoxDebuggedObjects.Count > 0) crashBoxCoordinates = From3dTo2d.ConvertTo2dFromObjects(crashBoxDebuggedObjects, true);
             else crashBoxCoordinates = new List<_2dTriangleMesh>();
             CrashDetection.HandleCrashboxes(renderedList);
+            HandleMusic(renderedList);
             return projectedCoordinates;
+        }
+
+        public void HandleMusic(List<_3dObject> renderedObjects)
+        {
+            if (musicDef == null) musicDef = soundRegistry.Get("music_flight");
+            if (!musicIsPlaying)
+            {
+                musicIsPlaying = true;
+                audioPlayer.PlayMusic(musicDef,0.2f);
+            }
+            //Work with renderedobjects to decide what music to play, for now just play mainmusicloop
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
