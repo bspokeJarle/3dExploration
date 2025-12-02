@@ -5,6 +5,7 @@ using CommonUtilities._3DHelpers;
 using Domain;
 using GameAudioInstances;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using static Domain._3dSpecificsImplementations;
@@ -17,6 +18,8 @@ namespace _3dTesting.MainWindowClasses
         private readonly _3dRotationCommon Rotate3d = new();
         private readonly ParticleManager particleManager = new();
         private readonly WeaponsManager weaponsManager = new();
+        private StarFieldHandler starFieldHandler { get; set; }
+
         IAudioPlayer audioPlayer = new NAudioAudioPlayer("Soundeffects");
         ISoundRegistry soundRegistry = new JsonSoundRegistry("Soundeffects\\sounds.json");
         static SoundDefinition musicDef { get; set; } = null;
@@ -52,6 +55,14 @@ namespace _3dTesting.MainWindowClasses
                 // Now perform the deep copy on the snapshot of visible objects
                 deepCopiedWorld = Common3dObjectHelpers.DeepCopy3dObjects(activeWorld);
             }
+            if (starFieldHandler == null)
+            {
+                var parentSurface = world.WorldInhabitants.FirstOrDefault(obj => obj.ObjectName == "Surface").ParentSurface;
+                starFieldHandler = new StarFieldHandler(parentSurface);
+            }
+            //Generate starfield will do nothing if not needed
+            starFieldHandler.GenerateStarfield();
+            if (starFieldHandler.HasStars()) deepCopiedWorld.AddRange(starFieldHandler.GetStars());
 
             var particleObjectList = new List<_3dObject>();
             var weaponObjectList = new List<_3dObject>();
