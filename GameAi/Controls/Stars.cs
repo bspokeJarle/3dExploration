@@ -54,7 +54,7 @@ namespace GameAiAndControls.Controls
         private void SyncMovement(I3dObject theObject)
         {
             if (theObject.ParentSurface == null)
-                return;
+            return;
 
             var surfacePos = theObject.ParentSurface.GlobalMapPosition;
 

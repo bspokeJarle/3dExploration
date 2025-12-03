@@ -119,6 +119,8 @@ namespace _3dTesting.MainWindowClasses
             {
                 //When the ship health is 0, start the fade out effect (explosion will also be triggered)
                 FadeOutWorld = true;
+                //Remove stars
+                starFieldHandler.ClearStars();
             }
             if (ship != null && ship.ImpactStatus.HasExploded)
             {

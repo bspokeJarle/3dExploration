@@ -10,7 +10,7 @@ namespace GameAiAndControls.Controls
 {
     public class Weapons : IWeapon
     {
-        private static readonly int maxZ = 2000;
+        private static readonly int maxZ = 1200;
         private static readonly int minZ = -2000;
 
         private readonly List<I3dObject> _weaponObjects;
@@ -170,10 +170,10 @@ namespace GameAiAndControls.Controls
                     SetObjectOffsets(w.WeaponObject, newLocal);
                     w.DistanceTraveled += Magnitude(deltaProj);
 
-                    /*Logger.Log(
+                    Logger.Log(
                         $"[WeaponSystem] {w.WeaponType} moved Δ=({deltaProj.x:F2},{deltaProj.y:F2},{deltaProj.z:F2}) " +
                         $"| LocalPos=({newLocal.x:F2},{newLocal.y:F2},{newLocal.z:F2}) | Range={w.DistanceTraveled:F2}"
-                    );*/
+                    );
 
                     ActiveWeapons[i] = w;
                 }
