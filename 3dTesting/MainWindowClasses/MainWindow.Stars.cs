@@ -3,67 +3,50 @@ using Domain;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting.MainWindowClasses
 {
     using NumericsVector3 = System.Numerics.Vector3;
     using EngineVector3 = _3dSpecificsImplementations.Vector3;
-    using static Domain._3dSpecificsImplementations;
 
     public class StarFieldHandler
     {
-        private readonly Random random = new Random();
+        private readonly Random random = new();
 
-        // Debug / perf
-        private const int maxStarCount = 20;
+        // For debugging / tuning. Increase when you're happy with visuals.
+        private const int maxStarCount = 40;
 
-        // Culling rett utenfor synlig område.
-        private const float despawnRadius = 4000f;
+        // Stars are culled if they move too far from screen center in local space.
+        private const float despawnRadius = 2200f;
 
-        // Synlig område: ca -2000..+2000, sweet spot -1500..+1500.
-        private const float visibleMinXY = -1500f;
-        private const float visibleMaxXY = 1500f;
+        // Visible area in local space (sweet spot ~ -1500..+1500).
+        private const float SpawnXMin = -1500f;
+        private const float SpawnXMax = 1500f;
+        private const float SpawnYMin = -1500f;
+        private const float SpawnYMax = 1500f;
 
-        // Global trygg Z-range for motoren din:
-        private const float safeMinZ = -2000f;
-        private const float safeMaxZ = 1200f;
+        // Z: in front of camera (into screen) = NEGATIVE Z in your system.
+        // Horizon area:
+        private const float SpawnZFar = -2000f; // farthest
+        private const float SpawnZNear = -800f; // closest
 
-        // For stjerner vil vi ha dem LANGT fremme, men innenfor safesone:
-        private const float starMinZ = 600f;   // nær horisont
-        private const float starMaxZ = 1200f;  // maks før ting "går bananas"
-
-        // Vertikal bånd for stjerner når vi "scroller inn i feltet":
-        // Litt mer opp enn ned.
-        private const float centerBandMinY = -1100f;
-        private const float centerBandMaxY = -300f;
-
-        private readonly List<_3dObject> stars = new List<_3dObject>();
+        private readonly List<_3dObject> stars = new();
 
         private ISurface ParentSurface { get; }
 
         /// <summary>
-        /// Sist kjente world-posisjon til surface (for å beregne retning).
+        /// Last known world position of the surface.
+        /// Used to estimate movement direction between frames.
         /// </summary>
-        private IVector3 PriorWorldPosition { get; set; }
+        private IVector3? PriorWorldPosition { get; set; }
 
-        private bool hasPriorWorldPosition = false;
-
-        // Debug toggle
         private bool enableLogging = false;
 
         public StarFieldHandler(ISurface surface)
         {
             ParentSurface = surface;
-            if (surface != null)
-            {
-                PriorWorldPosition = surface.GlobalMapPosition;
-                hasPriorWorldPosition = true;
-            }
-        }
-
-        public bool HasStars()
-        {
-            return stars.Count > 0;
+            PriorWorldPosition = surface?.GlobalMapPosition;
         }
 
         public void SetLogging(bool enabled)
@@ -71,31 +54,32 @@ namespace _3dTesting.MainWindowClasses
             enableLogging = enabled;
         }
 
+        public bool HasStars()
+        {
+            return stars != null && stars.Count > 0;
+        }
+
         /// <summary>
-        /// n2: Manuelt tømme stjernefeltet (for eksempel ved krasj / reset).
+        /// Clear all current stars and reset state.
+        /// Useful when resetting level, switching scenes, or when surface becomes visible again.
         /// </summary>
         public void ClearStars()
         {
+            stars.Clear();
+            // Optional: we can also reset PriorWorldPosition so movement-based spawning
+            // doesn't get a huge delta after a long pause.
+            PriorWorldPosition = ParentSurface?.GlobalMapPosition;
+
             if (enableLogging)
             {
-                Logger.Log("[StarField] ClearStars() called. Removing " + stars.Count + " stars.");
-            }
-
-            stars.Clear();
-
-            if (ParentSurface != null)
-            {
-                PriorWorldPosition = ParentSurface.GlobalMapPosition;
-                hasPriorWorldPosition = true;
-            }
-            else
-            {
-                hasPriorWorldPosition = false;
+                Logger.Log("[StarField] ClearStars() called. Stars list cleared and PriorWorldPosition reset.");
             }
         }
 
         /// <summary>
-        /// Kalles én gang per frame etter at surface/ship er oppdatert.
+        /// Call this once per frame (after Surface/Ship are updated).
+        /// - Culls stars that moved too far away.
+        /// - Spawns new stars up to maxStarCount, based on movement direction.
         /// </summary>
         public void GenerateStarfield()
         {
@@ -104,44 +88,37 @@ namespace _3dTesting.MainWindowClasses
 
             var currentWorldPos = ParentSurface.GlobalMapPosition;
 
-            // Alltid cull stjerner som er for langt unna.
+            // Cull stars that moved far outside the visible area.
             CullFarStars();
 
             if (enableLogging)
             {
                 Logger.Log(
-                    "[StarField] Frame start: Surface=(" +
-                    currentWorldPos.x.ToString("0.0") + ", " +
-                    currentWorldPos.y.ToString("0.0") + ", " +
-                    currentWorldPos.z.ToString("0.0") + "), Stars=" + stars.Count);
+                    $"[StarField] Frame start: Surface=({currentWorldPos.x:0.0}, {currentWorldPos.y:0.0}, {currentWorldPos.z:0.0}), " +
+                    $"Stars={stars.Count}"
+                );
             }
 
-            // n1: Når bakken er "tilbake i view", fjern alle stjerner.
-            if (currentWorldPos.y <= 200f)
+            // Do not spawn stars if the surface is "too close" (high up).
+            if (currentWorldPos.y <= 250)
             {
                 if (enableLogging)
-                {
-                    Logger.Log("[StarField] Surface Y=" + currentWorldPos.y.ToString("0.0") +
-                               " <= 250 -> clearing all stars.");
-                }
+                    Logger.Log($"[StarField] Surface Y={currentWorldPos.y:0.0} <= 250 -> no new stars this frame.");
 
-                ClearStars();
+                PriorWorldPosition = currentWorldPos;
                 return;
             }
 
-            // Sørg for at vi har en prior posisjon å sammenligne med.
-            if (!hasPriorWorldPosition)
+            if (PriorWorldPosition == null)
             {
                 PriorWorldPosition = currentWorldPos;
-                hasPriorWorldPosition = true;
             }
 
-            // Har vi allerede maks antall stjerner? Ikke spawn flere.
             if (stars.Count >= maxStarCount)
             {
                 if (enableLogging)
                 {
-                    Logger.Log("[StarField] Stars already at max (" + maxStarCount + "). No spawn this frame.");
+                    Logger.Log($"[StarField] Stars already at max ({maxStarCount}). No spawn this frame.");
                     DebugLogStarPositions("Frame (no spawn)");
                 }
 
@@ -149,138 +126,127 @@ namespace _3dTesting.MainWindowClasses
                 return;
             }
 
-            // Spawn nye stjerner opp til maxStarCount.
+            // Spawn new stars up to maxStarCount.
             for (int i = stars.Count; i < maxStarCount; i++)
             {
-                var offset = FindSpawnPosition(currentWorldPos);
+                var offset = FindRandomPosition(currentWorldPos);
 
+                // randomOffset becomes ObjectOffsets on the star.
                 var star = Star.CreateStar(ParentSurface, offset);
+
                 stars.Add(star);
 
                 if (enableLogging)
                 {
                     Logger.Log(
-                        "[StarField] Spawned star #" + stars.Count +
-                        " at local offset (" +
-                        offset.x.ToString("0.0") + ", " +
-                        offset.y.ToString("0.0") + ", " +
-                        offset.z.ToString("0.0") + ")");
+                        $"[StarField] Spawned star #{stars.Count} at local offset " +
+                        $"({offset.x:0.0}, {offset.y:0.0}, {offset.z:0.0})"
+                    );
                 }
             }
 
             PriorWorldPosition = currentWorldPos;
 
-            if (enableLogging)
-            {
-                DebugLogStarPositions("Frame (after spawn)");
-            }
+            DebugLogStarPositions("Frame (after spawn)");
         }
 
         /// <summary>
-        /// Velger spawn-posisjon basert på bevegelsesretning.
-        ///
-        /// -Y = opp, +Y = ned
-        /// -X = venstre, +X = høyre
-        /// Større +Z = lengre frem/inn i perspektivet (horisont).
-        ///
-        /// Viktig:
-        ///  - Ved vertikal og fremover-bevegelse spawner vi i et bånd rundt midten (centerBandMinY..centerBandMaxY),
-        ///    med Z i [starMinZ, starMaxZ] slik at du "flyr inn i stjernene".
-        ///  - Ved sideveis bevegelse bruker vi venstre/høyre kant på X, men fortsatt midt-bånd på Y og langt fremme på Z.
+        /// Find a random local position to spawn a star at,
+        /// weighted by movement direction (Y/Z/X).
+        /// 
+        /// - Mostly vertical movement -> more stars from top/bottom.
+        /// - Mostly depth movement  -> more stars deep in the horizon.
+        /// - Mostly horizontal     -> more stars from left/right edge.
         /// </summary>
-        private IVector3 FindSpawnPosition(IVector3 newWorldPosition)
+        public IVector3 FindRandomPosition(IVector3 newWorldPosition)
         {
-            // Default: random et sted langt fremme, rundt midten.
-            NumericsVector3 spawn = new NumericsVector3(
-                RandomRange(visibleMinXY, visibleMaxXY),
-                RandomRange(centerBandMinY, centerBandMaxY),
-                RandomRange(starMinZ, starMaxZ)
+            // Default: random within sweet spot in front of camera,
+            // if we don't have prior position or have almost no movement.
+            var spawn = new NumericsVector3(
+                RandomRange(SpawnXMin, SpawnXMax),
+                RandomRange(SpawnYMin, SpawnYMax),
+                RandomRange(SpawnZFar, SpawnZNear) // negative Z = in front of camera
             );
 
-            string mode = "Default";
-
-            if (hasPriorWorldPosition)
+            if (PriorWorldPosition != null)
             {
-                NumericsVector3 prev = ToNumerics(PriorWorldPosition);
-                NumericsVector3 curr = ToNumerics(newWorldPosition);
-                NumericsVector3 delta = curr - prev;
+                var prev = ToNumerics(PriorWorldPosition);
+                var curr = ToNumerics(newWorldPosition);
+                var delta = curr - prev;
 
-                if (delta.LengthSquared() > 0.0001f)
+                float absX = MathF.Abs(delta.X);
+                float absY = MathF.Abs(delta.Y);
+                float absZ = MathF.Abs(delta.Z);
+
+                float sum = absX + absY + absZ;
+
+                if (sum > 0.0001f)
                 {
-                    float absX = Math.Abs(delta.X);
-                    float absY = Math.Abs(delta.Y);
-                    float absZ = Math.Abs(delta.Z);
+                    // Weighted choice of "edge" based on how much movement we have in each axis.
+                    float r = (float)(random.NextDouble() * sum);
 
-                    if (absY >= absX && absY >= absZ)
+                    bool useVertical = r < absY;
+                    bool useDepth = !useVertical && (r < absY + absZ);
+                    bool useHorizontal = !useVertical && !useDepth;
+
+                    if (useVertical)
                     {
-                        // DOMINERENDE VERTIKAL BEVEGELSE
-                        // I stedet for topp/bunn-kant spawner vi i midt-båndet,
-                        // så du "scroller inn i" stjernefeltet.
-                        float x = RandomRange(visibleMinXY, visibleMaxXY);
-                        float y = RandomRange(centerBandMinY, centerBandMaxY);
-                        float z = RandomRange(starMinZ, starMaxZ);
+                        // Vertical component -> top/bottom edge.
+                        // In your system: -Y = up, +Y = down.
+                        float signY = MathF.Sign(delta.Y);
 
-                        spawn = new NumericsVector3(x, y, z);
-                        mode = "VerticalCenterBand";
+                        // If this feels inverted visually, just swap SpawnYMin/SpawnYMax here.
+                        float yEdge = signY > 0 ? SpawnYMax : SpawnYMin;
+
+                        float x = RandomRange(SpawnXMin, SpawnXMax);
+                        float z = RandomRange(SpawnZFar, SpawnZNear);
+
+                        spawn = new NumericsVector3(x, yEdge, z);
                     }
-                    else if (absZ >= absX && absZ >= absY)
+                    else if (useDepth)
                     {
-                        // DOMINERENDE FREM/BAK-BEVEGELSE
-                        // Nye stjerner dypt fremme i perspektiv, også rundt midten.
-                        float z = RandomRange(starMinZ, starMaxZ);
-                        float x = RandomRange(visibleMinXY, visibleMaxXY);
-                        float y = RandomRange(centerBandMinY, centerBandMaxY);
+                        // Forward/backward movement -> spawn deep in the horizon.
+                        // Regardless of sign of delta.Z, we want stars IN FRONT of camera:
+                        // negative Z in a deeper interval.
+                        float z = RandomRange(SpawnZFar, SpawnZFar * 0.7f);
+
+                        float x = RandomRange(SpawnXMin, SpawnXMax);
+                        float y = RandomRange(SpawnYMin, SpawnYMax);
 
                         spawn = new NumericsVector3(x, y, z);
-                        mode = "DepthCenterBand";
                     }
-                    else
+                    else // useHorizontal
                     {
-                        // DOMINERENDE SIDEVEIS
-                        float signX = Math.Sign(delta.X);
+                        // Sideways movement -> left/right edge.
+                        float signX = MathF.Sign(delta.X);
 
-                        // delta.X > 0 => verden mot høyre (skip visuelt mot venstre)
-                        //               -> stjerner inn fra HØYRE kant.
-                        // delta.X < 0 => verden mot venstre (skip visuelt mot høyre)
-                        //               -> stjerner inn fra VENSTRE kant.
-                        float x = (signX > 0)
-                            ? visibleMaxXY   // høyre kant
-                            : visibleMinXY;  // venstre kant
+                        float xEdge = signX > 0 ? SpawnXMax : SpawnXMin;
+                        float y = RandomRange(SpawnYMin, SpawnYMax);
+                        float z = RandomRange(SpawnZFar, SpawnZNear);
 
-                        float y = RandomRange(centerBandMinY, centerBandMaxY);
-                        float z = RandomRange(starMinZ, starMaxZ);
-
-                        spawn = new NumericsVector3(x, y, z);
-                        mode = "HorizontalEdge";
+                        spawn = new NumericsVector3(xEdge, y, z);
                     }
 
                     if (enableLogging)
                     {
                         Logger.Log(
-                            "[StarField] FindSpawnPosition mode=" + mode +
-                            ", delta=(" +
-                            delta.X.ToString("0.0") + ", " +
-                            delta.Y.ToString("0.0") + ", " +
-                            delta.Z.ToString("0.0") + "), spawn=(" +
-                            spawn.X.ToString("0.0") + ", " +
-                            spawn.Y.ToString("0.0") + ", " +
-                            spawn.Z.ToString("0.0") + ")");
+                            $"[StarField] FindRandomPosition: " +
+                            $"delta=({delta.X:0.0}, {delta.Y:0.0}, {delta.Z:0.0}), " +
+                            $"spawn=({spawn.X:0.0}, {spawn.Y:0.0}, {spawn.Z:0.0})"
+                        );
                     }
                 }
                 else if (enableLogging)
                 {
-                    Logger.Log("[StarField] FindSpawnPosition: delta almost zero, using default random in center band (far depth).");
+                    Logger.Log("[StarField] FindRandomPosition: delta almost zero, using default random inside sweet spot.");
                 }
             }
             else if (enableLogging)
             {
-                Logger.Log("[StarField] FindSpawnPosition: no PriorWorldPosition, using default random in center band (far depth).");
+                Logger.Log("[StarField] FindRandomPosition: no PriorWorldPosition, using default random inside sweet spot.");
             }
 
-            // Sikkerhetsclamp: hold oss innenfor global Z-range [-2000, 1200]
-            float clampedZ = ClampZ(spawn.Z);
-            spawn.Z = clampedZ;
-
+            // Return as engine-Vector3 (ObjectOffsets).
             return new EngineVector3
             {
                 x = spawn.X,
@@ -289,11 +255,18 @@ namespace _3dTesting.MainWindowClasses
             };
         }
 
+        /// <summary>
+        /// Return current stars so caller can push them into WorldInhabitants, etc.
+        /// </summary>
         public List<_3dObject> GetStars()
         {
+            if (stars.Count == 0) return null;
             return stars;
         }
 
+        /// <summary>
+        /// Remove stars that are too far away (cheap off-screen approximation).
+        /// </summary>
         private void CullFarStars()
         {
             float maxDistSq = despawnRadius * despawnRadius;
@@ -311,11 +284,9 @@ namespace _3dTesting.MainWindowClasses
                     if (enableLogging)
                     {
                         Logger.Log(
-                            "[StarField] Culling star at offsets=(" +
-                            p.x.ToString("0.0") + ", " +
-                            p.y.ToString("0.0") + ", " +
-                            p.z.ToString("0.0") + "), distSq=" +
-                            distSq.ToString("0.0") + " (>" + maxDistSq.ToString("0.0") + ")");
+                            $"[StarField] Culling star at offsets=({p.x:0.0}, {p.y:0.0}, {p.z:0.0}), " +
+                            $"distSq={distSq:0.0} (>{maxDistSq:0.0})"
+                        );
                     }
 
                     stars.RemoveAt(i);
@@ -333,13 +304,6 @@ namespace _3dTesting.MainWindowClasses
             return (float)(random.NextDouble() * (max - min) + min);
         }
 
-        private float ClampZ(float z)
-        {
-            if (z < safeMinZ) return safeMinZ;
-            if (z > safeMaxZ) return safeMaxZ;
-            return z;
-        }
-
         private void DebugLogStarPositions(string context)
         {
             if (!enableLogging)
@@ -347,20 +311,18 @@ namespace _3dTesting.MainWindowClasses
 
             if (stars.Count == 0)
             {
-                Logger.Log("[StarField] " + context + ": No stars.");
+                Logger.Log($"[StarField] {context}: No stars.");
                 return;
             }
 
-            Logger.Log("[StarField] " + context + ": Stars=" + stars.Count);
+            Logger.Log($"[StarField] {context}: Stars={stars.Count}");
 
             for (int i = 0; i < stars.Count; i++)
             {
                 var p = stars[i].ObjectOffsets;
                 Logger.Log(
-                    "[StarField]   Star[" + i + "] offsets=(" +
-                    p.x.ToString("0.0") + ", " +
-                    p.y.ToString("0.0") + ", " +
-                    p.z.ToString("0.0") + ")");
+                    $"[StarField]   Star[{i}] offsets=({p.x:0.0}, {p.y:0.0}, {p.z:0.0})"
+                );
             }
         }
     }

@@ -1,25 +1,45 @@
-﻿using _3dTesting._3dWorld;
-using _3dTesting.Helpers;
+﻿using _3dTesting.Helpers;
 using Domain;
-using GameAiAndControls.Ai;
 using GameAiAndControls.Controls;
 using System.Collections.Generic;
-using System.Net.Security;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.World.Objects
 {
     public static class Star
     {
+        private static float ZoomRatio = 0.2f;
+
+        // Enkel fargepalett for stjerner (kan justeres etter smak)
+        // Hvit, varm hvit, svakt blåhvit, svakt rødlig, svakt grønnlig
+        private static readonly string[] StarColors =
+        {
+            "FFFFFF", // ren hvit
+            "FFF7CC", // varm hvit / gulaktig
+            "CCE5FF", // kald blåhvit
+            "FFD8D8", // mild rødlig
+            "E6FFE6"  // svak grønnlig
+        };
+
+        // Én felles Random for alle stjerner (unngår "same seed"-problemer)
+        private static readonly System.Random random = new System.Random();
+
         /// <summary>
         /// Creates a small 3D star object with a minimal number of triangles.
         /// The star is centered around local origin (0,0,0).
         /// Position and rotation should be applied via ObjectOffsets and Rotation when spawning.
         /// </summary>
-        public static _3dObject CreateStar(ISurface parentSurface,IVector3 randomOffset, float size = 4f, string colorHex = "FFFFFF")
+        public static _3dObject CreateStar(
+            ISurface parentSurface,
+            IVector3 randomOffset,
+            float size = 4f,
+            string colorHex = "FFFFFF")
         {
-            var random = new System.Random();
-            var starTriangles = BuildStarGeometry(size, colorHex);
+            // Velg en tilfeldig farge fra paletten
+            var chosenColor = GetRandomStarColor();
+
+            var starTriangles = BuildStarGeometry(size, chosenColor);
+            _3dObjectHelpers.ApplyScaleToTriangles(starTriangles, ZoomRatio);
 
             var star = new _3dObject();
 
@@ -36,15 +56,22 @@ namespace _3dRotations.World.Objects
 
             // Placement offset is randomized per star instance.
             star.ObjectOffsets = randomOffset;
-            //Fixed for now
+
+            // Tilfeldig rotasjon for å variere uttrykket litt
             star.Rotation = new Vector3
             {
                 x = (float)(random.NextDouble() * 360.0),
                 y = (float)(random.NextDouble() * 360.0),
                 z = (float)(random.NextDouble() * 360.0)
             };
-            //WorldPosition is set to the parent surface's global position.
-            star.WorldPosition = parentSurface.GlobalMapPosition;
+
+            var surfacePos = parentSurface.GlobalMapPosition;
+            star.WorldPosition = new Vector3
+            {
+                x = surfacePos.x,
+                y = surfacePos.y,
+                z = surfacePos.z
+            };
 
             // Stars do not need crashboxes – they will not participate in collision.
             star.CrashBoxes = new List<List<IVector3>>();
@@ -52,7 +79,14 @@ namespace _3dRotations.World.Objects
             // ParentSurface can be null if the star is not tied to any surface.
             star.ParentSurface = parentSurface;
             star.Movement = new StarsControl();
+
             return star;
+        }
+
+        private static string GetRandomStarColor()
+        {
+            int index = random.Next(StarColors.Length);
+            return StarColors[index];
         }
 
         /// <summary>
@@ -63,38 +97,54 @@ namespace _3dRotations.World.Objects
         {
             var tris = new List<ITriangleMeshWithColor>();
 
-            // We create three crossed quads (XY, XZ, YZ planes), each split into 2 triangles.
-            // Total: 3 quads * 2 triangles = 6 triangles.
-            // This gives a simple volumetric star that is visible from most angles.
+            // Tre / fire kryssende "armer" som lange, tynne trekanter i XY-planet
+            int armCount = 4;          // sett til 3 hvis du vil teste 3-armet
+            float halfLength = size * 0.5f;
+            float halfWidth = size * 0.12f; // tykkelse på armene (0.1–0.2 er ofte fint)
 
-            float s = size;
+            var center = new Vector3 { x = 0f, y = 0f, z = 0f };
 
-            // --- Quad 1: XZ-plane (flat in Y) ---
-            var q1_v1 = new Vector3 { x = -s, y = 0f, z = -s };
-            var q1_v2 = new Vector3 { x = s, y = 0f, z = -s };
-            var q1_v3 = new Vector3 { x = s, y = 0f, z = s };
-            var q1_v4 = new Vector3 { x = -s, y = 0f, z = s };
+            for (int i = 0; i < armCount; i++)
+            {
+                float angle = (float)(2.0 * System.Math.PI * i / armCount);
 
-            tris.Add(new TriangleMeshWithColor { Color = colorHex, vert1 = q1_v1, vert2 = q1_v2, vert3 = q1_v3 });
-            tris.Add(new TriangleMeshWithColor { Color = colorHex, vert1 = q1_v1, vert2 = q1_v3, vert3 = q1_v4 });
+                float dx = (float)System.Math.Cos(angle);
+                float dy = (float)System.Math.Sin(angle);
 
-            // --- Quad 2: YZ-plane (flat in X) ---
-            var q2_v1 = new Vector3 { x = 0f, y = -s, z = -s };
-            var q2_v2 = new Vector3 { x = 0f, y = s, z = -s };
-            var q2_v3 = new Vector3 { x = 0f, y = s, z = s };
-            var q2_v4 = new Vector3 { x = 0f, y = -s, z = s };
+                var tip = new Vector3
+                {
+                    x = dx * halfLength,
+                    y = dy * halfLength,
+                    z = 0f
+                };
 
-            tris.Add(new TriangleMeshWithColor { Color = colorHex, vert1 = q2_v1, vert2 = q2_v2, vert3 = q2_v3 });
-            tris.Add(new TriangleMeshWithColor { Color = colorHex, vert1 = q2_v1, vert2 = q2_v3, vert3 = q2_v4 });
+                // Perpendikulær vektor for bredden ved senter
+                float px = -dy;
+                float py = dx;
 
-            // --- Quad 3: XY-plane (flat in Z) ---
-            var q3_v1 = new Vector3 { x = -s, y = -s, z = 0f };
-            var q3_v2 = new Vector3 { x = s, y = -s, z = 0f };
-            var q3_v3 = new Vector3 { x = s, y = s, z = 0f };
-            var q3_v4 = new Vector3 { x = -s, y = s, z = 0f };
+                var baseLeft = new Vector3
+                {
+                    x = center.x + px * halfWidth,
+                    y = center.y + py * halfWidth,
+                    z = 0f
+                };
 
-            tris.Add(new TriangleMeshWithColor { Color = colorHex, vert1 = q3_v1, vert2 = q3_v2, vert3 = q3_v3 });
-            tris.Add(new TriangleMeshWithColor { Color = colorHex, vert1 = q3_v1, vert2 = q3_v3, vert3 = q3_v4 });
+                var baseRight = new Vector3
+                {
+                    x = center.x - px * halfWidth,
+                    y = center.y - py * halfWidth,
+                    z = 0f
+                };
+
+                tris.Add(new TriangleMeshWithColor
+                {
+                    Color = colorHex,
+                    vert1 = baseLeft,
+                    vert2 = tip,
+                    vert3 = baseRight,
+                    noHidden = true
+                });
+            }
 
             return tris;
         }

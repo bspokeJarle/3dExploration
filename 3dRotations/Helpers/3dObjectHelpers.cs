@@ -14,6 +14,26 @@ namespace _3dTesting.Helpers
 {
     public static class _3dObjectHelpers
     {
+        public static void ApplyScaleToTriangles(List<ITriangleMeshWithColor> triangles, float scale)
+        {
+            if (triangles == null || triangles.Count == 0) return;
+
+            foreach (var tri in triangles)
+            {
+                // Antar at vert1/vert2/vert3 er IVector3 med settable x/y/z
+                tri.vert1.x *= scale;
+                tri.vert1.y *= scale;
+                tri.vert1.z *= scale;
+
+                tri.vert2.x *= scale;
+                tri.vert2.y *= scale;
+                tri.vert2.z *= scale;
+
+                tri.vert3.x *= scale;
+                tri.vert3.y *= scale;
+                tri.vert3.z *= scale;
+            }
+        }
         public static List<IVector3> GenerateAabbCrashBoxFromRotated(List<IVector3> rotatedPoints)
         {
             if (rotatedPoints == null || rotatedPoints.Count < 2)

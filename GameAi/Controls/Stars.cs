@@ -1,6 +1,4 @@
 ﻿using Domain;
-using System;
-using System.Numerics;
 using static Domain._3dSpecificsImplementations;
 
 namespace GameAiAndControls.Controls
@@ -12,24 +10,17 @@ namespace GameAiAndControls.Controls
         public I3dObject ParentObject { get; set; }
         public IPhysics Physics { get; set; }
 
-        // Optional future use (spin, pulse, etc.)
+        // Optional: could be used for slow spin later
         private float _yRotation = 0f;
         private float _xRotation = 0f;
         private float _zRotation = 0f;
 
         private bool _syncInitialized = false;
+        private float _syncY = 0f;
 
-        // Base local offset when the star was spawned
-        private _3dSpecificsImplementations.Vector3 _baseOffset;
-
-        // Surface position when the star was spawned
-        private IVector3? _initialSurfacePosition;
-
-        // Factors to keep stars roughly in sync with surface movement.
-        // Values < 1.0f will give a parallax effect (stars move litt mindre enn bakken).
-        private float _syncFactorX = 1.0f;
-        private float _syncFactorY = 1.0f;
-        private float _syncFactorZ = 1.0f;
+        // Factor to stay in sync with surface movement (like SeederControls)
+        // Juster etter smak – lav verdi = roligere stjerner i Y
+        private float _syncFactor = 2.5f;
 
         private bool _enableLogging = false;
 
@@ -37,7 +28,7 @@ namespace GameAiAndControls.Controls
         {
             ParentObject = theObject;
 
-            // If you later want rotation on stars, you can use these:
+            // Hvis du vil ha litt rotasjon etter hvert:
             if (theObject.Rotation != null)
             {
                 theObject.Rotation.x = _xRotation;
@@ -45,60 +36,35 @@ namespace GameAiAndControls.Controls
                 theObject.Rotation.z = _zRotation;
             }
 
-            // Main part: keep the star visually in sync with the moving surface.
             SyncMovement(theObject);
-
             return theObject;
         }
 
         private void SyncMovement(I3dObject theObject)
         {
             if (theObject.ParentSurface == null)
-            return;
+                return;
 
             var surfacePos = theObject.ParentSurface.GlobalMapPosition;
 
             if (!_syncInitialized)
             {
                 _syncInitialized = true;
-
-                // Remember where the star started (local offsets)
-                _baseOffset = new _3dSpecificsImplementations.Vector3(
-                    theObject.ObjectOffsets.x,
-                    theObject.ObjectOffsets.y,
-                    theObject.ObjectOffsets.z
-                );
-
-                // Remember where the surface was when this star was spawned
-                _initialSurfacePosition = new _3dSpecificsImplementations.Vector3
-                {
-                    x = surfacePos.x,
-                    y = surfacePos.y,
-                    z = surfacePos.z
-                };
+                _syncY = theObject.ObjectOffsets.y; // base Y-offset for denne stjernen
             }
 
-            if (_initialSurfacePosition == null)
-                return;
-
-            // Compute how much the surface has moved since the star was created
-            var deltaX = (surfacePos.x - _initialSurfacePosition.x) * _syncFactorX;
-            var deltaY = (surfacePos.y - _initialSurfacePosition.y) * _syncFactorY;
-            var deltaZ = (surfacePos.z - _initialSurfacePosition.z) * _syncFactorZ;
-
-            // Apply this delta to the star's base offset so it follows the surface
-            theObject.ObjectOffsets = new _3dSpecificsImplementations.Vector3
+            theObject.ObjectOffsets = new Vector3
             {
-                x = _baseOffset.x + deltaX,
-                y = _baseOffset.y + deltaY,
-                z = _baseOffset.z + deltaZ
+                x = theObject.ObjectOffsets.x,                           // behold X
+                y = (surfacePos.y * _syncFactor) + _syncY,               // synk bare Y mot bakken
+                z = theObject.ObjectOffsets.z                            // behold Z
             };
 
             if (_enableLogging)
             {
                 Logger.Log(
-                    $"Star sync -> Offsets: ({theObject.ObjectOffsets.x:0.0}, {theObject.ObjectOffsets.y:0.0}, {theObject.ObjectOffsets.z:0.0}) " +
-                    $"Surface: ({surfacePos.x:0.0}, {surfacePos.y:0.0}, {surfacePos.z:0.0})"
+                    $"[StarsControl] Star Y={theObject.ObjectOffsets.y:0.0}, " +
+                    $"SurfaceY={surfacePos.y:0.0}, syncFactor={_syncFactor:0.00}, baseY={_syncY:0.0}"
                 );
             }
         }
@@ -110,7 +76,6 @@ namespace GameAiAndControls.Controls
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
-            // Not used for stars, but we keep the implementation to satisfy the interface.
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
         }
