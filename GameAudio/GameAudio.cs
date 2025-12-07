@@ -352,7 +352,7 @@ namespace GameAudioInstances
     /// </summary>
     internal sealed class SegmentedLoopSampleProvider : ISampleProvider
     {
-        private bool logging = false;
+        private readonly bool logging = false;
         private readonly ISampleProvider _source;     // Normalized audio (matches mixer format)
         private readonly AudioFileReader _file;       // Underlying file for time/seek
         private readonly WaveFormat _format;
