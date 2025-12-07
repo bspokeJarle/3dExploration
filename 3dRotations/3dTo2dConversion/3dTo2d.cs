@@ -166,7 +166,17 @@ namespace _3dTesting._3dRotation
 
         private (double x, double y) ProjectVertex(Vector3 v, double objPosX, double objPosY, double objPosZ)
         {
-            double factor = perspectiveAdjustment / (-v.z + objPosZ + perspectiveAdjustment);
+            double denom = -v.z + objPosZ + perspectiveAdjustment;
+
+            // If the point is on or behind the 'camera plane' -> do not render it.
+            // (denom <= 0 means we cross the perspective plane and factor would flip)
+            if (denom <= 1.0) // 1.0 as small safety margin
+            {
+                return (double.NaN, double.NaN);
+            }
+
+            double factor = perspectiveAdjustment / denom;
+
             double x = (v.x * factor * defaultObjectZoom) + objPosX;
             double y = (v.y * factor * defaultObjectZoom) + objPosY;
             return (x, y);
