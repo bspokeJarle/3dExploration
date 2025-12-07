@@ -5,7 +5,6 @@ using CommonUtilities._3DHelpers;
 using Domain;
 using GameAudioInstances;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using static Domain._3dSpecificsImplementations;
