@@ -10,18 +10,18 @@ namespace _3dRotations.World.Objects
     {
         private static float ZoomRatio = 0.2f;
 
-        // Enkel fargepalett for stjerner (kan justeres etter smak)
-        // Hvit, varm hvit, svakt blåhvit, svakt rødlig, svakt grønnlig
+        // Simple color palette for stars (can be tweaked to taste)
+        // White, warm white, slightly blue-white, slightly reddish, slightly greenish
         private static readonly string[] StarColors =
         {
-            "FFFFFF", // ren hvit
-            "FFF7CC", // varm hvit / gulaktig
-            "CCE5FF", // kald blåhvit
-            "FFD8D8", // mild rødlig
-            "E6FFE6"  // svak grønnlig
+            "FFFFFF", // pure white
+            "FFF7CC", // warm white / yellowish
+            "CCE5FF", // cold blue-white
+            "FFD8D8", // soft reddish
+            "E6FFE6"  // faint greenish
         };
 
-        // Én felles Random for alle stjerner (unngår "same seed"-problemer)
+        // One shared Random instance for all stars (avoids “same seed” problems)
         private static readonly System.Random random = new System.Random();
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace _3dRotations.World.Objects
             float size = 4f,
             string colorHex = "FFFFFF")
         {
-            // Velg en tilfeldig farge fra paletten
+            // Pick a random color from the star palette
             var chosenColor = GetRandomStarColor();
 
             var starTriangles = BuildStarGeometry(size, chosenColor);
@@ -57,7 +57,7 @@ namespace _3dRotations.World.Objects
             // Placement offset is randomized per star instance.
             star.ObjectOffsets = randomOffset;
 
-            // Tilfeldig rotasjon for å variere uttrykket litt
+            // Random rotation to vary the visual appearance slightly
             star.Rotation = new Vector3
             {
                 x = (float)(random.NextDouble() * 360.0),
@@ -90,17 +90,17 @@ namespace _3dRotations.World.Objects
         }
 
         /// <summary>
-        /// Builds a small 3D "spark" / star-shape using a few triangles around origin.
+        /// Builds a small 3D "spark" / star shape using a few triangles around origin.
         /// This keeps the triangle count low (well below 10) and is cheap to render.
         /// </summary>
         private static List<ITriangleMeshWithColor> BuildStarGeometry(float size, string colorHex)
         {
             var tris = new List<ITriangleMeshWithColor>();
 
-            // Tre / fire kryssende "armer" som lange, tynne trekanter i XY-planet
-            int armCount = 4;          // sett til 3 hvis du vil teste 3-armet
+            // Three / four crossing “arms” as long, thin triangles in the XY-plane
+            int armCount = 4;          // set to 3 if you want to test a 3-armed star
             float halfLength = size * 0.5f;
-            float halfWidth = size * 0.12f; // tykkelse på armene (0.1–0.2 er ofte fint)
+            float halfWidth = size * 0.12f; // thickness of the arms (0.1–0.2 usually looks good)
 
             var center = new Vector3 { x = 0f, y = 0f, z = 0f };
 
@@ -118,7 +118,7 @@ namespace _3dRotations.World.Objects
                     z = 0f
                 };
 
-                // Perpendikulær vektor for bredden ved senter
+                // Perpendicular vector for arm width near the center
                 float px = -dy;
                 float py = dx;
 

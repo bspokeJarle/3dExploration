@@ -18,8 +18,8 @@ namespace GameAiAndControls.Controls
         private bool _syncInitialized = false;
         private float _syncY = 0f;
 
-        // Factor to stay in sync with surface movement (like SeederControls)
-        // Juster etter smak – lav verdi = roligere stjerner i Y
+        // Factor to stay in sync with surface movement (similar to SeederControls)
+        // Tweak as desired – lower value = calmer star movement in Y
         private float _syncFactor = 2.5f;
 
         private bool _enableLogging = false;
@@ -28,7 +28,7 @@ namespace GameAiAndControls.Controls
         {
             ParentObject = theObject;
 
-            // Hvis du vil ha litt rotasjon etter hvert:
+            // If you want some rotation later:
             if (theObject.Rotation != null)
             {
                 theObject.Rotation.x = _xRotation;
@@ -50,14 +50,14 @@ namespace GameAiAndControls.Controls
             if (!_syncInitialized)
             {
                 _syncInitialized = true;
-                _syncY = theObject.ObjectOffsets.y; // base Y-offset for denne stjernen
+                _syncY = theObject.ObjectOffsets.y; // base Y-offset for this star
             }
 
             theObject.ObjectOffsets = new Vector3
             {
-                x = theObject.ObjectOffsets.x,                           // behold X
-                y = (surfacePos.y * _syncFactor) + _syncY,               // synk bare Y mot bakken
-                z = theObject.ObjectOffsets.z                            // behold Z
+                x = theObject.ObjectOffsets.x,                           // keep X
+                y = (surfacePos.y * _syncFactor) + _syncY,               // only sync Y with the surface
+                z = theObject.ObjectOffsets.z                            // keep Z
             };
 
             if (_enableLogging)
