@@ -2,7 +2,6 @@
 using Domain;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting.MainWindowClasses
@@ -14,29 +13,36 @@ namespace _3dTesting.MainWindowClasses
     {
         private readonly Random random = new();
 
-        // For debugging / tuning. Increase when you're happy with visuals.
-        private const int maxStarCount = 40;
+        // Max number of stars we want at any time.
+        private const int maxStarCount = 60;
 
-        // Stars are culled if they move too far from screen center in local space.
-        private const float despawnRadius = 2200f;
+        // Stars that move outside this world radius are recycled.
+        private const float despawnRadius = 1500f;
 
-        // Visible area in local space (sweet spot ~ -1500..+1500).
-        private const float SpawnXMin = -1500f;
-        private const float SpawnXMax = 1500f;
-        private const float SpawnYMin = -1500f;
-        private const float SpawnYMax = 1500f;
+        // Local visible spawn area around camera (relative offsets).
+        private const float SpawnXMin = -1200f;
+        private const float SpawnXMax = 1200f;
+        private const float SpawnYMin = -750f;
+        private const float SpawnYMax = 750f;
 
-        // Z: in front of camera (into screen) = NEGATIVE Z in your system.
-        // Horizon area:
-        private const float SpawnZFar = -2000f; // farthest
-        private const float SpawnZNear = -800f; // closest
+        // Do not spawn new stars if surface is closer than this to the "camera" on Y.
+        private int GroundDistanceY = 250;
+
+        // Z: in front of camera (into the screen) = NEGATIVE Z.
+        private const float SpawnZFar = -1000f; // furthest away
+        private const float SpawnZNear = -200f; // closest
 
         private readonly List<_3dObject> stars = new();
 
-        private ISurface ParentSurface { get; }
+        // Our own base world position for each star.
+        // This is the world position snapshot from Surface when the star is spawned/recycled.
+        // starWorld = baseWorld + offset, and this baseWorld stays until the star is recycled.
+        private readonly List<EngineVector3> starBaseWorldPositions = new();
+
+        public ISurface ParentSurface { get; set; }
 
         /// <summary>
-        /// Last known world position of the surface.
+        /// Previous world position of Surface.
         /// Used to estimate movement direction between frames.
         /// </summary>
         private IVector3? PriorWorldPosition { get; set; }
@@ -60,36 +66,39 @@ namespace _3dTesting.MainWindowClasses
         }
 
         /// <summary>
-        /// Clear all current stars and reset state.
-        /// Useful when resetting level, switching scenes, or when surface becomes visible again.
+        /// Clears all stars and resets state.
+        /// Used on scene restart / respawn / when surface becomes visible again.
         /// </summary>
         public void ClearStars()
         {
             stars.Clear();
-            // Optional: we can also reset PriorWorldPosition so movement-based spawning
-            // doesn't get a huge delta after a long pause.
+            starBaseWorldPositions.Clear();
             PriorWorldPosition = ParentSurface?.GlobalMapPosition;
 
             if (enableLogging)
             {
-                Logger.Log("[StarField] ClearStars() called. Stars list cleared and PriorWorldPosition reset.");
+                Logger.Log("[StarField] ClearStars() called. Stars list and baseWorldPositions cleared, PriorWorldPosition reset.");
             }
         }
 
         /// <summary>
-        /// Call this once per frame (after Surface/Ship are updated).
-        /// - Culls stars that moved too far away.
-        /// - Spawns new stars up to maxStarCount, based on movement direction.
+        /// Called once per frame (after Surface/Ship is updated).
+        /// - Recycles stars that are too far away.
+        /// - Spawns new stars until we hit maxStarCount.
         /// </summary>
         public void GenerateStarfield()
         {
             if (ParentSurface == null)
                 return;
 
+            /*// If surface is too close to the camera, skip spawning.
+            if (ParentSurface.GlobalMapPosition.y < GroundDistanceY)
+                return;*/
+
             var currentWorldPos = ParentSurface.GlobalMapPosition;
 
-            // Cull stars that moved far outside the visible area.
-            CullFarStars();
+            // 1) Recycle stars that moved too far away (no deletion).
+            RecycleFarStars(currentWorldPos);
 
             if (enableLogging)
             {
@@ -99,69 +108,92 @@ namespace _3dTesting.MainWindowClasses
                 );
             }
 
-            // Do not spawn stars if the surface is "too close" (high up).
-            if (currentWorldPos.y <= 250)
+            // 2) Do not spawn new stars if the surface is too close to "camera".
+            if (currentWorldPos.y <= GroundDistanceY)
             {
                 if (enableLogging)
-                    Logger.Log($"[StarField] Surface Y={currentWorldPos.y:0.0} <= 250 -> no new stars this frame.");
+                    Logger.Log($"[StarField] Surface Y={currentWorldPos.y:0.0} <= {GroundDistanceY} -> no new stars this frame.");
 
                 PriorWorldPosition = currentWorldPos;
+                ClearStars();
                 return;
             }
 
+            // First frame: set prior position.
             if (PriorWorldPosition == null)
             {
                 PriorWorldPosition = currentWorldPos;
             }
 
-            if (stars.Count >= maxStarCount)
+            // 3) Fill up to maxStarCount (but not more).
+            if (stars.Count < maxStarCount)
             {
-                if (enableLogging)
+                for (int i = stars.Count; i < maxStarCount; i++)
                 {
-                    Logger.Log($"[StarField] Stars already at max ({maxStarCount}). No spawn this frame.");
-                    DebugLogStarPositions("Frame (no spawn)");
+                    // Offset is where we want the star relative to the direction we are flying.
+                    var offset = FindRandomPosition(currentWorldPos);
+
+                    // Snapshot of surface world position when this star is spawned.
+                    var baseWorld = new EngineVector3
+                    {
+                        x = currentWorldPos.x,
+                        y = currentWorldPos.y,
+                        z = currentWorldPos.z
+                    };
+
+                    // Final world position for this star (this is what should feel "fixed"
+                    // in world space until the star is recycled).
+                    var starWorld = new EngineVector3
+                    {
+                        x = baseWorld.x + offset.x,
+                        y = baseWorld.y + offset.y,
+                        z = baseWorld.z + offset.z
+                    };
+
+                    // Create the star object. We keep offset as local data,
+                    // but also give the star its own world position.
+                    var star = Star.CreateStar(ParentSurface, offset);
+
+                    // Ensure the 3d object has its own independent world position.
+                    star.WorldPosition = starWorld;
+
+                    stars.Add(star);
+                    starBaseWorldPositions.Add(baseWorld);
+
+                    if (enableLogging)
+                    {
+                        Logger.Log(
+                            $"[StarField] Spawned star #{stars.Count - 1} " +
+                            $"Offset=({offset.x:0.0}, {offset.y:0.0}, {offset.z:0.0}), " +
+                            $"BaseWorld=({baseWorld.x:0.0}, {baseWorld.y:0.0}, {baseWorld.z:0.0}), " +
+                            $"StarWorld=({starWorld.x:0.0}, {starWorld.y:0.0}, {starWorld.z:0.0})"
+                        );
+                    }
                 }
 
-                PriorWorldPosition = currentWorldPos;
-                return;
+                DebugLogStarPositions("Frame (after spawn+recycle)");
             }
-
-            // Spawn new stars up to maxStarCount.
-            for (int i = stars.Count; i < maxStarCount; i++)
+            else
             {
-                var offset = FindRandomPosition(currentWorldPos);
-
-                // randomOffset becomes ObjectOffsets on the star.
-                var star = Star.CreateStar(ParentSurface, offset);
-
-                stars.Add(star);
-
-                if (enableLogging)
-                {
-                    Logger.Log(
-                        $"[StarField] Spawned star #{stars.Count} at local offset " +
-                        $"({offset.x:0.0}, {offset.y:0.0}, {offset.z:0.0})"
-                    );
-                }
+                // We have enough stars; only recycling.
+                DebugLogStarPositions("Frame (recycle only)");
             }
 
             PriorWorldPosition = currentWorldPos;
-
-            DebugLogStarPositions("Frame (after spawn)");
         }
 
         /// <summary>
-        /// Find a random local position to spawn a star at,
+        /// Finds a random local position to spawn a star at,
         /// weighted by movement direction (Y/Z/X).
-        /// 
-        /// - Mostly vertical movement -> more stars from top/bottom.
-        /// - Mostly depth movement  -> more stars deep in the horizon.
-        /// - Mostly horizontal     -> more stars from left/right edge.
+        /// - Mostly vertical movement  -> top/bottom edge.
+        /// - Mostly depth movement    -> far into the horizon.
+        /// - Mostly horizontal        -> left/right edge.
+        /// Also enforces a minimum vertical distance from the ground on Y for all stars.
         /// </summary>
         public IVector3 FindRandomPosition(IVector3 newWorldPosition)
         {
-            // Default: random within sweet spot in front of camera,
-            // if we don't have prior position or have almost no movement.
+            // Default: random inside sweet spot in front of camera,
+            // if we have no previous position or almost no movement.
             var spawn = new NumericsVector3(
                 RandomRange(SpawnXMin, SpawnXMax),
                 RandomRange(SpawnYMin, SpawnYMax),
@@ -182,7 +214,7 @@ namespace _3dTesting.MainWindowClasses
 
                 if (sum > 0.0001f)
                 {
-                    // Weighted choice of "edge" based on how much movement we have in each axis.
+                    // Choose edge based on how much movement we have on each axis.
                     float r = (float)(random.NextDouble() * sum);
 
                     bool useVertical = r < absY;
@@ -192,10 +224,8 @@ namespace _3dTesting.MainWindowClasses
                     if (useVertical)
                     {
                         // Vertical component -> top/bottom edge.
-                        // In your system: -Y = up, +Y = down.
+                        // Coordinate system: -Y = up, +Y = down.
                         float signY = MathF.Sign(delta.Y);
-
-                        // If this feels inverted visually, just swap SpawnYMin/SpawnYMax here.
                         float yEdge = signY > 0 ? SpawnYMax : SpawnYMin;
 
                         float x = RandomRange(SpawnXMin, SpawnXMax);
@@ -205,11 +235,8 @@ namespace _3dTesting.MainWindowClasses
                     }
                     else if (useDepth)
                     {
-                        // Forward/backward movement -> spawn deep in the horizon.
-                        // Regardless of sign of delta.Z, we want stars IN FRONT of camera:
-                        // negative Z in a deeper interval.
+                        // Forward/backward -> spawn far into the horizon.
                         float z = RandomRange(SpawnZFar, SpawnZFar * 0.7f);
-
                         float x = RandomRange(SpawnXMin, SpawnXMax);
                         float y = RandomRange(SpawnYMin, SpawnYMax);
 
@@ -217,10 +244,10 @@ namespace _3dTesting.MainWindowClasses
                     }
                     else // useHorizontal
                     {
-                        // Sideways movement -> left/right edge.
+                        // Sideways -> left/right edge.
                         float signX = MathF.Sign(delta.X);
-
                         float xEdge = signX > 0 ? SpawnXMax : SpawnXMin;
+
                         float y = RandomRange(SpawnYMin, SpawnYMax);
                         float z = RandomRange(SpawnZFar, SpawnZNear);
 
@@ -246,7 +273,7 @@ namespace _3dTesting.MainWindowClasses
                 Logger.Log("[StarField] FindRandomPosition: no PriorWorldPosition, using default random inside sweet spot.");
             }
 
-            // Return as engine-Vector3 (ObjectOffsets).
+            // Return as engine Vector3 (ObjectOffsets).
             return new EngineVector3
             {
                 x = spawn.X,
@@ -255,8 +282,10 @@ namespace _3dTesting.MainWindowClasses
             };
         }
 
+
+
         /// <summary>
-        /// Return current stars so caller can push them into WorldInhabitants, etc.
+        /// Returns current stars so GameWorldManager can add them to WorldInhabitants.
         /// </summary>
         public List<_3dObject> GetStars()
         {
@@ -265,31 +294,114 @@ namespace _3dTesting.MainWindowClasses
         }
 
         /// <summary>
-        /// Remove stars that are too far away (cheap off-screen approximation).
+        /// Recycles stars that are too far away in WORLD SPACE.
+        /// We use our own baseWorld list so stars do not "follow" Surface automatically.
+        /// Each star effectively has: world = baseWorld + offset.
         /// </summary>
-        private void CullFarStars()
+        private void RecycleFarStars(IVector3 surfaceWorld)
         {
+            if (ParentSurface == null)
+                return;
+
             float maxDistSq = despawnRadius * despawnRadius;
 
-            for (int i = stars.Count - 1; i >= 0; i--)
-            {
-                var p = stars[i].ObjectOffsets;
-                float dx = p.x;
-                float dy = p.y;
-                float dz = p.z;
-                float distSq = dx * dx + dy * dy + dz * dz;
+            // Center we measure from – today: Surface.world (camera is effectively above this).
+            IVector3 centerWorld = surfaceWorld;
 
-                if (distSq > maxDistSq)
+            for (int i = 0; i < stars.Count; i++)
+            {
+                var star = stars[i];
+
+                // Get our own base world snapshot for this star.
+                EngineVector3 baseWorld;
+                if (i < starBaseWorldPositions.Count)
                 {
+                    baseWorld = starBaseWorldPositions[i];
+                }
+                else
+                {
+                    // Fallback if something got out of sync.
+                    baseWorld = new EngineVector3
+                    {
+                        x = surfaceWorld.x,
+                        y = surfaceWorld.y,
+                        z = surfaceWorld.z
+                    };
+                    if (enableLogging)
+                    {
+                        Logger.Log($"[StarField] WARNING: baseWorld missing for star[{i}], using surfaceWorld as fallback.");
+                    }
+                }
+
+                var offsets = star.ObjectOffsets;
+
+                // Final world position for the star (this is what should stay until we recycle it).
+                var starWorld = new EngineVector3
+                {
+                    x = baseWorld.x + offsets.x,
+                    y = baseWorld.y + offsets.y,
+                    z = baseWorld.z + offsets.z
+                };
+
+                // Keep the 3d object in sync with our calculated world position.
+                star.WorldPosition = starWorld;
+
+                float dx = starWorld.x - centerWorld.x;
+                float dy = starWorld.y - centerWorld.y;
+                float dz = starWorld.z - centerWorld.z;
+
+                float distSq = dx * dx + dy * dy + dz * dz;
+                float dist = MathF.Sqrt(distSq);
+
+                bool shouldRecycle = distSq > maxDistSq;
+
+                if (enableLogging)
+                {
+                    Logger.Log(
+                        $"[StarField] STAR[{i}] Offsets=({offsets.x:0.0}, {offsets.y:0.0}, {offsets.z:0.0}) " +
+                        $"BaseWorldPos=({baseWorld.x:0.0}, {baseWorld.y:0.0}, {baseWorld.z:0.0}) " +
+                        $"StarWorldPos=({starWorld.x:0.0}, {starWorld.y:0.0}, {starWorld.z:0.0}) " +
+                        $"Dist={dist:0.0} Max={despawnRadius:0.0} -> {(shouldRecycle ? "RECYCLE" : "OK")}"
+                    );
+                }
+
+                if (shouldRecycle)
+                {
+                    // New offset based on current movement direction.
+                    var newOffset = FindRandomPosition(centerWorld);
+
+                    // New base world snapshot at the moment of recycle.
+                    var newBaseWorld = new EngineVector3
+                    {
+                        x = centerWorld.x,
+                        y = centerWorld.y,
+                        z = centerWorld.z
+                    };
+
+                    // New final world position for this recycled star.
+                    var newStarWorld = new EngineVector3
+                    {
+                        x = newBaseWorld.x + newOffset.x,
+                        y = newBaseWorld.y + newOffset.y,
+                        z = newBaseWorld.z + newOffset.z
+                    };
+
+                    if (i < starBaseWorldPositions.Count)
+                        starBaseWorldPositions[i] = newBaseWorld;
+                    else
+                        starBaseWorldPositions.Add(newBaseWorld);
+
+                    stars[i].ObjectOffsets = newOffset;
+                    stars[i].WorldPosition = newStarWorld;
+
                     if (enableLogging)
                     {
                         Logger.Log(
-                            $"[StarField] Culling star at offsets=({p.x:0.0}, {p.y:0.0}, {p.z:0.0}), " +
-                            $"distSq={distSq:0.0} (>{maxDistSq:0.0})"
+                            $"[StarField] RECYCLE[{i}] new BaseWorld=({newBaseWorld.x:0.0}, {newBaseWorld.y:0.0}, {newBaseWorld.z:0.0}), " +
+                            $"new Offsets=({newOffset.x:0.0}, {newOffset.y:0.0}, {newOffset.z:0.0}), " +
+                            $"new StarWorld=({newStarWorld.x:0.0}, {newStarWorld.y:0.0}, {newStarWorld.z:0.0})"
                         );
                     }
-
-                    stars.RemoveAt(i);
                 }
             }
         }
