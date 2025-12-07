@@ -8,7 +8,7 @@ namespace _3dRotations.World.Objects
 {
     public static class Star
     {
-        private static float ZoomRatio = 0.2f;
+        private static readonly float ZoomRatio = 0.2f;
 
         // Simple color palette for stars (can be tweaked to taste)
         // White, warm white, slightly blue-white, slightly reddish, slightly greenish
