@@ -216,7 +216,6 @@ namespace _3dTesting.MainWindowClasses
 
                     bool useVertical = r < absY;
                     bool useDepth = !useVertical && (r < absY + absZ);
-                    bool useHorizontal = !useVertical && !useDepth;
 
                     if (useVertical)
                     {
