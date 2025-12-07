@@ -108,7 +108,7 @@ namespace GameAudioInstances
     /// </summary>
     public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
     {
-        private bool logging = false;
+        private readonly bool logging = false;
         private readonly IWavePlayer _outputDevice;
         private readonly MixingSampleProvider _mixer;
         private readonly ConcurrentDictionary<Guid, NAudioAudioInstance> _instances =
