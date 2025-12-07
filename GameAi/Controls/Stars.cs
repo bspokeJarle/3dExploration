@@ -22,7 +22,7 @@ namespace GameAiAndControls.Controls
         // Tweak as desired – lower value = calmer star movement in Y
         private float _syncFactor = 2.5f;
 
-        private bool _enableLogging = false;
+        private readonly bool _enableLogging = false;
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
