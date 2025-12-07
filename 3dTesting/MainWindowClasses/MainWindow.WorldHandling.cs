@@ -17,10 +17,12 @@ namespace _3dTesting.MainWindowClasses
         private readonly _3dRotationCommon Rotate3d = new();
         private readonly ParticleManager particleManager = new();
         private readonly WeaponsManager weaponsManager = new();
-        IAudioPlayer audioPlayer = new NAudioAudioPlayer("Soundeffects");
-        ISoundRegistry soundRegistry = new JsonSoundRegistry("Soundeffects\\sounds.json");
-        static SoundDefinition musicDef { get; set; } = null;
-        static bool musicIsPlaying { get; set; } = false;
+        private StarFieldHandler StarFieldHandler { get; set; }
+
+        readonly IAudioPlayer audioPlayer = new NAudioAudioPlayer("Soundeffects");
+        private readonly ISoundRegistry soundRegistry = new JsonSoundRegistry("Soundeffects\\sounds.json");
+        static SoundDefinition MusicDef { get; set; } = null;
+        static bool MusicIsPlaying { get; set; } = false;
 
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
@@ -52,6 +54,17 @@ namespace _3dTesting.MainWindowClasses
                 // Now perform the deep copy on the snapshot of visible objects
                 deepCopiedWorld = Common3dObjectHelpers.DeepCopy3dObjects(activeWorld);
             }
+            if (StarFieldHandler == null)
+            {
+                var parentSurface = world.WorldInhabitants.FirstOrDefault(obj => obj.ObjectName == "Surface").ParentSurface;
+                if (parentSurface != null)
+                {
+                     StarFieldHandler = new StarFieldHandler(parentSurface);
+                }
+            }
+            //Generate starfield will do nothing if not needed
+            StarFieldHandler.GenerateStarfield();
+            if (StarFieldHandler.HasStars()) deepCopiedWorld.AddRange(StarFieldHandler.GetStars());
 
             var particleObjectList = new List<_3dObject>();
             var weaponObjectList = new List<_3dObject>();
@@ -117,6 +130,9 @@ namespace _3dTesting.MainWindowClasses
                 //Dispose the ship movement to free resources
                 ship.Movement.Dispose();
                 world.WorldInhabitants.Clear();
+                //Remove stars
+                StarFieldHandler.ClearStars();
+                StarFieldHandler = null;
                 //When explosion has happened, reset the scene
                 world.SceneHandler.ResetActiveScene(world);
                 return [];
@@ -134,11 +150,11 @@ namespace _3dTesting.MainWindowClasses
 
         public void HandleMusic(List<_3dObject> renderedObjects)
         {
-            if (musicDef == null) musicDef = soundRegistry.Get("music_flight");
-            if (!musicIsPlaying)
+            if (MusicDef == null) MusicDef = soundRegistry.Get("music_flight");
+            if (!MusicIsPlaying)
             {
-                musicIsPlaying = true;
-                audioPlayer.PlayMusic(musicDef,0.2f);
+                MusicIsPlaying = true;
+                audioPlayer.PlayMusic(MusicDef,0.2f);
             }
             //Work with renderedobjects to decide what music to play, for now just play mainmusicloop
         }

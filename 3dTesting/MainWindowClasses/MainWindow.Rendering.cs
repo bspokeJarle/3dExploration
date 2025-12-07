@@ -116,7 +116,7 @@ namespace _3dTesting.Rendering
 
                 foreach (var triangle in triangleArray)
                 {
-                    if (triangle.CalculatedZ > 2000 || triangle.CalculatedZ < -2000)
+                    if (triangle.CalculatedZ > 1200 || triangle.CalculatedZ < -2000)
                         continue;
 
                     if (triangle.X1 < 0 && triangle.X2 < 0 && triangle.X3 < 0) continue;

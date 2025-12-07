@@ -10,6 +10,7 @@ namespace GameAiAndControls.Controls
 {
     public class ShipControls : IObjectMovement
     {
+        private bool logging = false;
         private const float MaxThrust = 10.0f;
         private const float ThrustIncreaseRate = 0.5f;
         private const float GravityAcceleration = 0.75f;
@@ -114,14 +115,14 @@ namespace GameAiAndControls.Controls
                     // Hvis en gammel instans fortsatt henger igjen (tail spiller):
                     if (_rocketInstance != null)
                     {
-                        Logger.Log("Audio: Force-stopping previous rocket instance before starting new.");
+                        if (logging) Logger.Log("Audio: Force-stopping previous rocket instance before starting new.");
                         _rocketInstance.Stop(playEndSegment: false); // hard cut på gammel tail
                         _rocketInstance = null;
                     }
 
                     if (_audio != null && _rocketSound != null)
                     {
-                        Logger.Log("Audio: Starting new rocket segmented loop.");
+                        if (logging) Logger.Log("Audio: Starting new rocket segmented loop.");
                         _rocketInstance = _audio.Play(
                             _rocketSound,
                             AudioPlayMode.SegmentedLoop);

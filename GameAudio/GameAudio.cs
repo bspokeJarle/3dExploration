@@ -13,7 +13,7 @@ namespace GameAudioInstances
     /// </summary>
     internal sealed class NAudioAudioInstance : IAudioInstance
     {
-        private bool enableLogging = false;
+        private bool logging = false;
         private readonly NAudioAudioPlayer _owner;
         private readonly ISampleProvider _pipeline;
         private readonly VolumeSampleProvider _volumeProvider;
@@ -85,12 +85,12 @@ namespace GameAudioInstances
 
             if (_mode == AudioPlayMode.SegmentedLoop && _loopProvider != null && playEndSegment)
             {
-                if (enableLogging) Logger.Log(@"Audio:Requested stop with EndSegment.");
+                Logger.Log(@"Audio:Requested stop with EndSegment.");
                 _loopProvider.RequestStopWithEndSegment();
             }
             else
             {
-                if (enableLogging) Logger.Log(@"Audio:IsPlaying set to false.");
+                Logger.Log(@"Audio:IsPlaying set to false.");
                 _isPlaying = false;
                 _owner.InternalStopInstance(this);
             }
@@ -109,7 +109,6 @@ namespace GameAudioInstances
     /// </summary>
     public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
     {
-        private bool enableLogging = false;
         private readonly IWavePlayer _outputDevice;
         private readonly MixingSampleProvider _mixer;
         private readonly ConcurrentDictionary<Guid, NAudioAudioInstance> _instances =
@@ -186,7 +185,7 @@ namespace GameAudioInstances
                     _mixer.WaveFormat);
 
                 pipeline = loopProvider;
-                if (enableLogging) Logger.Log(@"Audio: Playing segmented loop.");
+                Logger.Log(@"Audio: Playing segmented loop.");
             }
 
             var instance = new NAudioAudioInstance(
@@ -201,7 +200,7 @@ namespace GameAudioInstances
 
             _instances[instance.Id] = instance;
             _mixer.AddMixerInput(pipeline);
-            if (enableLogging) Logger.Log(@"Audio: Play end of method.");
+            Logger.Log(@"Audio: Play end of method.");
             return instance;
         }
 
@@ -240,7 +239,7 @@ namespace GameAudioInstances
             // Stopp eventuell gammel musikk først
             if (_musicInstance != null)
             {
-                if (enableLogging) Logger.Log("Audio: Stopping previous music instance before starting new.");
+                Logger.Log("Audio: Stopping previous music instance before starting new.");
                 _musicInstance.Stop(playEndSegment: false); // ikke tail på musikkbytte
                 _musicInstance = null;
             }
@@ -251,7 +250,7 @@ namespace GameAudioInstances
             if (vol > 1f) vol = 1f;
             _musicVolume = vol;
 
-            if (enableLogging) Logger.Log(
+            Logger.Log(
                 $"Audio: PlayMusic id={definition.Id}, " +
                 $"segments: start={definition.Segments.Start:F2}, " +
                 $"loopStart={definition.Segments.LoopStart:F2}, " +
@@ -278,7 +277,7 @@ namespace GameAudioInstances
         {
             if (_musicInstance != null)
             {
-                if (enableLogging) Logger.Log("Audio: Stopping music instance.");
+                Logger.Log("Audio: Stopping music instance.");
                 _musicInstance.Stop(playEndSegment: false);
                 _musicInstance = null;
             }
@@ -293,7 +292,7 @@ namespace GameAudioInstances
 
             if (_musicInstance != null)
             {
-                if (enableLogging) Logger.Log($"Audio: Setting music volume to {_musicVolume:F2}.");
+                Logger.Log($"Audio: Setting music volume to {_musicVolume:F2}.");
                 _musicInstance.SetVolume(_musicVolume);
             }
         }
@@ -353,7 +352,6 @@ namespace GameAudioInstances
     /// </summary>
     internal sealed class SegmentedLoopSampleProvider : ISampleProvider
     {
-        private bool enableLogging = false;
         private readonly ISampleProvider _source;     // Normalized audio (matches mixer format)
         private readonly AudioFileReader _file;       // Underlying file for time/seek
         private readonly WaveFormat _format;
@@ -402,7 +400,7 @@ namespace GameAudioInstances
             // hopper vi rett til loopEnd slik at tailen blir kort og konsistent.
             if (now < _loopEndTs)
             {
-                if (enableLogging) Logger.Log(
+                Logger.Log(
                     $"Audio: SegmentedLoop - stop requested at t={now.TotalSeconds:F2}s, " +
                     $"jumping to loopEnd={_segments.LoopEnd:F2}s for short tail.");
 
@@ -410,7 +408,7 @@ namespace GameAudioInstances
             }
             else
             {
-                if (enableLogging) Logger.Log(
+                Logger.Log(
                     $"Audio: SegmentedLoop - stop requested at t={now.TotalSeconds:F2}s, already in tail.");
             }
         }
@@ -423,7 +421,7 @@ namespace GameAudioInstances
             int read = _source.Read(buffer, offset, count);
             if (read == 0)
             {
-                if (enableLogging) Logger.Log("Audio: SegmentedLoop - source returned 0, marking as finished.");
+                Logger.Log("Audio: SegmentedLoop - source returned 0, marking as finished.");
                 _finished = true;
                 return 0;
             }
@@ -435,7 +433,7 @@ namespace GameAudioInstances
             {
                 if (_file.CurrentTime >= _loopEndTs)
                 {
-                    if (enableLogging) Logger.Log($"Audio: SegmentedLoop - looping back at t={t:F2}s -> loopStart={_segments.LoopStart:F2}s");
+                    Logger.Log($"Audio: SegmentedLoop - looping back at t={t:F2}s -> loopStart={_segments.LoopStart:F2}s");
                     _file.CurrentTime = _loopStartTs;
                 }
             }
@@ -443,7 +441,7 @@ namespace GameAudioInstances
             {
                 if (_file.CurrentTime >= _endTs)
                 {
-                    if (enableLogging) Logger.Log($"Audio: SegmentedLoop - reached end segment at t={t:F2}s, finishing.");
+                    Logger.Log($"Audio: SegmentedLoop - reached end segment at t={t:F2}s, finishing.");
                     _finished = true;
 
                     for (int i = offset; i < offset + read; i++)
