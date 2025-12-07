@@ -26,7 +26,7 @@ namespace _3dTesting.MainWindowClasses
         private const float SpawnYMax = 750f;
 
         // Do not spawn new stars if surface is closer than this to the "camera" on Y.
-        private int GroundDistanceY = 250;
+        private const int GroundDistanceY = 250;
 
         // Z: in front of camera (into the screen) = NEGATIVE Z.
         private const float SpawnZFar = -1000f; // furthest away
