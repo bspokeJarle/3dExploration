@@ -91,9 +91,6 @@ namespace _3dTesting.MainWindowClasses
             if (ParentSurface == null)
                 return;
 
-            /*// If surface is too close to the camera, skip spawning.
-            if (ParentSurface.GlobalMapPosition.y < GroundDistanceY)
-                return;*/
 
             var currentWorldPos = ParentSurface.GlobalMapPosition;
 
