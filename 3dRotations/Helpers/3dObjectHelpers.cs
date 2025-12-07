@@ -20,7 +20,7 @@ namespace _3dTesting.Helpers
 
             foreach (var tri in triangles)
             {
-                // Antar at vert1/vert2/vert3 er IVector3 med settable x/y/z
+                // Assumes that vert1/vert2/vert3 are IVector3 with settable x/y/z
                 tri.vert1.x *= scale;
                 tri.vert1.y *= scale;
                 tri.vert1.z *= scale;
