@@ -168,9 +168,9 @@ namespace _3dTesting._3dRotation
         {
             double denom = -v.z + objPosZ + perspectiveAdjustment;
 
-            // Hvis punktet er på eller bak "kamera-planen" -> ikke rendre det.
-            // (denom <= 0 betyr at vi krysser perspektiveplanet og factor ville flippet)
-            if (denom <= 1.0) // 1.0 som liten sikkerhetsmargin
+            // If the point is on or behind the 'camera plane' -> do not render it.
+            // (denom <= 0 means we cross the perspective plane and factor would flip)
+            if (denom <= 1.0) // 1.0 as small safety margin
             {
                 return (double.NaN, double.NaN);
             }
