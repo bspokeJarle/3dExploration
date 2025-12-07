@@ -13,7 +13,7 @@ namespace GameAiAndControls.Controls
         // Optional: could be used for slow spin later
         private float _yRotation = 0f;
         private readonly float _xRotation = 0f;
-        private float _zRotation = 0f;
+        private readonly float _zRotation = 0f;
 
         private bool _syncInitialized = false;
         private float _syncY = 0f;
