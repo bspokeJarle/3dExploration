@@ -1,6 +1,7 @@
 ﻿using _3dTesting._Coordinates;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
 
@@ -10,13 +11,16 @@ namespace _3dTesting.Rendering
     {
         private readonly DrawingVisualHost visualHost;
         private readonly DrawingVisual visual = new DrawingVisual();
-        private readonly bool _localLoggingEnabled =  false;
+        private readonly bool _localLoggingEnabled =  true;
 
         private int renderingTriangleCount = 0;
 
         private readonly Dictionary<(float, string), Color> colorCache = new();
         private readonly Dictionary<Color, SolidColorBrush> brushCache = new();
         private readonly Dictionary<Color, Pen> penCache = new();
+
+        private const float FarZ = 2000f;
+        private const float NearZ = -2000f;
 
         public int GetRenderingTriangleCount() => renderingTriangleCount;
 
@@ -51,24 +55,35 @@ namespace _3dTesting.Rendering
             string[] commonColors = new[] { "red", "green", "blue", "gray", "white", "black", "yellow", "orange", "brown" };
             int generatedCount = 0;
 
-            for (float z = 0.2f; z <= 0.9f; z += 0.1f)
+            // Choose how dense you want the prewarm. 100 steps -> about 101 * 9 = 909 entries before rounding/cache hits.
+            const int steps = 100;
+            float stepSize = (FarZ - NearZ) / steps;
+
+            for (int i = 0; i <= steps; i++)
             {
-                float roundedZ = (float)Math.Round(z, 2, MidpointRounding.AwayFromZero);
+                float calculatedZ = NearZ + (i * stepSize);
+
+                // Map to 0..1 using the new helper
+                float factor01 = GetDepthFactor01(calculatedZ);
+
+                // Quantize for stable cache keys (same concept as runtime shading key)
+                float roundedFactor01 = (float)Math.Round(factor01, 2, MidpointRounding.AwayFromZero);
 
                 foreach (var baseColor in commonColors)
                 {
                     string normalized = baseColor.ToLowerInvariant();
 
-                    var cacheKey = (roundedZ, normalized);
+                    var cacheKey = (roundedFactor01, normalized);
                     if (colorCache.ContainsKey(cacheKey))
                         continue;
 
                     try
                     {
-                        string formattedZ = roundedZ.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
-
+                        // NOTE: We keep the call signature the same for now,
+                        // since you said you're aligned with renaming later.
                         Color color = (Color)ColorConverter.ConvertFromString(
-                            Helpers.Colors.getShadeOfColorFromNormal(roundedZ, normalized));
+                            Helpers.Colors.getShadeOfColorFromNormal(roundedFactor01, normalized));
+
                         colorCache[cacheKey] = color;
 
                         if (!brushCache.ContainsKey(color))
@@ -90,7 +105,7 @@ namespace _3dTesting.Rendering
                     catch (Exception ex)
                     {
                         if (ShouldLog())
-                            Logger.Log($"[WorldRenderer] ⚠️ Failed to prewarm color ({roundedZ}, {baseColor}): {ex.Message}");
+                            Logger.Log($"[WorldRenderer] ⚠️ Failed to prewarm color (factor={roundedFactor01:0.00}, baseColor={baseColor}, calcZ={calculatedZ:0.00}): {ex.Message}");
                     }
                 }
             }
@@ -98,6 +113,7 @@ namespace _3dTesting.Rendering
             if (ShouldLog())
                 Logger.Log($"[WorldRenderer] ✅ Prewarmed {generatedCount} colors + brushes + pens.");
         }
+
 
         public void RenderTriangles(List<_2dTriangleMesh> screenCoordinates)
         {
@@ -124,11 +140,15 @@ namespace _3dTesting.Rendering
                     if (triangle.Y1 < 0 && triangle.Y2 < 0 && triangle.Y3 < 0) continue;
                     if (triangle.Y1 > 1080 && triangle.Y2 > 1080 && triangle.Y3 > 1080) continue;
 
-                    float zKey = (float)Math.Round((triangle.CalculatedZ + 1050) / 3000f, 2);
+                    float factor01 = GetDepthFactor01(triangle.CalculatedZ);
+                    float zKey = (float)Math.Round(factor01, 2, MidpointRounding.AwayFromZero);
                     string baseColor = triangle.Color.ToLowerInvariant();
+
+                    //float zKey = (float)Math.Round((triangle.CalculatedZ + 1050) / 3000f, 2);
 
                     if (!colorCache.TryGetValue((zKey, baseColor), out Color color))
                     {
+                        Logger.Log($"[WorldRenderer] ⚠️ Color cache miss for key ({zKey}, {baseColor}). Generating new color. CalculatedZ:{triangle.CalculatedZ}");
                         color = (Color)ColorConverter.ConvertFromString(
                             Helpers.Colors.getShadeOfColorFromNormal(zKey, baseColor));
                         colorCache[(zKey, baseColor)] = color;
@@ -174,6 +194,18 @@ namespace _3dTesting.Rendering
                 Logger.Log($"[WorldRenderer] Caching stats - Colors: {colorHits} hits / {colorMisses} misses, " +
                            $"Brushes: {brushHits} hits / {brushMisses} misses, Pens: {penHits} hits / {penMisses} misses");
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float GetDepthFactor01(float calculatedZ)
+        {
+            float near = NearZ; // lav Z -> mørkere (0)
+            float far = FarZ;  // høy Z -> lysere (1)
+
+            if (calculatedZ <= near) return 0f;
+            if (calculatedZ >= far) return 1f;
+
+            return (calculatedZ - near) / (far - near);
         }
 
         private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)

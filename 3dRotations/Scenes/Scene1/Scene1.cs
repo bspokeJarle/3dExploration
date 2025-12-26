@@ -1,14 +1,10 @@
 ﻿
-using _3dTesting._3dWorld;
 using _3dRotations.World.Objects;
 using static Domain._3dSpecificsImplementations;
 using GameAiAndControls.Controls;
 using _3dRotations.Helpers;
 using Domain;
 using System.Collections.Generic;
-using System.Diagnostics;
-using _3dTesting.Helpers;
-using _3dRotations.World.Objects;
 
 namespace _3dRotations.Scene.Scene1
 {
@@ -26,7 +22,7 @@ namespace _3dRotations.Scene.Scene1
             ship.WorldPosition = new Vector3 { };
             ship.ObjectName = "Ship";
             ship.ImpactStatus = new ImpactStatus { };
-            ship.CrashBoxDebugMode = false;
+            ship.CrashBoxDebugMode = true;
             ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
            
@@ -34,30 +30,33 @@ namespace _3dRotations.Scene.Scene1
             //Initialize the seeder rotation
             seeder.Rotation = new Vector3 { };
             seeder.WorldPosition = new Vector3 { x = 95700, y = 0, z = 92000 };
-            seeder.ObjectOffsets = new Vector3 { x = -150, y = -200, z = 0 };
-            seeder.CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 };
+            seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 0 };
             seeder.ObjectName = "Seeder";
-            seeder.Movement = new SeederControls();            
+            seeder.Movement = new SeederControls();
+            seeder.CrashBoxDebugMode = true;
+            seeder.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(seeder);
 
             var seeder2 = Seeder.CreateSeeder(Surface);
             //Initialize the seeder rotation
             seeder2.Rotation = new Vector3 { };
             seeder2.WorldPosition = new Vector3 { x = 96200, y = 0, z = 93000 };
-            seeder2.ObjectOffsets = new Vector3 { x = -150, y = -100, z = 0 };
-            seeder2.CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 };
+            seeder2.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 0 };
             seeder2.ObjectName = "Seeder";
             seeder2.Movement = new SeederControls();
+            seeder2.CrashBoxDebugMode = true;
+            seeder2.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(seeder2);
 
             var seeder3 = Seeder.CreateSeeder(Surface);
             //Initialize the seeder rotation
             seeder3.Rotation = new Vector3 { };
             seeder3.WorldPosition = new Vector3 { x = 94000, y = 0, z = 90000 };
-            seeder3.ObjectOffsets = new Vector3 { x = -150, y = -100, z = 0 };
-            seeder3.CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 };
+            seeder3.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 0 };
             seeder3.ObjectName = "Seeder";
             seeder3.Movement = new SeederControls();
+            seeder3.CrashBoxDebugMode = true;
+            seeder3.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(seeder3);
 
             //Get the surface viewport based on the global Map Position
@@ -90,8 +89,6 @@ namespace _3dRotations.Scene.Scene1
 
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
                 tree.ObjectOffsets = new Vector3 { x = 75, y = 430, z = 300 };
-                //Crashbox offsets for Tree, counteract the object offsets
-                tree.CrashboxOffsets = new Vector3 { };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
@@ -113,8 +110,6 @@ namespace _3dRotations.Scene.Scene1
                 Surface.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
 
                 house.ObjectOffsets = new Vector3 { x = 75, y = 450, z = 300 };
-                //TODO need to find the right offsets for house
-                house.CrashboxOffsets = new Vector3 { };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };

@@ -1,4 +1,5 @@
 ﻿using _3dTesting._3dWorld;
+using CommonUtilities._3DHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -32,6 +33,7 @@ namespace _3dTesting.Helpers
             x = y = z = 0;
             if (obj == null) return false;
 
+            //Calculates local position based on the world position
             var localWorldPosition = obj.GetLocalWorldPosition();
 
             if (localWorldPosition == null)
@@ -56,6 +58,14 @@ namespace _3dTesting.Helpers
             }
             else
             {
+                //Store this for use in Crashdetection
+                obj.CalculatedWorldOffset = new Vector3
+                {
+                    x = localWorldPosition.x,
+                    y = localWorldPosition.y,
+                    z = localWorldPosition.z
+                };
+                //Calculate screen position
                 x = screenCenterX - localWorldPosition.x + obj.ObjectOffsets.x;
                 y = screenCenterY - localWorldPosition.y + obj.ObjectOffsets.y;
                 z = localWorldPosition.z + obj.ObjectOffsets.z;

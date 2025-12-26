@@ -54,7 +54,7 @@ namespace GameAiAndControls.Controls
         public int tilt = 0;
 
         public int shipY = 0;
-        public int zoom = 300;
+        public int zoom = 400;
 
         public I3dObject ParentObject { get; set; }
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
@@ -191,7 +191,7 @@ namespace GameAiAndControls.Controls
             // Fire weapon from ship
             var rot = new Vector3
             {
-                x = rotationX + tilt,
+                x = rotationX,
                 y = rotationY,
                 z = rotationZ
             };

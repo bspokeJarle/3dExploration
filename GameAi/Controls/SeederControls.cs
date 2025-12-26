@@ -1,10 +1,6 @@
 ﻿using Domain;
-using Gma.System.MouseKeyHook;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Windows;
 using static Domain._3dSpecificsImplementations;
 
 namespace GameAiAndControls.Controls
@@ -38,14 +34,19 @@ namespace GameAiAndControls.Controls
             if (theObject.Rotation!=null) theObject.Rotation.x=Xrotation;
             if (theObject.Rotation!=null) theObject.Rotation.z=Zrotation;
 
+            if (theObject.ImpactStatus.HasCrashed == true)
+            {
+                if (enableLogging) Logger.Log($"Seeder has crashed, should handle crash. CrashedWith:{theObject.ImpactStatus.ObjectName}");                
+            }
+
             //If there are particles, move them
             if (ParentObject.Particles?.Particles.Count > 0)
             {
                 ParentObject.Particles.MoveParticles();
             }
             //For now, just rotate the object at a fixed speed
-            //Zrotation += 2;
-            //Xrotation += 2;
+            Zrotation += 2;
+            //Xrotation += 1.5f;
             SyncMovement(theObject);
             return theObject;
         }

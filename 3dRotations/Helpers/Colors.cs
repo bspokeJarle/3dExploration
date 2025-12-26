@@ -5,7 +5,7 @@ namespace _3dTesting.Helpers
     public class Colors
     {
         //Add some brightness to the colors, temp solution
-        const int brightness = 8;
+        const int brightness = 3;
         public static string getShadeOfColorFromNormal(float normal, string color)
         { 
             if (color==null) color = "#000000";

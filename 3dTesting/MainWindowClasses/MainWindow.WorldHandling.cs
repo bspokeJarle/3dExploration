@@ -56,15 +56,18 @@ namespace _3dTesting.MainWindowClasses
             }
             if (StarFieldHandler == null)
             {
-                var parentSurface = world.WorldInhabitants.FirstOrDefault(obj => obj.ObjectName == "Surface").ParentSurface;
+                var parentSurface = world.WorldInhabitants?.FirstOrDefault(obj => obj.ObjectName == "Surface")?.ParentSurface;
                 if (parentSurface != null)
                 {
                      StarFieldHandler = new StarFieldHandler(parentSurface);
                 }
             }
             //Generate starfield will do nothing if not needed
-            StarFieldHandler.GenerateStarfield();
-            if (StarFieldHandler.HasStars()) deepCopiedWorld.AddRange(StarFieldHandler.GetStars());
+            if (StarFieldHandler!=null)
+            {
+                StarFieldHandler.GenerateStarfield();
+                if (StarFieldHandler.HasStars()) deepCopiedWorld.AddRange(StarFieldHandler.GetStars());
+            }
 
             var particleObjectList = new List<_3dObject>();
             var weaponObjectList = new List<_3dObject>();
@@ -143,7 +146,7 @@ namespace _3dTesting.MainWindowClasses
             //Check if there are any crashboxes to debug
             if (crashBoxDebuggedObjects.Count > 0) crashBoxCoordinates = From3dTo2d.ConvertTo2dFromObjects(crashBoxDebuggedObjects, true);
             else crashBoxCoordinates = new List<_2dTriangleMesh>();
-            CrashDetection.HandleCrashboxes(renderedList);
+            CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             HandleMusic(renderedList);
             return projectedCoordinates;
         }

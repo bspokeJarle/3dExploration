@@ -8,11 +8,9 @@ namespace _3dRotations.World.Objects
 {
     public static class Ship
     {
+        private const float ZoomRatio = 1f;
         public static _3dObject CreateShip(ISurface parentSurface)
         {
-            //var modelReader = new STLReader("C:\\Users\\kh979\\Documents\\Privat\\Bspoke prosjekter\\3dProsjekt\\3dProsjekt\\3dTesting\\3d objects\\div\\complexorb.stl");
-            //var triangles = _3dObjectHelpers.ConvertToTrianglesWithColor(modelReader.ReadFile().ToList(), "FF6644");           
-
             var upperTriangles = UpperTriangles();
             var lowerTriangles = LowerTriangles();
             var rearTriangles = RearTriangles();
@@ -45,6 +43,9 @@ namespace _3dRotations.World.Objects
             ship.Particles = new ParticlesAI();
             ship.ParentSurface = parentSurface;
             if (shipCrashBox != null) ship.CrashBoxes = crashBoxes;
+
+            _3dObjectHelpers.ApplyScaleToObject(ship, ZoomRatio);
+
             return ship;
         }
 

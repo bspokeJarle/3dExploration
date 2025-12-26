@@ -14,7 +14,7 @@ namespace _3dTesting.MainWindowClasses
         private readonly Random random = new();
 
         // Max number of stars we want at any time.
-        private const int maxStarCount = 60;
+        private const int maxStarCount = 100;
 
         // Stars that move outside this world radius are recycled.
         private const float despawnRadius = 1500f;

@@ -1,18 +1,18 @@
-﻿using System;
-using System.Linq;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Threading;
-using System.Diagnostics;
-using System.Threading.Tasks;
-using System.Windows.Input;
-using _3dTesting.Helpers;
+﻿using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
 using _3dTesting.Rendering;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace _3dTesting
 {
@@ -50,6 +50,8 @@ namespace _3dTesting
         private Image mapOverlay;
         private System.Windows.Shapes.Rectangle healthRectangle;
         private bool isPaused = false;
+        private int pauseFrameCount = 0;
+        private const int limitFrameCount = 2;
         private DateTime fadeOutTrigged = DateTime.MinValue;
 
         public MainWindow()
@@ -124,8 +126,12 @@ namespace _3dTesting
             if (e.Key == Key.Escape)
                 Application.Current.Shutdown();
             //This is the pause the game
-            if (e.Key == Key.LeftCtrl)
+            if (e.Key == Key.LeftCtrl) 
+            {
                 isPaused = !isPaused;
+                world.IsPaused = !isPaused;
+                pauseFrameCount = 0;
+            }
         }
 
         private bool isFading = false;
@@ -176,15 +182,20 @@ namespace _3dTesting
 
         private async void Handle3dWorld()
         {
+            if (world.IsPaused)
+            {
+                //When pausing let it run for X frames to settle (debugging purposes)
+                pauseFrameCount++;
+            }
             //TODO: Should wait until we actually have the new Scene
-            if (!isPaused && gameWorldManager.FadeInWorld && isFading && world.WorldInhabitants.Count>100)
+            if (pauseFrameCount<limitFrameCount && gameWorldManager.FadeInWorld && isFading && world.WorldInhabitants.Count > 100)
             {
                 await FadeInAsync(1.5f);
                 gameWorldManager.FadeInWorld = false;
                 isFading = false;
             }
 
-            if (!isPaused && gameWorldManager.FadeOutWorld && !isFading)
+            if (pauseFrameCount<=limitFrameCount && gameWorldManager.FadeOutWorld && !isFading)
             {
                 // Delay fade out until the ship is finished exploding
                 if (fadeOutTrigged == DateTime.MinValue)
@@ -207,25 +218,40 @@ namespace _3dTesting
             if (stopwatch.ElapsedMilliseconds >= 1000)
             {
                 Dispatcher.Invoke(() =>
-                    FpsText.Text = $"FPS: {frameCount} Triangles:{worldRenderer.GetRenderingTriangleCount()} { gameWorldManager.DebugMessage }"
-                ) ;
+                    FpsText.Text = $"FPS: {frameCount} Triangles:{worldRenderer.GetRenderingTriangleCount()} {gameWorldManager.DebugMessage}"
+                );
                 frameCount = 0;
                 stopwatch.Restart();
             }
 
-            if (!isFading)
+            if (!isFading && world.WorldInhabitants.Count > 100)
             {
-                //Show health etc for main ship
-                GameHelpers.UpdateShipStatistics(healthRectangle, (Domain._3dSpecificsImplementations._3dObject)world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Ship"));
+                // Make a snapshot of the list to prevent "collection modified" crashes
+                var inhabitants = world.WorldInhabitants.ToList();
 
-                GameHelpers.UpdateMapOverlay(mapOverlay, surfaceMapBitmap,
-                    Convert.ToInt32(world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapPosition.x),
-                    Convert.ToInt32(world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapPosition.z));
+                var ship = inhabitants.FirstOrDefault(z => z.ObjectName == "Ship");
+                var surface = inhabitants.FirstOrDefault(z => z.ObjectName == "Surface");
+
+                // Update HUD for ship
+                if (ship != null)
+                    GameHelpers.UpdateShipStatistics(healthRectangle, (Domain._3dSpecificsImplementations._3dObject)ship);
+
+                // Update minimap
+                if (surface?.ParentSurface?.GlobalMapPosition != null)
+                {
+                    GameHelpers.UpdateMapOverlay(
+                        mapOverlay,
+                        surfaceMapBitmap,
+                        Convert.ToInt32(surface.ParentSurface.GlobalMapPosition.x),
+                        Convert.ToInt32(surface.ParentSurface.GlobalMapPosition.z)
+                    );
+                }
             }
+
 
             _ = Task.Run(() =>
             {
-                if (isPaused)
+                if (pauseFrameCount>=limitFrameCount)
                 {
                     return;
                 }

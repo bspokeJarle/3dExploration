@@ -3,6 +3,7 @@ using Domain;
 using System;
 using System.Collections.Generic;
 using System.Security.Policy;
+using System.Windows;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 using static Domain._3dSpecificsImplementations;
 
@@ -10,8 +11,13 @@ namespace GameAiAndControls.Controls
 {
     public class Weapons : IWeapon
     {
+        private static bool enableLogging = false;
         private static readonly int maxZ = 1200;
-        private static readonly int minZ = -2000;
+        private static readonly int minZ = -2500;
+        private static readonly int maxX = 1200;
+        private static readonly int minX = -1200;
+        private static readonly int maxY = 1200;
+        private static readonly int minY = -1200;
 
         private readonly List<I3dObject> _weaponObjects;
         private readonly _3dRotationCommon _rotate = new(); // Rotation fra CommonHelpers
@@ -41,7 +47,7 @@ namespace GameAiAndControls.Controls
             ParentShipObject = (_3dObject)parentShip;
 
             if (weaponType == WeaponType.Lazer)
-            {
+            {                
                 I3dObject template = _weaponObjects.Count > 0
                     ? _weaponObjects[0]
                     : new _3dObject { ObjectName = "Lazer" };
@@ -53,6 +59,8 @@ namespace GameAiAndControls.Controls
 
                 //Startposition in local coords
                 SetObjectOffsets(instance, startPosition);
+                //Set world position for reference
+                SetWorldPosition(instance, worldPosition);
 
                 //Get ship rotation and apply to weapon geometry
                 InitializeWeaponGeometry(instance, instance.Rotation as Vector3, tilt);
@@ -74,7 +82,7 @@ namespace GameAiAndControls.Controls
 
                 ActiveWeapons.Add(weapon);
 
-                Logger.Log(
+                if (enableLogging) Logger.Log(
                     $"[WeaponSystem] Fired {weaponType} from {startPosition} " +
                     $"with dir={dir} globalmapposition={worldPosition} at {DateTime.UtcNow}"
                 );
@@ -92,10 +100,10 @@ namespace GameAiAndControls.Controls
             if (weapon.ObjectParts == null)
                 return;
 
-            Logger.Log(
+            if (enableLogging) Logger.Log(
                 $"Weapon rotation initialization started. BaseDeg:{rotation.x},{rotation.y},{rotation.z} Tilt:{tilt}"
             );
-            Logger.Log("Before rotation:" +
+            if (enableLogging) Logger.Log("Before rotation:" +
                 weapon.ObjectParts[0].Triangles[0].vert1.x + ", " +
                 weapon.ObjectParts[0].Triangles[0].vert1.y + ", " +
                 weapon.ObjectParts[0].Triangles[0].vert1.z);
@@ -106,7 +114,7 @@ namespace GameAiAndControls.Controls
                     continue;
 
                 // 1) Tilt around X axis first
-                var withTilt = _rotate.RotateXMesh(part.Triangles, tilt);
+                var withTilt = _rotate.RotateXMesh(part.Triangles, tilt);                
 
                 // 2) Then the main rotation in the same order as in GameWorldManager.RotateMesh (Z → Y → X)
                 var rotated = _rotate.RotateXMesh(
@@ -115,28 +123,61 @@ namespace GameAiAndControls.Controls
                         rotation.y
                     ),
                     rotation.x
-                );
-
+                );                
                 part.Triangles = rotated;
             }
+            var crashBoxesWithTilt = RotateCrashBoxes(weapon.CrashBoxes, tilt, rotation);
+            weapon.CrashBoxes = crashBoxesWithTilt;
 
-            Logger.Log("After rotation:" +
+            if (enableLogging) Logger.Log("After rotation:" +
                 weapon.ObjectParts[0].Triangles[0].vert1.x + ", " +
                 weapon.ObjectParts[0].Triangles[0].vert1.y + ", " +
                 weapon.ObjectParts[0].Triangles[0].vert1.z);
         }
 
+        public List<List<IVector3>>? RotateCrashBoxes(List<List<IVector3>> crashBoxes, int tilt, IVector3 rotation)
+        {
+            if (crashBoxes == null)
+                return null;
+
+            var result = new List<List<IVector3>>(crashBoxes.Count);
+
+            foreach (var box in crashBoxes)
+            {
+                var rotatedBox = new List<IVector3>(box.Count);
+
+                foreach (var vertex in box)
+                {
+                    // Start with original vertex
+                    var v = new Vector3(vertex.x, vertex.y, vertex.z);
+
+                    // 1) Tilt around X
+                    v = (Vector3)_rotate.RotatePoint(tilt, v, 'X');
+
+                    // 2) Main rotation Z → Y → X
+                    v = (Vector3)_rotate.RotatePoint(rotation.z, v, 'Z');
+                    v = (Vector3)_rotate.RotatePoint(rotation.y, v, 'Y');
+                    v = (Vector3)_rotate.RotatePoint(rotation.x, v, 'X');
+
+                    rotatedBox.Add(v);
+                }
+
+                result.Add(rotatedBox);
+            }
+
+            // Now all boxes have tilt + main rotation
+            return result;
+        }
+
         public IEnumerable<I3dObject> Get3DObjects()
         {
-            IVector3 worldPos = WorldPosition;
-
+            if (ActiveWeapons.Count == 0) yield break;
             foreach (ActiveWeapon w in ActiveWeapons)
             {
                 if (Expired(w))
                     continue;
 
-                SetWorldPosition(w.WeaponObject, worldPos);
-                yield return w.WeaponObject;
+                 yield return w.WeaponObject;
             }
         }
 
@@ -156,6 +197,11 @@ namespace GameAiAndControls.Controls
 
                 w.LastUpdateUtc = now;
 
+                if (w.ImpactStatus.HasCrashed)
+                {
+                    MessageBox.Show("Lazer traff noe!!!");
+                }
+
                 if (dt > 0.0)
                 {
                     w.Velocity += w.Acceleration * (float)dt;
@@ -170,7 +216,7 @@ namespace GameAiAndControls.Controls
                     SetObjectOffsets(w.WeaponObject, newLocal);
                     w.DistanceTraveled += Magnitude(deltaProj);
 
-                    Logger.Log(
+                    if (enableLogging) Logger.Log(
                         $"[WeaponSystem] {w.WeaponType} moved Δ=({deltaProj.x:F2},{deltaProj.y:F2},{deltaProj.z:F2}) " +
                         $"| LocalPos=({newLocal.x:F2},{newLocal.y:F2},{newLocal.z:F2}) | Range={w.DistanceTraveled:F2}"
                     );
@@ -184,7 +230,7 @@ namespace GameAiAndControls.Controls
                 ActiveWeapon w = ActiveWeapons[i] as ActiveWeapon;
                 if (w != null && Expired(w) || OutOfBounds(w.WeaponObject.ObjectOffsets))
                 {
-                    Logger.Log(
+                    if (enableLogging) Logger.Log(
                         $"[WeaponSystem] {w.WeaponType} expired\\out of bounds after {w.DistanceTraveled:F2} units. Current Z={w.WeaponObject.ObjectOffsets.z:F2}"
                     );
                     ActiveWeapons.RemoveAt(i);
@@ -205,7 +251,7 @@ namespace GameAiAndControls.Controls
                     boxes.AddRange(aw.WeaponObject.CrashBoxes);
             }
 
-            Logger.Log($"[WeaponSystem] CrashBoxes collected: {boxes.Count}");
+            if (enableLogging) Logger.Log($"[WeaponSystem] CrashBoxes collected: {boxes.Count}");
             return boxes;
         }
 
@@ -233,7 +279,7 @@ namespace GameAiAndControls.Controls
 
         private static bool OutOfBounds(IVector3 pos)
         {
-            return pos.z > maxZ || pos.z < minZ;
+            return pos.z > maxZ || pos.z < minZ || pos.x < minX || pos.x > maxX || pos.y < minY || pos.y > maxY;
         }
 
         private static IVector3 Add(IVector3 a, IVector3 b) =>

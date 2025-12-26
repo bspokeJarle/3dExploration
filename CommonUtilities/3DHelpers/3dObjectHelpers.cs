@@ -6,6 +6,20 @@ namespace CommonUtilities._3DHelpers
 {
     public static class Common3dObjectHelpers
     {
+        public static IVector3 GetLocalWorldPosition(this _3dObject inhabitant)
+        {
+            var globalMapPosition = inhabitant.ParentSurface.GlobalMapPosition;
+            //Some objects will always be in location, they have no world position, just return
+            if (inhabitant.WorldPosition.x == 0 && inhabitant.WorldPosition.y == 0 && inhabitant.WorldPosition.z == 0) return null;
+            //Some objects fly around, they have this world position, so they appear when you are at that location in the map
+            var localWorldPosition = new Vector3
+            {
+                x = globalMapPosition.x - inhabitant.WorldPosition.x,
+                y = globalMapPosition.y - inhabitant.WorldPosition.y,
+                z = globalMapPosition.z - inhabitant.WorldPosition.z
+            };
+            return localWorldPosition;
+        }
         public static bool CheckInhabitantVisibility(this _3dObject inhabitant)
         {
             // 1. Land-based check
@@ -176,7 +190,8 @@ namespace CommonUtilities._3DHelpers
                 SurfaceBasedId = original.SurfaceBasedId,
                 CrashBoxDebugMode = original.CrashBoxDebugMode,
                 WeaponSystems = original.WeaponSystems,
-                CrashBoxes = new List<List<IVector3>>() // tom liste – eksploderende objekter trenger ikke kollisjon
+                CrashBoxes = original.CrashBoxes,
+                CalculatedWorldOffset = original.CalculatedWorldOffset
             };
 
             return copy;

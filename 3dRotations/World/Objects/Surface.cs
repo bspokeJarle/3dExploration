@@ -131,8 +131,11 @@ namespace _3dRotations.World.Objects
 
         private List<List<IVector3>> GetMainSurfaceCrashBox()
         {
-            var min = new Vector3 { x = -400, y = 0, z = -400 };
-            var max = new Vector3 { x = 400, y = 500, z = 100 };
+            //var min = new Vector3 { x = -400, y = 0, z = -400 };
+            //var max = new Vector3 { x = 400, y = 500, z = 100 };
+
+            var min = new Vector3 { x = -400, y = -300, z = -500 };
+            var max = new Vector3 { x = 400, y = 1000, z = -50 };
 
             return new List<List<IVector3>>
             {

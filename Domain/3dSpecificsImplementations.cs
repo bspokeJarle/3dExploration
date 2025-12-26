@@ -37,7 +37,7 @@ namespace Domain
             public IVector3? WorldPosition { get; set; }
             public IVector3? Rotation { get; set; }
             public IVector3? ObjectOffsets { get; set; }
-            public IVector3? CrashboxOffsets { get; set; }
+            
             public IObjectMovement? Movement { get; set; }
             public IParticles? Particles { get; set; }
             public List<List<IVector3>> CrashBoxes { get; set; }
@@ -48,6 +48,7 @@ namespace Domain
             public int? SurfaceBasedId { get; set; }
             public bool? CrashBoxDebugMode { get; set; }
             public IWeapon? WeaponSystems { get; set; }
+            public IVector3? CalculatedWorldOffset { get; set; }
         }
         public class _3dObjectPart : I3dObjectPart
         {

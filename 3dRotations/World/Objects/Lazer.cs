@@ -29,6 +29,8 @@ namespace _3dRotations.World.Objects
             beam.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
             beam.Particles = new ParticlesAI();
             beam.ParentSurface = parentSurface;
+            beam.ObjectName = "Lazer";
+            beam.CrashBoxDebugMode = true;
 
             if (crash != null) beam.CrashBoxes = crash;
             return beam;

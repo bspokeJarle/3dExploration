@@ -1,14 +1,8 @@
-﻿using _3dTesting._3dWorld;
-using Domain;
-using GameAiAndControls.Controls;
+﻿using Domain;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text.Json.Nodes;
-using System.Windows.Documents;
 using static Domain._3dSpecificsImplementations;
-using CommonUtilities._3DHelpers;
 
 namespace _3dTesting.Helpers
 {
@@ -32,6 +26,27 @@ namespace _3dTesting.Helpers
                 tri.vert3.x *= scale;
                 tri.vert3.y *= scale;
                 tri.vert3.z *= scale;
+            }
+        }
+        public static void ApplyScaleToObject(I3dObject actualObject, float scale)
+        {
+            if (actualObject == null || actualObject.ObjectParts.Count == 0) return;
+
+            foreach (var part in actualObject.ObjectParts)
+            {
+                ApplyScaleToTriangles(part.Triangles, scale);
+            }
+            foreach (var crashBox in actualObject.CrashBoxes)
+            {
+                for (int i = 0; i < crashBox.Count; i++)
+                {
+                    crashBox[i] = new Vector3
+                    {
+                        x = crashBox[i].x * scale,
+                        y = crashBox[i].y * scale,
+                        z = crashBox[i].z * scale
+                    };
+                }
             }
         }
         public static List<IVector3> GenerateAabbCrashBoxFromRotated(List<IVector3> rotatedPoints)
@@ -68,20 +83,6 @@ namespace _3dTesting.Helpers
                 new Vector3 { x = max.x, y = min.y, z = max.z }, // Corner 6
                 new Vector3 { x = min.x, y = min.y, z = max.z }  // Corner 7
             };
-        }
-        public static IVector3 GetLocalWorldPosition(this _3dObject inhabitant)
-        {
-            var globalMapPosition = inhabitant.ParentSurface.GlobalMapPosition;
-            //Some objects will always be in location, they have no world position, just return
-            if (inhabitant.WorldPosition.x == 0 && inhabitant.WorldPosition.y == 0 && inhabitant.WorldPosition.z == 0) return null;
-            //Some objects fly around, they have this world position, so they appear when you are at that location in the map
-            var localWorldPosition = new Vector3
-            {
-                x = globalMapPosition.x - inhabitant.WorldPosition.x,
-                y = globalMapPosition.y - inhabitant.WorldPosition.y,
-                z = globalMapPosition.z - inhabitant.WorldPosition.z
-            };
-            return localWorldPosition;
         }
  
         public static double GetDistance(Vector3 point1, Vector3 point2)
@@ -125,10 +126,17 @@ namespace _3dTesting.Helpers
 
         public static float GetDeepestZ(ITriangleMeshWithColor triangle)
         {
-            if (triangle.vert1.z <= triangle.vert2.z && triangle.vert1.z <= triangle.vert3.z) return triangle.vert1.z;
-            if (triangle.vert2.z <= triangle.vert1.z && triangle.vert2.z <= triangle.vert3.z) return triangle.vert2.z;
-            if (triangle.vert3.z <= triangle.vert1.z && triangle.vert3.z <= triangle.vert2.z) return triangle.vert3.z;
-            return 0;
+            float z1 = triangle.vert1.z;
+            float z2 = triangle.vert2.z;
+            float z3 = triangle.vert3.z;
+
+            // In this coordinate system: -Z is near, +Z is far.
+            // "Deepest" means farthest away -> MAX Z.
+            float max = z1;
+            if (z2 > max) max = z2;
+            if (z3 > max) max = z3;
+
+            return max;
         }
         public static List<ITriangleMeshWithColor> ConvertToTrianglesWithColor(List<TriangleMesh> triangles, string color)
         {

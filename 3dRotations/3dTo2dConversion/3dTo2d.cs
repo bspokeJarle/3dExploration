@@ -1,8 +1,9 @@
 ﻿using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
+using CommonUtilities._3DHelpers;
+using Domain;
 using System;
 using System.Collections.Generic;
-using CommonUtilities._3DHelpers;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting._3dRotation
@@ -20,7 +21,7 @@ namespace _3dTesting._3dRotation
 
         public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, bool debugCrashBoxes)
         {
-            CurrentFrame++;
+            if (!debugCrashBoxes) CurrentFrame++;
             var screenCoordinates = new List<_2dTriangleMesh>();
 
             foreach (var obj in inhabitants)
@@ -31,7 +32,7 @@ namespace _3dTesting._3dRotation
                     continue;
 
                 // Adjust crashboxes on surface based on ship vs ground height
-                if (obj.ObjectName == "Surface")
+                if (obj.ObjectName == "Surface" && !debugCrashBoxes)
                 {
                     ApplySurfaceCrashOffset(obj);
                 }
@@ -42,9 +43,9 @@ namespace _3dTesting._3dRotation
                     ApplyObjectOffsetToCrashBoxes(obj);
                 }
 
-                //Debug visualization of crashboxes
                 if (debugCrashBoxes && obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)
                 {
+                    //Debug visualization of crashboxes
                     var crashBox2d = ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ);
                     screenCoordinates.AddRange(crashBox2d);
                 }
@@ -59,7 +60,7 @@ namespace _3dTesting._3dRotation
             return screenCoordinates;
         }
 
-
+        //This method is for debugging av crashboxes only
         private List<_2dTriangleMesh> ConvertCrashBoxesTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ)
         {
             var result = new List<_2dTriangleMesh>();
@@ -69,8 +70,18 @@ namespace _3dTesting._3dRotation
                 // Skip if not a valid 8-corner box
                 if (crashBox.Count != 8) continue;
 
-                //var corners = crashBox.Cast<Vector3>().ToList();
-                var corners = _3dObjectHelpers.GenerateAabbCrashBoxFromRotated(crashBox);
+                var corners = new List<IVector3>();
+
+                if (obj.SurfaceBasedId==0|| obj.SurfaceBasedId == null)
+                {
+                    //Remove offsets from CrashBox for non surface based objects for rendering purposes
+                    var unoffsetCorners = UnapplyObjectOffsetToCrashBox(crashBox, obj);
+                    corners = _3dObjectHelpers.GenerateAabbCrashBoxFromRotated(unoffsetCorners);
+                }
+                else
+                {
+                    corners = _3dObjectHelpers.GenerateAabbCrashBoxFromRotated(crashBox);
+                }
 
                 var faceTriangles = new (int, int, int)[]
                 {
@@ -94,7 +105,7 @@ namespace _3dTesting._3dRotation
                     var p2 = ProjectVertex((Vector3)corners[i2], objPosX, objPosY, objPosZ);
                     var p3 = ProjectVertex((Vector3)corners[i3], objPosX, objPosY, objPosZ);
 
-                    var triangle = CreateTriangle(p1, p2, p3, "FF00FF", obj); // Magenta for visibility
+                    var triangle = CreateCrashBoxTriangle(p1, p2, p3, "FF00FF", obj); // Magenta for visibility
                     result.Add(triangle);
                 }
             }
@@ -103,8 +114,8 @@ namespace _3dTesting._3dRotation
         }
 
 
-        // Reuse your existing CreateTriangle helper
-        private _2dTriangleMesh CreateTriangle((double x, double y) p1, (double x, double y) p2, (double x, double y) p3, string color, _3dObject obj)
+        // Creating Triangles for rendring the CrashBoxes for debugging purposes
+        private _2dTriangleMesh CreateCrashBoxTriangle((double x, double y) p1, (double x, double y) p2, (double x, double y) p3, string color, _3dObject obj)
         {
             return new _2dTriangleMesh
             {
@@ -150,8 +161,7 @@ namespace _3dTesting._3dRotation
                             Y2 = Convert.ToInt32(y2),
                             X3 = Convert.ToInt32(x3),
                             Y3 = Convert.ToInt32(y3),
-                            CalculatedZ = ((triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3)
-                                         + (_3dObjectHelpers.GetDeepestZ(triangle) + obj.ObjectOffsets.z),
+                            CalculatedZ = (float)((float)(((triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3) + obj.ObjectOffsets.z) - objPosZ),
                             Normal = triangle.normal1.z,
                             TriangleAngle = triangle.angle,
                             Color = triangle.Color,
@@ -213,6 +223,7 @@ namespace _3dTesting._3dRotation
             if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) return;
 
             var offset = obj.ObjectOffsets;
+
             foreach (var box in obj.CrashBoxes)
             {
                 for (int j = 0; j < box.Count; j++)
@@ -226,6 +237,32 @@ namespace _3dTesting._3dRotation
                     };
                 }
             }
+        }
+        private List<IVector3> UnapplyObjectOffsetToCrashBox(List<IVector3> crashBox, I3dObject obj)
+        {
+            //TODO: Need to find out where the offsets are being double applied for surface based objects
+            if (crashBox == null || crashBox.Count == 0)
+                return new List<IVector3>();
+
+            // The offset is from the object
+            var offset = obj.ObjectOffsets;
+
+            var result = new List<IVector3>(crashBox.Count);
+
+            for (int i = 0; i < crashBox.Count; i++)
+            {
+                var v = crashBox[i];
+
+                // Create a brand-new Vector3 with no reference to original
+                result.Add(new Vector3
+                {
+                    x = v.x - offset.x,
+                    y = v.y - offset.y,
+                    z = v.z - offset.z
+                });
+            }
+
+            return result;
         }
     }
 }

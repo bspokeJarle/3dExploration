@@ -844,7 +844,7 @@ namespace _3dRotations.Helpers
                             {
                                 width = width,
                                 height = heightBox,
-                                boxDepth = maxDepth + 20 //Add some padding
+                                boxDepth = maxDepth + 20//Add some padding
                             };
 
                             numCrashBoxes++;

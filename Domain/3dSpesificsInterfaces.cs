@@ -39,7 +39,7 @@ namespace Domain
     {
         public List<I3dObject> WorldInhabitants { get; set; }
         public ISceneHandler SceneHandler { get; set; }
-
+        public bool IsPaused { get; set; }
     }
 
     public interface IPhysics
@@ -108,7 +108,7 @@ namespace Domain
         public IVector3? WorldPosition { get; set; }
         public List<I3dObjectPart> ObjectParts { get; set; }
         public IVector3? ObjectOffsets { get; set; }
-        public IVector3? CrashboxOffsets { get; set; }
+
         public IVector3? Rotation { get; set; }
         public IObjectMovement? Movement { get; set; }
         public IParticles? Particles { get; set; }
@@ -119,6 +119,7 @@ namespace Domain
         public ISurface? ParentSurface { get; set; }
         public int? SurfaceBasedId { get; set; }
         public bool? CrashBoxDebugMode { get; set; }
+        public IVector3? CalculatedWorldOffset { get; set; }
     }
 
     public interface IImpactStatus

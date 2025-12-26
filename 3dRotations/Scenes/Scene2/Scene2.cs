@@ -91,7 +91,7 @@ namespace _3dRotations.Scene.Scene1
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
                 tree.ObjectOffsets = new Vector3 { x = 75, y = 425, z = 300 };
                 //Crashbox offsets for Tree, counteract the object offsets
-                tree.CrashboxOffsets = new Vector3 { };
+                //tree.CrashboxOffsets = new Vector3 { };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
@@ -112,7 +112,7 @@ namespace _3dRotations.Scene.Scene1
                 house.SurfaceBasedId = Surface.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 house.ObjectOffsets = new Vector3 { x = 75, y = 450, z = 300 };
                 //TODO need to find the right offsets for house
-                house.CrashboxOffsets = new Vector3 { };
+                //house.CrashboxOffsets = new Vector3 { };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };
