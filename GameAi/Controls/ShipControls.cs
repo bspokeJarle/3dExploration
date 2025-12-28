@@ -108,23 +108,23 @@ namespace GameAiAndControls.Controls
             if (e.KeyCode == Keys.Up) tilt += RotationStep;
             if (e.KeyCode == Keys.Down) tilt -= RotationStep;
 
-            if (e.KeyCode == Keys.Space)
-            {
-                if (ThrustOn == false)
-                {
-                    // Hvis en gammel instans fortsatt henger igjen (tail spiller):
+            if (e.  KeyCode == Keys.Space)
+            { 
+                  if (ThrustOn ==         false)
+                {   
+                                       // Hvis en gammel instans fortsatt henger igjen (tail spiller):
                     if (_rocketInstance != null)
                     {
                         if (logging) Logger.Log("Audio: Force-stopping previous rocket instance before starting new.");
                         _rocketInstance.Stop(playEndSegment: false); // hard cut på gammel tail
                         _rocketInstance = null;
-                    }
-
+                    }   
+                     
                     if (_audio != null && _rocketSound != null)
                     {
                         if (logging) Logger.Log("Audio: Starting new rocket segmented loop.");
                         _rocketInstance = _audio.Play(
-                            _rocketSound,
+                                       _rocketSound,
                             AudioPlayMode.SegmentedLoop);
                     }
                 }
@@ -138,8 +138,8 @@ namespace GameAiAndControls.Controls
         {
             if (e.KeyCode == Keys.Space)
             {
-                ThrustOn = false;
-                Thrust = 0;
+                ThrustOn = false; 
+                 Thrust = 0;
                 thrustEffect = 0f;
                 verticalLiftFactor = 0f;
 
@@ -479,15 +479,24 @@ namespace GameAiAndControls.Controls
                 }
             }
             else
-            {
+            { 
                 float upwardFactor = MathF.Cos(rotationX * DEG2RAD);
                 float thrustLift = Thrust * upwardFactor * 0.75f * deltaTime;
                 fallVelocity = Math.Max(fallVelocity - thrustLift, 0f);
-            }
+            } 
         }
 
         public void Dispose()
         {
+            if (_rocketInstance != null)
+            {
+                //Try to force-stop the rocket sound immediately
+                _rocketInstance.Stop(playEndSegment: false);
+                _rocketInstance = null;
+
+               
+            }
+
             var hook = InputManager.SharedHook;
 
             hook.KeyDown -= GlobalHookKeyDown;

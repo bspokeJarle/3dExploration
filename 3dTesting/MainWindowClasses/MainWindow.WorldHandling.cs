@@ -30,6 +30,8 @@ namespace _3dTesting.MainWindowClasses
         public bool FadeInWorld { get; set; } = false;
 
         private readonly object _lock = new object();  // Lock object for thread safety
+        public I3dObject ShipCopy { get; set; }
+        public I3dObject SurfaceCopy { get; set; }
 
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {            
@@ -80,6 +82,15 @@ namespace _3dTesting.MainWindowClasses
 
                 inhabitant.Movement?.MoveObject(inhabitant, audioPlayer, soundRegistry);
                 inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
+                //Make copies of Ship and Surface for HUD display purposes
+                if (inhabitant.ObjectName=="Ship")
+                {
+                    ShipCopy = inhabitant;
+                }
+                if (inhabitant.ObjectName == "Surface")
+                {
+                    SurfaceCopy = inhabitant;
+                }
 
                 foreach (var part in inhabitant.ObjectParts)
                 {

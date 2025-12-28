@@ -1,6 +1,7 @@
 ﻿using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
 using _3dTesting.Rendering;
+using Domain;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -53,6 +54,7 @@ namespace _3dTesting
         private int pauseFrameCount = 0;
         private const int limitFrameCount = 2;
         private DateTime fadeOutTrigged = DateTime.MinValue;
+        private int _updateInProgress = 0;
 
         public MainWindow()
         {
@@ -217,7 +219,7 @@ namespace _3dTesting
             frameCount++;
             if (stopwatch.ElapsedMilliseconds >= 1000)
             {
-                Dispatcher.Invoke(() =>
+                Dispatcher.Invoke(() => 
                     FpsText.Text = $"FPS: {frameCount} Triangles:{worldRenderer.GetRenderingTriangleCount()} {gameWorldManager.DebugMessage}"
                 );
                 frameCount = 0;
@@ -226,11 +228,8 @@ namespace _3dTesting
 
             if (!isFading && world.WorldInhabitants.Count > 100)
             {
-                // Make a snapshot of the list to prevent "collection modified" crashes
-                var inhabitants = world.WorldInhabitants.ToList();
-
-                var ship = inhabitants.FirstOrDefault(z => z.ObjectName == "Ship");
-                var surface = inhabitants.FirstOrDefault(z => z.ObjectName == "Surface");
+                var ship = gameWorldManager.ShipCopy;
+                var surface = gameWorldManager.SurfaceCopy;
 
                 // Update HUD for ship
                 if (ship != null)
@@ -251,19 +250,32 @@ namespace _3dTesting
 
             _ = Task.Run(() =>
             {
-                if (pauseFrameCount>=limitFrameCount)
-                {
+                if (pauseFrameCount >= limitFrameCount)
                     return;
-                }
+                   
+                // Prevent overlapping UpdateWorld calls
+                if (System.Threading.Interlocked.Exchange(ref _updateInProgress, 1) == 1)
+                    return;
 
-                var screenCoordinates = new List<_Coordinates._2dTriangleMesh>();
-                var crashBoxCoordinates = new List<_Coordinates._2dTriangleMesh>();
-                gameWorldManager.UpdateWorld(world, ref screenCoordinates, ref crashBoxCoordinates);
-                //Check if there are any crashboxes to debug
-                if (crashBoxCoordinates.Count > 0) screenCoordinates.AddRange(crashBoxCoordinates);
-                if (!isFading) Dispatcher.Invoke(() => worldRenderer.RenderTriangles(screenCoordinates));
-                //Check if there are any crashboxes to debug
+                try
+                {
+                    var screenCoordinates = new List<_Coordinates._2dTriangleMesh>();
+                    var crashBoxCoordinates = new List<_Coordinates._2dTriangleMesh>();
+                        
+                    gameWorldManager.UpdateWorld(world, ref screenCoordinates, ref crashBoxCoordinates);
+
+                    if (crashBoxCoordinates.Count > 0)
+                        screenCoordinates.AddRange(crashBoxCoordinates);
+
+                    if (!isFading)
+                        Dispatcher.BeginInvoke(() => worldRenderer.RenderTriangles(screenCoordinates));
+                }
+                finally
+                {
+                    System.Threading.Interlocked.Exchange(ref _updateInProgress, 0);
+                }
             });
+                           
         }
     }
 }
