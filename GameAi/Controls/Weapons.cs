@@ -188,6 +188,8 @@ namespace GameAiAndControls.Controls
             for (int i = 0; i < ActiveWeapons.Count; i++)
             {
                 ActiveWeapon w = ActiveWeapons[i] as ActiveWeapon;
+                //Reset crash box offset applied flag every frame, these objects are made here
+                w.WeaponObject.CrashBoxOffsetsApplied = false;
                 if (w == null || Expired(w) || OutOfBounds(w.WeaponObject.ObjectOffsets))
                     continue;
 

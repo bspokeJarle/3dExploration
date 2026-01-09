@@ -310,7 +310,7 @@ namespace GameAiAndControls.Controls
                     // Stop rocket-loop før eksplosjon
                     if (_rocketInstance != null)
                     {
-                        _rocketInstance.Stop(playEndSegment: false);
+                        _rocketInstance.Stop(playEndSegment: true);
                         _rocketInstance = null;
                     }
 

@@ -15,7 +15,7 @@ namespace _3dTesting.MainWindowClasses
 
             var weaponSystem = inhabitant.WeaponSystems;
 
-            // Hent ferdige våpen-objekter fra WeaponSystem
+            //Get finished weapons from the weapon system
             foreach (var obj in weaponSystem.Get3DObjects())
             {
                 if (obj is not _3dObject weapon)

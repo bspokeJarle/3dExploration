@@ -11,7 +11,7 @@ namespace _3dTesting.Rendering
     {
         private readonly DrawingVisualHost visualHost;
         private readonly DrawingVisual visual = new DrawingVisual();
-        private readonly bool _localLoggingEnabled =  true;
+        private readonly bool _localLoggingEnabled =  false;
 
         private int renderingTriangleCount = 0;
 
@@ -24,11 +24,10 @@ namespace _3dTesting.Rendering
 
         public int GetRenderingTriangleCount() => renderingTriangleCount;
 
-        public WorldRenderer(DrawingVisualHost host, bool enableLocalLogging = false)
+        public WorldRenderer(DrawingVisualHost host)
         {
             visualHost = host;
-            _localLoggingEnabled = enableLocalLogging;
-
+  
             if (ShouldLog())
             {
                 int tier = (RenderCapability.Tier >> 16);
@@ -52,11 +51,11 @@ namespace _3dTesting.Rendering
 
         private void PrewarmColorCache()
         {
-            string[] commonColors = new[] { "red", "green", "blue", "gray", "white", "black", "yellow", "orange", "brown" };
+            string[] commonColors = ["red", "green", "blue", "gray", "white", "black", "yellow", "orange", "brown"];
             int generatedCount = 0;
 
             // Choose how dense you want the prewarm. 100 steps -> about 101 * 9 = 909 entries before rounding/cache hits.
-            const int steps = 100;
+            const int steps = 500;
             float stepSize = (FarZ - NearZ) / steps;
 
             for (int i = 0; i <= steps; i++)
@@ -135,20 +134,17 @@ namespace _3dTesting.Rendering
                     if (triangle.CalculatedZ > 1200 || triangle.CalculatedZ < -2000)
                         continue;
 
-                    if (triangle.X1 < 0 && triangle.X2 < 0 && triangle.X3 < 0) continue;
-                    if (triangle.X1 > 1920 && triangle.X2 > 1920 && triangle.X3 > 1920) continue;
-                    if (triangle.Y1 < 0 && triangle.Y2 < 0 && triangle.Y3 < 0) continue;
-                    if (triangle.Y1 > 1080 && triangle.Y2 > 1080 && triangle.Y3 > 1080) continue;
-
                     float factor01 = GetDepthFactor01(triangle.CalculatedZ);
                     float zKey = (float)Math.Round(factor01, 2, MidpointRounding.AwayFromZero);
-                    string baseColor = triangle.Color.ToLowerInvariant();
 
-                    //float zKey = (float)Math.Round((triangle.CalculatedZ + 1050) / 3000f, 2);
+                    // Normalize baseColor so "#FF8B00" and "ff8b00" become the same key
+                    string baseColor = triangle.Color?.Trim().ToLowerInvariant() ?? "000000";
+                    if (baseColor.StartsWith("#"))
+                        baseColor = baseColor.Substring(1);
 
                     if (!colorCache.TryGetValue((zKey, baseColor), out Color color))
                     {
-                        Logger.Log($"[WorldRenderer] ⚠️ Color cache miss for key ({zKey}, {baseColor}). Generating new color. CalculatedZ:{triangle.CalculatedZ}");
+                        if (ShouldLog()) Logger.Log($"[WorldRenderer] ⚠️ Color cache miss for key ({zKey}, {baseColor}). Generating new color. CalculatedZ:{triangle.CalculatedZ}");
                         color = (Color)ColorConverter.ConvertFromString(
                             Helpers.Colors.getShadeOfColorFromNormal(zKey, baseColor));
                         colorCache[(zKey, baseColor)] = color;

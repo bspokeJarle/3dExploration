@@ -2,6 +2,7 @@
 using Domain;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using static Domain._3dSpecificsImplementations;
@@ -189,25 +190,6 @@ namespace _3dTesting.Helpers
             }
         }
 
-        public static void AddLocalWorldPositionCrashBoxes(I3dObject theObject)
-        {
-            var actualObject = theObject as _3dObject;
-            if (actualObject.CrashBoxes == null) return;
-
-            var localWorldPosition = actualObject.GetLocalWorldPosition();
-            if (localWorldPosition == null) return;
-
-            foreach (var box in actualObject.CrashBoxes)
-            {
-                var localBox = box.Select(v => new Vector3
-                {
-                    x = v.x + localWorldPosition.x,
-                    y = v.y + localWorldPosition.y,
-                    z = v.z + localWorldPosition.z
-                }).ToList();
-            }
-        }
-
         private static bool CheckLogFilter(I3dObject activOobject, I3dObject otherObject)
         {
             if (LogFilter.Count == 0) return true;
@@ -388,7 +370,7 @@ namespace _3dTesting.Helpers
         // -----------------------------
         private static void LogCrashBoxWorldPoints(string title, List<Vector3> points)
         {
-            if (!ShouldLogAny) return;
+            if (!ShouldLogAny || points == null || points.Count == 0) return;
 
             // AABB summary
             float minX = float.MaxValue, minY = float.MaxValue, minZ = float.MaxValue;
@@ -402,16 +384,27 @@ namespace _3dTesting.Helpers
                 if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z;
             }
 
-            var center = new Vector3((minX + maxX) / 2f, (minY + maxY) / 2f, (minZ + maxZ) / 2f);
+            var center = new Vector3(
+                (minX + maxX) / 2f,
+                (minY + maxY) / 2f,
+                (minZ + maxZ) / 2f
+            );
 
-            Logger.Log($"{title}");
-            Logger.Log($"  AABB Min=({minX:0.##},{minY:0.##},{minZ:0.##}) Max=({maxX:0.##},{maxY:0.##},{maxZ:0.##}) Center=({center.x:0.##},{center.y:0.##},{center.z:0.##})");
+            static string F(float v) =>
+                v.ToString("0.##", CultureInfo.InvariantCulture);
+
+            Logger.Log(title);
+            Logger.Log(
+                $"  AABB Min=({F(minX)},{F(minY)},{F(minZ)}) " +
+                $"Max=({F(maxX)},{F(maxY)},{F(maxZ)}) " +
+                $"Center=({F(center.x)},{F(center.y)},{F(center.z)})"
+            );
 
             // Points
             for (int i = 0; i < points.Count; i++)
             {
                 var p = points[i];
-                Logger.Log($"  P{i}: ({p.x:0.##},{p.y:0.##},{p.z:0.##})");
+                Logger.Log($"  P{i}: ({F(p.x)},{F(p.y)},{F(p.z)})");
             }
         }
 

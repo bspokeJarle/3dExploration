@@ -10,6 +10,7 @@ namespace _3dTesting._3dRotation
 {
     public class _3dTo2d
     {
+        private readonly bool enableLogging = false;
         private const int perspectiveAdjustment = 1500;
         private const int defaultObjectZoom = 2;
 
@@ -19,9 +20,10 @@ namespace _3dTesting._3dRotation
         private const int screenCenterY = screenSizeY / 2;
         private long CurrentFrame = 0;
 
-        public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, bool debugCrashBoxes)
+        public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, bool debugCrashBoxes, long? currentFrame)
         {
-            if (!debugCrashBoxes) CurrentFrame++;
+            //If available use global framecounter
+            if (currentFrame > 0) CurrentFrame = (long)currentFrame;
             var screenCoordinates = new List<_2dTriangleMesh>();
 
             foreach (var obj in inhabitants)
@@ -72,7 +74,7 @@ namespace _3dTesting._3dRotation
 
                 var corners = new List<IVector3>();
 
-                if (obj.SurfaceBasedId==0|| obj.SurfaceBasedId == null)
+                if (obj.SurfaceBasedId==0 || obj.SurfaceBasedId == null)
                 {
                     //Remove offsets from CrashBox for non surface based objects for rendering purposes
                     var unoffsetCorners = UnapplyObjectOffsetToCrashBox(crashBox, obj);
@@ -215,12 +217,15 @@ namespace _3dTesting._3dRotation
                         z = original.z
                     };
                 }
-            }
+                }
         }
 
         private void ApplyObjectOffsetToCrashBoxes(_3dObject obj)
         {
-            if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) return;
+            if (enableLogging) Logger.Log($"Applying crashbox offsets for object {obj.ObjectName} at frame {CurrentFrame} Applied:{obj.CrashBoxOffsetsApplied}");
+            if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0 || obj.CrashBoxOffsetsApplied==true) return;
+            //Don't apply more than once pr frame
+            obj.CrashBoxOffsetsApplied = true;
 
             var offset = obj.ObjectOffsets;
 

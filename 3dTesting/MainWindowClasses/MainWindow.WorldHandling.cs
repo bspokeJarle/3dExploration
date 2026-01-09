@@ -13,6 +13,7 @@ namespace _3dTesting.MainWindowClasses
 {
     public class GameWorldManager
     {
+        private long FrameCounter = 0;
         private readonly _3dTo2d From3dTo2d = new();
         private readonly _3dRotationCommon Rotate3d = new();
         private readonly ParticleManager particleManager = new();
@@ -34,7 +35,8 @@ namespace _3dTesting.MainWindowClasses
         public I3dObject SurfaceCopy { get; set; }
 
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
-        {            
+        {
+            FrameCounter++;
             var deepCopiedWorld = new List<_3dObject>();
             var activeWorld = new List<_3dObject>();
             lock (_lock)
@@ -61,11 +63,11 @@ namespace _3dTesting.MainWindowClasses
                 var parentSurface = world.WorldInhabitants?.FirstOrDefault(obj => obj.ObjectName == "Surface")?.ParentSurface;
                 if (parentSurface != null)
                 {
-                     StarFieldHandler = new StarFieldHandler(parentSurface);
+                    StarFieldHandler = new StarFieldHandler(parentSurface);
                 }
             }
             //Generate starfield will do nothing if not needed
-            if (StarFieldHandler!=null)
+            if (StarFieldHandler != null)
             {
                 StarFieldHandler.GenerateStarfield();
                 if (StarFieldHandler.HasStars()) deepCopiedWorld.AddRange(StarFieldHandler.GetStars());
@@ -83,7 +85,7 @@ namespace _3dTesting.MainWindowClasses
                 inhabitant.Movement?.MoveObject(inhabitant, audioPlayer, soundRegistry);
                 inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
                 //Make copies of Ship and Surface for HUD display purposes
-                if (inhabitant.ObjectName=="Ship")
+                if (inhabitant.ObjectName == "Ship")
                 {
                     ShipCopy = inhabitant;
                 }
@@ -152,10 +154,10 @@ namespace _3dTesting.MainWindowClasses
                 return [];
             }
 
-            projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, false);
+            projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, false, FrameCounter);
             var crashBoxDebuggedObjects = renderedList.Where(x => x.CrashBoxDebugMode == true).ToList();
             //Check if there are any crashboxes to debug
-            if (crashBoxDebuggedObjects.Count > 0) crashBoxCoordinates = From3dTo2d.ConvertTo2dFromObjects(crashBoxDebuggedObjects, true);
+            if (crashBoxDebuggedObjects.Count > 0) crashBoxCoordinates = From3dTo2d.ConvertTo2dFromObjects(crashBoxDebuggedObjects, true, FrameCounter);
             else crashBoxCoordinates = new List<_2dTriangleMesh>();
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             HandleMusic(renderedList);
@@ -168,7 +170,7 @@ namespace _3dTesting.MainWindowClasses
             if (!MusicIsPlaying)
             {
                 MusicIsPlaying = true;
-                audioPlayer.PlayMusic(MusicDef,0.2f);
+                audioPlayer.PlayMusic(MusicDef, 0.2f);
             }
             //Work with renderedobjects to decide what music to play, for now just play mainmusicloop
         }

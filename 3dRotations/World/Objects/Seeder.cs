@@ -524,8 +524,8 @@ namespace _3dRotations.World.Objects
 
         public static List<List<IVector3>>? SeederCrashBoxes()
         {
-            float expandXY = seederRadius * 0.5f;
-            float expandZ = (topDomeHeight + centerModuleHeight + alienRadius) * 0.5f;
+            float expandXY = seederRadius * 0.1f;
+            float expandZ = (topDomeHeight + centerModuleHeight + alienRadius) * 0.1f;
 
             var min = new Vector3
             {

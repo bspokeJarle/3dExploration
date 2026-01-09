@@ -114,6 +114,7 @@ namespace Domain
         public IParticles? Particles { get; set; }
         public IWeapon? WeaponSystems { get; set; }
         public List<List<IVector3>> CrashBoxes { get; set; }
+        public bool CrashBoxOffsetsApplied { get; set; }
         public IImpactStatus? ImpactStatus { get; set; }
         public int? Mass { get; set; }
         public ISurface? ParentSurface { get; set; }
