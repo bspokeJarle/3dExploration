@@ -154,11 +154,7 @@ namespace _3dTesting.MainWindowClasses
                 return [];
             }
 
-            projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, false, FrameCounter);
-            var crashBoxDebuggedObjects = renderedList.Where(x => x.CrashBoxDebugMode == true).ToList();
-            //Check if there are any crashboxes to debug
-            if (crashBoxDebuggedObjects.Count > 0) crashBoxCoordinates = From3dTo2d.ConvertTo2dFromObjects(crashBoxDebuggedObjects, true, FrameCounter);
-            else crashBoxCoordinates = new List<_2dTriangleMesh>();
+            projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             HandleMusic(renderedList);
             return projectedCoordinates;

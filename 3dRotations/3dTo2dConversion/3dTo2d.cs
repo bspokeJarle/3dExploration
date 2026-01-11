@@ -20,7 +20,7 @@ namespace _3dTesting._3dRotation
         private const int screenCenterY = screenSizeY / 2;
         private long CurrentFrame = 0;
 
-        public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, bool debugCrashBoxes, long? currentFrame)
+        public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, long? currentFrame)
         {
             //If available use global framecounter
             if (currentFrame > 0) CurrentFrame = (long)currentFrame;
@@ -33,30 +33,23 @@ namespace _3dTesting._3dRotation
                 if (!ObjectPlacementHelpers.TryGetRenderPosition(obj, screenCenterX, screenCenterY, out double screenX, out double screenY, out double screenZ))
                     continue;
 
-                // Adjust crashboxes on surface based on ship vs ground height
-                if (obj.ObjectName == "Surface" && !debugCrashBoxes)
-                {
-                    ApplySurfaceCrashOffset(obj);
-                }
+                //Standard 3d Rendring
+                var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
+                screenCoordinates.AddRange(projected);
 
-                //All Crashboxes need same offset as the objects
-                if (!debugCrashBoxes)
-                {
-                    ApplyObjectOffsetToCrashBoxes(obj);
-                }
-
-                if (debugCrashBoxes && obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)
-                {
+                if (obj.CrashBoxDebugMode==true)
+                { 
                     //Debug visualization of crashboxes
                     var crashBox2d = ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ);
                     screenCoordinates.AddRange(crashBox2d);
                 }
-                else
+
+                // Adjust crashboxes on surface based on ship vs ground height
+                if (obj.ObjectName == "Surface")
                 {
-                    //Standard 3d Rendring
-                    var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
-                    screenCoordinates.AddRange(projected);
+                    ApplySurfaceCrashOffset(obj);
                 }
+                ApplyObjectOffsetToCrashBoxes(obj);
             }
 
             return screenCoordinates;
@@ -72,18 +65,7 @@ namespace _3dTesting._3dRotation
                 // Skip if not a valid 8-corner box
                 if (crashBox.Count != 8) continue;
 
-                var corners = new List<IVector3>();
-
-                if (obj.SurfaceBasedId==0 || obj.SurfaceBasedId == null)
-                {
-                    //Remove offsets from CrashBox for non surface based objects for rendering purposes
-                    var unoffsetCorners = UnapplyObjectOffsetToCrashBox(crashBox, obj);
-                    corners = _3dObjectHelpers.GenerateAabbCrashBoxFromRotated(unoffsetCorners);
-                }
-                else
-                {
-                    corners = _3dObjectHelpers.GenerateAabbCrashBoxFromRotated(crashBox);
-                }
+                var corners = _3dObjectHelpers.GenerateAabbCrashBoxFromRotated(crashBox);
 
                 var faceTriangles = new (int, int, int)[]
                 {
@@ -223,9 +205,7 @@ namespace _3dTesting._3dRotation
         private void ApplyObjectOffsetToCrashBoxes(_3dObject obj)
         {
             if (enableLogging) Logger.Log($"Applying crashbox offsets for object {obj.ObjectName} at frame {CurrentFrame} Applied:{obj.CrashBoxOffsetsApplied}");
-            if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0 || obj.CrashBoxOffsetsApplied==true) return;
-            //Don't apply more than once pr frame
-            obj.CrashBoxOffsetsApplied = true;
+            if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) return;
 
             var offset = obj.ObjectOffsets;
 
@@ -242,32 +222,6 @@ namespace _3dTesting._3dRotation
                     };
                 }
             }
-        }
-        private List<IVector3> UnapplyObjectOffsetToCrashBox(List<IVector3> crashBox, I3dObject obj)
-        {
-            //TODO: Need to find out where the offsets are being double applied for surface based objects
-            if (crashBox == null || crashBox.Count == 0)
-                return new List<IVector3>();
-
-            // The offset is from the object
-            var offset = obj.ObjectOffsets;
-
-            var result = new List<IVector3>(crashBox.Count);
-
-            for (int i = 0; i < crashBox.Count; i++)
-            {
-                var v = crashBox[i];
-
-                // Create a brand-new Vector3 with no reference to original
-                result.Add(new Vector3
-                {
-                    x = v.x - offset.x,
-                    y = v.y - offset.y,
-                    z = v.z - offset.z
-                });
-            }
-
-            return result;
         }
     }
 }

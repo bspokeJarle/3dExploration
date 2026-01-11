@@ -264,9 +264,6 @@ namespace _3dTesting
                         
                     gameWorldManager.UpdateWorld(world, ref screenCoordinates, ref crashBoxCoordinates);
 
-                    if (crashBoxCoordinates.Count > 0)
-                        screenCoordinates.AddRange(crashBoxCoordinates);
-
                     if (!isFading)
                         Dispatcher.BeginInvoke(() => worldRenderer.RenderTriangles(screenCoordinates));
                 }
