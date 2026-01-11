@@ -1,4 +1,5 @@
 ﻿using Domain;
+using System.Collections;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
 
@@ -6,105 +7,103 @@ namespace _3dTesting.Helpers
 {
     public static class CrashBoxWorldExtensions
     {
-        /// <summary>
-        /// Returns the effective world offset for crashboxes WITHOUT mutating anything.
-        /// Includes:
-        /// - CalculatedWorldOffset
-        /// - ObjectOffsets
-        /// - Surface Y offset (Surface only)
-        /// </summary>
-        public static Vector3 GetEffectiveCrashBoxOffset(this _3dObject obj)
+        // Keep this returning the SAME Vector3 type that crashboxes are made of.
+        public static Vector3 GetCrashWorldOffset(this _3dObject obj)
         {
+            var local = obj?.ObjectOffsets ?? new Vector3(0, 0, 0);
             var world = obj?.CalculatedWorldOffset ?? new Vector3(0, 0, 0);
-            var offs = obj?.ObjectOffsets ?? new Vector3(0, 0, 0);
 
-            float surfaceY = 0f;
-            if (obj != null &&
-                obj.ObjectName == "Surface" &&
-                obj.ParentSurface?.GlobalMapPosition != null)
-            {
-                surfaceY = obj.ParentSurface.GlobalMapPosition.y;
-            }
+            float surfaceYOffset = 0f;
+            if (obj?.ObjectName == "Surface" && obj.ParentSurface?.GlobalMapPosition != null)
+                surfaceYOffset = obj.ParentSurface.GlobalMapPosition.y;
 
-            return new Vector3
-            {
-                x = world.x + offs.x,
-                y = world.y + offs.y + surfaceY,
-                z = world.z + offs.z
-            };
+            return new Vector3(
+                local.x + world.x,
+                local.y + world.y + surfaceYOffset,
+                local.z + world.z
+            );
         }
 
-        /// <summary>
-        /// Converts ONE crashbox (local / rotated) to NEW world-space coordinates.
-        /// No mutation of source data.
-        /// </summary>
-        public static List<IVector3> GetLocalWorldCoordinates(
-            this List<IVector3> crashBox,
-            _3dObject obj)
+        // Preferred overload (fast, type-safe) when the box is strongly typed.
+        public static List<Vector3> ToCrashWorldPoints(this IReadOnlyList<Vector3> localPoints, Vector3 offset)
         {
-            if (crashBox == null || crashBox.Count == 0)
-                return new List<IVector3>();
-
-            var offset = obj.GetEffectiveCrashBoxOffset();
-
-            var result = new List<IVector3>(crashBox.Count);
-            for (int i = 0; i < crashBox.Count; i++)
-            {
-                var v = crashBox[i];
-                result.Add(new Vector3
-                {
-                    x = v.x + offset.x,
-                    y = v.y + offset.y,
-                    z = v.z + offset.z
-                });
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Converts ALL crashboxes to NEW world-space crashboxes.
-        /// No mutation, safe to call anywhere in the pipeline.
-        /// </summary>
-        public static List<List<IVector3>> GetLocalWorldCoordinates(
-            this List<List<IVector3>> crashBoxes,
-            _3dObject obj)
-        {
-            if (crashBoxes == null || crashBoxes.Count == 0)
-                return new List<List<IVector3>>();
-
-            var result = new List<List<IVector3>>(crashBoxes.Count);
-            for (int i = 0; i < crashBoxes.Count; i++)
-            {
-                result.Add(crashBoxes[i].GetLocalWorldCoordinates(obj));
-            }
-
-            return result;
-        }
-
-        /// <summary>
-        /// Same as GetLocalWorldCoordinates, but returns Vector3 directly
-        /// (useful for collision math / AABB checks).
-        /// </summary>
-        public static List<Vector3> GetLocalWorldCoordinatesV3(
-            this List<IVector3> crashBox,
-            _3dObject obj)
-        {
-            if (crashBox == null || crashBox.Count == 0)
+            if (localPoints == null || localPoints.Count == 0)
                 return new List<Vector3>();
 
-            var offset = obj.GetEffectiveCrashBoxOffset();
-
-            var result = new List<Vector3>(crashBox.Count);
-            for (int i = 0; i < crashBox.Count; i++)
+            var result = new List<Vector3>(localPoints.Count);
+            for (int i = 0; i < localPoints.Count; i++)
             {
-                var v = crashBox[i];
-                result.Add(new Vector3
+                var p = localPoints[i];
+                result.Add(new Vector3 { x = p.x + offset.x, y = p.y + offset.y, z = p.z + offset.z });
+            }
+            return result;
+        }
+
+        public static List<Vector3> GetAllCrashPointsWorld(this _3dObject obj)
+        {
+            if (obj == null) return new List<Vector3>();
+            return obj.GetAllCrashPointsWorld(obj.GetCrashWorldOffset());
+        }
+
+        public static List<Vector3> GetAllCrashPointsWorld(this _3dObject obj, Vector3 offset)
+        {
+            if (obj?.CrashBoxes == null || obj.CrashBoxes.Count == 0)
+                return new List<Vector3>();
+
+            // Estimate capacity to reduce reallocations
+            int total = 0;
+            for (int i = 0; i < obj.CrashBoxes.Count; i++)
+            {
+                var box = obj.CrashBoxes[i];
+                if (box is System.Collections.ICollection col)
+                    total += col.Count;
+                else
+                    total += 8; // fallback guess for typical 8-corner boxes
+            }
+
+            var result = new List<Vector3>(total);
+
+            for (int b = 0; b < obj.CrashBoxes.Count; b++)
+            {
+                var box = obj.CrashBoxes[b];
+                if (box == null) continue;
+
+                // Use the bridge overload (IEnumerable) so we don't care about exact list type
+                var worldPoints = ((System.Collections.IEnumerable)box).ToCrashWorldPoints(offset);
+
+                for (int p = 0; p < worldPoints.Count; p++)
+                    result.Add(worldPoints[p]);
+            }
+
+            return result;
+        }
+
+
+        // Bridge overload: works when crashboxes are stored as non-generic lists (IList / IEnumerable / object list).
+        // Avoids needing .Cast<Vector3>().ToList() everywhere.
+        public static List<Vector3> ToCrashWorldPoints(this IEnumerable localPoints, Vector3 offset)
+        {
+            if (localPoints == null)
+                return new List<Vector3>();
+
+            // Try to get a reasonable capacity when possible
+            int capacity = 0;
+            if (localPoints is ICollection col) capacity = col.Count;
+
+            var result = capacity > 0 ? new List<Vector3>(capacity) : new List<Vector3>();
+
+            foreach (var item in localPoints)
+            {
+                // Only accept the correct Vector3 type (Domain._3dSpecificsImplementations.Vector3)
+                if (item is Vector3 p)
                 {
-                    x = v.x + offset.x,
-                    y = v.y + offset.y,
-                    z = v.z + offset.z
-                });
+                    result.Add(new Vector3
+                    {
+                        x = p.x + offset.x,
+                        y = p.y + offset.y,
+                        z = p.z + offset.z
+                    });
+                }
             }
 
             return result;

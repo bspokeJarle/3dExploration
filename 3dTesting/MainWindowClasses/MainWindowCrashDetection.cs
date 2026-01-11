@@ -115,33 +115,13 @@ namespace _3dTesting.Helpers
                         }
                     }
 
-                    // Ensure offsets exist (but do NOT rely on this for "correctness" if offsets are stale)
-                    if (inhabitant.CalculatedWorldOffset == null)
-                        inhabitant.CalculatedWorldOffset = new Vector3(0, 0, 0);
-                    if (otherInhabitant.CalculatedWorldOffset == null)
-                        otherInhabitant.CalculatedWorldOffset = new Vector3(0, 0, 0);
+                    // Effective crashbox offset = ObjectOffsets (local) + CalculatedWorldOffset (world/map optional) + SurfaceY (optional)
+                    var offsetA = inhabitant.GetCrashWorldOffset();
+                    var offsetB = otherInhabitant.GetCrashWorldOffset();
 
-                    var centerA = GetCenterOfBox(
-                        inhabitant.CrashBoxes
-                        .SelectMany(cb => cb)
-                        .Select(p => new Vector3
-                        {
-                            x = p.x + inhabitant.CalculatedWorldOffset.x,
-                            y = p.y + inhabitant.CalculatedWorldOffset.y,
-                            z = p.z + inhabitant.CalculatedWorldOffset.z
-                        })
-                        .ToList());
-
-                    var centerB = GetCenterOfBox(
-                        otherInhabitant.CrashBoxes
-                        .SelectMany(cb => cb)
-                        .Select(p => new Vector3
-                        {
-                            x = p.x + otherInhabitant.CalculatedWorldOffset.x,
-                            y = p.y + otherInhabitant.CalculatedWorldOffset.y,
-                            z = p.z + otherInhabitant.CalculatedWorldOffset.z
-                        })
-                        .ToList());
+                    // Distance check should use the same effective coordinates as collision tests
+                    var centerA = GetCenterOfBox(inhabitant.GetAllCrashPointsWorld(offsetA));
+                    var centerB = GetCenterOfBox(otherInhabitant.GetAllCrashPointsWorld(offsetB));
 
                     double distance = _3dObjectHelpers.GetDistance(centerA, centerB);
 
@@ -160,7 +140,7 @@ namespace _3dTesting.Helpers
                                 otherInhabitant.CrashBoxes.Select((box, idx) =>
                                     $"Box{idx}: " + string.Join(", ", box.Select(v => $"({v.x:F2},{v.y:F2},{v.z:F2})"))));
 
-                            Logger.Log($"[CHECKLAZER] {inhabitant.ObjectName} CrashBox: {inhabitantCrashText} and {otherInhabitant.ObjectName} WorldPos: {otherCrashText}");
+                            Logger.Log($"[CHECKLAZER] {inhabitant.ObjectName} CrashBox: {inhabitantCrashText} and {otherInhabitant.ObjectName} LocalCrash: {otherCrashText}");
                         }
                     }
 
@@ -206,20 +186,17 @@ namespace _3dTesting.Helpers
             var particle = a.ObjectName == "Particle" ? a : b;
             var other = particle == a ? b : a;
 
-            var particleOffset = particle.CalculatedWorldOffset ?? new Vector3(0, 0, 0);
-            var otherOffset = other.CalculatedWorldOffset ?? new Vector3(0, 0, 0);
+            // Effective crash offset (local ObjectOffsets + optional CalculatedWorldOffset + optional SurfaceY)
+            var particleOffset = particle.GetCrashWorldOffset();
+            var otherOffset = other.GetCrashWorldOffset();
 
             for (int pb = 0; pb < particle.CrashBoxes.Count; pb++)
             {
                 var particleBox = particle.CrashBoxes[pb];
 
-                // world points for particle box (so we can compute center cleanly and also log points)
-                var worldParticlePoints = particleBox.Select(v => new Vector3
-                {
-                    x = v.x + particleOffset.x,
-                    y = v.y + particleOffset.y,
-                    z = v.z + particleOffset.z
-                }).ToList();
+                // World points for particle box (type-safe via extension)
+                var worldParticlePoints = particleBox.ToCrashWorldPoints(particleOffset);
+                if (worldParticlePoints.Count == 0) continue;
 
                 var center = GetCenterOfBox(worldParticlePoints);
 
@@ -227,22 +204,28 @@ namespace _3dTesting.Helpers
                 {
                     var otherBox = other.CrashBoxes[ob];
 
-                    // Other AABB in WORLD
+                    // World points for other box (type-safe via extension)
+                    var worldOtherPoints = otherBox.ToCrashWorldPoints(otherOffset);
+                    if (worldOtherPoints.Count == 0) continue;
+
+                    // Build other AABB in WORLD from worldOtherPoints
                     float oMinX = float.MaxValue, oMinY = float.MaxValue, oMinZ = float.MaxValue;
                     float oMaxX = float.MinValue, oMaxY = float.MinValue, oMaxZ = float.MinValue;
 
-                    for (int i = 0; i < otherBox.Count; i++)
+                    for (int i = 0; i < worldOtherPoints.Count; i++)
                     {
-                        var p = otherBox[i];
-                        float x = p.x + otherOffset.x;
-                        float y = p.y + otherOffset.y;
-                        float z = p.z + otherOffset.z;
+                        var p = worldOtherPoints[i];
+
+                        float x = p.x;
+                        float y = p.y;
+                        float z = p.z;
 
                         if (x < oMinX) oMinX = x; if (x > oMaxX) oMaxX = x;
                         if (y < oMinY) oMinY = y; if (y > oMaxY) oMaxY = y;
                         if (z < oMinZ) oMinZ = z; if (z > oMaxZ) oMaxZ = z;
                     }
 
+                    // Particle center inside other AABB
                     if (center.x >= oMinX && center.x <= oMaxX &&
                         center.y >= oMinY && center.y <= oMaxY &&
                         center.z >= oMinZ && center.z <= oMaxZ)
@@ -252,6 +235,7 @@ namespace _3dTesting.Helpers
 
                         var direction = EstimateDirectionFromSurface(center, min, max);
 
+                        // Set impact flags
                         particle.ImpactStatus.HasCrashed = true;
                         particle.ImpactStatus.ImpactDirection = direction;
 
@@ -270,26 +254,30 @@ namespace _3dTesting.Helpers
                         }
 
                         // Always log collision if logging is enabled (not depending on LogOnlyCollisions)
-                        if (!SkipParticleLogging) LogCollision(a, b, $"[FRAME:{numFrame}] [PARTICLE COLLISION] {particle.ObjectName} <-> {other.ObjectName} | Dir:{direction} | ParticleBox:{pb} OtherBox:{ob}");
+                        if (!SkipParticleLogging)
+                        {
+                            LogCollision(a, b,
+                                $"[FRAME:{numFrame}] [PARTICLE COLLISION] {particle.ObjectName} <-> {other.ObjectName} | Dir:{direction} | ParticleBox:{pb} OtherBox:{ob}");
+                        }
 
                         if (LogCollisionDetails)
                         {
-                            if (!SkipParticleLogging) LogCollisionDetail(a, b, $"[COLLISION OFFSETS] ParticleOffset=({particleOffset.x:0.##},{particleOffset.y:0.##},{particleOffset.z:0.##}) OtherOffset=({otherOffset.x:0.##},{otherOffset.y:0.##},{otherOffset.z:0.##})");
-                            if (!SkipParticleLogging) LogCollisionDetail(a, b, $"[PARTICLE CENTER] ({center.x:0.##},{center.y:0.##},{center.z:0.##})");
-                            if (!SkipParticleLogging) LogCollisionDetail(a, b, $"[OTHER AABB] Min=({min.x:0.##},{min.y:0.##},{min.z:0.##}) Max=({max.x:0.##},{max.y:0.##},{max.z:0.##})");
+                            if (!SkipParticleLogging) LogCollisionDetail(a, b,
+                                $"[COLLISION OFFSETS] ParticleOffset=({particleOffset.x:0.##},{particleOffset.y:0.##},{particleOffset.z:0.##}) OtherOffset=({otherOffset.x:0.##},{otherOffset.y:0.##},{otherOffset.z:0.##})");
+
+                            if (!SkipParticleLogging) LogCollisionDetail(a, b,
+                                $"[PARTICLE CENTER] ({center.x:0.##},{center.y:0.##},{center.z:0.##})");
+
+                            if (!SkipParticleLogging) LogCollisionDetail(a, b,
+                                $"[OTHER AABB] Min=({min.x:0.##},{min.y:0.##},{min.z:0.##}) Max=({max.x:0.##},{max.y:0.##},{max.z:0.##})");
 
                             // Log particle box (world)
-                            if (!SkipParticleLogging) LogCrashBoxWorldPoints($"[PARTICLE BOX WORLD] {particle.ObjectName} Box[{pb}]", worldParticlePoints);
+                            if (!SkipParticleLogging)
+                                LogCrashBoxWorldPoints($"[PARTICLE BOX WORLD] {particle.ObjectName} Box[{pb}]", worldParticlePoints);
 
-                            // Log other box (world)
-                            var worldOtherPoints = otherBox.Select(v => new Vector3
-                            {
-                                x = v.x + otherOffset.x,
-                                y = v.y + otherOffset.y,
-                                z = v.z + otherOffset.z
-                            }).ToList();
-
-                            if (!SkipParticleLogging) LogCrashBoxWorldPoints($"[OTHER BOX WORLD] {other.ObjectName} Box[{ob}]", worldOtherPoints);
+                            // Log other box (world) - uses same points as AABB
+                            if (!SkipParticleLogging)
+                                LogCrashBoxWorldPoints($"[OTHER BOX WORLD] {other.ObjectName} Box[{ob}]", worldOtherPoints);
                         }
 
                         return true;
@@ -300,37 +288,31 @@ namespace _3dTesting.Helpers
             return false;
         }
 
+
         // -----------------------------
         // General collision (NO early overlap test, world offset + readable logging)
         // -----------------------------
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool HandleGeneralCollision(_3dObject a, _3dObject b)
         {
-            var offsetA = a.CalculatedWorldOffset ?? new Vector3(0, 0, 0);
-            var offsetB = b.CalculatedWorldOffset ?? new Vector3(0, 0, 0);
+            var offsetA = a.GetCrashWorldOffset();
+            var offsetB = b.GetCrashWorldOffset();
 
             for (int ai = 0; ai < a.CrashBoxes.Count; ai++)
             {
                 var boxA = a.CrashBoxes[ai];
 
+                // Build world points for A box (robust against list types)
+                var safeBoxA = boxA.ToCrashWorldPoints(offsetA);
+                if (safeBoxA.Count == 0) continue;
+
                 for (int bi = 0; bi < b.CrashBoxes.Count; bi++)
                 {
                     var boxB = b.CrashBoxes[bi];
 
-                    // Build world-space boxes (as before, but with CalculatedWorldOffset)
-                    var safeBoxA = boxA.Select(v => new Vector3
-                    {
-                        x = v.x + offsetA.x,
-                        y = v.y + offsetA.y,
-                        z = v.z + offsetA.z
-                    }).ToList();
-
-                    var safeBoxB = boxB.Select(v => new Vector3
-                    {
-                        x = v.x + offsetB.x,
-                        y = v.y + offsetB.y,
-                        z = v.z + offsetB.z
-                    }).ToList();
+                    // Build world points for B box (robust against list types)
+                    var safeBoxB = ((System.Collections.IEnumerable)boxB).ToCrashWorldPoints(offsetB);
+                    if (safeBoxB.Count == 0) continue;
 
                     if (_3dObjectHelpers.CheckCollisionBoxVsBox(safeBoxA, safeBoxB))
                     {
@@ -345,13 +327,22 @@ namespace _3dTesting.Helpers
                         a.ImpactStatus.ImpactDirection = EstimateDirection(centerA, centerB);
                         b.ImpactStatus.ImpactDirection = EstimateDirection(centerB, centerA);
 
-                        LogCollision(a, b, $"[FRAME:{numFrame}] [GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName} | ABox:{ai} BBox:{bi}");
+                        LogCollision(a, b,
+                            $"[FRAME:{numFrame}] [GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName} | ABox:{ai} BBox:{bi}");
 
                         if (LogCollisionDetails)
                         {
-                            LogCollisionDetail(a, b, $"[COLLISION OFFSETS] AOffset=({offsetA.x:0.##},{offsetA.y:0.##},{offsetA.z:0.##}) BOffset=({offsetB.x:0.##},{offsetB.y:0.##},{offsetB.z:0.##})");
-                            LogCollisionDetail(a, b, $"[COLLISION CENTERS] A=({centerA.x:0.##},{centerA.y:0.##},{centerA.z:0.##}) B=({centerB.x:0.##},{centerB.y:0.##},{centerB.z:0.##})");
-                            LogCollisionDetail(a, b, $"[COLLISION DIR] {a.ObjectName}->{b.ObjectName}:{a.ImpactStatus.ImpactDirection} | {b.ObjectName}->{a.ObjectName}:{b.ImpactStatus.ImpactDirection}");
+                            LogCollisionDetail(a, b,
+                                $"[COLLISION OFFSETS] AEffective=({offsetA.x:0.##},{offsetA.y:0.##},{offsetA.z:0.##}) " +
+                                $"BEffective=({offsetB.x:0.##},{offsetB.y:0.##},{offsetB.z:0.##})");
+
+                            LogCollisionDetail(a, b,
+                                $"[COLLISION CENTERS] A=({centerA.x:0.##},{centerA.y:0.##},{centerA.z:0.##}) " +
+                                $"B=({centerB.x:0.##},{centerB.y:0.##},{centerB.z:0.##})");
+
+                            LogCollisionDetail(a, b,
+                                $"[COLLISION DIR] {a.ObjectName}->{b.ObjectName}:{a.ImpactStatus.ImpactDirection} | " +
+                                $"{b.ObjectName}->{a.ObjectName}:{b.ImpactStatus.ImpactDirection}");
 
                             LogCrashBoxWorldPoints($"[A BOX WORLD] {a.ObjectName} Box[{ai}]", safeBoxA);
                             LogCrashBoxWorldPoints($"[B BOX WORLD] {b.ObjectName} Box[{bi}]", safeBoxB);
@@ -364,6 +355,7 @@ namespace _3dTesting.Helpers
 
             return false;
         }
+
 
         // -----------------------------
         // Crashbox logging helpers (overview + points)
@@ -463,9 +455,13 @@ namespace _3dTesting.Helpers
             if (obj.ParentSurface?.GlobalMapPosition != null)
                 Logger.Log($"[SNAPSHOT] GlobalMapPosition: (x={obj.ParentSurface.GlobalMapPosition.x:0.##}, z={obj.ParentSurface.GlobalMapPosition.z:0.##})");
 
-            // This is the key missing piece for debugging
-            var offset = obj.CalculatedWorldOffset ?? new Vector3(0, 0, 0);
-            Logger.Log($"[SNAPSHOT] CalculatedWorldOffset: (x={offset.x:0.##}, y={offset.y:0.##}, z={offset.z:0.##})");
+            // Keep this: WORLD/MAP offset (may be null for screen-locked objects)
+            var calculated = obj.CalculatedWorldOffset ?? new Vector3(0, 0, 0);
+            Logger.Log($"[SNAPSHOT] CalculatedWorldOffset: (x={calculated.x:0.##}, y={calculated.y:0.##}, z={calculated.z:0.##})");
+
+            // NEW: this is what CrashDetection actually uses now
+            var effectiveOffset = obj.GetCrashWorldOffset();
+            Logger.Log($"[SNAPSHOT] EffectiveCrashOffset: (x={effectiveOffset.x:0.##}, y={effectiveOffset.y:0.##}, z={effectiveOffset.z:0.##})");
 
             var crashBoxes = obj.CrashBoxes;
             if (crashBoxes == null || crashBoxes.Count == 0)
@@ -486,28 +482,28 @@ namespace _3dTesting.Helpers
                 }
 
                 // --- LOCAL (as stored) ---
-                // This is what you currently log today. Keep it, but label it clearly.
                 Logger.Log($"[SNAPSHOT] CrashBox[{i}] LOCAL:");
-                ObjectPlacementHelpers.LogCrashboxAnalysis($"[SNAPSHOT] [FRAME:{numFrame}] {role}:{obj.ObjectName} Box[{i}] LOCAL",
-                    box.Select(v => new Vector3 { x = v.x, y = v.y, z = v.z }).ToList()
+
+                // Build a LOCAL list safely (no LINQ, supports weird list types)
+                var localBox = ((System.Collections.IEnumerable)box).ToCrashWorldPoints(new Vector3(0, 0, 0));
+                ObjectPlacementHelpers.LogCrashboxAnalysis(
+                    $"[SNAPSHOT] [FRAME:{numFrame}] {role}:{obj.ObjectName} Box[{i}] LOCAL",
+                    localBox
                 );
 
                 // --- WORLD/EFFECTIVE (what collision uses) ---
-                // This is what you actually need for debugging offsets.
-                var worldBox = box.Select(v => new Vector3
-                {
-                    x = v.x + offset.x,
-                    y = v.y + offset.y,
-                    z = v.z + offset.z
-                }).ToList();
+                var worldBox = ((System.Collections.IEnumerable)box).ToCrashWorldPoints(effectiveOffset);
 
-                ObjectPlacementHelpers.LogCrashboxAnalysis($"[SNAPSHOT] [FRAME:{numFrame}] {role}:{obj.ObjectName} Box[{i}] WORLD (LOCAL+Offset)", worldBox);
+                ObjectPlacementHelpers.LogCrashboxAnalysis(
+                    $"[SNAPSHOT] [FRAME:{numFrame}] {role}:{obj.ObjectName} Box[{i}] WORLD (EffectiveCrashOffset)",
+                    worldBox
+                );
 
-                // Optional: quick center line (uses your existing GetCenterOfBox)
                 var center = GetCenterOfBox(worldBox);
                 Logger.Log($"[SNAPSHOT] CrashBox[{i}] WORLD Center: (x={center.x:0.##}, y={center.y:0.##}, z={center.z:0.##})");
             }
         }
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static ImpactDirection EstimateDirectionFromSurface(Vector3 point, Vector3 min, Vector3 max)

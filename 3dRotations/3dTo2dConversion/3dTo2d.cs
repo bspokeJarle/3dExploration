@@ -37,19 +37,12 @@ namespace _3dTesting._3dRotation
                 var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
                 screenCoordinates.AddRange(projected);
 
-                if (obj.CrashBoxDebugMode==true)
+                if (obj.CrashBoxDebugMode!=null && (bool)obj.CrashBoxDebugMode)
                 { 
                     //Debug visualization of crashboxes
                     var crashBox2d = ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ);
                     screenCoordinates.AddRange(crashBox2d);
                 }
-
-                // Adjust crashboxes on surface based on ship vs ground height
-                if (obj.ObjectName == "Surface")
-                {
-                    ApplySurfaceCrashOffset(obj);
-                }
-                ApplyObjectOffsetToCrashBoxes(obj);
             }
 
             return screenCoordinates;
@@ -180,48 +173,6 @@ namespace _3dTesting._3dRotation
         {
             return x >= -(screenSizeX * 0.2) && x <= (screenSizeX * 1.2)
                 && y >= -(screenSizeY * 0.2) && y <= (screenSizeY * 1.2);
-        }
-
-        private void ApplySurfaceCrashOffset(_3dObject obj)
-        {
-            if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) return;
-
-            float surfaceYOffset = obj.ParentSurface.GlobalMapPosition.y;
-            foreach (var box in obj.CrashBoxes)
-            {
-                for (int j = 0; j < box.Count; j++)
-                {
-                    var original = box[j];
-                    box[j] = new Vector3
-                    {
-                        x = original.x,
-                        y = original.y + surfaceYOffset,
-                        z = original.z
-                    };
-                }
-                }
-        }
-
-        private void ApplyObjectOffsetToCrashBoxes(_3dObject obj)
-        {
-            if (enableLogging) Logger.Log($"Applying crashbox offsets for object {obj.ObjectName} at frame {CurrentFrame} Applied:{obj.CrashBoxOffsetsApplied}");
-            if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) return;
-
-            var offset = obj.ObjectOffsets;
-
-            foreach (var box in obj.CrashBoxes)
-            {
-                for (int j = 0; j < box.Count; j++)
-                {
-                    var original = box[j];
-                    box[j] = new Vector3
-                    {
-                        x = original.x + offset.x,
-                        y = original.y + offset.y,
-                        z = original.z + offset.z
-                    };
-                }
-            }
         }
     }
 }

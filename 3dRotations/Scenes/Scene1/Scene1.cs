@@ -22,7 +22,7 @@ namespace _3dRotations.Scene.Scene1
             ship.WorldPosition = new Vector3 { };
             ship.ObjectName = "Ship";
             ship.ImpactStatus = new ImpactStatus { };
-            ship.CrashBoxDebugMode = true;
+            ship.CrashBoxDebugMode = false;
             ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
            
@@ -33,7 +33,7 @@ namespace _3dRotations.Scene.Scene1
             seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 300 };
             seeder.ObjectName = "Seeder";
             seeder.Movement = new SeederControls();
-            seeder.CrashBoxDebugMode = true;
+            seeder.CrashBoxDebugMode = false;
             seeder.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(seeder);
 
@@ -44,7 +44,7 @@ namespace _3dRotations.Scene.Scene1
             seeder2.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 300 };
             seeder2.ObjectName = "Seeder";
             seeder2.Movement = new SeederControls();
-            seeder2.CrashBoxDebugMode = true;
+            seeder2.CrashBoxDebugMode = false;
             seeder2.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(seeder2);
 
@@ -55,7 +55,7 @@ namespace _3dRotations.Scene.Scene1
             seeder3.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 300 };
             seeder3.ObjectName = "Seeder";
             seeder3.Movement = new SeederControls();
-            seeder3.CrashBoxDebugMode = true;
+            seeder3.CrashBoxDebugMode = false;
             seeder3.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(seeder3);
 
@@ -71,7 +71,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.Movement = new GroundControls();
             surfaceObject.ParentSurface = Surface;
             surfaceObject.ImpactStatus = new ImpactStatus { };
-            surfaceObject.CrashBoxDebugMode = true;
+            surfaceObject.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(surfaceObject);
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(Surface.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
