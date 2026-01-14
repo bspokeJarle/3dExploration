@@ -52,7 +52,7 @@ namespace _3dTesting
         private System.Windows.Shapes.Rectangle healthRectangle;
         private bool isPaused = false;
         private int pauseFrameCount = 0;
-        private const int limitFrameCount = 2;
+        private const int limitFrameCount = 10;
         private DateTime fadeOutTrigged = DateTime.MinValue;
         private int _updateInProgress = 0;
 

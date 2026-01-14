@@ -15,11 +15,11 @@ namespace _3dTesting.Helpers
         private static DateTime _lastStaticCheck = DateTime.MinValue;
         private static bool _skipParticles = false;
 
-        private static List<string> LogFilter = ["Seeder", "Lazer", "Ship"];
+        private static List<string> LogFilter = ["Lazer", "Surface"];
 
         public static bool LocalEnableLogging = false;
         // If true: only logs collisions (and details around the collision), NOT all checks/attempts/distance spam.
-        public static bool LogOnlyCollisions = true;
+        public static bool LogOnlyCollisions = false;
         // If true: include extra details WHEN a collision happens (boxes/centers/direction).
         public static bool LogCollisionDetails = true;
         // If true: skip logging particles entirely, they fill the logs
@@ -94,6 +94,7 @@ namespace _3dTesting.Helpers
                     bool isLazer = isInhabitantLazer || isOtherLazer;
                     bool isBothParticles = isInhabitantParticle && isOtherParticle;
                     bool isShip = inhabitant.ObjectName == "Ship" || otherInhabitant.ObjectName == "Ship";
+                    bool isSurface = inhabitant.ObjectName == "Surface" || otherInhabitant.ObjectName == "Surface";
 
                     // Empty objectnames should not be accepted
                     if (string.IsNullOrEmpty(inhabitant.ObjectName) || string.IsNullOrEmpty(otherInhabitant.ObjectName)) continue;
@@ -144,7 +145,9 @@ namespace _3dTesting.Helpers
                         }
                     }
 
-                    if (distance > MaxCrashDistance)
+                    //This is mainly for Lazer to hit surface (Surface is big, center is many clicks away) it also logical that the Lazer may hit from further away
+                    var effectiveMaxCrashDistance = isLazer ? MaxCrashDistance * 2 : MaxCrashDistance;
+                    if (distance > effectiveMaxCrashDistance)
                     {
                         SkippedByDistance++;
                         continue;
@@ -312,9 +315,15 @@ namespace _3dTesting.Helpers
 
                     // Build world points for B box (robust against list types)
                     var safeBoxB = ((System.Collections.IEnumerable)boxB).ToCrashWorldPoints(offsetB);
+
+                    if (ShouldLogAny && CheckLogFilter(a, b) && LogCollisionDetails)
+                    {
+                        Logger.Log($"PTS {a.ObjectName}[{ai}] vs {b.ObjectName}[{bi}] A:{string.Join(";", safeBoxA.Select(p => $"({p.x:0.#},{p.y:0.#},{p.z:0.#})"))} | B:{string.Join(";", safeBoxB.Select(p => $"({p.x:0.#},{p.y:0.#},{p.z:0.#})"))}");
+                    }
+
                     if (safeBoxB.Count == 0) continue;
 
-                    if (_3dObjectHelpers.CheckCollisionBoxVsBox(safeBoxA, safeBoxB))
+                    if (_3dObjectHelpers.CheckCollisionBoxVsBox(safeBoxA, safeBoxB, a.ObjectName,b.ObjectName))
                     {
                         a.ImpactStatus.HasCrashed = true;
                         b.ImpactStatus.HasCrashed = true;

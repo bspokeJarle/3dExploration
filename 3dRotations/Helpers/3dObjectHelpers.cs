@@ -8,6 +8,7 @@ namespace _3dTesting.Helpers
 {
     public static class _3dObjectHelpers
     {
+        public static bool _localLoggingEnabled = false;
         public static void ApplyScaleToTriangles(List<ITriangleMeshWithColor> triangles, float scale)
         {
             if (triangles == null || triangles.Count == 0) return;
@@ -107,7 +108,12 @@ namespace _3dTesting.Helpers
             return new CosSin { CosRes = (float)cosRes, SinRes = (float)sinRes };
         }
 
-        public static bool CheckCollisionBoxVsBox(List<Vector3> boxA, List<Vector3> boxB)
+        public static bool CheckCollisionBoxVsBox(
+            List<Vector3> boxA,
+            List<Vector3> boxB,
+            string? nameA = null,
+            string? nameB = null
+        )
         {
             var minA = new Vector3(boxA.Min(p => p.x), boxA.Min(p => p.y), boxA.Min(p => p.z));
             var maxA = new Vector3(boxA.Max(p => p.x), boxA.Max(p => p.y), boxA.Max(p => p.z));
@@ -121,8 +127,19 @@ namespace _3dTesting.Helpers
             bool overlapY = (maxA.y + margin) >= (minB.y - margin) && (minA.y - margin) <= (maxB.y + margin);
             bool overlapZ = (maxA.z + margin) >= (minB.z - margin) && (minA.z - margin) <= (maxB.z + margin);
 
+            if (_localLoggingEnabled && nameA != null && nameB != null)
+            {
+                Logger.Log(
+                    $"AABBCHK {nameA} vs {nameB} | " +
+                    $"X:{overlapX} Y:{overlapY} Z:{overlapZ} | " +
+                    $"A[min=({minA.x:0.#},{minA.y:0.#},{minA.z:0.#}) max=({maxA.x:0.#},{maxA.y:0.#},{maxA.z:0.#})] " +
+                    $"B[min=({minB.x:0.#},{minB.y:0.#},{minB.z:0.#}) max=({maxB.x:0.#},{maxB.y:0.#},{maxB.z:0.#})]"
+                );
+            }
+
             return overlapX && overlapY && overlapZ;
         }
+
 
         public static float GetDeepestZ(ITriangleMeshWithColor triangle)
         {

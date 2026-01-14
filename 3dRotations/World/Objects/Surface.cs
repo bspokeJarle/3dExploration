@@ -131,11 +131,12 @@ namespace _3dRotations.World.Objects
 
         private List<List<IVector3>> GetMainSurfaceCrashBox()
         {
-            //var min = new Vector3 { x = -400, y = 0, z = -400 };
-            //var max = new Vector3 { x = 400, y = 500, z = 100 };
+            //A Crashbox visible with the debug mode
+            //var min = new Vector3 { x = -400, y = -300, z = -500 };
+            //var max = new Vector3 { x = 400, y = 1000, z = -50 };
 
-            var min = new Vector3 { x = -400, y = -300, z = -500 };
-            var max = new Vector3 { x = 400, y = 1000, z = -50 };
+            var min = new Vector3 { x = -1200, y = -600, z = -1000 };
+            var max = new Vector3 { x = 1200, y = 1500, z = 400 };
 
             return new List<List<IVector3>>
             {
