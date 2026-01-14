@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Windows;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting.MainWindowClasses
@@ -20,7 +21,6 @@ namespace _3dTesting.MainWindowClasses
             {
                 if (obj is not _3dObject weapon)
                     continue;
-
                 // Match ParentSurface til skipet dersom den mangler
                 if (weapon.ParentSurface == null)
                     weapon.ParentSurface = inhabitant.ParentSurface;

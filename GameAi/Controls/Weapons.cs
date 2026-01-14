@@ -2,8 +2,6 @@
 using Domain;
 using System;
 using System.Collections.Generic;
-using System.Security.Policy;
-using System.Windows;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 using static Domain._3dSpecificsImplementations;
 
@@ -11,7 +9,7 @@ namespace GameAiAndControls.Controls
 {
     public class Weapons : IWeapon
     {
-        private static bool enableLogging = false;
+        private static bool enableLogging = true;
         private static readonly int maxZ = 1200;
         private static readonly int minZ = -2500;
         private static readonly int maxX = 1200;
@@ -47,7 +45,7 @@ namespace GameAiAndControls.Controls
             ParentShipObject = (_3dObject)parentShip;
 
             if (weaponType == WeaponType.Lazer)
-            {                
+            {
                 I3dObject template = _weaponObjects.Count > 0
                     ? _weaponObjects[0]
                     : new _3dObject { ObjectName = "Lazer" };
@@ -114,7 +112,7 @@ namespace GameAiAndControls.Controls
                     continue;
 
                 // 1) Tilt around X axis first
-                var withTilt = _rotate.RotateXMesh(part.Triangles, tilt);                
+                var withTilt = _rotate.RotateXMesh(part.Triangles, tilt);
 
                 // 2) Then the main rotation in the same order as in GameWorldManager.RotateMesh (Z → Y → X)
                 var rotated = _rotate.RotateXMesh(
@@ -123,7 +121,7 @@ namespace GameAiAndControls.Controls
                         rotation.y
                     ),
                     rotation.x
-                );                
+                );
                 part.Triangles = rotated;
             }
             var crashBoxesWithTilt = RotateCrashBoxes(weapon.CrashBoxes, tilt, rotation);
@@ -177,7 +175,7 @@ namespace GameAiAndControls.Controls
                 if (Expired(w))
                     continue;
 
-                 yield return w.WeaponObject;
+                yield return w.WeaponObject;
             }
         }
 
@@ -188,8 +186,6 @@ namespace GameAiAndControls.Controls
             for (int i = 0; i < ActiveWeapons.Count; i++)
             {
                 ActiveWeapon w = ActiveWeapons[i] as ActiveWeapon;
-                //Reset crash box offset applied flag every frame, these objects are made here
-                w.WeaponObject.CrashBoxOffsetsApplied = false;
                 if (w == null || Expired(w) || OutOfBounds(w.WeaponObject.ObjectOffsets))
                     continue;
 
@@ -199,10 +195,7 @@ namespace GameAiAndControls.Controls
 
                 w.LastUpdateUtc = now;
 
-                if (w.ImpactStatus.HasCrashed)
-                {
-                    MessageBox.Show("Lazer traff noe!!!");
-                }
+                if (enableLogging) Logger.Log($"Weapon HasCrashed:{w.WeaponObject.ImpactStatus.HasCrashed} ImpactName:{w.ImpactStatus.ObjectName}");
 
                 if (dt > 0.0)
                 {

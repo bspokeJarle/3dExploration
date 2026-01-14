@@ -41,7 +41,6 @@ namespace Domain
             public IObjectMovement? Movement { get; set; }
             public IParticles? Particles { get; set; }
             public List<List<IVector3>> CrashBoxes { get; set; }
-            public bool CrashBoxOffsetsApplied { get; set; } = false;
             public IImpactStatus? ImpactStatus { get; set; }
             public int? Mass { get; set; }
             public string ObjectName { get; set; }

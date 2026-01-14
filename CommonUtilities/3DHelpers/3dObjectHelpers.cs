@@ -180,7 +180,15 @@ namespace CommonUtilities._3DHelpers
                 ObjectParts = objectParts.Cast<I3dObjectPart>().ToList(),
                 Movement = original.Movement,
                 Particles = original.Particles,
-                ImpactStatus = original.ImpactStatus,
+                ImpactStatus = new ImpactStatus
+                {
+                    HasExploded = original.ImpactStatus.HasExploded,
+                    HasCrashed = original.ImpactStatus.HasCrashed,
+                    ObjectName = original.ImpactStatus.ObjectName,
+                    ImpactDirection = original.ImpactStatus.ImpactDirection,
+                    SourceParticle = original.ImpactStatus.SourceParticle,
+                    ObjectHealth = original.ImpactStatus.ObjectHealth
+                },
                 Mass = original.Mass,
                 ObjectName = original.ObjectName,
                 ParentSurface = original.ParentSurface,
@@ -191,8 +199,7 @@ namespace CommonUtilities._3DHelpers
                 CrashBoxDebugMode = original.CrashBoxDebugMode,
                 WeaponSystems = original.WeaponSystems,
                 CrashBoxes = original.CrashBoxes,
-                CalculatedWorldOffset = original.CalculatedWorldOffset,
-                CrashBoxOffsetsApplied = false
+                CalculatedWorldOffset = original.CalculatedWorldOffset
             };
 
             return copy;

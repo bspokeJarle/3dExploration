@@ -114,7 +114,6 @@ namespace Domain
         public IParticles? Particles { get; set; }
         public IWeapon? WeaponSystems { get; set; }
         public List<List<IVector3>> CrashBoxes { get; set; }
-        public bool CrashBoxOffsetsApplied { get; set; }
         public IImpactStatus? ImpactStatus { get; set; }
         public int? Mass { get; set; }
         public ISurface? ParentSurface { get; set; }
@@ -163,7 +162,6 @@ namespace Domain
         public void MoveWeapon();
         public IEnumerable<I3dObject> Get3DObjects();
         public List<List<IVector3>> GetCrashBoxes();
-
         public List<IActiveWeapon> ActiveWeapons { get; set; }
     }
     public interface IActiveWeapon  
