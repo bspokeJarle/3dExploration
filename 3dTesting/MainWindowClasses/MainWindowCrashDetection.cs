@@ -17,7 +17,7 @@ namespace _3dTesting.Helpers
 
         private static List<string> LogFilter = ["Lazer", "Surface"];
 
-        public static bool LocalEnableLogging = false;
+        public static bool LocalEnableLogging = true;
         // If true: only logs collisions (and details around the collision), NOT all checks/attempts/distance spam.
         public static bool LogOnlyCollisions = false;
         // If true: include extra details WHEN a collision happens (boxes/centers/direction).
@@ -90,6 +90,9 @@ namespace _3dTesting.Helpers
                     bool isOtherParticle = otherInhabitant.ObjectName == "Particle";
                     bool isInhabitantLazer = inhabitant.ObjectName == "Lazer";
                     bool isOtherLazer = otherInhabitant.ObjectName == "Lazer";
+                    bool isInhabitantSeeder = inhabitant.ObjectName == "Seeder";
+                    bool isOtherSeeder = otherInhabitant.ObjectName == "Seeder";
+                    bool isSeeder = isInhabitantSeeder || isOtherSeeder;
                     bool isParticle = isInhabitantParticle || isOtherParticle;
                     bool isLazer = isInhabitantLazer || isOtherLazer;
                     bool isBothParticles = isInhabitantParticle && isOtherParticle;
@@ -104,7 +107,7 @@ namespace _3dTesting.Helpers
                     if (isParticle && isShip) continue;
                     if (isBothParticles) continue;
                     if (isParticle && _skipParticles) continue;
-                    if (isLazer && isParticle || isLazer && isShip) continue;
+                    if (isLazer && isParticle || isLazer && isShip || isSeeder && isParticle) continue;
 
                     if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;
 

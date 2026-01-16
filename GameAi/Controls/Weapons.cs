@@ -2,6 +2,7 @@
 using Domain;
 using System;
 using System.Collections.Generic;
+using System.Windows;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 using static Domain._3dSpecificsImplementations;
 
@@ -51,9 +52,20 @@ namespace GameAiAndControls.Controls
                     : new _3dObject { ObjectName = "Lazer" };
 
                 I3dObject instance = Common3dObjectHelpers.DeepCopySingleObject(template);
+                instance.ImpactStatus = new ImpactStatus
+                {
+                    HasExploded = false,
+                    HasCrashed = false,
+                    ObjectName = "",
+                    ImpactDirection = null,
+                    SourceParticle = default, // Use default for non-nullable reference type
+                    ObjectHealth = 100
+                };
                 instance.Rotation = ParentShipObject.Rotation;
 
                 IVector3 dir = Normalize(trajectory);
+                //Reverse Z axis to match game coord system
+                dir = new Vector3 { x = dir.x, y = dir.y, z = -dir.z };
 
                 //Startposition in local coords
                 SetObjectOffsets(instance, startPosition);
@@ -68,7 +80,6 @@ namespace GameAiAndControls.Controls
                     WeaponType = weaponType,
                     WeaponObject = instance,
                     FiredTime = DateTime.UtcNow,
-                    ImpactStatus = new ImpactStatus(),
                     Velocity = 3500f,
                     Acceleration = 0f,
                     Trajectory = dir,
@@ -179,6 +190,14 @@ namespace GameAiAndControls.Controls
             }
         }
 
+        public void HandleHit(bool hasCrashed, string objectName)
+        {
+            //MessageBox.Show($"Weapon HasCrashed with {objectName} ");
+            if (enableLogging) Logger.Log($"Weapon HasCrashed:{hasCrashed} ImpactName:{objectName}");
+            // Implement hit handling logic if needed
+            // Implement thudding sound or effects here
+        }
+
         public void MoveWeapon()
         {
             DateTime now = DateTime.UtcNow;
@@ -186,7 +205,11 @@ namespace GameAiAndControls.Controls
             for (int i = 0; i < ActiveWeapons.Count; i++)
             {
                 ActiveWeapon w = ActiveWeapons[i] as ActiveWeapon;
-                if (w == null || Expired(w) || OutOfBounds(w.WeaponObject.ObjectOffsets))
+
+                //If weapon has crashed, handle hit effects
+                if (w.WeaponObject.ImpactStatus.HasCrashed) HandleHit(w.WeaponObject.ImpactStatus.HasCrashed, w.WeaponObject.ImpactStatus.ObjectName);
+
+                if (w == null || Expired(w) || OutOfBounds(w.WeaponObject.ObjectOffsets) || w.WeaponObject.ImpactStatus.HasCrashed)
                     continue;
 
                 double dt = w.LastUpdateUtc == default(DateTime)
@@ -195,7 +218,7 @@ namespace GameAiAndControls.Controls
 
                 w.LastUpdateUtc = now;
 
-                if (enableLogging) Logger.Log($"Weapon HasCrashed:{w.WeaponObject.ImpactStatus.HasCrashed} ImpactName:{w.ImpactStatus.ObjectName}");
+                if (enableLogging) Logger.Log($"Weapon ImpactStatus:{w.WeaponObject.ImpactStatus.HasCrashed} ImpactName:{w.WeaponObject.ImpactStatus.ObjectName}");
 
                 if (dt > 0.0)
                 {
@@ -223,10 +246,10 @@ namespace GameAiAndControls.Controls
             for (int i = ActiveWeapons.Count - 1; i >= 0; i--)
             {
                 ActiveWeapon w = ActiveWeapons[i] as ActiveWeapon;
-                if (w != null && Expired(w) || OutOfBounds(w.WeaponObject.ObjectOffsets))
+                if (w != null && Expired(w) || OutOfBounds(w.WeaponObject.ObjectOffsets) || w.WeaponObject.ImpactStatus.HasCrashed)
                 {
                     if (enableLogging) Logger.Log(
-                        $"[WeaponSystem] {w.WeaponType} expired\\out of bounds after {w.DistanceTraveled:F2} units. Current Z={w.WeaponObject.ObjectOffsets.z:F2}"
+                        $"[WeaponSystem] {w.WeaponType} expired\\out\\crashed of bounds after {w.DistanceTraveled:F2} units. Current Z={w.WeaponObject.ObjectOffsets.z:F2}"
                     );
                     ActiveWeapons.RemoveAt(i);
                 }

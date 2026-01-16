@@ -180,15 +180,7 @@ namespace CommonUtilities._3DHelpers
                 ObjectParts = objectParts.Cast<I3dObjectPart>().ToList(),
                 Movement = original.Movement,
                 Particles = original.Particles,
-                ImpactStatus = new ImpactStatus
-                {
-                    HasExploded = original.ImpactStatus.HasExploded,
-                    HasCrashed = original.ImpactStatus.HasCrashed,
-                    ObjectName = original.ImpactStatus.ObjectName,
-                    ImpactDirection = original.ImpactStatus.ImpactDirection,
-                    SourceParticle = original.ImpactStatus.SourceParticle,
-                    ObjectHealth = original.ImpactStatus.ObjectHealth
-                },
+                ImpactStatus = original.ImpactStatus,
                 Mass = original.Mass,
                 ObjectName = original.ObjectName,
                 ParentSurface = original.ParentSurface,

@@ -114,6 +114,7 @@ namespace Domain
         public IParticles? Particles { get; set; }
         public IWeapon? WeaponSystems { get; set; }
         public List<List<IVector3>> CrashBoxes { get; set; }
+        public bool CrashBoxesFollowRotation { get; set; }
         public IImpactStatus? ImpactStatus { get; set; }
         public int? Mass { get; set; }
         public ISurface? ParentSurface { get; set; }
@@ -170,7 +171,6 @@ namespace Domain
         public DateTime FiredTime { get; set; }
         public IVector3 Velocity { get; set; }
         public IVector3 Acceleration { get; set; }
-        public IImpactStatus? ImpactStatus { get; set; }
     }
 
     public interface IParticles

@@ -30,7 +30,7 @@ namespace _3dRotations.Scene.Scene1
             //Initialize the seeder rotation
             seeder.Rotation = new Vector3 { };
             seeder.WorldPosition = new Vector3 { x = 95700, y = 0, z = 92000 };
-            seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 300 };
+            seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
             seeder.ObjectName = "Seeder";
             seeder.Movement = new SeederControls();
             seeder.CrashBoxDebugMode = false;
@@ -41,7 +41,7 @@ namespace _3dRotations.Scene.Scene1
             //Initialize the seeder rotation
             seeder2.Rotation = new Vector3 { };
             seeder2.WorldPosition = new Vector3 { x = 96200, y = 0, z = 93000 };
-            seeder2.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 300 };
+            seeder2.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 600 };
             seeder2.ObjectName = "Seeder";
             seeder2.Movement = new SeederControls();
             seeder2.CrashBoxDebugMode = false;
@@ -52,7 +52,7 @@ namespace _3dRotations.Scene.Scene1
             //Initialize the seeder rotation
             seeder3.Rotation = new Vector3 { };
             seeder3.WorldPosition = new Vector3 { x = 94000, y = 0, z = 90000 };
-            seeder3.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 300 };
+            seeder3.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 600 };
             seeder3.ObjectName = "Seeder";
             seeder3.Movement = new SeederControls();
             seeder3.CrashBoxDebugMode = false;

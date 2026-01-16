@@ -30,7 +30,7 @@ namespace _3dRotations.World.Objects
             beam.Particles = new ParticlesAI();
             beam.ParentSurface = parentSurface;
             beam.ObjectName = "Lazer";
-            beam.CrashBoxDebugMode = true;
+            beam.CrashBoxDebugMode = false;
             beam.ImpactStatus = new ImpactStatus { ObjectName = "Lazer" };
             if (crash != null) beam.CrashBoxes = crash;
             return beam;

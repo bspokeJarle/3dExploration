@@ -12,7 +12,6 @@ namespace Domain
         public class ActiveWeapon : IActiveWeapon
         {
             public I3dObject WeaponObject { get; set; }
-            public IImpactStatus ImpactStatus { get; set; }
             public DateTime FiredTime { get; set; }
             public float Velocity { get; set; }
             public float Acceleration { get; set; }
@@ -41,6 +40,7 @@ namespace Domain
             public IObjectMovement? Movement { get; set; }
             public IParticles? Particles { get; set; }
             public List<List<IVector3>> CrashBoxes { get; set; }
+            public bool CrashBoxesFollowRotation { get; set; } = true;
             public IImpactStatus? ImpactStatus { get; set; }
             public int? Mass { get; set; }
             public string ObjectName { get; set; }
