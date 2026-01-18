@@ -4,6 +4,7 @@ using CommonUtilities._3DHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting._3dRotation
@@ -130,6 +131,11 @@ namespace _3dTesting._3dRotation
 
                     if (triangle.normal1.z > 0 || (triangle.noHidden ?? false))
                     {
+                        //Debugging Object sorting issues for specific objects
+                        if (obj.ObjectName == "Seeder" || obj.ObjectName == "Lazer")
+                        {
+                            if (enableLogging) Logger.Log($"Converted 3D object '{obj.ObjectName}' to 2D. CalculatedZ: {(float)((float)(((triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3) + obj.ObjectOffsets.z) - objPosZ)}");
+                        }
                         result.Add(new _2dTriangleMesh
                         {
                             X1 = Convert.ToInt32(x1),
@@ -145,9 +151,9 @@ namespace _3dTesting._3dRotation
                             PartName = part.PartName
                         });
                     }
+                    
                 }
             }
-
             return result;
         }
 

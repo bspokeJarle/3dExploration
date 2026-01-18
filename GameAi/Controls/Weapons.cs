@@ -18,6 +18,13 @@ namespace GameAiAndControls.Controls
         private static readonly int maxY = 1200;
         private static readonly int minY = -1200;
 
+        // Audio setup (gjøres lazy via ConfigureAudio)
+        private IAudioPlayer? _audio;
+        private SoundDefinition? _thudSound;
+        private SoundDefinition? _lazerSound;
+        private IAudioInstance? _thudInstance;
+        private IAudioInstance? _lazerInstance;
+
         private readonly List<I3dObject> _weaponObjects;
         private readonly _3dRotationCommon _rotate = new(); // Rotation fra CommonHelpers
 
@@ -27,11 +34,25 @@ namespace GameAiAndControls.Controls
         public IVector3 ParentVelocityLocal { get; set; } = new Vector3(0, 0, 0);
         public List<IActiveWeapon> ActiveWeapons { get; set; } = new List<IActiveWeapon>();
 
+        public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
+        {
+            // Already configured? do nothing
+            if (_audio != null || _thudSound != null)
+                return;
+
+            if (audioPlayer == null || soundRegistry == null)
+                return;
+
+            _audio = audioPlayer;
+            _thudSound = soundRegistry.Get("lazer_thud");
+            _lazerSound = soundRegistry.Get("lazer_main");
+        }
+
         public Weapons(List<I3dObject> weapons, IObjectMovement parent, _3dObject ship)
         {
             _weaponObjects = weapons ?? new List<I3dObject>();
             ParentShip = parent;
-            ParentShipObject = ship;
+            ParentShipObject = ship;   
         }
 
         public IWeapon FireWeapon(
@@ -43,6 +64,11 @@ namespace GameAiAndControls.Controls
             int tilt
         )
         {
+            if (_audio != null && _lazerSound != null)
+            {
+                _lazerInstance = _audio.Play(_lazerSound, AudioPlayMode.OneShot);
+            }
+
             ParentShipObject = (_3dObject)parentShip;
 
             if (weaponType == WeaponType.Lazer)
@@ -186,20 +212,26 @@ namespace GameAiAndControls.Controls
                 if (Expired(w))
                     continue;
 
-                yield return w.WeaponObject;
+                yield return w.WeaponObject; 
             }
         }
 
-        public void HandleHit(bool hasCrashed, string objectName)
+        public void HandleHit(bool hasCrashed, string objectName) 
         {
-            //MessageBox.Show($"Weapon HasCrashed with {objectName} ");
             if (enableLogging) Logger.Log($"Weapon HasCrashed:{hasCrashed} ImpactName:{objectName}");
-            // Implement hit handling logic if needed
-            // Implement thudding sound or effects here
+            if (_audio != null && _thudSound != null)
+            {
+                //Stop Lazer, it owerpowers the thud
+                _lazerInstance?.Stop(playEndSegment:false);
+                // Implement thudding sound or effects here
+                _thudInstance = _audio.Play(_thudSound, AudioPlayMode.OneShot);
+            }
         }
 
-        public void MoveWeapon()
+        public void MoveWeapon(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            if (audioPlayer != null && soundRegistry != null) ConfigureAudio(audioPlayer, soundRegistry);
+
             DateTime now = DateTime.UtcNow;
 
             for (int i = 0; i < ActiveWeapons.Count; i++)
@@ -217,8 +249,6 @@ namespace GameAiAndControls.Controls
                     : (now - w.LastUpdateUtc).TotalSeconds;
 
                 w.LastUpdateUtc = now;
-
-                if (enableLogging) Logger.Log($"Weapon ImpactStatus:{w.WeaponObject.ImpactStatus.HasCrashed} ImpactName:{w.WeaponObject.ImpactStatus.ObjectName}");
 
                 if (dt > 0.0)
                 {
@@ -275,6 +305,9 @@ namespace GameAiAndControls.Controls
 
         private static void SetWorldPosition(I3dObject obj, IVector3 pos)
         {
+            var effectivePos = pos.x + obj.ObjectOffsets?.x ?? 0;
+            effectivePos = pos.y + obj.ObjectOffsets?.y ?? 0;
+            effectivePos = pos.z + obj.ObjectOffsets?.z ?? 0;
             ((_3dObject)obj).WorldPosition = pos;
         }
 

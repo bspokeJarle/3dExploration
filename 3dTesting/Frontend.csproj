@@ -39,6 +39,9 @@
     <None Update="Soundeffects\OmegaStrain_Rocket_Main.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Soundeffects\OmegaStrain_Thud_Heavy.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\sounds.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

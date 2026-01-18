@@ -191,6 +191,7 @@ namespace CommonUtilities._3DHelpers
                 CrashBoxDebugMode = original.CrashBoxDebugMode,
                 WeaponSystems = original.WeaponSystems,
                 CrashBoxes = original.CrashBoxes,
+                CrashBoxesFollowRotation = original.CrashBoxesFollowRotation,
                 CalculatedWorldOffset = original.CalculatedWorldOffset
             };
 

@@ -83,7 +83,7 @@ namespace _3dTesting.MainWindowClasses
                 if (!inhabitant.CheckInhabitantVisibility()) continue;
 
                 inhabitant.Movement?.MoveObject(inhabitant, audioPlayer, soundRegistry);
-                inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
+                if (inhabitant.CrashBoxesFollowRotation) inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
                 //Make copies of Ship and Surface for HUD display purposes
                 if (inhabitant.ObjectName == "Ship")
                 {

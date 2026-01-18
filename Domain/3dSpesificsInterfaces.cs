@@ -160,7 +160,7 @@ namespace Domain
     {
         public IWeapon FireWeapon(IVector3 Trajectory, IVector3 StartPosition, IVector3 WorldPosition, WeaponType weaponType, I3dObject parentShip, int tilt);
         public IObjectMovement ParentShip { get; set; }
-        public void MoveWeapon();
+        public void MoveWeapon(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry);
         public IEnumerable<I3dObject> Get3DObjects();
         public List<List<IVector3>> GetCrashBoxes();
         public List<IActiveWeapon> ActiveWeapons { get; set; }

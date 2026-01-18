@@ -23,7 +23,7 @@ namespace GameAiAndControls.Controls
         private float _syncY = 0;
         //Factor to stay in sync with surface movement
         private float _syncFactor = 2.5f;
-        private bool enableLogging = true;
+        private bool enableLogging = false;
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
@@ -36,7 +36,6 @@ namespace GameAiAndControls.Controls
 
             if (theObject.ImpactStatus.HasCrashed == true)
             {
-                //MessageBox.Show($"Seeder has crashed, should handle crash. CrashedWith:{theObject.ImpactStatus.ObjectName}");
                 if (enableLogging) Logger.Log($"Seeder has crashed, should handle crash. CrashedWith:{theObject.ImpactStatus.ObjectName}");                
             }
 

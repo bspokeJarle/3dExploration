@@ -17,7 +17,7 @@ namespace _3dTesting.Helpers
 
         private static List<string> LogFilter = ["Lazer", "Surface"];
 
-        public static bool LocalEnableLogging = true;
+        public static bool LocalEnableLogging = false;
         // If true: only logs collisions (and details around the collision), NOT all checks/attempts/distance spam.
         public static bool LogOnlyCollisions = false;
         // If true: include extra details WHEN a collision happens (boxes/centers/direction).

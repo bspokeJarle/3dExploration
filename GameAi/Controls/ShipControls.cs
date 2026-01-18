@@ -204,16 +204,6 @@ namespace GameAiAndControls.Controls
                 ParentObject,
                 tilt);
 
-            if (_audio != null && _lazerSound != null)
-            {
-                _audio.PlayOneShot(
-                    _lazerSound,
-                    new AudioPlayOptions
-                    {
-                        // valgfritt – vi kan tweake dette senere
-                        VolumeOverride = 0.9f
-                    });
-            }
         }
 
         private void IncreaseThrustAndRelease()
@@ -347,20 +337,20 @@ namespace GameAiAndControls.Controls
                         theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
                     {
                         landed = true;
-
+                         
                         if (landingSpeed > 5f)
                         {
-                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
-                        }
+                             theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
+                              }
                     }
                 }
 
-                theObject.ImpactStatus.HasCrashed = false;
+                  theObject.ImpactStatus.HasCrashed = false;
             }
 
-            // The weapon needs to move as well
+             // The weapon needs to move as well 
             if (theObject.WeaponSystems != null)
-                theObject.WeaponSystems.MoveWeapon();
+                theObject.WeaponSystems.MoveWeapon(audioPlayer, soundRegistry);
 
             return theObject;
         }
