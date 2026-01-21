@@ -24,7 +24,7 @@ namespace Domain
 
     public interface ISceneHandler
     {
-        public void SetupActiveScene(I3dWorld  world);
+        public void SetupActiveScene(I3dWorld world);
 
         public void ResetActiveScene(I3dWorld world);
 
@@ -108,7 +108,6 @@ namespace Domain
         public IVector3? WorldPosition { get; set; }
         public List<I3dObjectPart> ObjectParts { get; set; }
         public IVector3? ObjectOffsets { get; set; }
-
         public IVector3? Rotation { get; set; }
         public IObjectMovement? Movement { get; set; }
         public IParticles? Particles { get; set; }
@@ -165,7 +164,7 @@ namespace Domain
         public List<List<IVector3>> GetCrashBoxes();
         public List<IActiveWeapon> ActiveWeapons { get; set; }
     }
-    public interface IActiveWeapon  
+    public interface IActiveWeapon
     {
         public I3dObject WeaponObject { get; set; }
         public DateTime FiredTime { get; set; }
@@ -177,7 +176,7 @@ namespace Domain
     {
         public IObjectMovement ParentShip { get; set; }
         public List<IParticle> Particles { get; set; }
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust,bool? explosion);
+        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion);
         public void MoveParticles();
     }
     public interface IParticle

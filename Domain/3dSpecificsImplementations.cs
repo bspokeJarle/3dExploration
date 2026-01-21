@@ -80,6 +80,22 @@ namespace Domain
             public float y { get; set; }
             public float z { get; set; }
             public override string ToString() => $"(x={x:F2}, y={y:F2}, z={z:F2})";
+
+            // Subtraction: a - b
+            public static Vector3 operator -(Vector3 a, Vector3 b)
+                => new Vector3(a.x - b.x, a.y - b.y, a.z - b.z);
+
+            // Addition: a + b
+            public static Vector3 operator +(Vector3 a, Vector3 b)
+                => new Vector3(a.x + b.x, a.y + b.y, a.z + b.z);
+
+            // Scalar multiply: v * s
+            public static Vector3 operator *(Vector3 v, float s)
+                => new Vector3(v.x * s, v.y * s, v.z * s);
+
+            // Scalar multiply: s * v
+            public static Vector3 operator *(float s, Vector3 v)
+                => new Vector3(v.x * s, v.y * s, v.z * s);
         }
 
         public class TriangleMeshWithColor : TriangleMesh, ITriangleMeshWithColor

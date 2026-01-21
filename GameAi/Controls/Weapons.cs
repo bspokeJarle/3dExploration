@@ -1,8 +1,8 @@
-﻿using CommonUtilities._3DHelpers;
+﻿using _3dTesting.Helpers;
+using CommonUtilities._3DHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
-using System.Windows;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 using static Domain._3dSpecificsImplementations;
 
@@ -52,7 +52,7 @@ namespace GameAiAndControls.Controls
         {
             _weaponObjects = weapons ?? new List<I3dObject>();
             ParentShip = parent;
-            ParentShipObject = ship;   
+            ParentShipObject = ship;
         }
 
         public IWeapon FireWeapon(
@@ -89,8 +89,15 @@ namespace GameAiAndControls.Controls
                 };
                 instance.Rotation = ParentShipObject.Rotation;
 
+                var enemyTarget = FindPossibleBestEnemyTarget(ParentShipObject, trajectory);
+                if (enemyTarget != null)
+                {
+                    //Swap out trajectory with enemy target if present
+                    trajectory = (Vector3)enemyTarget;
+                }
+
                 IVector3 dir = Normalize(trajectory);
-                //Reverse Z axis to match game coord system
+                //Reverse Z axis to match game coord system                   
                 dir = new Vector3 { x = dir.x, y = dir.y, z = -dir.z };
 
                 //Startposition in local coords
@@ -125,6 +132,95 @@ namespace GameAiAndControls.Controls
 
             return this;
         }
+
+        public static IVector3? FindPossibleBestEnemyTarget(_3dObject parentShip, IVector3 trajectoryLocal)
+        {
+            var enemies = CommonUtilities.CommonGlobalState.GameState.ShipState.BestCandidateStates;
+            if (enemies == null || enemies.Count == 0)
+                return null;
+
+            // Ship center (WORLD)
+            var shipCenterIV = Common3dObjectHelpers.GetCenterOfBox(parentShip.GetAllCrashPointsWorld());
+            var shipCenterWorld = (Vector3)shipCenterIV;
+
+            // This is the local guide vector your FireWeapon already uses
+            var cannonDirLocal = (Vector3)trajectoryLocal;
+
+            // Guard: if the incoming trajectory is too small, abort
+            float cannonMag = (float)Math.Sqrt(
+                cannonDirLocal.x * cannonDirLocal.x +
+                cannonDirLocal.y * cannonDirLocal.y +
+                cannonDirLocal.z * cannonDirLocal.z
+            );
+            if (cannonMag < 1e-6f)
+                return null;
+
+            // Ship rotation (same rotation source you already use for meshes)
+            var rot = (Vector3)(parentShip.Rotation as Vector3 ?? new Vector3(0, 0, 0));
+            var r = new _3dRotationCommon();
+
+            // Tuning: start forgiving
+            const float minDotToAccept = 0.25f;
+
+            float bestDot = float.MinValue;
+            float bestDist = float.MaxValue;
+            Vector3? bestEnemyDirLocal = null;
+
+            foreach (var enemyState in enemies)
+            {
+                if (enemyState?.BestEnemyCandidate?.EnemyCenterPosition == null)
+                    continue;
+
+                var enemyCenterWorld = (Vector3)enemyState.BestEnemyCandidate.EnemyCenterPosition;
+
+                // Direction ship -> enemy in WORLD
+                var shipToEnemyWorld = enemyCenterWorld - shipCenterWorld;
+
+                // Convert WORLD direction -> SHIP LOCAL by inverse rotation
+                // Forward order in your code: Z -> Y -> X  => inverse: X^-1 -> Y^-1 -> Z^-1
+                var enemyDirLocal = (Vector3)r.RotatePoint(-rot.x, shipToEnemyWorld, 'X');
+                enemyDirLocal = (Vector3)r.RotatePoint(-rot.y, enemyDirLocal, 'Y');
+                enemyDirLocal = (Vector3)r.RotatePoint(-rot.z, enemyDirLocal, 'Z');
+
+                // Compare in LOCAL space
+                float dot = Common3dObjectHelpers.DotNormalized(cannonDirLocal, enemyDirLocal);
+                if (dot > -minDotToAccept)
+                    continue;
+
+                float dist = (float)Common3dObjectHelpers.GetDistance(shipCenterWorld, enemyCenterWorld);
+                enemyState.BestEnemyCandidate.DistanceToShip = dist;
+
+                if (dot > bestDot || (MathF.Abs(dot - bestDot) < 0.0001f && dist < bestDist))
+                {
+                    bestDot = dot;
+                    bestDist = dist;
+                    bestEnemyDirLocal = enemyDirLocal;
+
+                    Logger.Log($"[TARGETING] best={enemyState.BestEnemyCandidate.EnemyObject.ObjectName} dot={dot:F4} dist={dist:F2}");
+                }
+            }
+
+            if (bestEnemyDirLocal == null)
+                return null;
+
+            // CRITICAL: FireWeapon flips dir.z after Normalize(trajectory).
+            // So we flip here so the final fired dir points the correct way after your existing flip.
+            var aimedTrajectoryLocal = new Vector3
+            {
+                x = bestEnemyDirLocal.x,
+                y = bestEnemyDirLocal.y,
+                z = -bestEnemyDirLocal.z
+            };
+
+            Logger.Log(
+                $"[AIM DEBUG] chosen dot={bestDot:F4} " +
+                $"trajLocal=({aimedTrajectoryLocal.x:F0},{aimedTrajectoryLocal.y:F0},{aimedTrajectoryLocal.z:F0})"
+            );
+
+            return aimedTrajectoryLocal;
+        }
+
+
 
         //Rotates the weapon geometry according to ship rotation + tilt
         private void InitializeWeaponGeometry(I3dObject weaponObj, Vector3 rotation, int tilt)
@@ -212,17 +308,17 @@ namespace GameAiAndControls.Controls
                 if (Expired(w))
                     continue;
 
-                yield return w.WeaponObject; 
+                yield return w.WeaponObject;
             }
         }
 
-        public void HandleHit(bool hasCrashed, string objectName) 
+        public void HandleHit(bool hasCrashed, string objectName)
         {
             if (enableLogging) Logger.Log($"Weapon HasCrashed:{hasCrashed} ImpactName:{objectName}");
             if (_audio != null && _thudSound != null)
             {
                 //Stop Lazer, it owerpowers the thud
-                _lazerInstance?.Stop(playEndSegment:false);
+                _lazerInstance?.Stop(playEndSegment: false);
                 // Implement thudding sound or effects here
                 _thudInstance = _audio.Play(_thudSound, AudioPlayMode.OneShot);
             }

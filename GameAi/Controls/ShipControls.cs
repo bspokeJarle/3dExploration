@@ -34,7 +34,6 @@ namespace GameAiAndControls.Controls
         private IAudioPlayer? _audio;
         private SoundDefinition? _rocketSound;
         private SoundDefinition? _explosionSound;
-        private SoundDefinition? _lazerSound;
         private IAudioInstance? _rocketInstance;
 
         private float fallVelocity = 0f;
@@ -92,7 +91,6 @@ namespace GameAiAndControls.Controls
             _audio = audioPlayer;
             _rocketSound = soundRegistry.Get("rocket_main");
             _explosionSound = soundRegistry.Get("explosion_main");
-            _lazerSound = soundRegistry.Get("lazer_main");
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
@@ -110,9 +108,9 @@ namespace GameAiAndControls.Controls
 
             if (e.  KeyCode == Keys.Space)
             { 
-                  if (ThrustOn ==         false)
+                if (ThrustOn == false)
                 {   
-                                       // Hvis en gammel instans fortsatt henger igjen (tail spiller):
+                    // Hvis en gammel instans fortsatt henger igjen (tail spiller):
                     if (_rocketInstance != null)
                     {
                         if (logging) Logger.Log("Audio: Force-stopping previous rocket instance before starting new.");
@@ -132,6 +130,10 @@ namespace GameAiAndControls.Controls
             }
 
             if (e.KeyCode == Keys.RShiftKey) FireWeapon();
+            //Prevent further processing of this key event
+            #if DEBUG
+                e.SuppressKeyPress = true;
+            #endif  
         }
 
         private void GlobalHookKeyUp(object sender, KeyEventArgs e)
@@ -187,7 +189,7 @@ namespace GameAiAndControls.Controls
         }
 
         private void FireWeapon()
-        {
+        {                            
             // Fire weapon from ship
             var rot = new Vector3
             {
@@ -197,13 +199,12 @@ namespace GameAiAndControls.Controls
             };
             ParentObject.Rotation = rot;
             ParentObject.WeaponSystems?.FireWeapon(
-                WeaponGuideCoordinates.vert1,
-                WeaponStartCoordinates.vert1,
+                WeaponGuideCoordinates?.vert1,
+                WeaponStartCoordinates?.vert1,
                 ParentObject.ParentSurface.GlobalMapPosition,
                 WeaponType.Lazer,
                 ParentObject,
                 tilt);
-
         }
 
         private void IncreaseThrustAndRelease()

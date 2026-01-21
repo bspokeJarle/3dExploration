@@ -1,4 +1,4 @@
-﻿using CommonUtilities._3DHelpers;
+﻿using CommonUtilities.CommonGlobalState.States;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -74,10 +74,16 @@ namespace _3dTesting.Helpers
             bool shouldCheckStaticObjects = (DateTime.Now - _lastStaticCheck).TotalMilliseconds > 100;
             _skipParticles = !_skipParticles;
 
+            // Clear previous frame best candidate list, needs to be frame-fresh and CrashDetection provides the information naturally
+            CommonUtilities.CommonGlobalState.GameState.ShipState.BestCandidateStates.Clear();
+
             for (int i = 0; i < count; i++)
             {
                 var inhabitant = activeWorld[i];
                 if (inhabitant == null || inhabitant.CrashBoxes == null) continue;
+
+                // We want the enemy whose direction is closest to perfect alignment (dot ≈ 1.0)
+                var dotDistanceToPerfect = float.MaxValue;
 
                 for (int j = i + 1; j < count; j++)
                 {
@@ -128,6 +134,20 @@ namespace _3dTesting.Helpers
                     var centerB = GetCenterOfBox(otherInhabitant.GetAllCrashPointsWorld(offsetB));
 
                     double distance = _3dObjectHelpers.GetDistance(centerA, centerB);
+
+                    if (CommonUtilities.CommonSetup.EnemySetup.IsEnemyTypeValid(inhabitant.ObjectName) && distance < MaxCrashDistance * 2)
+                    {
+                        CommonUtilities.CommonGlobalState.GameState.ShipState.BestCandidateStates.Add(new BestCandidateState
+                        {
+                            BestEnemyCandidate = new EnemyCandidateInfo
+                            {
+                                EnemyObject = inhabitant,
+                                EnemyCenterPosition = centerA
+                            },
+                            TimeStampUtc = DateTime.UtcNow
+                        });
+
+                    }
 
                     LogNonCollision(inhabitant, otherInhabitant,
                         $"[DISTANCE CHECK] [FRAME:{numFrame}] {inhabitant.ObjectName} vs {otherInhabitant.ObjectName} = {distance:F2}");
@@ -326,7 +346,7 @@ namespace _3dTesting.Helpers
 
                     if (safeBoxB.Count == 0) continue;
 
-                    if (_3dObjectHelpers.CheckCollisionBoxVsBox(safeBoxA, safeBoxB, a.ObjectName,b.ObjectName))
+                    if (_3dObjectHelpers.CheckCollisionBoxVsBox(safeBoxA, safeBoxB, a.ObjectName, b.ObjectName))
                     {
                         a.ImpactStatus.HasCrashed = true;
                         b.ImpactStatus.HasCrashed = true;

@@ -7,6 +7,20 @@ namespace _3dTesting.Helpers
 {
     public static class CrashBoxWorldExtensions
     {
+        public static Vector3 ToWorldPoint(this Vector3 localPoint, _3dObject obj)
+        {
+            if (obj == null)
+                return localPoint;
+
+            var offset = obj.GetCrashWorldOffset();
+
+            return new Vector3
+            {
+                x = localPoint.x + offset.x,
+                y = localPoint.y + offset.y,
+                z = localPoint.z + offset.z
+            };
+        }
         // Keep this returning the SAME Vector3 type that crashboxes are made of.
         public static Vector3 GetCrashWorldOffset(this _3dObject obj)
         {
