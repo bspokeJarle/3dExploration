@@ -40,8 +40,8 @@ namespace _3dRotations.World.Objects
         public static List<List<IVector3>>? LazerCrashBoxes()
         {
             // Beam runs along -Y from y=-45 to about y=-200 at z=28 (± a small X/Z margin).
-            var min = new Vector3 { x = -6f, y = -205f, z = 22f };
-            var max = new Vector3 { x = 6f, y = -45f, z = 34f };
+            var min = new Vector3 { x = -12f, y = -255f, z = 42f };
+            var max = new Vector3 { x = 12f, y = -95f, z = 54f };
 
             return new List<List<IVector3>>
             {

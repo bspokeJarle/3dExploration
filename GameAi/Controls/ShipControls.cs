@@ -131,9 +131,9 @@ namespace GameAiAndControls.Controls
 
             if (e.KeyCode == Keys.RShiftKey) FireWeapon();
             //Prevent further processing of this key event
-            #if DEBUG
-                e.SuppressKeyPress = true;
-            #endif  
+            //#if DEBUG
+            //    e.SuppressKeyPress = true;
+            //#endif  
         }
 
         private void GlobalHookKeyUp(object sender, KeyEventArgs e)

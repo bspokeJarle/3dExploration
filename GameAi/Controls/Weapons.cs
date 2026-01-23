@@ -3,6 +3,7 @@ using CommonUtilities._3DHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
+using System.Net.Security;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 using static Domain._3dSpecificsImplementations;
 
@@ -10,7 +11,7 @@ namespace GameAiAndControls.Controls
 {
     public class Weapons : IWeapon
     {
-        private static bool enableLogging = true;
+        private static bool enableLogging = false;
         private static readonly int maxZ = 1200;
         private static readonly int minZ = -2500;
         private static readonly int maxX = 1200;
@@ -89,6 +90,7 @@ namespace GameAiAndControls.Controls
                 };
                 instance.Rotation = ParentShipObject.Rotation;
 
+                trajectory.z = -trajectory.z; // Invert Z to match WORLD coord system   
                 var enemyTarget = FindPossibleBestEnemyTarget(ParentShipObject, trajectory);
                 if (enemyTarget != null)
                 {
@@ -97,8 +99,6 @@ namespace GameAiAndControls.Controls
                 }
 
                 IVector3 dir = Normalize(trajectory);
-                //Reverse Z axis to match game coord system                   
-                dir = new Vector3 { x = dir.x, y = dir.y, z = -dir.z };
 
                 //Startposition in local coords
                 SetObjectOffsets(instance, startPosition);
@@ -135,92 +135,86 @@ namespace GameAiAndControls.Controls
 
         public static IVector3? FindPossibleBestEnemyTarget(_3dObject parentShip, IVector3 trajectoryLocal)
         {
-            var enemies = CommonUtilities.CommonGlobalState.GameState.ShipState.BestCandidateStates;
-            if (enemies == null || enemies.Count == 0)
-                return null;
-
-            // Ship center (WORLD)
-            var shipCenterIV = Common3dObjectHelpers.GetCenterOfBox(parentShip.GetAllCrashPointsWorld());
-            var shipCenterWorld = (Vector3)shipCenterIV;
-
-            // This is the local guide vector your FireWeapon already uses
-            var cannonDirLocal = (Vector3)trajectoryLocal;
-
-            // Guard: if the incoming trajectory is too small, abort
-            float cannonMag = (float)Math.Sqrt(
-                cannonDirLocal.x * cannonDirLocal.x +
-                cannonDirLocal.y * cannonDirLocal.y +
-                cannonDirLocal.z * cannonDirLocal.z
-            );
-            if (cannonMag < 1e-6f)
-                return null;
-
-            // Ship rotation (same rotation source you already use for meshes)
-            var rot = (Vector3)(parentShip.Rotation as Vector3 ?? new Vector3(0, 0, 0));
-            var r = new _3dRotationCommon();
-
-            // Tuning: start forgiving
-            const float minDotToAccept = 0.25f;
-
-            float bestDot = float.MinValue;
-            float bestDist = float.MaxValue;
-            Vector3? bestEnemyDirLocal = null;
-
-            foreach (var enemyState in enemies)
+            try
             {
-                if (enemyState?.BestEnemyCandidate?.EnemyCenterPosition == null)
-                    continue;
+                var origTrajectory = trajectoryLocal;
 
-                var enemyCenterWorld = (Vector3)enemyState.BestEnemyCandidate.EnemyCenterPosition;
+                var enemies = CommonUtilities.CommonGlobalState.GameState.ShipState.BestCandidateStates;
+                if (enemies == null || enemies.Count == 0)
+                    return null;
 
-                // Direction ship -> enemy in WORLD
-                var shipToEnemyWorld = enemyCenterWorld - shipCenterWorld;
+                // Ship center (WORLD)
+                var shipCenterIV = Common3dObjectHelpers.GetCenterOfBox(parentShip.GetAllCrashPointsWorld());
+                var shipCenterWorld = (Vector3)shipCenterIV;
 
-                // Convert WORLD direction -> SHIP LOCAL by inverse rotation
-                // Forward order in your code: Z -> Y -> X  => inverse: X^-1 -> Y^-1 -> Z^-1
-                var enemyDirLocal = (Vector3)r.RotatePoint(-rot.x, shipToEnemyWorld, 'X');
-                enemyDirLocal = (Vector3)r.RotatePoint(-rot.y, enemyDirLocal, 'Y');
-                enemyDirLocal = (Vector3)r.RotatePoint(-rot.z, enemyDirLocal, 'Z');
+                // This is the local guide vector your FireWeapon already uses
+                var cannonGuideWorld = ((Vector3)trajectoryLocal).ToWorldPoint(parentShip);
 
-                // Compare in LOCAL space
-                float dot = Common3dObjectHelpers.DotNormalized(cannonDirLocal, enemyDirLocal);
-                if (dot > -minDotToAccept)
-                    continue;
+                //var cannonShipVector = Normalize(cannonGuideWorld);
 
-                float dist = (float)Common3dObjectHelpers.GetDistance(shipCenterWorld, enemyCenterWorld);
-                enemyState.BestEnemyCandidate.DistanceToShip = dist;
+                // Tuning: start forgiving
+                const float minDotToAccept = 0.60f;
 
-                if (dot > bestDot || (MathF.Abs(dot - bestDot) < 0.0001f && dist < bestDist))
+                float bestDot = float.MinValue;
+                Vector3? bestEnemyDirLocal = null;
+                Vector3? bestEnemyCenterWorld = null;
+
+                foreach (var enemyState in enemies)
                 {
-                    bestDot = dot;
-                    bestDist = dist;
-                    bestEnemyDirLocal = enemyDirLocal;
+                    if (enemyState?.BestEnemyCandidate?.EnemyCenterPosition == null)
+                        continue;
 
-                    Logger.Log($"[TARGETING] best={enemyState.BestEnemyCandidate.EnemyObject.ObjectName} dot={dot:F4} dist={dist:F2}");
+                    // Enemy center (WORLD)
+                    var enemyCenterWorld = (Vector3)enemyState.BestEnemyCandidate.EnemyCenterPosition;
+
+                    // Direction ship -> enemy in WORLD
+                    var shipToEnemyWorld = enemyCenterWorld - cannonGuideWorld;
+
+                    // Compare in LOCAL space
+                    float dot = Common3dObjectHelpers.DotNormalized(cannonGuideWorld, shipToEnemyWorld);
+                    Logger.Log($"Check the dot product. Dot={dot} , minDotToAccept={minDotToAccept} EnemyType:{enemyState.BestEnemyCandidate.EnemyObject!.ObjectName} CheckingEnemyCenter:{enemyCenterWorld} CannonGuide{cannonGuideWorld} ");
+                    if (dot < minDotToAccept)
+                        continue;
+
+                    float dist = (float)Common3dObjectHelpers.GetDistance(shipCenterWorld, enemyCenterWorld);
+                    enemyState.BestEnemyCandidate.DistanceToShip = dist;
+
+                    if (dist > 750f) continue;
+
+                    if (dot > bestDot)
+                    {
+                        bestDot = dot;
+                        bestEnemyDirLocal = shipToEnemyWorld;
+                        bestEnemyCenterWorld = enemyCenterWorld;
+
+                        Logger.Log($"[TARGETING] best={enemyState.BestEnemyCandidate.EnemyObject!.ObjectName} dot={dot:F4} dist={dist:F2} EnemyCenterWorld=({enemyCenterWorld.x:F0},{enemyCenterWorld.y:F0},{enemyCenterWorld.z:F0})");
+                    }
                 }
+
+                if (bestEnemyDirLocal == null || bestEnemyCenterWorld == null)
+                    return null;
+
+                var diff = cannonGuideWorld - bestEnemyCenterWorld;
+                trajectoryLocal = (Vector3)trajectoryLocal - diff;
+
+                Logger.Log(
+                    $"[AIM DEBUG] chosen dot={bestDot:F4} " +
+                    $"bestEnemyCenter=({bestEnemyCenterWorld.x:F0},{bestEnemyCenterWorld.y:F0},{bestEnemyCenterWorld.z:F0})" +
+                    $"trajectoryWorldSpace (cannonGuideWorld)=({cannonGuideWorld.x:F0},{cannonGuideWorld.y:F0},{cannonGuideWorld.z:F0})" +
+                    $"trajectoryLocalSpace (Incoming trajectory)=({origTrajectory.x:F0},{origTrajectory.y:F0},{origTrajectory.z:F0})" +
+                    $"aimedTrajectory (Outgoing trajectory)=({trajectoryLocal.x:F0},{trajectoryLocal.y:F0},{trajectoryLocal.z:F0})"
+
+                );
+
+                //Return adjusted trajectory in LOCAL space
+                return trajectoryLocal;
             }
-
-            if (bestEnemyDirLocal == null)
-                return null;
-
-            // CRITICAL: FireWeapon flips dir.z after Normalize(trajectory).
-            // So we flip here so the final fired dir points the correct way after your existing flip.
-            var aimedTrajectoryLocal = new Vector3
+            catch (Exception ex)
             {
-                x = bestEnemyDirLocal.x,
-                y = bestEnemyDirLocal.y,
-                z = -bestEnemyDirLocal.z
-            };
-
-            Logger.Log(
-                $"[AIM DEBUG] chosen dot={bestDot:F4} " +
-                $"trajLocal=({aimedTrajectoryLocal.x:F0},{aimedTrajectoryLocal.y:F0},{aimedTrajectoryLocal.z:F0})"
-            );
-
-            return aimedTrajectoryLocal;
+                Logger.Log($"[ERROR] Exception in FindPossibleBestEnemyTarget: {ex}");
+                return null;
+            }
         }
-
-
 
         //Rotates the weapon geometry according to ship rotation + tilt
         private void InitializeWeaponGeometry(I3dObject weaponObj, Vector3 rotation, int tilt)
