@@ -346,7 +346,7 @@ namespace GameAiAndControls.Controls
                     }
                 }
 
-                  theObject.ImpactStatus.HasCrashed = false;
+                theObject.ImpactStatus.HasCrashed = false;
             }
 
              // The weapon needs to move as well 

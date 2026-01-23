@@ -45,6 +45,7 @@ namespace _3dTesting.MainWindowClasses
                 activeWorld = world.WorldInhabitants
                     .Where(inhabitant =>
                     {
+                        if (inhabitant.ObjectParts.Count == 0) return false; // Exclude objects with no parts
                         // Filter only the objects that are of type _3dObject and visible
                         if (inhabitant is _3dObject concreteInhabitant)
                         {

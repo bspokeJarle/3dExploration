@@ -2,6 +2,8 @@
 using System;
 using System.Windows;
 using static Domain._3dSpecificsImplementations;
+using CommonUtilities.CommonSetup;
+using System.Collections.Generic;
 
 namespace GameAiAndControls.Controls
 {
@@ -10,7 +12,7 @@ namespace GameAiAndControls.Controls
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
-        public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public IPhysics Physics { get; set; } = new Physics.Physics();
 
         private float Yrotation = 0;
         private float Xrotation = 90;
@@ -23,7 +25,9 @@ namespace GameAiAndControls.Controls
         private float _syncY = 0;
         //Factor to stay in sync with surface movement
         private float _syncFactor = 2.5f;
-        private bool enableLogging = false;
+        private bool enableLogging = true;
+        private bool isExploding = false;
+        private DateTime ExplosionDeltaTime;
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
@@ -34,9 +38,30 @@ namespace GameAiAndControls.Controls
             if (theObject.Rotation!=null) theObject.Rotation.x=Xrotation;
             if (theObject.Rotation!=null) theObject.Rotation.z=Zrotation;
 
-            if (theObject.ImpactStatus.HasCrashed == true)
+            //Handle impact status, trigger explosion if health is 0
+            if (theObject.ImpactStatus.HasCrashed == true && isExploding == false)
             {
-                if (enableLogging) Logger.Log($"Seeder has crashed, should handle crash. CrashedWith:{theObject.ImpactStatus.ObjectName}");                
+                theObject.ImpactStatus.ObjectHealth = theObject.ImpactStatus.ObjectHealth - WeaponSetup.GetWeaponDamage("Lazer");
+                if (theObject.ImpactStatus.ObjectHealth <= 0)
+                {
+                    ExplosionDeltaTime = DateTime.Now;
+                    isExploding = true;
+                    // Handle object destruction or other logic here
+                    var explodedVersion = Physics.ExplodeObject(theObject,200f);
+                    if (enableLogging) Logger.Log($"Seeder has exploded.");
+                }
+                if (enableLogging) Logger.Log($"Seeder has crashed, current health {theObject.ImpactStatus.ObjectHealth}. CrashedWith:{theObject.ImpactStatus.ObjectName}");                
+            }
+            if (isExploding)
+            {
+                Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
+                if (theObject.ImpactStatus.HasExploded==true)
+                {
+                    //TODO:
+                    //Remove the object if it has exploded
+                    //For now, just clear the parts
+                    theObject.ObjectParts = new List<I3dObjectPart>();
+                }
             }
 
             //If there are particles, move them
