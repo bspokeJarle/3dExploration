@@ -102,7 +102,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
 
         _instances[instance.Id] = instance;
         _mixer.AddMixerInput(pipeline);
-        Logger.Log(@"Audio: Play end of method.");
+        if (enableLogging) Logger.Log(@"Audio: Play end of method.");
         return instance;
     }
 
@@ -141,7 +141,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
         // Stopp eventuell gammel musikk først
         if (_musicInstance != null)
         {
-            Logger.Log("Audio: Stopping previous music instance before starting new.");
+            if (enableLogging) Logger.Log("Audio: Stopping previous music instance before starting new.");
             _musicInstance.Stop(playEndSegment: false); // ikke tail på musikkbytte
             _musicInstance = null;
         }
@@ -152,7 +152,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
         if (vol > 1f) vol = 1f;
         _musicVolume = vol;
 
-        Logger.Log(
+        if (enableLogging) Logger.Log(
             $"Audio: PlayMusic id={definition.Id}, " +
             $"segments: start={definition.Segments.Start:F2}, " +
             $"loopStart={definition.Segments.LoopStart:F2}, " +
@@ -179,7 +179,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
     {
         if (_musicInstance != null)
         {
-            Logger.Log("Audio: Stopping music instance.");
+            if (enableLogging) Logger.Log("Audio: Stopping music instance.");
             _musicInstance.Stop(playEndSegment: false);
             _musicInstance = null;
         }
@@ -194,7 +194,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
 
         if (_musicInstance != null)
         {
-            Logger.Log($"Audio: Setting music volume to {_musicVolume:F2}.");
+            if (enableLogging) Logger.Log($"Audio: Setting music volume to {_musicVolume:F2}.");
             _musicInstance.SetVolume(_musicVolume);
         }
     }

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Windows;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting.MainWindowClasses
@@ -15,12 +16,11 @@ namespace _3dTesting.MainWindowClasses
 
             var weaponSystem = inhabitant.WeaponSystems;
 
-            // Hent ferdige våpen-objekter fra WeaponSystem
+            //Get finished weapons from the weapon system
             foreach (var obj in weaponSystem.Get3DObjects())
             {
                 if (obj is not _3dObject weapon)
                     continue;
-
                 // Match ParentSurface til skipet dersom den mangler
                 if (weapon.ParentSurface == null)
                     weapon.ParentSurface = inhabitant.ParentSurface;

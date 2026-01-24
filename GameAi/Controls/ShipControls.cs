@@ -34,7 +34,6 @@ namespace GameAiAndControls.Controls
         private IAudioPlayer? _audio;
         private SoundDefinition? _rocketSound;
         private SoundDefinition? _explosionSound;
-        private SoundDefinition? _lazerSound;
         private IAudioInstance? _rocketInstance;
 
         private float fallVelocity = 0f;
@@ -54,7 +53,7 @@ namespace GameAiAndControls.Controls
         public int tilt = 0;
 
         public int shipY = 0;
-        public int zoom = 300;
+        public int zoom = 400;
 
         public I3dObject ParentObject { get; set; }
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
@@ -92,7 +91,6 @@ namespace GameAiAndControls.Controls
             _audio = audioPlayer;
             _rocketSound = soundRegistry.Get("rocket_main");
             _explosionSound = soundRegistry.Get("explosion_main");
-            _lazerSound = soundRegistry.Get("lazer_main");
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
@@ -108,23 +106,23 @@ namespace GameAiAndControls.Controls
             if (e.KeyCode == Keys.Up) tilt += RotationStep;
             if (e.KeyCode == Keys.Down) tilt -= RotationStep;
 
-            if (e.KeyCode == Keys.Space)
-            {
+            if (e.  KeyCode == Keys.Space)
+            { 
                 if (ThrustOn == false)
-                {
+                {   
                     // Hvis en gammel instans fortsatt henger igjen (tail spiller):
                     if (_rocketInstance != null)
                     {
                         if (logging) Logger.Log("Audio: Force-stopping previous rocket instance before starting new.");
                         _rocketInstance.Stop(playEndSegment: false); // hard cut på gammel tail
                         _rocketInstance = null;
-                    }
-
+                    }   
+                     
                     if (_audio != null && _rocketSound != null)
                     {
                         if (logging) Logger.Log("Audio: Starting new rocket segmented loop.");
                         _rocketInstance = _audio.Play(
-                            _rocketSound,
+                                       _rocketSound,
                             AudioPlayMode.SegmentedLoop);
                     }
                 }
@@ -132,14 +130,18 @@ namespace GameAiAndControls.Controls
             }
 
             if (e.KeyCode == Keys.RShiftKey) FireWeapon();
+            //Prevent further processing of this key event
+            //#if DEBUG
+            //    e.SuppressKeyPress = true;
+            //#endif  
         }
 
         private void GlobalHookKeyUp(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.Space)
             {
-                ThrustOn = false;
-                Thrust = 0;
+                ThrustOn = false; 
+                 Thrust = 0;
                 thrustEffect = 0f;
                 verticalLiftFactor = 0f;
 
@@ -187,33 +189,22 @@ namespace GameAiAndControls.Controls
         }
 
         private void FireWeapon()
-        {
+        {                            
             // Fire weapon from ship
             var rot = new Vector3
             {
-                x = rotationX + tilt,
+                x = rotationX,
                 y = rotationY,
                 z = rotationZ
             };
             ParentObject.Rotation = rot;
             ParentObject.WeaponSystems?.FireWeapon(
-                WeaponGuideCoordinates.vert1,
-                WeaponStartCoordinates.vert1,
+                WeaponGuideCoordinates?.vert1,
+                WeaponStartCoordinates?.vert1,
                 ParentObject.ParentSurface.GlobalMapPosition,
                 WeaponType.Lazer,
                 ParentObject,
                 tilt);
-
-            if (_audio != null && _lazerSound != null)
-            {
-                _audio.PlayOneShot(
-                    _lazerSound,
-                    new AudioPlayOptions
-                    {
-                        // valgfritt – vi kan tweake dette senere
-                        VolumeOverride = 0.9f
-                    });
-            }
         }
 
         private void IncreaseThrustAndRelease()
@@ -310,7 +301,7 @@ namespace GameAiAndControls.Controls
                     // Stop rocket-loop før eksplosjon
                     if (_rocketInstance != null)
                     {
-                        _rocketInstance.Stop(playEndSegment: false);
+                        _rocketInstance.Stop(playEndSegment: true);
                         _rocketInstance = null;
                     }
 
@@ -347,20 +338,20 @@ namespace GameAiAndControls.Controls
                         theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
                     {
                         landed = true;
-
+                         
                         if (landingSpeed > 5f)
                         {
-                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
-                        }
+                             theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
+                              }
                     }
                 }
 
                 theObject.ImpactStatus.HasCrashed = false;
             }
 
-            // The weapon needs to move as well
+             // The weapon needs to move as well 
             if (theObject.WeaponSystems != null)
-                theObject.WeaponSystems.MoveWeapon();
+                theObject.WeaponSystems.MoveWeapon(audioPlayer, soundRegistry);
 
             return theObject;
         }
@@ -479,15 +470,24 @@ namespace GameAiAndControls.Controls
                 }
             }
             else
-            {
+            { 
                 float upwardFactor = MathF.Cos(rotationX * DEG2RAD);
                 float thrustLift = Thrust * upwardFactor * 0.75f * deltaTime;
                 fallVelocity = Math.Max(fallVelocity - thrustLift, 0f);
-            }
+            } 
         }
 
         public void Dispose()
         {
+            if (_rocketInstance != null)
+            {
+                //Try to force-stop the rocket sound immediately
+                _rocketInstance.Stop(playEndSegment: false);
+                _rocketInstance = null;
+
+               
+            }
+
             var hook = InputManager.SharedHook;
 
             hook.KeyDown -= GlobalHookKeyDown;

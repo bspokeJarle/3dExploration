@@ -1,11 +1,9 @@
 ﻿using Domain;
-using Gma.System.MouseKeyHook;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Windows;
 using static Domain._3dSpecificsImplementations;
+using CommonUtilities.CommonSetup;
+using System.Collections.Generic;
 
 namespace GameAiAndControls.Controls
 {
@@ -14,7 +12,11 @@ namespace GameAiAndControls.Controls
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
-        public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public IPhysics Physics { get; set; } = new Physics.Physics();
+
+        // Audio setup (gjøres lazy via ConfigureAudio)
+        private IAudioPlayer? _audio;
+        private SoundDefinition? _explosionSound;
 
         private float Yrotation = 0;
         private float Xrotation = 90;
@@ -28,9 +30,27 @@ namespace GameAiAndControls.Controls
         //Factor to stay in sync with surface movement
         private float _syncFactor = 2.5f;
         private bool enableLogging = false;
+        private bool isExploding = false;
+        private DateTime ExplosionDeltaTime;
+
+        public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
+        {
+            // allerede konfigurert? gjør ingenting
+            if (_audio != null || _explosionSound != null)
+                return;
+
+            if (audioPlayer == null || soundRegistry == null)
+                return;
+
+            _audio = audioPlayer;
+            _explosionSound = soundRegistry.Get("explosion_main");
+        }
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            // Lazy audio-konfig – gjøres første gang MoveObject kalles
+            ConfigureAudio(audioPlayer, soundRegistry);
+
             if (lastRelease.Ticks + releaseInterval < DateTime.Now.Ticks) ReleaseParticles();
             //Set parent object
             ParentObject = theObject;
@@ -38,14 +58,45 @@ namespace GameAiAndControls.Controls
             if (theObject.Rotation!=null) theObject.Rotation.x=Xrotation;
             if (theObject.Rotation!=null) theObject.Rotation.z=Zrotation;
 
+            //Handle impact status, trigger explosion if health is 0
+            if (theObject.ImpactStatus.HasCrashed == true && isExploding == false)
+            {
+                theObject.ImpactStatus.ObjectHealth = theObject.ImpactStatus.ObjectHealth - WeaponSetup.GetWeaponDamage("Lazer");
+                if (theObject.ImpactStatus.ObjectHealth <= 0)
+                {
+                    if (_audio != null && _explosionSound != null)
+                    {
+                        //Play the explosion sound
+                        _audio.Play(_explosionSound, AudioPlayMode.OneShot);
+                    }
+
+                    ExplosionDeltaTime = DateTime.Now;
+                    isExploding = true;
+                    // Handle object destruction or other logic here
+                    var explodedVersion = Physics.ExplodeObject(theObject,200f);
+                    //Remove Crash boxes to avoid further collisions
+                    theObject.CrashBoxes = new List<List<IVector3>>();
+                    if (enableLogging) Logger.Log($"Seeder has exploded.");
+                }
+                if (enableLogging) Logger.Log($"Seeder has crashed, current health {theObject.ImpactStatus.ObjectHealth}. CrashedWith:{theObject.ImpactStatus.ObjectName}");                
+            }
+            if (isExploding)
+            {
+                Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
+                if (theObject.ImpactStatus.HasExploded==true)
+                {
+                    theObject.ObjectParts = new List<I3dObjectPart>();
+                }
+            }
+
             //If there are particles, move them
             if (ParentObject.Particles?.Particles.Count > 0)
             {
                 ParentObject.Particles.MoveParticles();
             }
             //For now, just rotate the object at a fixed speed
-            //Zrotation += 2;
-            //Xrotation += 2;
+            Zrotation += 2;
+            //Xrotation += 1.5f;
             SyncMovement(theObject);
             return theObject;
         }
@@ -90,11 +141,6 @@ namespace GameAiAndControls.Controls
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
             //No implementation needed
-        }
-
-        public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
-        {
-            throw new NotImplementedException();
         }
     }
 }

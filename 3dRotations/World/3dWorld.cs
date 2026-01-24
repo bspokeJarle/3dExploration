@@ -18,6 +18,8 @@ namespace _3dTesting._3dWorld
             //Initialize the world with Scene1 (should be Intro later)
             SceneHandler.SetupActiveScene(this);
         }
+
+        public bool IsPaused { get; set; } = false;
     }
 
 }

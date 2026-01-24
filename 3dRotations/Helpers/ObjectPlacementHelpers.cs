@@ -1,7 +1,9 @@
 ﻿using _3dTesting._3dWorld;
+using CommonUtilities._3DHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using static Domain._3dSpecificsImplementations;
 
@@ -32,6 +34,7 @@ namespace _3dTesting.Helpers
             x = y = z = 0;
             if (obj == null) return false;
 
+            //Calculates local position based on the world position
             var localWorldPosition = obj.GetLocalWorldPosition();
 
             if (localWorldPosition == null)
@@ -56,6 +59,14 @@ namespace _3dTesting.Helpers
             }
             else
             {
+                //Store this for use in Crashdetection
+                obj.CalculatedWorldOffset = new Vector3
+                {
+                    x = localWorldPosition.x,
+                    y = localWorldPosition.y,
+                    z = localWorldPosition.z
+                };
+                //Calculate screen position
                 x = screenCenterX - localWorldPosition.x + obj.ObjectOffsets.x;
                 y = screenCenterY - localWorldPosition.y + obj.ObjectOffsets.y;
                 z = localWorldPosition.z + obj.ObjectOffsets.z;
@@ -192,25 +203,39 @@ namespace _3dTesting.Helpers
         {
             if (!EnablePlacementLogging || box == null || box.Count == 0) return;
 
-            var yMin = box.Min(p => p.y);
-            var yMax = box.Max(p => p.y);
-            var xMin = box.Min(p => p.x);
-            var xMax = box.Max(p => p.x);
-            var zMin = box.Min(p => p.z);
-            var zMax = box.Max(p => p.z);
+            float yMin = box.Min(p => p.y);
+            float yMax = box.Max(p => p.y);
+            float xMin = box.Min(p => p.x);
+            float xMax = box.Max(p => p.x);
+            float zMin = box.Min(p => p.z);
+            float zMax = box.Max(p => p.z);
 
-            var center = new Vector3
+            // Average center (what you have today)
+            var avgCenter = new Vector3
             {
                 x = box.Average(p => p.x),
                 y = box.Average(p => p.y),
                 z = box.Average(p => p.z)
             };
 
+            // AABB center (matches CrashDetection GetCenterOfBox)
+            var aabbCenter = new Vector3
+            {
+                x = (xMin + xMax) / 2f,
+                y = (yMin + yMax) / 2f,
+                z = (zMin + zMax) / 2f
+            };
+
+            string F(float v) => v.ToString("0.00", CultureInfo.InvariantCulture);
+
             Logger.Log("--- " + label + " ---");
-            Logger.Log("Y-range: [" + yMin + "–" + yMax + "], X-range: [" + xMin + "–" + xMax + "], Z-range: [" + zMin + "–" + zMax + "]");
-            Logger.Log("Center: (x=" + center.x.ToString("F1") + ", y=" + center.y.ToString("F1") + ", z=" + center.z.ToString("F1") + ")");
+            Logger.Log("Y-range: [" + F(yMin) + "–" + F(yMax) + "], X-range: [" + F(xMin) + "–" + F(xMax) + "], Z-range: [" + F(zMin) + "–" + F(zMax) + "]");
+            Logger.Log("Center(AABB): (x=" + F(aabbCenter.x) + ", y=" + F(aabbCenter.y) + ", z=" + F(aabbCenter.z) + ")");
+            Logger.Log("Center(AVG):  (x=" + F(avgCenter.x) + ", y=" + F(avgCenter.y) + ", z=" + F(avgCenter.z) + ")");
+
             foreach (var p in box)
-                Logger.Log("(x=" + p.x.ToString("F1") + ", y=" + p.y.ToString("F1") + ", z=" + p.z.ToString("F1") + ")");
+                Logger.Log("(x=" + F(p.x) + ", y=" + F(p.y) + ", z=" + F(p.z) + ")");
+
             Logger.Log("--- End of " + label + " ---\n");
         }
     }

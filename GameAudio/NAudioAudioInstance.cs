@@ -81,7 +81,7 @@ internal sealed class NAudioAudioInstance : IAudioInstance
 
         if (_mode == AudioPlayMode.SegmentedLoop && _loopProvider != null && playEndSegment)
         {
-            Logger.Log(@"Audio:Requested stop with EndSegment.");
+            if (enableLogging) Logger.Log(@"Audio:Requested stop with EndSegment.");
             _loopProvider.RequestStopWithEndSegment();
         }
         else

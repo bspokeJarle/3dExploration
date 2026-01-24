@@ -8,11 +8,9 @@ namespace _3dRotations.World.Objects
 {
     public static class Ship
     {
+        private const float ZoomRatio = 1f;
         public static _3dObject CreateShip(ISurface parentSurface)
         {
-            //var modelReader = new STLReader("C:\\Users\\kh979\\Documents\\Privat\\Bspoke prosjekter\\3dProsjekt\\3dProsjekt\\3dTesting\\3d objects\\div\\complexorb.stl");
-            //var triangles = _3dObjectHelpers.ConvertToTrianglesWithColor(modelReader.ReadFile().ToList(), "FF6644");           
-
             var upperTriangles = UpperTriangles();
             var lowerTriangles = LowerTriangles();
             var rearTriangles = RearTriangles();
@@ -45,6 +43,9 @@ namespace _3dRotations.World.Objects
             ship.Particles = new ParticlesAI();
             ship.ParentSurface = parentSurface;
             if (shipCrashBox != null) ship.CrashBoxes = crashBoxes;
+
+            _3dObjectHelpers.ApplyScaleToObject(ship, ZoomRatio);
+
             return ship;
         }
 
@@ -234,9 +235,9 @@ namespace _3dRotations.World.Objects
         public static List<ITriangleMeshWithColor>? CannonStartGuide()
         {
             // 30 units *inside* the cannon tip: front (muzzle) is at y = -45 → -45 + 30 = -15
-            const float yInside = -15f;   // inside the barrel (toward +Y)
+            const float yInside = 40f;   // inside the barrel (toward +Y)
             const float widthX = 8f;     // narrower than muzzle to stay well inside
-            const float zBase = 28f;    // cannon height
+            const float zBase = 14f;    // cannon height
             const float zTipUp = 50f;    // vertical tip for visibility
 
             return new List<ITriangleMeshWithColor>
@@ -256,7 +257,7 @@ namespace _3dRotations.World.Objects
         {
             const float yFar = -200f; // far ahead of the muzzle along -Y
             const float widthX = 12f;   // half-width in X
-            const float zBase = 28f;   // cannon height
+            const float zBase = 14f;   // cannon height
             const float zTipUp = 58f;   // tip offset in Z to form a tall triangle
 
             var guide = new List<ITriangleMeshWithColor>
