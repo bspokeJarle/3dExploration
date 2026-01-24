@@ -14,6 +14,10 @@ namespace GameAiAndControls.Controls
         public I3dObject ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
+        // Audio setup (gjøres lazy via ConfigureAudio)
+        private IAudioPlayer? _audio;
+        private SoundDefinition? _explosionSound;
+
         private float Yrotation = 0;
         private float Xrotation = 90;
         private float Zrotation = 0;
@@ -25,12 +29,28 @@ namespace GameAiAndControls.Controls
         private float _syncY = 0;
         //Factor to stay in sync with surface movement
         private float _syncFactor = 2.5f;
-        private bool enableLogging = true;
+        private bool enableLogging = false;
         private bool isExploding = false;
         private DateTime ExplosionDeltaTime;
 
+        public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
+        {
+            // allerede konfigurert? gjør ingenting
+            if (_audio != null || _explosionSound != null)
+                return;
+
+            if (audioPlayer == null || soundRegistry == null)
+                return;
+
+            _audio = audioPlayer;
+            _explosionSound = soundRegistry.Get("explosion_main");
+        }
+
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            // Lazy audio-konfig – gjøres første gang MoveObject kalles
+            ConfigureAudio(audioPlayer, soundRegistry);
+
             if (lastRelease.Ticks + releaseInterval < DateTime.Now.Ticks) ReleaseParticles();
             //Set parent object
             ParentObject = theObject;
@@ -44,10 +64,18 @@ namespace GameAiAndControls.Controls
                 theObject.ImpactStatus.ObjectHealth = theObject.ImpactStatus.ObjectHealth - WeaponSetup.GetWeaponDamage("Lazer");
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
                 {
+                    if (_audio != null && _explosionSound != null)
+                    {
+                        //Play the explosion sound
+                        _audio.Play(_explosionSound, AudioPlayMode.OneShot);
+                    }
+
                     ExplosionDeltaTime = DateTime.Now;
                     isExploding = true;
                     // Handle object destruction or other logic here
                     var explodedVersion = Physics.ExplodeObject(theObject,200f);
+                    //Remove Crash boxes to avoid further collisions
+                    theObject.CrashBoxes = new List<List<IVector3>>();
                     if (enableLogging) Logger.Log($"Seeder has exploded.");
                 }
                 if (enableLogging) Logger.Log($"Seeder has crashed, current health {theObject.ImpactStatus.ObjectHealth}. CrashedWith:{theObject.ImpactStatus.ObjectName}");                
@@ -57,9 +85,6 @@ namespace GameAiAndControls.Controls
                 Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
                 if (theObject.ImpactStatus.HasExploded==true)
                 {
-                    //TODO:
-                    //Remove the object if it has exploded
-                    //For now, just clear the parts
                     theObject.ObjectParts = new List<I3dObjectPart>();
                 }
             }
@@ -116,11 +141,6 @@ namespace GameAiAndControls.Controls
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
             //No implementation needed
-        }
-
-        public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
-        {
-            throw new NotImplementedException();
         }
     }
 }

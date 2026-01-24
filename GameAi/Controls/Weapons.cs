@@ -90,47 +90,8 @@ namespace GameAiAndControls.Controls
                     ObjectHealth = 100
                 };
 
-                // Default: inherit ship rotation first
                 trajectory.z = -trajectory.z; // Invert Z to match WORLD coord system   
-                var enemyTarget = FindPossibleBestEnemyTarget(ParentShipObject, trajectory);
-
-                bool guided = false;
-                if (enemyTarget != null)
-                {
-                    trajectory = (Vector3)enemyTarget;
-                    guided = true;
-                }
-
-                // Only update weapon rotation if we actually guided toward an enemy
-                if (guided)
-                {
-                    var startWorld = ((Vector3)startPosition).ToWorldPoint(ParentShipObject);
-                    var trajWorld = ((Vector3)trajectory).ToWorldPoint(ParentShipObject);
-
-                    var dirWorld = Normalize(trajWorld - startWorld);
-
-                    var lookRot = RotationFromDirectionWorld((Vector3)dirWorld);
-
-                    var shipRot = (Vector3)(ParentShipObject.Rotation as Vector3 ?? new Vector3(0, 0, 0));
-                    lookRot.z = shipRot.z;
-
-                    instance.Rotation = lookRot;
-
-                    //if (enableLogging)
-                    //{
-                        Logger.Log(
-                            $"[WEAPON ROT] guided=1 startW=({startWorld.x:F0},{startWorld.y:F0},{startWorld.z:F0}) " +
-                            $"trajW=({trajWorld.x:F0},{trajWorld.y:F0},{trajWorld.z:F0}) " +
-                            $"dirW=({dirWorld.x:F3},{dirWorld.y:F3},{dirWorld.z:F3}) " +
-                            $"rot=({lookRot.x:F1},{lookRot.y:F1},{lookRot.z:F1})"
-                        );
-                    //}
-                }
-                else
-                {
-                    // Keep original behavior: inherit ship rotation only
-                    instance.Rotation = ParentShipObject.Rotation;
-                }
+                instance.Rotation = ParentShipObject.Rotation;
 
                 IVector3 dir = Normalize(trajectory);
 
@@ -167,6 +128,9 @@ namespace GameAiAndControls.Controls
             return this;
         }
 
+        /* Saving this code for now
+         * The code tries to helt guide the lazer toward the best enemy target
+         * 
         public static IVector3? FindPossibleBestEnemyTarget(_3dObject parentShip, IVector3 trajectoryLocal)
         {
             try
@@ -294,9 +258,11 @@ namespace GameAiAndControls.Controls
                 Logger.Log($"[AIM] ERROR {ex}");
                 return null;
             }
-        }
+        }*/
 
-        private static Vector3 RotationFromDirectionWorld(Vector3 dirWorld)
+        /* Used for aiming calculations - kept for reference
+         * 
+         * private static Vector3 RotationFromDirectionWorld(Vector3 dirWorld)
         {
             // dirWorld should be normalized-ish
             float x = dirWorld.x;
@@ -311,7 +277,7 @@ namespace GameAiAndControls.Controls
 
             // Rotation = (X=pitch, Y=yaw, Z=roll)
             return new Vector3(pitchDeg, yawDeg, 0f);
-        }
+        }*/
 
 
         //Rotates the weapon geometry according to ship rotation + tilt
