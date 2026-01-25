@@ -76,6 +76,15 @@ namespace _3dRotations.Scene.Scene1
             world.WorldInhabitants.Add(surfaceObject);
 
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(Surface.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
+
+            //For a more natural look, flatten the area around the towers
+            SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
+                Surface.Global2DMap,
+                Surface.MaxHeight(),
+                towerPlacements,
+                writeDebugLogs: true
+            );
+
             var towerIndex = 0;
             foreach (var towerPlacement in towerPlacements)
             {

@@ -722,6 +722,76 @@ namespace _3dRotations.Helpers
         //  TOWER PLACEMENT (1 near platform + total N across map)
         // ============================================================
 
+        public static void FlattenTerrainAroundTowers_ToHighlands(
+            SurfaceData[,] map,
+            int maxHeight,
+            List<(int x, int y, int height)> towerLocations,
+            bool writeDebugLogs = true)
+        {
+            if (map == null || map.Length == 0) return;
+            if (towerLocations == null || towerLocations.Count == 0) return;
+
+            // map is [y, x] in your project
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+
+            // Highlands threshold per your enum logic (>= 0.40 * maxHeight)
+            int highlandsMin = (int)(maxHeight * 0.40);
+
+            void Log(string s)
+            {
+                if (writeDebugLogs)
+                    System.Diagnostics.Debug.WriteLine(s);
+            }
+
+            Log($"=== ENTER FlattenTerrainAroundTowers_ToHighlands (3x3) ===");
+            Log($"Towers={towerLocations.Count} highlandsMin={highlandsMin} maxHeight={maxHeight}");
+
+            int totalChanged = 0;
+
+            foreach (var (tx, ty, _) in towerLocations)
+            {
+                if (tx < 0 || ty < 0 || tx >= sizeX || ty >= sizeY)
+                {
+                    Log($"[SKIP] Tower out of bounds: ({tx},{ty})");
+                    continue;
+                }
+
+                int beforeCenter = map[ty, tx].mapDepth;
+
+                // We force the entire 3x3 to the same target depth, at least Highlands min.
+                int target = Math.Max(beforeCenter, highlandsMin);
+
+                int changedThisTower = 0;
+
+                // 3x3 block: centered on tower tile (tx,ty)
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        int x = tx + dx;
+                        int y = ty + dy;
+
+                        if (x < 0 || y < 0 || x >= sizeX || y >= sizeY)
+                            continue;
+
+                        int before = map[y, x].mapDepth;
+                        if (before != target)
+                        {
+                            map[y, x].mapDepth = target;
+                            changedThisTower++;
+                            totalChanged++;
+                        }
+                    }
+                }
+
+                Log($"Tower ({tx},{ty}) centerDepth={beforeCenter} -> target={target} changedTiles={changedThisTower}");
+            }
+
+            Log($"TOTAL changedTiles={totalChanged}");
+            Log($"=== EXIT FlattenTerrainAroundTowers_ToHighlands (3x3) ===");
+        }
+
         public static List<(int x, int y, int height)> FindTowerPlacements(
             SurfaceData[,] map,
             int mapSize,
@@ -979,49 +1049,6 @@ namespace _3dRotations.Helpers
         }
 
         //------------------------------------------------------------- End Tower Placement
-
-
-        private static int FindLandingPlateauHeight_YX(SurfaceData[,] map)
-        {
-            int sizeY = map.GetLength(0);
-            int sizeX = map.GetLength(1);
-            int cx = sizeX / 2;
-            int cy = sizeY / 2;
-
-            int sampleRadius = 8;
-            var counts = new Dictionary<int, int>();
-
-            for (int y = Math.Max(0, cy - sampleRadius); y <= Math.Min(sizeY - 1, cy + sampleRadius); y++)
-                for (int x = Math.Max(0, cx - sampleRadius); x <= Math.Min(sizeX - 1, cx + sampleRadius); x++)
-                {
-                    int d = map[y, x].mapDepth;
-                    if (!counts.ContainsKey(d)) counts[d] = 0;
-                    counts[d]++;
-                }
-
-            int bestDepth = 0;
-            int bestCount = -1;
-            foreach (var kv in counts)
-                if (kv.Value > bestCount) { bestCount = kv.Value; bestDepth = kv.Key; }
-
-            return bestDepth;
-        }
-
-        private static (int x, int y) GetLandingAreaCenter_YX(SurfaceData[,] map, int mapSize, int landingHeight)
-        {
-            int sizeY = map.GetLength(0);
-            int sizeX = map.GetLength(1);
-            int limitY = Math.Min(sizeY, mapSize);
-            int limitX = Math.Min(sizeX, mapSize);
-
-            for (int y = 0; y < limitY; y++)
-                for (int x = 0; x < limitX; x++)
-                    if (map[y, x].mapDepth == landingHeight)
-                        return (x + landingAreaSize / 2, y + landingAreaSize / 2);
-
-            // Fallback: center
-            return (mapSize / 2, mapSize / 2);
-        }
 
         public static Color GetTileColor(int height, int maxHeight)
         {
