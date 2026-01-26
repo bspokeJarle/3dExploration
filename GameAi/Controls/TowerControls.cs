@@ -1,5 +1,5 @@
-﻿using Domain;
-using Gma.System.MouseKeyHook;
+﻿using CommonUtilities._3DHelpers;
+using Domain;
 using System;
 
 namespace GameAiAndControls.Controls
@@ -15,6 +15,11 @@ namespace GameAiAndControls.Controls
         private float Xrotation = 70;
         private float Zrotation = 0;
 
+        private float TowerRotationSpeedZ = 1.5f;
+        private float TowerZRotation = 0;
+
+        private readonly _3dRotationCommon _rotate = new(); // Rotation fra CommonHelpers
+
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             //TODO: In time I want the trees to have animations on the branches, now nothing
@@ -27,7 +32,30 @@ namespace GameAiAndControls.Controls
             //For now, just rotate the object at a fixed speed
             //Zrotation += 2;
             //Xrotation += 2;
+
+            RotateUpperTowerAnimation();
+
             return theObject;
+        }
+
+        public void RotateUpperTowerAnimation()
+        {
+            TowerZRotation += TowerRotationSpeedZ;
+
+            if (ParentObject == null) return;
+            var towerHeadFrame = ParentObject.ObjectParts.Find(obj => obj.PartName == "TowerHeadFrame");
+            var towerHeadGlass = ParentObject.ObjectParts.Find(obj => obj.PartName == "TowerHeadGlass");
+            var towerRoof = ParentObject.ObjectParts.Find(obj => obj.PartName == "TowerRoof");
+            var towerRadar = ParentObject.ObjectParts.Find(obj => obj.PartName == "TowerRadar");
+
+            if (towerHeadFrame != null && towerHeadGlass != null && towerRoof != null && towerRadar != null)
+            {
+                //Rotate around Z each frame
+                towerHeadFrame.Triangles = _rotate.RotateZMesh(towerHeadFrame.Triangles, TowerZRotation);
+                towerHeadGlass.Triangles = _rotate.RotateZMesh(towerHeadGlass.Triangles, TowerZRotation);
+                towerRoof.Triangles = _rotate.RotateZMesh(towerRoof.Triangles, TowerZRotation);
+                towerRadar.Triangles = _rotate.RotateZMesh(towerRadar.Triangles, TowerZRotation);
+            }
         }
 
         public void ReleaseParticles()
