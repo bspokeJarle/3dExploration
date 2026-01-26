@@ -6,6 +6,31 @@ namespace CommonUtilities._3DHelpers
 {
     public static class Common3dObjectHelpers
     {
+        public static float DotNormalized(IVector3 a, IVector3 b)
+        {
+            //Returns 1.0 if the vectors are perfectly aligned
+            float magA = (float)Math.Sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+            float magB = (float)Math.Sqrt(b.x * b.x + b.y * b.y + b.z * b.z);
+
+            if (magA < 1e-6f || magB < 1e-6f)
+                return 0f;
+
+            return (a.x * b.x + a.y * b.y + a.z * b.z) / (magA * magB);
+        }
+        public static IVector3 GetLocalWorldPosition(this _3dObject inhabitant)
+        {
+            var globalMapPosition = inhabitant.ParentSurface.GlobalMapPosition;
+            //Some objects will always be in location, they have no world position, just return
+            if (inhabitant.WorldPosition.x == 0 && inhabitant.WorldPosition.y == 0 && inhabitant.WorldPosition.z == 0) return null;
+            //Some objects fly around, they have this world position, so they appear when you are at that location in the map
+            var localWorldPosition = new Vector3
+            {
+                x = globalMapPosition.x - inhabitant.WorldPosition.x,
+                y = globalMapPosition.y - inhabitant.WorldPosition.y,
+                z = globalMapPosition.z - inhabitant.WorldPosition.z
+            };
+            return localWorldPosition;
+        }
         public static bool CheckInhabitantVisibility(this _3dObject inhabitant)
         {
             // 1. Land-based check
@@ -176,7 +201,9 @@ namespace CommonUtilities._3DHelpers
                 SurfaceBasedId = original.SurfaceBasedId,
                 CrashBoxDebugMode = original.CrashBoxDebugMode,
                 WeaponSystems = original.WeaponSystems,
-                CrashBoxes = new List<List<IVector3>>() // tom liste – eksploderende objekter trenger ikke kollisjon
+                CrashBoxes = original.CrashBoxes,
+                CrashBoxesFollowRotation = original.CrashBoxesFollowRotation,
+                CalculatedWorldOffset = original.CalculatedWorldOffset
             };
 
             return copy;
@@ -201,6 +228,35 @@ namespace CommonUtilities._3DHelpers
             }
             return result;
         }
-      
+
+        public static Vector3 GetCenterOfBox(List<Vector3> points)
+        {
+            if (points == null || points.Count == 0)
+                return new Vector3();
+
+            float minX = float.MaxValue, maxX = float.MinValue;
+            float minY = float.MaxValue, maxY = float.MinValue;
+            float minZ = float.MaxValue, maxZ = float.MinValue;
+
+            foreach (var p in points)
+            {
+                minX = Math.Min(minX, p.x);
+                maxX = Math.Max(maxX, p.x);
+
+                minY = Math.Min(minY, p.y);
+                maxY = Math.Max(maxY, p.y);
+
+                minZ = Math.Min(minZ, p.z);
+                maxZ = Math.Max(maxZ, p.z);
+            }
+
+            return new Vector3
+            {
+                x = (minX + maxX) / 2f,
+                y = (minY + maxY) / 2f,
+                z = (minZ + maxZ) / 2f
+            };
+        }
+
     }
 }

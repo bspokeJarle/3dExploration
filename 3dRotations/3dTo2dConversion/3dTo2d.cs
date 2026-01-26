@@ -1,14 +1,17 @@
 ﻿using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
+using CommonUtilities._3DHelpers;
+using Domain;
 using System;
 using System.Collections.Generic;
-using CommonUtilities._3DHelpers;
+using System.Linq;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting._3dRotation
 {
     public class _3dTo2d
     {
+        private readonly bool enableLogging = false;
         private const int perspectiveAdjustment = 1500;
         private const int defaultObjectZoom = 2;
 
@@ -18,9 +21,10 @@ namespace _3dTesting._3dRotation
         private const int screenCenterY = screenSizeY / 2;
         private long CurrentFrame = 0;
 
-        public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, bool debugCrashBoxes)
+        public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, long? currentFrame)
         {
-            CurrentFrame++;
+            //If available use global framecounter
+            if (currentFrame > 0) CurrentFrame = (long)currentFrame;
             var screenCoordinates = new List<_2dTriangleMesh>();
 
             foreach (var obj in inhabitants)
@@ -30,36 +34,22 @@ namespace _3dTesting._3dRotation
                 if (!ObjectPlacementHelpers.TryGetRenderPosition(obj, screenCenterX, screenCenterY, out double screenX, out double screenY, out double screenZ))
                     continue;
 
-                // Adjust crashboxes on surface based on ship vs ground height
-                if (obj.ObjectName == "Surface")
-                {
-                    ApplySurfaceCrashOffset(obj);
-                }
+                //Standard 3d Rendring
+                var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
+                screenCoordinates.AddRange(projected);
 
-                //All Crashboxes need same offset as the objects
-                if (!debugCrashBoxes)
-                {
-                    ApplyObjectOffsetToCrashBoxes(obj);
-                }
-
-                //Debug visualization of crashboxes
-                if (debugCrashBoxes && obj.CrashBoxes != null && obj.CrashBoxes.Count > 0)
-                {
+                if (obj.CrashBoxDebugMode!=null && (bool)obj.CrashBoxDebugMode)
+                { 
+                    //Debug visualization of crashboxes
                     var crashBox2d = ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ);
                     screenCoordinates.AddRange(crashBox2d);
-                }
-                else
-                {
-                    //Standard 3d Rendring
-                    var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
-                    screenCoordinates.AddRange(projected);
                 }
             }
 
             return screenCoordinates;
         }
 
-
+        //This method is for debugging av crashboxes only
         private List<_2dTriangleMesh> ConvertCrashBoxesTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ)
         {
             var result = new List<_2dTriangleMesh>();
@@ -69,7 +59,6 @@ namespace _3dTesting._3dRotation
                 // Skip if not a valid 8-corner box
                 if (crashBox.Count != 8) continue;
 
-                //var corners = crashBox.Cast<Vector3>().ToList();
                 var corners = _3dObjectHelpers.GenerateAabbCrashBoxFromRotated(crashBox);
 
                 var faceTriangles = new (int, int, int)[]
@@ -94,7 +83,7 @@ namespace _3dTesting._3dRotation
                     var p2 = ProjectVertex((Vector3)corners[i2], objPosX, objPosY, objPosZ);
                     var p3 = ProjectVertex((Vector3)corners[i3], objPosX, objPosY, objPosZ);
 
-                    var triangle = CreateTriangle(p1, p2, p3, "FF00FF", obj); // Magenta for visibility
+                    var triangle = CreateCrashBoxTriangle(p1, p2, p3, "FF00FF", obj); // Magenta for visibility
                     result.Add(triangle);
                 }
             }
@@ -103,8 +92,8 @@ namespace _3dTesting._3dRotation
         }
 
 
-        // Reuse your existing CreateTriangle helper
-        private _2dTriangleMesh CreateTriangle((double x, double y) p1, (double x, double y) p2, (double x, double y) p3, string color, _3dObject obj)
+        // Creating Triangles for rendring the CrashBoxes for debugging purposes
+        private _2dTriangleMesh CreateCrashBoxTriangle((double x, double y) p1, (double x, double y) p2, (double x, double y) p3, string color, _3dObject obj)
         {
             return new _2dTriangleMesh
             {
@@ -142,6 +131,11 @@ namespace _3dTesting._3dRotation
 
                     if (triangle.normal1.z > 0 || (triangle.noHidden ?? false))
                     {
+                        //Debugging Object sorting issues for specific objects
+                        if (obj.ObjectName == "Seeder" || obj.ObjectName == "Lazer")
+                        {
+                            if (enableLogging) Logger.Log($"Converted 3D object '{obj.ObjectName}' to 2D. CalculatedZ: {(float)((float)(((triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3) + obj.ObjectOffsets.z) - objPosZ)}");
+                        }
                         result.Add(new _2dTriangleMesh
                         {
                             X1 = Convert.ToInt32(x1),
@@ -150,17 +144,16 @@ namespace _3dTesting._3dRotation
                             Y2 = Convert.ToInt32(y2),
                             X3 = Convert.ToInt32(x3),
                             Y3 = Convert.ToInt32(y3),
-                            CalculatedZ = ((triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3)
-                                         + (_3dObjectHelpers.GetDeepestZ(triangle) + obj.ObjectOffsets.z),
+                            CalculatedZ = (float)((float)(((triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3) + obj.ObjectOffsets.z) - objPosZ),
                             Normal = triangle.normal1.z,
                             TriangleAngle = triangle.angle,
                             Color = triangle.Color,
                             PartName = part.PartName
                         });
                     }
+                    
                 }
             }
-
             return result;
         }
 
@@ -186,46 +179,6 @@ namespace _3dTesting._3dRotation
         {
             return x >= -(screenSizeX * 0.2) && x <= (screenSizeX * 1.2)
                 && y >= -(screenSizeY * 0.2) && y <= (screenSizeY * 1.2);
-        }
-
-        private void ApplySurfaceCrashOffset(_3dObject obj)
-        {
-            if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) return;
-
-            float surfaceYOffset = obj.ParentSurface.GlobalMapPosition.y;
-            foreach (var box in obj.CrashBoxes)
-            {
-                for (int j = 0; j < box.Count; j++)
-                {
-                    var original = box[j];
-                    box[j] = new Vector3
-                    {
-                        x = original.x,
-                        y = original.y + surfaceYOffset,
-                        z = original.z
-                    };
-                }
-            }
-        }
-
-        private void ApplyObjectOffsetToCrashBoxes(_3dObject obj)
-        {
-            if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) return;
-
-            var offset = obj.ObjectOffsets;
-            foreach (var box in obj.CrashBoxes)
-            {
-                for (int j = 0; j < box.Count; j++)
-                {
-                    var original = box[j];
-                    box[j] = new Vector3
-                    {
-                        x = original.x + offset.x,
-                        y = original.y + offset.y,
-                        z = original.z + offset.z
-                    };
-                }
-            }
         }
     }
 }

@@ -29,7 +29,9 @@ namespace _3dRotations.World.Objects
             beam.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
             beam.Particles = new ParticlesAI();
             beam.ParentSurface = parentSurface;
-
+            beam.ObjectName = "Lazer";
+            beam.CrashBoxDebugMode = false;
+            beam.ImpactStatus = new ImpactStatus { ObjectName = "Lazer" };
             if (crash != null) beam.CrashBoxes = crash;
             return beam;
         }
@@ -38,8 +40,8 @@ namespace _3dRotations.World.Objects
         public static List<List<IVector3>>? LazerCrashBoxes()
         {
             // Beam runs along -Y from y=-45 to about y=-200 at z=28 (± a small X/Z margin).
-            var min = new Vector3 { x = -6f, y = -205f, z = 22f };
-            var max = new Vector3 { x = 6f, y = -45f, z = 34f };
+            var min = new Vector3 { x = -50f, y = -275f, z = 20f };
+            var max = new Vector3 { x = 50f, y = -50f, z = 70f };
 
             return new List<List<IVector3>>
             {

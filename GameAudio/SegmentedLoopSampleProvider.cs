@@ -8,6 +8,7 @@ using NAudio.Wave;
 /// </summary>
 internal sealed class SegmentedLoopSampleProvider : ISampleProvider
 {
+    private bool enableLogging = false;
     private readonly ISampleProvider _source;     // Normalized audio (matches mixer format)
     private readonly AudioFileReader _file;       // Underlying file for time/seek
     private readonly WaveFormat _format;
@@ -56,7 +57,7 @@ internal sealed class SegmentedLoopSampleProvider : ISampleProvider
         // hopper vi rett til loopEnd slik at tailen blir kort og konsistent.
         if (now < _loopEndTs)
         {
-            Logger.Log(
+            if (enableLogging) Logger.Log(
                 $"Audio: SegmentedLoop - stop requested at t={now.TotalSeconds:F2}s, " +
                 $"jumping to loopEnd={_segments.LoopEnd:F2}s for short tail.");
 
@@ -64,7 +65,7 @@ internal sealed class SegmentedLoopSampleProvider : ISampleProvider
         }
         else
         {
-            Logger.Log(
+            if (enableLogging) Logger.Log(
                 $"Audio: SegmentedLoop - stop requested at t={now.TotalSeconds:F2}s, already in tail.");
         }
     }
@@ -77,7 +78,7 @@ internal sealed class SegmentedLoopSampleProvider : ISampleProvider
         int read = _source.Read(buffer, offset, count);
         if (read == 0)
         {
-            Logger.Log("Audio: SegmentedLoop - source returned 0, marking as finished.");
+            if (enableLogging) Logger.Log("Audio: SegmentedLoop - source returned 0, marking as finished.");
             _finished = true;
             return 0;
         }
@@ -89,7 +90,7 @@ internal sealed class SegmentedLoopSampleProvider : ISampleProvider
         {
             if (_file.CurrentTime >= _loopEndTs)
             {
-                Logger.Log($"Audio: SegmentedLoop - looping back at t={t:F2}s -> loopStart={_segments.LoopStart:F2}s");
+                if (enableLogging) Logger.Log($"Audio: SegmentedLoop - looping back at t={t:F2}s -> loopStart={_segments.LoopStart:F2}s");
                 _file.CurrentTime = _loopStartTs;
             }
         }
@@ -97,7 +98,7 @@ internal sealed class SegmentedLoopSampleProvider : ISampleProvider
         {
             if (_file.CurrentTime >= _endTs)
             {
-                Logger.Log($"Audio: SegmentedLoop - reached end segment at t={t:F2}s, finishing.");
+                if (enableLogging) Logger.Log($"Audio: SegmentedLoop - reached end segment at t={t:F2}s, finishing.");
                 _finished = true;
 
                 for (int i = offset; i < offset + read; i++)

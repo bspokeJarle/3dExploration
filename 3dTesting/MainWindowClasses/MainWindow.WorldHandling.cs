@@ -13,6 +13,7 @@ namespace _3dTesting.MainWindowClasses
 {
     public class GameWorldManager
     {
+        private long FrameCounter = 0;
         private readonly _3dTo2d From3dTo2d = new();
         private readonly _3dRotationCommon Rotate3d = new();
         private readonly ParticleManager particleManager = new();
@@ -30,9 +31,12 @@ namespace _3dTesting.MainWindowClasses
         public bool FadeInWorld { get; set; } = false;
 
         private readonly object _lock = new object();  // Lock object for thread safety
+        public I3dObject ShipCopy { get; set; }
+        public I3dObject SurfaceCopy { get; set; }
 
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
-        {            
+        {
+            FrameCounter++;
             var deepCopiedWorld = new List<_3dObject>();
             var activeWorld = new List<_3dObject>();
             lock (_lock)
@@ -41,6 +45,7 @@ namespace _3dTesting.MainWindowClasses
                 activeWorld = world.WorldInhabitants
                     .Where(inhabitant =>
                     {
+                        if (inhabitant.ObjectParts.Count == 0) return false; // Exclude objects with no parts
                         // Filter only the objects that are of type _3dObject and visible
                         if (inhabitant is _3dObject concreteInhabitant)
                         {
@@ -56,15 +61,18 @@ namespace _3dTesting.MainWindowClasses
             }
             if (StarFieldHandler == null)
             {
-                var parentSurface = world.WorldInhabitants.FirstOrDefault(obj => obj.ObjectName == "Surface").ParentSurface;
+                var parentSurface = world.WorldInhabitants?.FirstOrDefault(obj => obj.ObjectName == "Surface")?.ParentSurface;
                 if (parentSurface != null)
                 {
-                     StarFieldHandler = new StarFieldHandler(parentSurface);
+                    StarFieldHandler = new StarFieldHandler(parentSurface);
                 }
             }
             //Generate starfield will do nothing if not needed
-            StarFieldHandler.GenerateStarfield();
-            if (StarFieldHandler.HasStars()) deepCopiedWorld.AddRange(StarFieldHandler.GetStars());
+            if (StarFieldHandler != null)
+            {
+                StarFieldHandler.GenerateStarfield();
+                if (StarFieldHandler.HasStars()) deepCopiedWorld.AddRange(StarFieldHandler.GetStars());
+            }
 
             var particleObjectList = new List<_3dObject>();
             var weaponObjectList = new List<_3dObject>();
@@ -76,7 +84,16 @@ namespace _3dTesting.MainWindowClasses
                 if (!inhabitant.CheckInhabitantVisibility()) continue;
 
                 inhabitant.Movement?.MoveObject(inhabitant, audioPlayer, soundRegistry);
-                inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
+                if (inhabitant.CrashBoxesFollowRotation) inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
+                //Make copies of Ship and Surface for HUD display purposes
+                if (inhabitant.ObjectName == "Ship")
+                {
+                    ShipCopy = inhabitant;
+                }
+                if (inhabitant.ObjectName == "Surface")
+                {
+                    SurfaceCopy = inhabitant;
+                }
 
                 foreach (var part in inhabitant.ObjectParts)
                 {
@@ -138,12 +155,8 @@ namespace _3dTesting.MainWindowClasses
                 return [];
             }
 
-            projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, false);
-            var crashBoxDebuggedObjects = renderedList.Where(x => x.CrashBoxDebugMode == true).ToList();
-            //Check if there are any crashboxes to debug
-            if (crashBoxDebuggedObjects.Count > 0) crashBoxCoordinates = From3dTo2d.ConvertTo2dFromObjects(crashBoxDebuggedObjects, true);
-            else crashBoxCoordinates = new List<_2dTriangleMesh>();
-            CrashDetection.HandleCrashboxes(renderedList);
+            projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
+            CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             HandleMusic(renderedList);
             return projectedCoordinates;
         }
@@ -154,7 +167,7 @@ namespace _3dTesting.MainWindowClasses
             if (!MusicIsPlaying)
             {
                 MusicIsPlaying = true;
-                audioPlayer.PlayMusic(MusicDef,0.2f);
+                audioPlayer.PlayMusic(MusicDef, 0.2f);
             }
             //Work with renderedobjects to decide what music to play, for now just play mainmusicloop
         }

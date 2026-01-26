@@ -24,7 +24,7 @@ namespace Domain
 
     public interface ISceneHandler
     {
-        public void SetupActiveScene(I3dWorld  world);
+        public void SetupActiveScene(I3dWorld world);
 
         public void ResetActiveScene(I3dWorld world);
 
@@ -39,7 +39,7 @@ namespace Domain
     {
         public List<I3dObject> WorldInhabitants { get; set; }
         public ISceneHandler SceneHandler { get; set; }
-
+        public bool IsPaused { get; set; }
     }
 
     public interface IPhysics
@@ -108,17 +108,18 @@ namespace Domain
         public IVector3? WorldPosition { get; set; }
         public List<I3dObjectPart> ObjectParts { get; set; }
         public IVector3? ObjectOffsets { get; set; }
-        public IVector3? CrashboxOffsets { get; set; }
         public IVector3? Rotation { get; set; }
         public IObjectMovement? Movement { get; set; }
         public IParticles? Particles { get; set; }
         public IWeapon? WeaponSystems { get; set; }
         public List<List<IVector3>> CrashBoxes { get; set; }
+        public bool CrashBoxesFollowRotation { get; set; }
         public IImpactStatus? ImpactStatus { get; set; }
         public int? Mass { get; set; }
         public ISurface? ParentSurface { get; set; }
         public int? SurfaceBasedId { get; set; }
         public bool? CrashBoxDebugMode { get; set; }
+        public IVector3? CalculatedWorldOffset { get; set; }
     }
 
     public interface IImpactStatus
@@ -158,26 +159,24 @@ namespace Domain
     {
         public IWeapon FireWeapon(IVector3 Trajectory, IVector3 StartPosition, IVector3 WorldPosition, WeaponType weaponType, I3dObject parentShip, int tilt);
         public IObjectMovement ParentShip { get; set; }
-        public void MoveWeapon();
+        public void MoveWeapon(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry);
         public IEnumerable<I3dObject> Get3DObjects();
         public List<List<IVector3>> GetCrashBoxes();
-
         public List<IActiveWeapon> ActiveWeapons { get; set; }
     }
-    public interface IActiveWeapon  
+    public interface IActiveWeapon
     {
         public I3dObject WeaponObject { get; set; }
         public DateTime FiredTime { get; set; }
         public IVector3 Velocity { get; set; }
         public IVector3 Acceleration { get; set; }
-        public IImpactStatus? ImpactStatus { get; set; }
     }
 
     public interface IParticles
     {
         public IObjectMovement ParentShip { get; set; }
         public List<IParticle> Particles { get; set; }
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust,bool? explosion);
+        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion);
         public void MoveParticles();
     }
     public interface IParticle

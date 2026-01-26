@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -719,23 +718,337 @@ namespace _3dRotations.Helpers
             return houseLocations;
         }
 
-        // (Other unchanged methods omitted for brevity...)
+        // ============================================================
+        //  TOWER PLACEMENT (1 near platform + total N across map)
+        // ============================================================
 
-        public static (int x, int y) GetLandingAreaCenter(SurfaceData[,] map, int mapSize, int landingHeight)
+        public static void FlattenTerrainAroundTowers_ToHighlands(
+            SurfaceData[,] map,
+            int maxHeight,
+            List<(int x, int y, int height)> towerLocations,
+            bool writeDebugLogs = true)
         {
-            for (int i = 0; i < mapSize; i++)
+            if (map == null || map.Length == 0) return;
+            if (towerLocations == null || towerLocations.Count == 0) return;
+
+            // map is [y, x] in your project
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+
+            // Highlands threshold per your enum logic (>= 0.40 * maxHeight)
+            int highlandsMin = (int)(maxHeight * 0.40);
+
+            void Log(string s)
             {
-                for (int j = 0; j < mapSize; j++)
+                if (writeDebugLogs)
+                    System.Diagnostics.Debug.WriteLine(s);
+            }
+
+            Log($"=== ENTER FlattenTerrainAroundTowers_ToHighlands (3x3) ===");
+            Log($"Towers={towerLocations.Count} highlandsMin={highlandsMin} maxHeight={maxHeight}");
+
+            int totalChanged = 0;
+
+            foreach (var (tx, ty, _) in towerLocations)
+            {
+                if (tx < 0 || ty < 0 || tx >= sizeX || ty >= sizeY)
                 {
-                    if (map[i, j].mapDepth == landingHeight)
+                    Log($"[SKIP] Tower out of bounds: ({tx},{ty})");
+                    continue;
+                }
+
+                int beforeCenter = map[ty, tx].mapDepth;
+
+                // We force the entire 3x3 to the same target depth, at least Highlands min.
+                int target = Math.Max(beforeCenter, highlandsMin);
+
+                int changedThisTower = 0;
+
+                // 3x3 block: centered on tower tile (tx,ty)
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    for (int dx = -1; dx <= 1; dx++)
                     {
-                        return (i + landingAreaSize / 2, j + landingAreaSize / 2);
+                        int x = tx + dx;
+                        int y = ty + dy;
+
+                        if (x < 0 || y < 0 || x >= sizeX || y >= sizeY)
+                            continue;
+
+                        int before = map[y, x].mapDepth;
+                        if (before != target)
+                        {
+                            map[y, x].mapDepth = target;
+                            changedThisTower++;
+                            totalChanged++;
+                        }
                     }
                 }
+
+                Log($"Tower ({tx},{ty}) centerDepth={beforeCenter} -> target={target} changedTiles={changedThisTower}");
             }
-            return (mapSize / 2, mapSize / 2); // Default to center if not found
+
+            Log($"TOTAL changedTiles={totalChanged}");
+            Log($"=== EXIT FlattenTerrainAroundTowers_ToHighlands (3x3) ===");
         }
 
+        public static List<(int x, int y, int height)> FindTowerPlacements(
+            SurfaceData[,] map,
+            int mapSize,
+            int tileSize,
+            int maxHeight,
+            int totalTowers = 10)
+        {
+            Debug.WriteLine("=== ENTER FindTowerPlacements ===");
+
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+            mapSize = Math.Min(mapSize, Math.Min(sizeX, sizeY));
+
+            // ✅ YX (outer = y, inner = x)
+            int H(int x, int y) => map[y, x].mapDepth;
+
+            Debug.WriteLine($"Map: sizeX={sizeX} sizeY={sizeY} mapSize={mapSize} maxHeight={maxHeight} totalTowers={totalTowers}");
+
+            int nearRadius = 17;
+            int spacing = 6;                 // same “looks good” value you liked
+            int landingBufferTiles = 1;      // exclude platform + 1 tile ring around it
+
+            // ------------------------------------------------------------
+            // 0) Find landing platform robustly (8x8 flat block, highest depth near center)
+            //    Return both center + top-left so we can exclude it.
+            // ------------------------------------------------------------
+            (int centerX, int centerY, int depth, int topLeftX, int topLeftY) FindLandingCenterLocal()
+            {
+                int cx = mapSize / 2;
+                int cy = mapSize / 2;
+
+                int bestDepth = -1;
+                int bestCenterX = cx;
+                int bestCenterY = cy;
+                int bestTopLeftX = Math.Max(0, cx - landingAreaSize / 2);
+                int bestTopLeftY = Math.Max(0, cy - landingAreaSize / 2);
+
+                int searchRadius = 160; // plenty
+                int x0 = Math.Max(0, cx - searchRadius);
+                int x1 = Math.Min(mapSize - landingAreaSize, cx + searchRadius);
+                int y0 = Math.Max(0, cy - searchRadius);
+                int y1 = Math.Min(mapSize - landingAreaSize, cy + searchRadius);
+
+                for (int y = y0; y <= y1; y++)
+                {
+                    for (int x = x0; x <= x1; x++)
+                    {
+                        int d = H(x, y);
+                        if (d <= 0) continue;
+
+                        bool ok = true;
+                        for (int yy = 0; yy < landingAreaSize && ok; yy++)
+                        {
+                            for (int xx = 0; xx < landingAreaSize; xx++)
+                            {
+                                if (H(x + xx, y + yy) != d) { ok = false; break; }
+                            }
+                        }
+
+                        if (!ok) continue;
+
+                        // pick the highest flat block (your platform is a high plateau)
+                        if (d > bestDepth)
+                        {
+                            bestDepth = d;
+                            bestTopLeftX = x;
+                            bestTopLeftY = y;
+                            bestCenterX = x + landingAreaSize / 2;
+                            bestCenterY = y + landingAreaSize / 2;
+                        }
+                    }
+                }
+
+                if (bestDepth < 0)
+                {
+                    // fallback
+                    bestDepth = H(cx, cy);
+                    bestCenterX = cx;
+                    bestCenterY = cy;
+                }
+
+                return (bestCenterX, bestCenterY, bestDepth, bestTopLeftX, bestTopLeftY);
+            }
+
+            var landing = FindLandingCenterLocal();
+            int landingX = landing.centerX;
+            int landingY = landing.centerY;
+            int landingTopLeftX = landing.topLeftX;
+            int landingTopLeftY = landing.topLeftY;
+
+            Debug.WriteLine($"Landing center=({landingX},{landingY}) depth={landing.depth} TL=({landingTopLeftX},{landingTopLeftY})");
+
+            // ------------------------------------------------------------
+            // Helper: exclude landing platform (plus buffer ring)
+            // ------------------------------------------------------------
+            bool IsInsideLandingPlatformOrBuffer(int x, int y)
+            {
+                int minX = landingTopLeftX - landingBufferTiles;
+                int minY = landingTopLeftY - landingBufferTiles;
+                int maxX = landingTopLeftX + landingAreaSize - 1 + landingBufferTiles;
+                int maxY = landingTopLeftY + landingAreaSize - 1 + landingBufferTiles;
+
+                return x >= minX && x <= maxX && y >= minY && y <= maxY;
+            }
+
+            // ------------------------------------------------------------
+            // 1) Candidate filter (USE YOUR EXISTING HELPERS)
+            // ------------------------------------------------------------
+            bool IsOkTile(int x, int y)
+            {
+                if (x < 2 || y < 2 || x >= mapSize - 2 || y >= mapSize - 2) return false;
+
+                // Never place on platform or its buffer ring
+                if (IsInsideLandingPlatformOrBuffer(x, y)) return false;
+
+                int d = H(x, y);
+
+                // ✅ your helpers
+                if (IsWaterOrCoastHeight(d, maxHeight)) return false;
+                if (!IsDryByEnum(d, maxHeight)) return false;
+
+                // make sure the rendered quad corner isn't touching water/coast
+                if (!CornerIsAwayFromWater(x, y, TileAnchor.TopLeft, map, maxHeight)) return false;
+
+                // small water buffer (same as you use elsewhere)
+                if (HasWaterWithinRadiusChebyshev(map, x, y, radius: 1, refMax: maxHeight)) return false;
+
+                return true;
+            }
+
+            // ------------------------------------------------------------
+            // 2) Build pools (Highlands preferred, else Grassland)
+            // ------------------------------------------------------------
+            var highPool = new List<(int x, int y, int h)>();
+            var grassPool = new List<(int x, int y, int h)>();
+
+            int okCount = 0;
+
+            for (int y = 2; y < mapSize - 2; y++)
+            {
+                for (int x = 2; x < mapSize - 2; x++)
+                {
+                    if (!IsOkTile(x, y)) continue;
+
+                    int d = H(x, y);
+                    okCount++;
+
+                    var t = GetTerrainType(d, maxHeight);
+                    if (t == TerrainType.Highlands) highPool.Add((x, y, d));
+                    else if (t == TerrainType.Grassland) grassPool.Add((x, y, d));
+                }
+            }
+
+            Debug.WriteLine($"Candidates OK={okCount} highlands={highPool.Count} grassland={grassPool.Count}");
+
+            FisherYatesShuffle(highPool, random);
+            FisherYatesShuffle(grassPool, random);
+
+            // ------------------------------------------------------------
+            // 3) Placement (1 near platform + rest global)
+            // ------------------------------------------------------------
+            var towers = new List<(int x, int y, int height)>(totalTowers);
+            var used = new HashSet<(int x, int y)>();
+
+            bool TryAdd(int x, int y, int h)
+            {
+                if (HasOccupiedWithinRadius(used, x, y, spacing, mapSize, mapSize))
+                    return false;
+
+                used.Add((x, y));
+                towers.Add((x, y, h));
+                return true;
+            }
+
+            // 3a) Near-platform tower: find nearest Highlands within radius 17, fallback Grassland
+            bool placedNear = false;
+
+            bool TryFindNearestNear(TerrainType wanted, out (int x, int y, int h) best)
+            {
+                int bestD2 = int.MaxValue;
+                best = default;
+                bool found = false;
+
+                int x0 = Math.Max(2, landingX - nearRadius);
+                int x1 = Math.Min(mapSize - 3, landingX + nearRadius);
+                int y0 = Math.Max(2, landingY - nearRadius);
+                int y1 = Math.Min(mapSize - 3, landingY + nearRadius);
+
+                for (int y = y0; y <= y1; y++)
+                {
+                    for (int x = x0; x <= x1; x++)
+                    {
+                        int dx = x - landingX;
+                        int dy = y - landingY;
+                        int d2 = dx * dx + dy * dy;
+                        if (d2 > nearRadius * nearRadius) continue;
+
+                        if (!IsOkTile(x, y)) continue;
+
+                        int d = H(x, y);
+                        if (GetTerrainType(d, maxHeight) != wanted) continue;
+
+                        if (d2 < bestD2)
+                        {
+                            bestD2 = d2;
+                            best = (x, y, d);
+                            found = true;
+                        }
+                    }
+                }
+
+                return found;
+            }
+
+            // Highlands near
+            if (TryFindNearestNear(TerrainType.Highlands, out var nearHi))
+            {
+                placedNear = TryAdd(nearHi.x, nearHi.y, nearHi.h);
+                Debug.WriteLine($"Near tower (Highlands) => ({nearHi.x},{nearHi.y}) depth={nearHi.h} placed={placedNear}");
+            }
+
+            // Grassland fallback near
+            if (!placedNear && TryFindNearestNear(TerrainType.Grassland, out var nearGr))
+            {
+                placedNear = TryAdd(nearGr.x, nearGr.y, nearGr.h);
+                Debug.WriteLine($"Near tower (Grassland) => ({nearGr.x},{nearGr.y}) depth={nearGr.h} placed={placedNear}");
+            }
+
+            if (!placedNear)
+                Debug.WriteLine("WARNING: No near-platform tower candidate found in radius 17 (excluding platform).");
+
+            // 3b) Fill global
+            void FillFrom(List<(int x, int y, int h)> pool, string label)
+            {
+                int before = towers.Count;
+
+                foreach (var (x, y, h) in pool)
+                {
+                    if (towers.Count >= totalTowers) break;
+                    TryAdd(x, y, h);
+                }
+
+                Debug.WriteLine($"FillFrom {label}: added={towers.Count - before}, now={towers.Count}/{totalTowers}");
+            }
+
+            FillFrom(highPool, "Highlands");
+            FillFrom(grassPool, "Grassland");
+
+            Debug.WriteLine($"TOWERS PLACED: {towers.Count}/{totalTowers}");
+            for (int i = 0; i < towers.Count; i++)
+                Debug.WriteLine($"To  w er #{i + 1}: ({towers[i].x},{towers[i].y}) depth={towers[i].height}");
+
+            Debug.WriteLine("=== EXIT FindTowerPlacements ===");
+            return towers;
+        }
+
+        //------------------------------------------------------------- End Tower Placement
 
         public static Color GetTileColor(int height, int maxHeight)
         {
@@ -844,7 +1157,7 @@ namespace _3dRotations.Helpers
                             {
                                 width = width,
                                 height = heightBox,
-                                boxDepth = maxDepth + 20 //Add some padding
+                                boxDepth = maxDepth + 20//Add some padding
                             };
 
                             numCrashBoxes++;
@@ -863,7 +1176,7 @@ namespace _3dRotations.Helpers
             }
             Debug.WriteLine($"[SurfaceGeneration] Generated {numCrashBoxes} crashboxes.");
         }
-         
+
 
         private static bool IsHighlandOrMountain(int height, int maxHeight)
         {
