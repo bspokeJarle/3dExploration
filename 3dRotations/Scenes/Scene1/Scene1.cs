@@ -25,7 +25,7 @@ namespace _3dRotations.Scene.Scene1
             ship.CrashBoxDebugMode = false;
             ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
-           
+
             var seeder = Seeder.CreateSeeder(Surface);
             //Initialize the seeder rotation
             seeder.Rotation = new Vector3 { };
@@ -74,6 +74,38 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.CrashBoxDebugMode = false;
             surfaceObject.CrashBoxesFollowRotation = false;
             world.WorldInhabitants.Add(surfaceObject);
+
+            var towerPlacements = SurfaceGeneration.FindTowerPlacements(Surface.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
+
+            //For a more natural look, flatten the area around the towers
+            SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
+                Surface.Global2DMap,
+                Surface.MaxHeight(),
+                towerPlacements,
+                writeDebugLogs: true
+            );
+
+            var towerIndex = 0;
+            foreach (var towerPlacement in towerPlacements)
+            {
+                towerIndex++;
+
+                var tower = Tower.CreateTower(Surface);
+                //Initialize the seeder rotation
+                tower.Rotation = new Vector3 { };
+                tower.WorldPosition = new Vector3 { };
+                tower.SurfaceBasedId = Surface.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
+                Surface.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
+
+                //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
+                tower.ObjectOffsets = new Vector3 { x = 75, y =280, z = 300 };
+                tower.ObjectName = "Tower";
+                tower.Movement = new TowerControls();
+                tower.CrashBoxDebugMode = false;
+                tower.ImpactStatus = new ImpactStatus { };
+                world.WorldInhabitants.Add(tower);
+            }
+
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(Surface.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
             var treeIndex = 0;
