@@ -1,6 +1,7 @@
 ﻿using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
 using _3dTesting.Rendering;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -114,7 +115,7 @@ namespace _3dTesting
             mainGrid.Children.Add(mapOverlay);
             mainGrid.Children.Add(FpsText);
 
-            surfaceMapBitmap = world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapBitmap;
+            surfaceMapBitmap = GameState.SurfaceState.GlobalMapBitmap;
 
             timer.Interval = TimeSpan.FromMilliseconds(8);
             timer.Tick += (s, e) => Handle3dWorld();

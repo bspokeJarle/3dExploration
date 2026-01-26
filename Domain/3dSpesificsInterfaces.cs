@@ -70,8 +70,8 @@ namespace Domain
     {
         public Vector3 GlobalMapPosition { get; set; }
         public Vector3 GlobalMapRotation { get; set; }
-        public SurfaceData[,]? Global2DMap { get; set; }
-        public BitmapSource GlobalMapBitmap { get; set; }
+        //public SurfaceData[,]? Global2DMap { get; set; }
+        //public BitmapSource GlobalMapBitmap { get; set; }
 
         public int SurfaceWidth();
         public int GlobalMapSize();

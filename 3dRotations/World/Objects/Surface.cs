@@ -5,6 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
+using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
+using CommonUtilities.CommonGlobalState;
 
 
 namespace _3dRotations.World.Objects
@@ -13,23 +16,18 @@ namespace _3dRotations.World.Objects
     {
         public Vector3 GlobalMapPosition { get; set; } = new Vector3 { x = 95100, y = 0, z = 95200 };
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = 0, y = 0, z = 0 };
-        public SurfaceData[,]? Global2DMap { get; set; } = new SurfaceData[globalMapSize, globalMapSize];
-        public BitmapSource? GlobalMapBitmap { get; set; }
+        //public SurfaceData[,]? Global2DMap { get; set; } = new SurfaceData[MapSetup.globalMapSize, MapSetup.globalMapSize];
+        //public BitmapSource? GlobalMapBitmap { get; set; }
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
         public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();
 
         const bool debugSurfaceBasedObjects = false; // Set to true to debug surface based objects
-        const int surfaceWidth = 1350;
-        const int globalMapSize = 2500+(surfaceWidth/tileSize);
-        const int viewPortSize = surfaceWidth / tileSize;
-        const int tileSize = 75;
-        int maxHeight = 75; //Height elevation for the map
 
-        public int SurfaceWidth() {  return surfaceWidth; }
-        public int GlobalMapSize() { return globalMapSize; }
-        public int ViewPortSize() { return viewPortSize; }
-        public int TileSize() { return tileSize; }
-        public int MaxHeight() { return maxHeight; }
+        public int SurfaceWidth() {  return SurfaceSetup.surfaceWidth; }
+        public int GlobalMapSize() { return MapSetup.globalMapSize; }
+        public int ViewPortSize() { return SurfaceSetup.viewPortSize; }
+        public int TileSize() { return SurfaceSetup.tileSize; }
+        public int MaxHeight() { return MapSetup.maxHeight; }
 
         public I3dObject GetSurfaceViewPort()
         {
@@ -37,24 +35,23 @@ namespace _3dRotations.World.Objects
             var surface = new _3dObject();
             var viewPortCrashBoxes = new List<List<IVector3>>(); // Ny liste for ViewPort-crashboxes
 
-            var viewPort = SurfaceGeneration.Return2DViewPort(viewPortSize, (int)GlobalMapPosition.x, (int)GlobalMapPosition.z, Global2DMap, tileSize);
-            var ZRemainer = GlobalMapPosition.z % tileSize;
-            var XRemainer = GlobalMapPosition.x % tileSize;
+            var viewPort = SurfaceGeneration.Return2DViewPort(ViewPortSize(), (int)GlobalMapPosition.x, (int)GlobalMapPosition.z, GameState.SurfaceState.Global2DMap, TileSize());
+            var ZRemainer = GlobalMapPosition.z % TileSize();
+            var XRemainer = GlobalMapPosition.x % TileSize();
             var YRemainer = GlobalMapPosition.y;
 
-            var YPosition = -(tileSize * viewPortSize / 2);
-            var worldPosition = new Vector3 { x = (GlobalMapPosition.x - tileSize), y = 0, z = (GlobalMapPosition.z - tileSize) };
-
-            for (int i = 1; i < (viewPortSize / 1.5) + 2; i++)
+            var YPosition = -(TileSize() * ViewPortSize() / 2);
+            var worldPosition = new Vector3 { x = (GlobalMapPosition.x - TileSize()), y = 0, z = (GlobalMapPosition.z - TileSize()) };
+            for (int i = 1; i < (ViewPortSize() / 1.5) + 2; i++)
             {
-                worldPosition.z += tileSize;
-                YPosition += tileSize;
-                var XPosition = -(tileSize * viewPortSize / 2);
+                worldPosition.z += TileSize();
+                YPosition += TileSize();
+                var XPosition = -(TileSize() * ViewPortSize() / 2);
 
-                for (int j = 1; j < viewPortSize - 1; j++)
+                for (int j = 1; j < ViewPortSize() - 1; j++)
                 {
-                    worldPosition.x += tileSize;
-                    XPosition += tileSize;
+                    worldPosition.x += TileSize();
+                    XPosition += TileSize();
 
                     var currentTile = viewPort[i, j];
                     var surfaceId = currentTile.mapId;
@@ -65,8 +62,8 @@ namespace _3dRotations.World.Objects
                     var ZPostition3 = viewPort[i + 1, j + 1].mapDepth;
                     var ZPostition4 = viewPort[i + 1, j].mapDepth;
 
-                    var color1 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, maxHeight);
-                    var color2 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, maxHeight);
+                    var color1 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, MaxHeight());
+                    var color2 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, MaxHeight());
 
                     if (currentTile.hasLandbasedObject && debugSurfaceBasedObjects)
                     {
@@ -82,15 +79,15 @@ namespace _3dRotations.World.Objects
 
                         var min = new Vector3
                         {
-                            x = (XPosition - XRemainer) - tileSize,
+                            x = (XPosition - XRemainer) - TileSize(),
                             y = YPosition - ZRemainer,
                             z = 0 // Sealevel
                         };
 
                         var max = new Vector3
                         {
-                            x = XPosition + ((box.width * tileSize) - XRemainer) - tileSize,
-                            y = YPosition + (box.height * tileSize) - ZRemainer,
+                            x = XPosition + ((box.width * TileSize()) - XRemainer) - TileSize(),
+                            y = YPosition + (box.height * TileSize()) - ZRemainer,
                             z = 90 + currentTile.mapDepth // Max map depth
                         };
 
@@ -103,8 +100,8 @@ namespace _3dRotations.World.Objects
                         Color = color1,
                         landBasedPosition = surfaceId,
                         vert1 = { x = XPosition - XRemainer, y = YPosition - ZRemainer, z = ZPostition1 - YRemainer },
-                        vert2 = { x = XPosition + tileSize - XRemainer, y = YPosition - ZRemainer, z = ZPostition2 - YRemainer },
-                        vert3 = { x = XPosition + tileSize - XRemainer, y = YPosition + tileSize - ZRemainer, z = ZPostition3 - YRemainer }
+                        vert2 = { x = XPosition + TileSize() - XRemainer, y = YPosition - ZRemainer, z = ZPostition2 - YRemainer },
+                        vert3 = { x = XPosition + TileSize() - XRemainer, y = YPosition + TileSize() - ZRemainer, z = ZPostition3 - YRemainer }
                     };
 
                     var triangle2 = new TriangleMeshWithColor
@@ -112,8 +109,8 @@ namespace _3dRotations.World.Objects
                         Color = color2,
                         landBasedPosition = surfaceId,
                         vert1 = { x = XPosition - XRemainer, y = YPosition - ZRemainer, z = ZPostition1 - YRemainer },
-                        vert2 = { x = XPosition + tileSize - XRemainer, y = YPosition + tileSize - ZRemainer, z = ZPostition3 - YRemainer },
-                        vert3 = { x = XPosition - XRemainer, y = YPosition + tileSize - ZRemainer, z = ZPostition4 - YRemainer }
+                        vert2 = { x = XPosition + TileSize() - XRemainer, y = YPosition + TileSize() - ZRemainer, z = ZPostition3 - YRemainer },
+                        vert3 = { x = XPosition - XRemainer, y = YPosition + TileSize() - ZRemainer, z = ZPostition4 - YRemainer }
                     };
 
                     newSurface.Add(triangle1);
@@ -183,8 +180,8 @@ namespace _3dRotations.World.Objects
         public void Create2DMap(int? maxTrees,int? maxHouses)
         {
             //Gets the pseudo random map in 2d
-            Global2DMap = SurfaceGeneration.ReturnPseudoRandomMap(globalMapSize, maxHeight: out maxHeight,maxTrees,maxHouses);
-            GlobalMapBitmap = SurfaceGeneration.GenerateTerrainBitmapSource(Global2DMap, globalMapSize, maxHeight);
+            GameState.SurfaceState.Global2DMap = SurfaceGeneration.ReturnPseudoRandomMap(MapSetup.globalMapSize, maxHeight: out MapSetup.maxHeight,maxTrees,maxHouses);
+            GameState.SurfaceState.GlobalMapBitmap = SurfaceGeneration.GenerateTerrainBitmapSource(GameState.SurfaceState.Global2DMap, MapSetup.globalMapSize, MapSetup.maxHeight);
         }
     }
 }
