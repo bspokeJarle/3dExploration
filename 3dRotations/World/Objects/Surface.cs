@@ -3,9 +3,7 @@ using _3dTesting.Helpers;
 using Domain;
 using System;
 using System.Collections.Generic;
-using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
-using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.CommonGlobalState;
 
@@ -14,10 +12,7 @@ namespace _3dRotations.World.Objects
 {
     public class Surface : ISurface
     {
-        public Vector3 GlobalMapPosition { get; set; } = new Vector3 { x = 95100, y = 0, z = 95200 };
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = 0, y = 0, z = 0 };
-        //public SurfaceData[,]? Global2DMap { get; set; } = new SurfaceData[MapSetup.globalMapSize, MapSetup.globalMapSize];
-        //public BitmapSource? GlobalMapBitmap { get; set; }
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
         public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();
 
@@ -35,13 +30,13 @@ namespace _3dRotations.World.Objects
             var surface = new _3dObject();
             var viewPortCrashBoxes = new List<List<IVector3>>(); // Ny liste for ViewPort-crashboxes
 
-            var viewPort = SurfaceGeneration.Return2DViewPort(ViewPortSize(), (int)GlobalMapPosition.x, (int)GlobalMapPosition.z, GameState.SurfaceState.Global2DMap, TileSize());
-            var ZRemainer = GlobalMapPosition.z % TileSize();
-            var XRemainer = GlobalMapPosition.x % TileSize();
-            var YRemainer = GlobalMapPosition.y;
+            var viewPort = SurfaceGeneration.Return2DViewPort(ViewPortSize(), (int)GameState.SurfaceState.GlobalMapPosition.x, (int)GameState.SurfaceState.GlobalMapPosition.z, GameState.SurfaceState.Global2DMap, TileSize());
+            var ZRemainer = GameState.SurfaceState.GlobalMapPosition.z % TileSize();
+            var XRemainer = GameState.SurfaceState.GlobalMapPosition.x % TileSize();
+            var YRemainer = GameState.SurfaceState.GlobalMapPosition.y;
 
             var YPosition = -(TileSize() * ViewPortSize() / 2);
-            var worldPosition = new Vector3 { x = (GlobalMapPosition.x - TileSize()), y = 0, z = (GlobalMapPosition.z - TileSize()) };
+            var worldPosition = new Vector3 { x = (GameState.SurfaceState.GlobalMapPosition.x - TileSize()), y = 0, z = (GameState.SurfaceState.GlobalMapPosition.z - TileSize()) };
             for (int i = 1; i < (ViewPortSize() / 1.5) + 2; i++)
             {
                 worldPosition.z += TileSize();
@@ -88,7 +83,7 @@ namespace _3dRotations.World.Objects
                         {
                             x = XPosition + ((box.width * TileSize()) - XRemainer) - TileSize(),
                             y = YPosition + (box.height * TileSize()) - ZRemainer,
-                            z = 90 + currentTile.mapDepth // Max map depth
+                            z = 40 + currentTile.mapDepth // Max map depth
                         };
 
                         var crashBoxCorners = _3dObjectHelpers.GenerateCrashBoxCorners(min, max);

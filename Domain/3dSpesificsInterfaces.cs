@@ -22,6 +22,13 @@ namespace Domain
         }
     }
 
+    public struct ScreenEcoMeta
+    {
+        // Counts
+        public int GreenTileCount;
+        public int TotalTileCount;
+    }
+
     public interface ISceneHandler
     {
         public void SetupActiveScene(I3dWorld world);
@@ -68,7 +75,7 @@ namespace Domain
 
     public interface ISurface
     {
-        public Vector3 GlobalMapPosition { get; set; }
+        //public Vector3 GlobalMapPosition { get; set; }
         public Vector3 GlobalMapRotation { get; set; }
         //public SurfaceData[,]? Global2DMap { get; set; }
         //public BitmapSource GlobalMapBitmap { get; set; }

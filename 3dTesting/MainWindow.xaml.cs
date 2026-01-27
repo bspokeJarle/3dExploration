@@ -163,7 +163,7 @@ namespace _3dTesting
             FadeOverlay.Opacity = 1;
 
             var animation = new DoubleAnimation
-            {
+            {             
                 From = 1,
                 To = 0,
                 Duration = TimeSpan.FromSeconds(durationSeconds),
@@ -180,7 +180,7 @@ namespace _3dTesting
 
             FadeOverlay.BeginAnimation(UIElement.OpacityProperty, animation);
 
-            await tcs.Task;
+            await tcs.Task ;
         }
 
         private async void Handle3dWorld()
@@ -237,13 +237,13 @@ namespace _3dTesting
                     GameHelpers.UpdateShipStatistics(healthRectangle, (Domain._3dSpecificsImplementations._3dObject)ship);
 
                 // Update minimap
-                if (surface?.ParentSurface?.GlobalMapPosition != null)
+                if (GameState.SurfaceState.GlobalMapPosition != null)
                 {
                     GameHelpers.UpdateMapOverlay(
                         mapOverlay,
                         surfaceMapBitmap,
-                        Convert.ToInt32(surface.ParentSurface.GlobalMapPosition.x),
-                        Convert.ToInt32(surface.ParentSurface.GlobalMapPosition.z)
+                        Convert.ToInt32(GameState.SurfaceState.GlobalMapPosition.x),
+                        Convert.ToInt32(GameState.SurfaceState.GlobalMapPosition.z)
                     );
                 }
             }

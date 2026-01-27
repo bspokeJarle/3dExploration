@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows;
-using _3dTesting._3dRotation;
 using Domain;
 using static Domain._3dSpecificsImplementations;
 using System.Windows.Media.Imaging;
 using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonSetup;
 
 namespace _3dTesting.Helpers
 {
@@ -58,7 +58,7 @@ namespace _3dTesting.Helpers
             if (surfaceMapBitmap != null && mapOverlay != null)
             {
                 //TODO: Get values from the setup later, hardcoded for now
-                mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect((mapX - 2000) / 75, (mapY - 2000) / 75, 72, 72));
+                mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect((mapX - MapSetup.bitmapMapCenterOffset) / MapSetup.tileSize, (mapY - MapSetup.bitmapMapCenterOffset) / MapSetup.tileSize, MapSetup.bitmapSize, MapSetup.bitmapSize));
             }
         }
 

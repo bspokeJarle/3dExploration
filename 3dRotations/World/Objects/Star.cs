@@ -1,4 +1,5 @@
 ﻿using _3dTesting.Helpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Controls;
 using System.Collections.Generic;
@@ -65,7 +66,7 @@ namespace _3dRotations.World.Objects
                 z = (float)(random.NextDouble() * 360.0)
             };
 
-            var surfacePos = parentSurface.GlobalMapPosition;
+            var surfacePos = GameState.SurfaceState.GlobalMapPosition;
             star.WorldPosition = new Vector3
             {
                 x = surfacePos.x,

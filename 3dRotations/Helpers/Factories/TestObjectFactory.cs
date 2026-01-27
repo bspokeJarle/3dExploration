@@ -75,7 +75,6 @@ namespace _3dTesting.Helpers
                 },
                 ParentSurface = new Surface
                 {
-                    GlobalMapPosition = new Vector3 { x = 0, y = 0, z = 0 },
                     RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>
                     {
                         new TriangleMeshWithColor

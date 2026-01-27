@@ -1,4 +1,5 @@
-﻿using Domain;
+﻿using CommonUtilities.CommonGlobalState;
+using Domain;
 using static Domain._3dSpecificsImplementations;
 
 
@@ -19,7 +20,7 @@ namespace CommonUtilities._3DHelpers
         }
         public static IVector3 GetLocalWorldPosition(this _3dObject inhabitant)
         {
-            var globalMapPosition = inhabitant.ParentSurface.GlobalMapPosition;
+            var globalMapPosition = GameState.SurfaceState.GlobalMapPosition;
             //Some objects will always be in location, they have no world position, just return
             if (inhabitant.WorldPosition.x == 0 && inhabitant.WorldPosition.y == 0 && inhabitant.WorldPosition.z == 0) return null;
             //Some objects fly around, they have this world position, so they appear when you are at that location in the map
@@ -48,7 +49,7 @@ namespace CommonUtilities._3DHelpers
             }
 
             // 3. Distance-based visibility check
-            var globalMapPosition = inhabitant.ParentSurface.GlobalMapPosition;
+            var globalMapPosition = GameState.SurfaceState.GlobalMapPosition;
             var inhabitantPosition = inhabitant.WorldPosition;
 
             float distance = (float)GetDistance(globalMapPosition, (Vector3)inhabitantPosition);

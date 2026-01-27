@@ -4,6 +4,7 @@ using System.Windows;
 using static Domain._3dSpecificsImplementations;
 using CommonUtilities.CommonSetup;
 using System.Collections.Generic;
+using CommonUtilities.CommonGlobalState;
 
 namespace GameAiAndControls.Controls
 {
@@ -112,19 +113,19 @@ namespace GameAiAndControls.Controls
             theObject.ObjectOffsets = new Vector3()
             {
                 x = theObject.ObjectOffsets.x,
-                y = (theObject.ParentSurface.GlobalMapPosition.y * _syncFactor) + _syncY,
+                y = (GameState.SurfaceState.GlobalMapPosition.y * _syncFactor) + _syncY,
                 z = theObject.ObjectOffsets.z
             };
             if (enableLogging)
             {
-                Logger.Log($"Seeder Y position: {theObject.ObjectOffsets.y} surface at {theObject.ParentSurface.GlobalMapPosition.y}");
+                Logger.Log($"Seeder Y position: {theObject.ObjectOffsets.y} surface at {GameState.SurfaceState.GlobalMapPosition.y}");
             }
         }
 
         public void ReleaseParticles()
         {
             lastRelease = DateTime.Now;
-            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, ParentObject.ParentSurface.GlobalMapPosition, this, 3, null);
+            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, GameState.SurfaceState.GlobalMapPosition, this, 3, null);
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)

@@ -21,8 +21,6 @@ namespace _3dRotations.Helpers
         const int landingAreaSize = 8;
         public static int maxTrees { get; set; }
         public static int maxHouses { get; set; }
-        const int clusterSizeMin = 2;
-        const int clusterSizeMax = 5;
         public static bool IncludeTestTreesInFrontOfPlatform = true;
         public static bool IncludeTestHousesInFrontOfPlatform = true;
 

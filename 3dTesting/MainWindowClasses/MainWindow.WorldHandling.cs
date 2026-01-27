@@ -2,6 +2,8 @@
 using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAudioInstances;
 using System.Collections.Generic;
@@ -152,6 +154,7 @@ namespace _3dTesting.MainWindowClasses
                 StarFieldHandler = null;
                 //When explosion has happened, reset the scene
                 world.SceneHandler.ResetActiveScene(world);
+                //Reset back to Default Map Position
                 return [];
             }
 

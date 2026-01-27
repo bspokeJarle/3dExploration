@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static Domain._3dSpecificsImplementations;
 
 namespace CommonUtilities.CommonSetup
 {
@@ -12,5 +13,6 @@ namespace CommonUtilities.CommonSetup
         public const int surfaceWidth = 1350;
         public const int viewPortSize = surfaceWidth / tileSize;
         public const int tileSize = 75;
+        public static Vector3 DefaultMapPosition  = new() { x = 95100, y = 0, z = 95200 };
     }
 }

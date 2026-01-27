@@ -1,4 +1,6 @@
-﻿using Domain;
+﻿using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
+using Domain;
 using GameAiAndControls.Input;
 using System;
 using System.Runtime.CompilerServices;
@@ -106,18 +108,18 @@ namespace GameAiAndControls.Controls
             if (e.KeyCode == Keys.Up) tilt += RotationStep;
             if (e.KeyCode == Keys.Down) tilt -= RotationStep;
 
-            if (e.  KeyCode == Keys.Space)
-            { 
+            if (e.KeyCode == Keys.Space)
+            {
                 if (ThrustOn == false)
-                {   
+                {
                     // Hvis en gammel instans fortsatt henger igjen (tail spiller):
                     if (_rocketInstance != null)
                     {
                         if (logging) Logger.Log("Audio: Force-stopping previous rocket instance before starting new.");
                         _rocketInstance.Stop(playEndSegment: false); // hard cut på gammel tail
                         _rocketInstance = null;
-                    }   
-                     
+                    }
+
                     if (_audio != null && _rocketSound != null)
                     {
                         if (logging) Logger.Log("Audio: Starting new rocket segmented loop.");
@@ -140,8 +142,8 @@ namespace GameAiAndControls.Controls
         {
             if (e.KeyCode == Keys.Space)
             {
-                ThrustOn = false; 
-                 Thrust = 0;
+                ThrustOn = false;
+                Thrust = 0;
                 thrustEffect = 0f;
                 verticalLiftFactor = 0f;
 
@@ -189,7 +191,7 @@ namespace GameAiAndControls.Controls
         }
 
         private void FireWeapon()
-        {                            
+        {
             // Fire weapon from ship
             var rot = new Vector3
             {
@@ -201,7 +203,7 @@ namespace GameAiAndControls.Controls
             ParentObject.WeaponSystems?.FireWeapon(
                 WeaponGuideCoordinates?.vert1,
                 WeaponStartCoordinates?.vert1,
-                ParentObject.ParentSurface.GlobalMapPosition,
+                GameState.SurfaceState.GlobalMapPosition,
                 WeaponType.Lazer,
                 ParentObject,
                 tilt);
@@ -214,7 +216,7 @@ namespace GameAiAndControls.Controls
             ParentObject?.Particles?.ReleaseParticles(
                 GuideCoordinates,
                 StartCoordinates,
-                ParentObject.ParentSurface.GlobalMapPosition,
+                GameState.SurfaceState.GlobalMapPosition,
                 this,
                 (int)Thrust,
                 false);
@@ -321,7 +323,7 @@ namespace GameAiAndControls.Controls
                     ParentObject?.Particles?.ReleaseParticles(
                         GuideCoordinates,
                         StartCoordinates,
-                        ParentObject.ParentSurface.GlobalMapPosition,
+                        GameState.SurfaceState.GlobalMapPosition,
                         this,
                         (int)Thrust,
                         true);
@@ -338,18 +340,18 @@ namespace GameAiAndControls.Controls
                         theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
                     {
                         landed = true;
-                         
+
                         if (landingSpeed > 5f)
                         {
-                             theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
-                              }
+                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
+                        }
                     }
                 }
 
                 theObject.ImpactStatus.HasCrashed = false;
             }
 
-             // The weapon needs to move as well 
+            // The weapon needs to move as well 
             if (theObject.WeaponSystems != null)
                 theObject.WeaponSystems.MoveWeapon(audioPlayer, soundRegistry);
 
@@ -431,8 +433,8 @@ namespace GameAiAndControls.Controls
             float maxZ = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
                          (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
 
-            ParentObject.ParentSurface.GlobalMapPosition.x = GetWrappedPosition(ParentObject.ParentSurface.GlobalMapPosition.x, inertiaX, 75, maxX);
-            ParentObject.ParentSurface.GlobalMapPosition.z = GetWrappedPosition(ParentObject.ParentSurface.GlobalMapPosition.z, inertiaZ, 0, maxZ);
+            GameState.SurfaceState.GlobalMapPosition.x = GetWrappedPosition(GameState.SurfaceState.GlobalMapPosition.x, inertiaX, 75, maxX);
+            GameState.SurfaceState.GlobalMapPosition.z = GetWrappedPosition(GameState.SurfaceState.GlobalMapPosition.z, inertiaZ, 0, maxZ);
 
             float delta = ShipCenterY - ParentObject.ObjectOffsets.y;
 
@@ -443,7 +445,7 @@ namespace GameAiAndControls.Controls
             }
             else
             {
-                ParentObject.ParentSurface.GlobalMapPosition.y += 2.5f;
+                GameState.SurfaceState.GlobalMapPosition.y += 2.5f;
             }
         }
 
@@ -460,21 +462,21 @@ namespace GameAiAndControls.Controls
                 fallVelocity = Math.Min(fallVelocity + adjustedGravity, MaxFallSpeed);
                 ParentObject.ObjectOffsets.y += fallVelocity;
 
-                if (ParentObject?.ParentSurface?.GlobalMapPosition.y > -75)
+                if (GameState.SurfaceState.GlobalMapPosition.y > -75)
                 {
-                    ParentObject.ParentSurface.GlobalMapPosition.y -= fallVelocity;
-                    if (ParentObject.ParentSurface.GlobalMapPosition.y < -75)
+                    GameState.SurfaceState.GlobalMapPosition.y -= fallVelocity;
+                    if (GameState.SurfaceState.GlobalMapPosition.y < -75)
                     {
-                        ParentObject.ParentSurface.GlobalMapPosition.y = -75;
+                        GameState.SurfaceState.GlobalMapPosition.y = -75;
                     }
                 }
             }
             else
-            { 
+            {
                 float upwardFactor = MathF.Cos(rotationX * DEG2RAD);
                 float thrustLift = Thrust * upwardFactor * 0.75f * deltaTime;
                 fallVelocity = Math.Max(fallVelocity - thrustLift, 0f);
-            } 
+            }
         }
 
         public void Dispose()
@@ -484,8 +486,6 @@ namespace GameAiAndControls.Controls
                 //Try to force-stop the rocket sound immediately
                 _rocketInstance.Stop(playEndSegment: false);
                 _rocketInstance = null;
-
-               
             }
 
             var hook = InputManager.SharedHook;
@@ -495,6 +495,9 @@ namespace GameAiAndControls.Controls
             hook.MouseMove -= GlobalHookMouseMovement;
             hook.MouseDown -= GlobalHookMouseDown;
             hook.MouseUp -= GlobalHookMouseUp;
+
+            //When disposing, reset the global map position to default
+            GameState.SurfaceState.GlobalMapPosition = new Vector3 { x = SurfaceSetup.DefaultMapPosition.x, y = SurfaceSetup.DefaultMapPosition.y, z = SurfaceSetup.DefaultMapPosition.z };
         }
 
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)

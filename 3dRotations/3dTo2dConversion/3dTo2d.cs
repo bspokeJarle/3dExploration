@@ -1,6 +1,7 @@
 ﻿using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -12,13 +13,8 @@ namespace _3dTesting._3dRotation
     public class _3dTo2d
     {
         private readonly bool enableLogging = false;
-        private const int perspectiveAdjustment = 1500;
-        private const int defaultObjectZoom = 2;
-
-        private const int screenSizeX = 1500;
-        private const int screenSizeY = 1024;
-        private const int screenCenterX = screenSizeX / 2;
-        private const int screenCenterY = screenSizeY / 2;
+        private const int screenCenterX = ScreenSetup.screenSizeX / 2;
+        private const int screenCenterY = ScreenSetup.screenSizeY / 2;
         private long CurrentFrame = 0;
 
         public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, long? currentFrame)
@@ -159,7 +155,7 @@ namespace _3dTesting._3dRotation
 
         private (double x, double y) ProjectVertex(Vector3 v, double objPosX, double objPosY, double objPosZ)
         {
-            double denom = -v.z + objPosZ + perspectiveAdjustment;
+            double denom = -v.z + objPosZ + ScreenSetup.perspectiveAdjustment;
 
             // If the point is on or behind the 'camera plane' -> do not render it.
             // (denom <= 0 means we cross the perspective plane and factor would flip)
@@ -168,17 +164,17 @@ namespace _3dTesting._3dRotation
                 return (double.NaN, double.NaN);
             }
 
-            double factor = perspectiveAdjustment / denom;
+            double factor = ScreenSetup.perspectiveAdjustment / denom;
 
-            double x = (v.x * factor * defaultObjectZoom) + objPosX;
-            double y = (v.y * factor * defaultObjectZoom) + objPosY;
+            double x = (v.x * factor * ScreenSetup.defaultObjectZoom) + objPosX;
+            double y = (v.y * factor * ScreenSetup.defaultObjectZoom) + objPosY;
             return (x, y);
         }
 
         private static bool IsOnScreen(double x, double y)
         {
-            return x >= -(screenSizeX * 0.2) && x <= (screenSizeX * 1.2)
-                && y >= -(screenSizeY * 0.2) && y <= (screenSizeY * 1.2);
+            return x >= -(ScreenSetup.screenSizeX * 0.2) && x <= (ScreenSetup.screenSizeX * 1.2)
+                && y >= -(ScreenSetup.screenSizeY * 0.2) && y <= (ScreenSetup.screenSizeY * 1.2);
         }
     }
 }

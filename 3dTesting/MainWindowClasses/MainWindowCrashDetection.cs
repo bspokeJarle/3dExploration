@@ -1,4 +1,5 @@
-﻿using CommonUtilities.CommonGlobalState.States;
+﻿using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -484,8 +485,8 @@ namespace _3dTesting.Helpers
             if (obj.ObjectOffsets != null)
                 Logger.Log($"[SNAPSHOT] ObjectOffsets: (x={obj.ObjectOffsets.x:0.##}, y={obj.ObjectOffsets.y:0.##}, z={obj.ObjectOffsets.z:0.##})");
 
-            if (obj.ParentSurface?.GlobalMapPosition != null)
-                Logger.Log($"[SNAPSHOT] GlobalMapPosition: (x={obj.ParentSurface.GlobalMapPosition.x:0.##}, z={obj.ParentSurface.GlobalMapPosition.z:0.##})");
+            if (GameState.SurfaceState.GlobalMapPosition != null)
+                Logger.Log($"[SNAPSHOT] GlobalMapPosition: (x={GameState.SurfaceState.GlobalMapPosition.x:0.##}, z={GameState.SurfaceState.GlobalMapPosition.z:0.##})");
 
             // Keep this: WORLD/MAP offset (may be null for screen-locked objects)
             var calculated = obj.CalculatedWorldOffset ?? new Vector3(0, 0, 0);
