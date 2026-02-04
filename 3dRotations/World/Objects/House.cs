@@ -1,5 +1,6 @@
 ﻿using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -29,7 +30,7 @@ namespace _3dRotations.World.Objects
             var houseDetails = HouseDetails();
             var houseCrashBox = HouseCrashBoxes();
 
-            var house = new _3dObject();
+            var house = new _3dObject{ ObjectId = GameState.ObjectIdCounter++ };
 
             if (houseWalls != null)
                 house.ObjectParts.Add(new _3dObjectPart { PartName = "HouseWalls", Triangles = houseWalls, IsVisible = true });

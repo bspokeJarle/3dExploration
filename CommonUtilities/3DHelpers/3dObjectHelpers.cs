@@ -171,6 +171,7 @@ namespace CommonUtilities._3DHelpers
 
             var copy = new _3dObject
             {
+                ObjectId = original.ObjectId,
                 ObjectOffsets = new Vector3
                 {
                     x = original.ObjectOffsets.x,

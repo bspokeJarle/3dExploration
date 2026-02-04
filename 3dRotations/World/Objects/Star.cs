@@ -42,7 +42,7 @@ namespace _3dRotations.World.Objects
             var starTriangles = BuildStarGeometry(size, chosenColor);
             _3dObjectHelpers.ApplyScaleToTriangles(starTriangles, ZoomRatio);
 
-            var star = new _3dObject();
+            var star = new _3dObject { ObjectId = GameState.ObjectIdCounter++ };
 
             // If something goes wrong, just return an empty object (safe fallback).
             if (starTriangles == null || starTriangles.Count == 0)

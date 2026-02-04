@@ -17,6 +17,7 @@ namespace _3DSpesificsUnitTests
         {
             var obj = new _3dObject
             {
+                ObjectId = 1,
                 CrashBoxes = new List<List<IVector3>>
                 {
                     new List<IVector3> { new Vector3 { x = -10, y = -10, z = -10 }, new Vector3 { x = 10, y = 10, z = 10 } }
@@ -48,6 +49,7 @@ namespace _3DSpesificsUnitTests
         {
             var obj = new _3dObject
             {
+                ObjectId = 2,
                 CrashBoxes = new List<List<IVector3>>
                 {
                     new List<IVector3> { new Vector3 { x = -5, y = 0, z = -5 }, new Vector3 { x = 5, y = 10, z = 5 } }
@@ -68,6 +70,7 @@ namespace _3DSpesificsUnitTests
         {
             var obj = new _3dObject
             {
+                ObjectId = 3,
                 CrashBoxes = new List<List<IVector3>>
                 {
                     new List<IVector3> { new Vector3 { x = -20, y = -5, z = -10 }, new Vector3 { x = 20, y = 5, z = 10 } }

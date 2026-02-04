@@ -6,6 +6,7 @@ using Domain;
 using System.Collections.Generic;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
+using GameAiAndControls.Controls.SeederControls;
 
 namespace _3dRotations.Scene.Scene1
 {
@@ -37,6 +38,7 @@ namespace _3dRotations.Scene.Scene1
             seeder.CrashBoxDebugMode = false;
             seeder.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(seeder);
+            GameState.SurfaceState.AiObjects.Add(seeder);
 
             var seeder2 = Seeder.CreateSeeder(Surface);
             //Initialize the seeder rotation
@@ -48,6 +50,7 @@ namespace _3dRotations.Scene.Scene1
             seeder2.CrashBoxDebugMode = false;
             seeder2.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(seeder2);
+            GameState.SurfaceState.AiObjects.Add(seeder2);
 
             var seeder3 = Seeder.CreateSeeder(Surface);
             //Initialize the seeder rotation
@@ -59,6 +62,7 @@ namespace _3dRotations.Scene.Scene1
             seeder3.CrashBoxDebugMode = false;
             seeder3.ImpactStatus = new ImpactStatus { };
             world.WorldInhabitants.Add(seeder3);
+            GameState.SurfaceState.AiObjects.Add(seeder3);
 
             //Get the surface viewport based on the global Map Position
             //Important: In a Scene, Surface should be amongst the first objects added to the world

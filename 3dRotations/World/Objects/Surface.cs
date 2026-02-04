@@ -27,7 +27,7 @@ namespace _3dRotations.World.Objects
         public I3dObject GetSurfaceViewPort()
         {
             var newSurface = new List<ITriangleMeshWithColor>();
-            var surface = new _3dObject();
+            var surface = new _3dObject { ObjectId = GameState.ObjectIdCounter++ };
             var viewPortCrashBoxes = new List<List<IVector3>>(); // Ny liste for ViewPort-crashboxes
 
             var viewPort = SurfaceGeneration.Return2DViewPort(ViewPortSize(), (int)GameState.SurfaceState.GlobalMapPosition.x, (int)GameState.SurfaceState.GlobalMapPosition.z, GameState.SurfaceState.Global2DMap, TileSize());

@@ -15,9 +15,11 @@ namespace CommonUtilities.CommonGlobalState.States
     public class SurfaceState
     {
         //Meta information for surface ecology, for AI behavior etc
-        public ScreenEcoMeta[,] ScreenEcoMetas {get;set;} = new ScreenEcoMeta[MapSetup.globalMapSize, MapSetup.globalMapSize];
+        public ScreenEcoMeta[,] ScreenEcoMetas {get;set;} = new ScreenEcoMeta[MapSetup.screensPrMap, MapSetup.screensPrMap];
+
         public SurfaceData[,]? Global2DMap { get; set; } = new SurfaceData[MapSetup.globalMapSize, MapSetup.globalMapSize];
         public BitmapSource? GlobalMapBitmap { get; set; }
         public Vector3 GlobalMapPosition { get; set; } = new Vector3 { x = SurfaceSetup.DefaultMapPosition.x, y = SurfaceSetup.DefaultMapPosition.y, z = SurfaceSetup.DefaultMapPosition.z };
+        public List<_3dObject> AiObjects { get; set; } = new List<_3dObject>();
     }
 }

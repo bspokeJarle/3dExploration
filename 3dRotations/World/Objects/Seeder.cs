@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Controls;
+using GameAiAndControls.Controls.SeederControls;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.World.Objects
@@ -62,7 +64,10 @@ namespace _3dRotations.World.Objects
             var seederGuide = ParticlesDirectionGuide();
             var seederStartGuide = ParticlesStartGuide();
 
-            var seeder = new _3dObject();
+            var seeder = new _3dObject
+            {
+                ObjectId = GameState.ObjectIdCounter++ // Set to a valid unique ID as appropriate for your application
+            };
 
             // Visible parts
             if (topHull != null)

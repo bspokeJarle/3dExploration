@@ -1,4 +1,5 @@
 ﻿using _3dTesting.Helpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Controls;
 using System.Collections.Generic;
@@ -26,7 +27,7 @@ namespace _3dRotations.World.Objects
 
 
             // Add orb as an inhabitant
-            var ship = new _3dObject();
+            var ship = new _3dObject{ ObjectId = GameState.ObjectIdCounter++ };
             if (upperTriangles == null || lowerTriangles == null || rearTriangles == null) return ship;
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "UpperPart", Triangles = upperTriangles, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "LowerPart", Triangles = lowerTriangles, IsVisible = true });

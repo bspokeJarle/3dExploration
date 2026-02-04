@@ -1,4 +1,5 @@
 ﻿using _3dTesting._3dWorld;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Controls;
 using System;
@@ -17,7 +18,10 @@ namespace _3dRotations.World.Objects
             var upperTriangles = UpperTriangles();
 
             // Add orb as an inhabitant
-            var ship = new _3dObject();
+            var ship = new _3dObject
+            {
+                ObjectId = GameState.ObjectIdCounter++
+            };
             if (upperTriangles == null) return ship;
             var bomberCrashBox = BomberCrashBoxes();
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "UpperPart", Triangles = upperTriangles, IsVisible = true });

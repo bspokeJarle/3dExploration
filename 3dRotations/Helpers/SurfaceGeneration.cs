@@ -1,4 +1,7 @@
-﻿using Domain;
+﻿using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
+using Domain;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -23,16 +26,6 @@ namespace _3dRotations.Helpers
         public static int maxHouses { get; set; }
         public static bool IncludeTestTreesInFrontOfPlatform = true;
         public static bool IncludeTestHousesInFrontOfPlatform = true;
-
-        public enum TerrainType
-        {
-            DeepWater,
-            Coast,
-            Grassland,
-            Highlands,
-            Mountains,
-            Unknown
-        }
 
         public static SurfaceData[,] ReturnPseudoRandomMap(int mapSize, out int maxHeight, int? maxTs, int? maxHs)
         {
@@ -64,8 +57,64 @@ namespace _3dRotations.Helpers
             // 8) Terrain bitmap should also use the same (final) maxHeight + final size
             int wrappedSize = surfaceValues.GetLength(0);
             GenerateTerrainBitmapSource(surfaceValues, wrappedSize, maxHeight);
-
+            // 9) Generate ecological meta-map for AI usage, stored in global state
+            GameState.SurfaceState.ScreenEcoMetas = GenerateEcoMap(surfaceValues);
             return surfaceValues;
+        }
+
+        private static ScreenEcoMeta[,] GenerateEcoMap(SurfaceData[,] map)
+        {
+            int tilesPerScreen = SurfaceSetup.viewPortSize; // 18
+            int tileSize = SurfaceSetup.tileSize;           // 75
+
+            var ecoMap = new ScreenEcoMeta[MapSetup.screensPrMap, MapSetup.screensPrMap];
+
+            // init (Y outer, X inner)
+            int screenCount = 0;
+            for (int screenY = 0; screenY < MapSetup.screensPrMap; screenY++)
+            {
+                for (int screenX = 0; screenX < MapSetup.screensPrMap; screenX++)
+                {
+                    screenCount++;
+                    ecoMap[screenY, screenX].ScreenCount = screenCount;
+                    ecoMap[screenY, screenX].BioTileCount = 0;
+                    ecoMap[screenY, screenX].BioTiles = new List<TileCoord>(128);
+                }
+            }
+
+            // IMPORTANT:
+            // We iterate GLOBAL tile indices (globalY/globalX),
+            // but store LOCAL WORLD coordinates in BioTiles: (global*tileSize).
+            for (int globalY = 1; globalY < MapSetup.globalMapSize - 1; globalY++)
+            {
+                for (int globalX = 1; globalX < MapSetup.globalMapSize - 1; globalX++)
+                {
+                    int screenY = globalY / tilesPerScreen;
+                    int screenX = globalX / tilesPerScreen;
+
+                    if ((uint)screenY >= (uint)MapSetup.screensPrMap || (uint)screenX >= (uint)MapSetup.screensPrMap)
+                        continue;
+
+                    var terrainType = GamePlayHelpers.GetTerrainType(map[globalY, globalX].mapDepth, MapSetup.maxHeight);
+                    if (terrainType == GamePlayHelpers.TerrainType.Grassland ||
+                        terrainType == GamePlayHelpers.TerrainType.Highlands)
+                    {
+                        var meta = ecoMap[screenY, screenX];
+                        meta.BioTileCount++;
+
+                        // Store LOCAL WORLD (map-local) coordinates, not tile indices
+                        meta.BioTiles.Add(new TileCoord
+                        {
+                            Y = globalY * tileSize, // local world Z/Y
+                            X = globalX * tileSize  // local world X
+                        });
+
+                        ecoMap[screenY, screenX] = meta;
+                    }
+                }
+            }
+
+            return ecoMap;
         }
 
 
@@ -288,22 +337,6 @@ namespace _3dRotations.Helpers
             return viewPort;
         }
 
-        public static TerrainType GetTerrainType(int height, int maxHeight)
-        {
-            if (height < maxHeight * 0.05)
-                return TerrainType.DeepWater;
-            else if (height < maxHeight * 0.15)
-                return TerrainType.Coast;
-            else if (height < maxHeight * 0.40)
-                return TerrainType.Grassland;
-            else if (height < maxHeight * 0.70)
-                return TerrainType.Highlands;
-            else if (height <= maxHeight)
-                return TerrainType.Mountains;
-            else
-                return TerrainType.Unknown;
-        }
-
         private static int GetActualMaxHeight(SurfaceData[,] map)
         {
             int sx = map.GetLength(0), sy = map.GetLength(1), m = 0;
@@ -330,8 +363,8 @@ namespace _3dRotations.Helpers
         // Tørt terreng i henhold til din enum (Grassland / Highlands)
         public static bool IsDryByEnum(int depth, int refMax)
         {
-            var t = GetTerrainType(depth, refMax);
-            return t == TerrainType.Grassland || t == TerrainType.Highlands;
+            var t = GamePlayHelpers.GetTerrainType(depth, refMax);
+            return t == GamePlayHelpers.TerrainType.Grassland || t == GamePlayHelpers.TerrainType.Highlands;
         }
 
         // Chebyshev-radius rundt (x,y) for vann/kyst (brukes som buffer)
@@ -442,8 +475,8 @@ namespace _3dRotations.Helpers
 
             bool IsDryByEnum(int d, int refMax)
             {
-                var t = GetTerrainType(d, refMax);
-                return t == TerrainType.Grassland || t == TerrainType.Highlands;
+                var t = GamePlayHelpers.GetTerrainType(d, refMax);
+                return t == GamePlayHelpers.TerrainType.Grassland || t == GamePlayHelpers.TerrainType.Highlands;
             }
 
             bool HasWaterWithinRadius(int cx, int cy, int r)
@@ -639,8 +672,8 @@ namespace _3dRotations.Helpers
 
             bool IsDryByEnumLocal(int d, int refMax)
             {
-                var t = GetTerrainType(d, refMax);
-                return t == TerrainType.Grassland || t == TerrainType.Highlands;
+                var t = GamePlayHelpers.GetTerrainType(d, refMax);
+                return t == GamePlayHelpers.TerrainType.Grassland || t == GamePlayHelpers.TerrainType.Highlands;
             }
 
             // require the whole quad to be dry for houses as well
@@ -937,9 +970,9 @@ namespace _3dRotations.Helpers
                     int d = H(x, y);
                     okCount++;
 
-                    var t = GetTerrainType(d, maxHeight);
-                    if (t == TerrainType.Highlands) highPool.Add((x, y, d));
-                    else if (t == TerrainType.Grassland) grassPool.Add((x, y, d));
+                    var t = GamePlayHelpers.GetTerrainType(d, maxHeight);
+                    if (t == GamePlayHelpers.TerrainType.Highlands) highPool.Add((x, y, d));
+                    else if (t == GamePlayHelpers.TerrainType.Grassland) grassPool.Add((x, y, d));
                 }
             }
 
@@ -967,7 +1000,7 @@ namespace _3dRotations.Helpers
             // 3a) Near-platform tower: find nearest Highlands within radius 17, fallback Grassland
             bool placedNear = false;
 
-            bool TryFindNearestNear(TerrainType wanted, out (int x, int y, int h) best)
+            bool TryFindNearestNear(GamePlayHelpers.TerrainType wanted, out (int x, int y, int h) best)
             {
                 int bestD2 = int.MaxValue;
                 best = default;
@@ -990,7 +1023,7 @@ namespace _3dRotations.Helpers
                         if (!IsOkTile(x, y)) continue;
 
                         int d = H(x, y);
-                        if (GetTerrainType(d, maxHeight) != wanted) continue;
+                        if (GamePlayHelpers.GetTerrainType(d, maxHeight) != wanted) continue;
 
                         if (d2 < bestD2)
                         {
@@ -1005,14 +1038,14 @@ namespace _3dRotations.Helpers
             }
 
             // Highlands near
-            if (TryFindNearestNear(TerrainType.Highlands, out var nearHi))
+            if (TryFindNearestNear(GamePlayHelpers.TerrainType.Highlands, out var nearHi))
             {
                 placedNear = TryAdd(nearHi.x, nearHi.y, nearHi.h);
                 Debug.WriteLine($"Near tower (Highlands) => ({nearHi.x},{nearHi.y}) depth={nearHi.h} placed={placedNear}");
             }
 
             // Grassland fallback near
-            if (!placedNear && TryFindNearestNear(TerrainType.Grassland, out var nearGr))
+            if (!placedNear && TryFindNearestNear(GamePlayHelpers.TerrainType.Grassland, out var nearGr))
             {
                 placedNear = TryAdd(nearGr.x, nearGr.y, nearGr.h);
                 Debug.WriteLine($"Near tower (Grassland) => ({nearGr.x},{nearGr.y}) depth={nearGr.h} placed={placedNear}");

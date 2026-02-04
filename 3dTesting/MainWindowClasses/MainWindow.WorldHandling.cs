@@ -3,6 +3,7 @@ using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using Domain;
 using GameAudioInstances;
@@ -16,6 +17,8 @@ namespace _3dTesting.MainWindowClasses
     public class GameWorldManager
     {
         private long FrameCounter = 0;
+        private int AiUpdateCounter = 0;
+        private const int AiUpdateInterval = 5; // Update offscreen AI every 5 frames
         private readonly _3dTo2d From3dTo2d = new();
         private readonly _3dRotationCommon Rotate3d = new();
         private readonly ParticleManager particleManager = new();
@@ -84,6 +87,9 @@ namespace _3dTesting.MainWindowClasses
             foreach (var inhabitant in deepCopiedWorld)
             {
                 if (!inhabitant.CheckInhabitantVisibility()) continue;
+                inhabitant.IsOnScreen = true;
+                var aiObj = GameState.SurfaceState.AiObjects.FirstOrDefault(ai=>ai.ObjectId == inhabitant.ObjectId);
+                if (aiObj != null) aiObj.IsOnScreen = true;
 
                 inhabitant.Movement?.MoveObject(inhabitant, audioPlayer, soundRegistry);
                 if (inhabitant.CrashBoxesFollowRotation) inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
@@ -156,6 +162,23 @@ namespace _3dTesting.MainWindowClasses
                 world.SceneHandler.ResetActiveScene(world);
                 //Reset back to Default Map Position
                 return [];
+            }
+
+            //Objects off screen don't need to be moved every frame
+            AiUpdateCounter++;
+            if (AiUpdateCounter >= AiUpdateInterval)
+            {
+                AiUpdateCounter = 0;
+                //Separate loop for objects that need to interact with AI while off screen
+                foreach (var aiObject in GameState.SurfaceState.AiObjects)
+                {
+                    //Move object offscreen, for now no audio when moving off screen
+                    if (aiObject.IsOnScreen == false)
+                    { 
+                        aiObject.Movement.MoveObject(aiObject, null, null);
+                        aiObject.IsOnScreen = false;
+                    }
+                }
             }
 
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);

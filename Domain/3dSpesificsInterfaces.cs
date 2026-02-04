@@ -24,9 +24,19 @@ namespace Domain
 
     public struct ScreenEcoMeta
     {
-        // Counts
-        public int GreenTileCount;
-        public int TotalTileCount;
+        // BioMass related data
+        public int BioTileCount;
+        //What screen number is this
+        public int ScreenCount;
+
+        // Bio tiles inside THIS screen (tile coords in global map)
+        public List<TileCoord> BioTiles;
+    }
+
+    public struct TileCoord
+    {
+        public int Y;
+        public int X;
     }
 
     public interface ISceneHandler
@@ -108,6 +118,7 @@ namespace Domain
 
     public interface I3dObject
     {
+        public int ObjectId { get; set; }
         public string ObjectName { get; set; }
         public int? RotationOffsetX { get; set; }
         public int? RotationOffsetY { get; set; }
@@ -127,6 +138,7 @@ namespace Domain
         public int? SurfaceBasedId { get; set; }
         public bool? CrashBoxDebugMode { get; set; }
         public IVector3? CalculatedWorldOffset { get; set; }
+        public bool IsOnScreen { get; set; }
     }
 
     public interface IImpactStatus

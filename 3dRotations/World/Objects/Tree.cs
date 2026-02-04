@@ -1,5 +1,6 @@
 ﻿using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,7 +20,7 @@ namespace _3dRotations.World.Objects
             var trunkTriangles = TrunkTriangles();
             var foliageTriangles = FoliageTriangles();
             var treeCrashBox = TreeCrashBoxes();
-            var tree = new _3dObject();
+            var tree = new _3dObject{ ObjectId = GameState.ObjectIdCounter++ };
 
             if (trunkTriangles != null)
                 tree.ObjectParts.Add(new _3dObjectPart { PartName = "TreeTrunk", Triangles = trunkTriangles, IsVisible = true });

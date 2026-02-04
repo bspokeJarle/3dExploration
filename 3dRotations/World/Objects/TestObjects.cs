@@ -1,5 +1,6 @@
 ﻿using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
+using CommonUtilities.CommonGlobalState;
 using STL_Tools;
 using System;
 using System.Linq;
@@ -14,7 +15,7 @@ namespace _3dRotations.World.Objects
             var rd = new Random();
             var obj = rd.Next(1, 4);
 
-            var testobj = new _3dObject();
+            var testobj = new _3dObject { ObjectId = GameState.ObjectIdCounter++ };
             var modelReader = new STLReader();
 
             if (obj == 1)

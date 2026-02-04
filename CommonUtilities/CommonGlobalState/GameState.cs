@@ -16,5 +16,6 @@ namespace CommonUtilities.CommonGlobalState
         public static ShipState ShipState = new ShipState();
         public static SurfaceState SurfaceState = new SurfaceState();
         public static long FrameCount { get; set; } = 0;
+        public static int ObjectIdCounter { get; set; } = 0;
     }
 }

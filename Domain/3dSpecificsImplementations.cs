@@ -29,6 +29,7 @@ namespace Domain
 
         public class _3dObject : I3dObject
         {
+            public required int ObjectId { get; set; }
             public List<I3dObjectPart> ObjectParts { get; set; } = new();
             public int? RotationOffsetY { get; set; }
             public int? RotationOffsetX { get; set; }
@@ -49,6 +50,7 @@ namespace Domain
             public bool? CrashBoxDebugMode { get; set; }
             public IWeapon? WeaponSystems { get; set; }
             public IVector3? CalculatedWorldOffset { get; set; }
+            public bool IsOnScreen { get; set; } = false;
         }
         public class _3dObjectPart : I3dObjectPart
         {

@@ -15,5 +15,6 @@ namespace CommonUtilities.CommonSetup
         public static int maxHeight = 75; //Height elevation for the map
         public const int bitmapMapCenterOffset = 2000; //Offset to center the bitmap on the map position
         public const int bitmapSize = 72; //Size of the bitmap on screen
+        public static int screensPrMap = (MapSetup.globalMapSize / SurfaceSetup.viewPortSize);
     }
 }
