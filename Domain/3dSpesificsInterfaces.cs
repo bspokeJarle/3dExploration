@@ -12,6 +12,7 @@ namespace Domain
         public int mapDepth;
         public int mapId;
         public bool hasLandbasedObject;
+        public required bool isInfected;
 
         public CrashBoxData? crashBox; // Null if not relevant
         public struct CrashBoxData

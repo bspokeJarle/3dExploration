@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using GameAiAndControls.Controls.SeederControls;
+using System;
 
 namespace _3dRotations.Scene.Scene1
 {
@@ -28,41 +29,22 @@ namespace _3dRotations.Scene.Scene1
             ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
 
-            var seeder = Seeder.CreateSeeder(Surface);
-            //Initialize the seeder rotation
-            seeder.Rotation = new Vector3 { };
-            seeder.WorldPosition = new Vector3 { x = 95700, y = 0, z = 92000 };
-            seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-            seeder.ObjectName = "Seeder";
-            seeder.Movement = new SeederControls();
-            seeder.CrashBoxDebugMode = false;
-            seeder.ImpactStatus = new ImpactStatus { };
-            world.WorldInhabitants.Add(seeder);
-            GameState.SurfaceState.AiObjects.Add(seeder);
+            for (int i = 0; i < 20; i++)
+            {
+                var rmd = new Random();
 
-            var seeder2 = Seeder.CreateSeeder(Surface);
-            //Initialize the seeder rotation
-            seeder2.Rotation = new Vector3 { };
-            seeder2.WorldPosition = new Vector3 { x = 96200, y = 0, z = 93000 };
-            seeder2.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 600 };
-            seeder2.ObjectName = "Seeder";
-            seeder2.Movement = new SeederControls();
-            seeder2.CrashBoxDebugMode = false;
-            seeder2.ImpactStatus = new ImpactStatus { };
-            world.WorldInhabitants.Add(seeder2);
-            GameState.SurfaceState.AiObjects.Add(seeder2);
-
-            var seeder3 = Seeder.CreateSeeder(Surface);
-            //Initialize the seeder rotation
-            seeder3.Rotation = new Vector3 { };
-            seeder3.WorldPosition = new Vector3 { x = 94000, y = 0, z = 90000 };
-            seeder3.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 600 };
-            seeder3.ObjectName = "Seeder";
-            seeder3.Movement = new SeederControls();
-            seeder3.CrashBoxDebugMode = false;
-            seeder3.ImpactStatus = new ImpactStatus { };
-            world.WorldInhabitants.Add(seeder3);
-            GameState.SurfaceState.AiObjects.Add(seeder3);
+                var seeder = Seeder.CreateSeeder(Surface);
+                //Initialize the seeder rotation
+                seeder.Rotation = new Vector3 { };
+                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-15000, 15000), y = 0, z = 92000 + rmd.Next(-15000, 15000)};
+                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                seeder.ObjectName = "Seeder";
+                seeder.Movement = new SeederControls();
+                seeder.CrashBoxDebugMode = false;
+                seeder.ImpactStatus = new ImpactStatus { };
+                world.WorldInhabitants.Add(seeder);
+                GameState.SurfaceState.AiObjects.Add(seeder);
+            }
 
             //Get the surface viewport based on the global Map Position
             //Important: In a Scene, Surface should be amongst the first objects added to the world

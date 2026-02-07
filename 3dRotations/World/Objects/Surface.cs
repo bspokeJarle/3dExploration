@@ -59,6 +59,11 @@ namespace _3dRotations.World.Objects
 
                     var color1 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, MaxHeight());
                     var color2 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, MaxHeight());
+                    if (currentTile.isInfected)
+                    {
+                        color1 = "FF0000"; // Red for infected tiles
+                        color2 = "FF0000"; // Red for infected tiles
+                    }
 
                     if (currentTile.hasLandbasedObject && debugSurfaceBasedObjects)
                     {

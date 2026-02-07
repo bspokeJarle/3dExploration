@@ -512,9 +512,9 @@ namespace _3dRotations.World.Objects
             var direction = new List<ITriangleMeshWithColor>
             {
                 CreateTriangleOutward(
-                    new Vector3 { x =  12, y = -10, z = -40 },
-                    new Vector3 { x = -12, y = -10, z = -40 },
-                    new Vector3 { x =   0, y = -20, z = -40 },
+                    new Vector3 { x =  12, y = -10, z = -20 },
+                    new Vector3 { x = -12, y = -10, z = -20 },
+                    new Vector3 { x =   0, y = -20, z = -20 },
                     BodyCenter,
                     "ffffff",
                     noHidden: true

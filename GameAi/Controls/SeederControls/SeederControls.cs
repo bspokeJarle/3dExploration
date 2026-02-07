@@ -103,7 +103,7 @@ namespace GameAiAndControls.Controls.SeederControls
         {
             try
             {
-                if (Logger.EnableFileLogging) Logger.Log(msg);
+                if (Logger.EnableFileLogging && enableLogging) Logger.Log(msg);
             }
             catch { /* never crash AI because of logging */ }
         }
@@ -122,6 +122,7 @@ namespace GameAiAndControls.Controls.SeederControls
         // -------------------------
         public Vector3? MoveWorldPositionAccordingToAi(bool isOnScreen, I3dObject moveThisObject)
         {
+            if (moveThisObject.WorldPosition.x == 0 && moveThisObject.WorldPosition.y == 0 && moveThisObject.WorldPosition.z == 0) return (Vector3)moveThisObject.WorldPosition;
             // Hard guards (only legit null exits)
             if (moveThisObject == null)
                 return null;
@@ -174,10 +175,11 @@ namespace GameAiAndControls.Controls.SeederControls
             if (dt > 0.1f) dt = 0.1f;
             if (dt < 1f / 240f) dt = 1f / 240f;
 
-            // Speed model
+            // Speed model - speed to cross a screen
             const float secondsPerScreenCross = 5f;
             float screenWorldWidth = SurfaceSetup.viewPortSize * SurfaceSetup.tileSize;
 
+            //And speed to cross a tile when hunting locally
             float globalSpeed = screenWorldWidth / secondsPerScreenCross;
             float localSpeed = SurfaceSetup.tileSize / 3f;
 
@@ -297,6 +299,9 @@ namespace GameAiAndControls.Controls.SeederControls
                         // Local cooldown after reaching a bio tile
                         s.NextLocalRetargetTicks = nowTicks + (long)(3f * TimeSpan.TicksPerSecond);
                         SafeLog($"AI:LOCAL_COOLDOWN set=3.00s onScreen={isOnScreen} ObjectId:{id}");
+
+                        // Start seeding, convert tile and release particles
+                        HandleStallSeeding(moveThisObject, id, s, dt, isOnScreen);
                     }
 
                     return s.AuthWorldPos;
@@ -435,6 +440,19 @@ namespace GameAiAndControls.Controls.SeederControls
             s.NextGlobalDecisionTicks = nowTicks;
             return s.AuthWorldPos;
         }
+
+        private void HandleStallSeeding(I3dObject moveThisObject, int id, AiState s, double dt, bool isOnScreen)
+        {
+            //Convert current tile to red\infected bio tile
+            var tileX = (int)moveThisObject.WorldPosition.x / SurfaceSetup.tileSize;
+            //tileZ is the depth position, not Y
+            var tileZ = (int)moveThisObject.WorldPosition.z / SurfaceSetup.tileSize;
+            var tile = GameState.SurfaceState.Global2DMap[tileZ, tileX];
+            tile.isInfected = true;
+            //Release particles at this location if on screen, off screen particles are not visible
+            if (isOnScreen) ReleaseParticles(moveThisObject);
+        }
+
         // *** AI Code Above ***
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -442,9 +460,10 @@ namespace GameAiAndControls.Controls.SeederControls
             // Lazy audio-konfig – gjøres første gang MoveObject kalles
             ConfigureAudio(audioPlayer, soundRegistry);
 
+            // Update world position according to AI
             theObject.WorldPosition = MoveWorldPositionAccordingToAi(theObject.IsOnScreen, theObject);
 
-            if (lastRelease.Ticks + releaseInterval < DateTime.Now.Ticks) ReleaseParticles();
+            
             //Set parent object
             ParentObject = theObject;
             if (theObject.Rotation != null) theObject.Rotation.y = Yrotation;
@@ -517,10 +536,10 @@ namespace GameAiAndControls.Controls.SeederControls
             };
         }
 
-        public void ReleaseParticles()
+        public void ReleaseParticles(I3dObject theObject)
         {
-            lastRelease = DateTime.Now;
-            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, GameState.SurfaceState.GlobalMapPosition, this, 3, null);
+            if (StartCoordinates == null || GuideCoordinates == null) return;
+            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, theObject.WorldPosition, this, 1, null);
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)

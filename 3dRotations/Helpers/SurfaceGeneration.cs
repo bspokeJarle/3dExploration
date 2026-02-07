@@ -131,7 +131,7 @@ namespace _3dRotations.Helpers
                 {
                     mapId++;
                     float perlinValue = (float)random.NextDouble(); // Placeholder for actual Perlin noise function
-                    map[i, j] = new SurfaceData { mapDepth = (int)(Math.Pow(perlinValue, heightExponent) * 20 * zFactor), mapId = mapId };
+                    map[i, j] = new SurfaceData { mapDepth = (int)(Math.Pow(perlinValue, heightExponent) * 20 * zFactor), mapId = mapId, isInfected = false };
                     if (map[i, j].mapDepth > maxHeight) maxHeight = map[i, j].mapDepth;
                 }
             }
