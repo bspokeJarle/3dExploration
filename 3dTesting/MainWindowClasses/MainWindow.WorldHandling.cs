@@ -174,7 +174,7 @@ namespace _3dTesting.MainWindowClasses
                 return [];
             }
 
-            if (AiUpdateCounter >= AiUpdateInterval)
+            if (doAiMark)
             {
                 AiUpdateCounter = 0;
                 //Separate loop for objects that need to interact with AI while off screen

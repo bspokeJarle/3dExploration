@@ -26,9 +26,6 @@ namespace GameAiAndControls.Controls.SeederControls
         private float Xrotation = 90;
         private float Zrotation = 0;
 
-        private DateTime lastRelease = DateTime.Now;
-        private readonly long releaseInterval = 10000000 * 10;
-
         private bool _syncInitialized = false;
         private float _syncY = 0;
         //Factor to stay in sync with surface movement
@@ -79,6 +76,15 @@ namespace GameAiAndControls.Controls.SeederControls
             public long LastHeartbeatTicks = 0;
             public long LastWaitLogTicks = 0;
             public long LastDecisionLogTicks = 0;
+
+            public long NextStallParticleTicks = 0;
+            public long NextStallInfectTick = 0;
+            public int StallTileX = int.MinValue;
+            public int StallTileZ = int.MinValue;
+
+            public bool IsStalling = false;
+            public long StallUntilTicks = 0;
+            public int StepsRemaining = 0;
         }
 
         private readonly Dictionary<int, AiState> _aiStates = new();
@@ -122,7 +128,10 @@ namespace GameAiAndControls.Controls.SeederControls
         // -------------------------
         public Vector3? MoveWorldPositionAccordingToAi(bool isOnScreen, I3dObject moveThisObject)
         {
-            if (moveThisObject.WorldPosition.x == 0 && moveThisObject.WorldPosition.y == 0 && moveThisObject.WorldPosition.z == 0) return (Vector3)moveThisObject.WorldPosition;
+            // Keep your existing special-case
+            if (moveThisObject.WorldPosition.x == 0 && moveThisObject.WorldPosition.y == 0 && moveThisObject.WorldPosition.z == 0)
+                return (Vector3)moveThisObject.WorldPosition;
+
             // Hard guards (only legit null exits)
             if (moveThisObject == null)
                 return null;
@@ -142,7 +151,6 @@ namespace GameAiAndControls.Controls.SeederControls
             // If ecoMap is missing, DON'T flicker: just hold position
             if (ecoMap == null || surfaceState == null)
             {
-                // Ensure auth pos is initialized so we can hold deterministically
                 if (!s.AuthPosInitialized)
                 {
                     s.AuthWorldPos = (Vector3)moveThisObject.WorldPosition;
@@ -161,40 +169,47 @@ namespace GameAiAndControls.Controls.SeederControls
 
             Vector3 current = s.AuthWorldPos;
 
-            // dt (per object)
+            // dt (kept for logging visibility, not driving movement now)
             long stamp = Stopwatch.GetTimestamp();
             if (s.LastMoveStamp == 0)
             {
                 s.LastMoveStamp = stamp;
-                return s.AuthWorldPos; // IMPORTANT: never null here
+                return s.AuthWorldPos; // never null here
             }
 
             float dt = (stamp - s.LastMoveStamp) / (float)Stopwatch.Frequency;
             s.LastMoveStamp = stamp;
 
-            if (dt > 0.1f) dt = 0.1f;
+            if (dt > 1.0f) dt = 1.0f;
             if (dt < 1f / 240f) dt = 1f / 240f;
 
-            // Speed model - speed to cross a screen
+            long nowTicks = DateTime.Now.Ticks;
+
+            // ------------------------------------------------------------
+            // CONFIG
+            // ------------------------------------------------------------
+            const int OffscreenStepFactor = 6;   // configurable, start with 6
+            const int MaxLocalSteps = 180;       // cap local target distance by steps (60Hz baseline)
+
+            // ------------------------------------------------------------
+            // Speed model (same as before)
+            // ------------------------------------------------------------
             const float secondsPerScreenCross = 5f;
             float screenWorldWidth = SurfaceSetup.viewPortSize * SurfaceSetup.tileSize;
 
-            //And speed to cross a tile when hunting locally
             float globalSpeed = screenWorldWidth / secondsPerScreenCross;
             float localSpeed = SurfaceSetup.tileSize / 3f;
 
             float speed = s.TargetIsLocalBio ? localSpeed : globalSpeed;
 
-            // Offscreen slowdown only for GLOBAL movement (not local hunting)
+            // Offscreen slowdown only for GLOBAL movement (keep your rule)
             if (!isOnScreen && !s.TargetIsLocalBio)
                 speed *= 0.7f;
 
-            float step = speed * dt;
-
-            const float reachScreen = 120f;
-            const float reachLocal = 8f;
-
-            long nowTicks = DateTime.Now.Ticks;
+            // Fixed step model (60Hz baseline)
+            float step60 = speed / 60f;
+            float stepOff = step60 * OffscreenStepFactor;
+            float step = isOnScreen ? step60 : stepOff;
 
             // Heartbeat (1/sec per object)
             if (nowTicks - s.LastHeartbeatTicks >= TimeSpan.TicksPerSecond)
@@ -209,74 +224,55 @@ namespace GameAiAndControls.Controls.SeederControls
                 string lNext = s.NextLocalRetargetTicks == 0 ? "n/a"
                     : $"{(s.NextLocalRetargetTicks - nowTicks) / (double)TimeSpan.TicksPerSecond:0.00}s";
 
+                string stepsStr = s.StepsRemaining > 0 ? s.StepsRemaining.ToString() : "0";
+
                 SafeLog(
                     $"AI:HB onScreen={isOnScreen} state={stateName} " +
                     $"hasTarget={s.HasMovementTarget} localTarget={s.TargetIsLocalBio} " +
-                    $"dt={dt:0.0000} step={step:0.00} speed={speed:0.00}/s " +
-                    $"pos={V2(current)} target={targetStr} " +
+                    $"dt={dt:0.0000} step60={step60:0.00} stepOff={stepOff:0.00} factor={OffscreenStepFactor} " +
+                    $"pos={V2(current)} target={targetStr} stepsRemaining={stepsStr} " +
                     $"cooldowns globalNext={gNext} localNext={lNext} ObjectId:{id}"
                 );
             }
 
             // ------------------------------------------------------------
-            // If we have a target: move toward it
+            // If we have a target: move toward it by step-count (no reach check)
             // ------------------------------------------------------------
             if (s.HasMovementTarget)
             {
-                float reach = s.TargetIsLocalBio ? reachLocal : reachScreen;
-
-                // Dynamic abort timeout based on distance / speed
-                float dist = DistanceXZ(current, s.TargetWorld);
-
-                if (dist > reach)
+                // Initialize steps on first move toward this target
+                if (s.StepsRemaining <= 0)
                 {
-                    float minSpeed = Math.Max(1f, speed);
-                    float etaSeconds = dist / minSpeed;
+                    float dist = DistanceXZ(current, s.TargetWorld);
+                    int stepsNeeded = (int)Math.Ceiling(dist / Math.Max(0.0001f, step60));
+                    if (stepsNeeded < 1) stepsNeeded = 1;
 
-                    float margin = s.TargetIsLocalBio ? 2.0f : 5.0f;
+                    s.StepsRemaining = stepsNeeded;
 
-                    float maxSeconds = etaSeconds + margin;
-                    if (s.TargetIsLocalBio)
-                        maxSeconds = Math.Clamp(maxSeconds, 4f, 12f);
-                    else
-                        maxSeconds = Math.Clamp(maxSeconds, 8f, 30f);
-
-                    if (s.TargetStartTicks != 0)
-                    {
-                        long ageTicks = nowTicks - s.TargetStartTicks;
-                        if (ageTicks > (long)(maxSeconds * TimeSpan.TicksPerSecond))
-                        {
-                            SafeLog(
-                                $"AI:TARGET_ABORT_DYNAMIC age={(ageTicks / (double)TimeSpan.TicksPerSecond):0.00}s " +
-                                $"max={maxSeconds:0.00}s eta={etaSeconds:0.00}s dist={dist:0.0} " +
-                                $"onScreen={isOnScreen} localTarget={s.TargetIsLocalBio} pos={V2(current)} target={V2(s.TargetWorld)} ObjectId:{id}"
-                            );
-
-                            // Reset and immediately hold pos (never null)
-                            s.HasMovementTarget = false;
-                            s.TargetIsLocalBio = false;
-                            s.IsSearchingGlobally = true;
-                            s.IsHuntingLocally = false;
-                            s.NextGlobalDecisionTicks = nowTicks; // immediate decision next call
-                            return s.AuthWorldPos;
-                        }
-                    }
+                    SafeLog(
+                        $"AI:STEPS_INIT onScreen={isOnScreen} localTarget={s.TargetIsLocalBio} " +
+                        $"dist={dist:0.0} step60={step60:0.00} stepsNeeded={stepsNeeded} " +
+                        $"pos={V2(current)} target={V2(s.TargetWorld)} ObjectId:{id}"
+                    );
                 }
 
                 Vector3 next = SeederMovementHelpers.StepTowardTargetWorldXZ(current, s.TargetWorld, step);
 
+                int dec = isOnScreen ? 1 : OffscreenStepFactor;
+                s.StepsRemaining -= dec;
+
                 SafeLog(
                     $"AI:MOVE({(isOnScreen ? "onscreen" : "offscreen")}) " +
-                    $"localTarget={s.TargetIsLocalBio} dt={dt:0.0000} step={step:0.00} reach={reach:0.0} " +
+                    $"localTarget={s.TargetIsLocalBio} step={step:0.00} dec={dec} stepsLeft={s.StepsRemaining} " +
                     $"cur={V2(current)} next={V2(next)} target={V2(s.TargetWorld)} ObjectId:{id}"
                 );
 
-                // Persist authoritative position immediately (so no flicker)
                 s.AuthWorldPos = next;
 
-                if (SeederMovementHelpers.IsCloseEnoughXZ(next, s.TargetWorld, reach))
+                // ARRIVAL: purely by step count
+                if (s.StepsRemaining <= 0)
                 {
-                    s.AuthWorldPos = s.TargetWorld; // snap
+                    s.AuthWorldPos = s.TargetWorld; // snap exactly
                     next = s.AuthWorldPos;
 
                     if (s.TargetIsLocalBio)
@@ -285,6 +281,7 @@ namespace GameAiAndControls.Controls.SeederControls
                         SafeLog($"AI:REACHED_SCREEN_CENTER onScreen={isOnScreen} pos={V2(next)} ObjectId:{id}");
 
                     s.HasMovementTarget = false;
+                    s.StepsRemaining = 0;
 
                     if (!s.TargetIsLocalBio)
                     {
@@ -296,12 +293,12 @@ namespace GameAiAndControls.Controls.SeederControls
                     }
                     else
                     {
-                        // Local cooldown after reaching a bio tile
+                        // Local cooldown after reaching a bio tile (stall window)
                         s.NextLocalRetargetTicks = nowTicks + (long)(3f * TimeSpan.TicksPerSecond);
                         SafeLog($"AI:LOCAL_COOLDOWN set=3.00s onScreen={isOnScreen} ObjectId:{id}");
 
-                        // Start seeding, convert tile and release particles
-                        HandleStallSeeding(moveThisObject, id, s, dt, isOnScreen);
+                        // Optional: do an immediate stall tick right now too
+                        HandleStallSeeding(id, s, dt, isOnScreen, moveThisObject);
                     }
 
                     return s.AuthWorldPos;
@@ -346,7 +343,6 @@ namespace GameAiAndControls.Controls.SeederControls
                     int nextSY = curSY + stepY;
                     int nextSX = curSX + stepX;
 
-                    // Clamp
                     if (nextSY < 0) nextSY = 0;
                     if (nextSX < 0) nextSX = 0;
                     if (nextSY >= ecoMap.GetLength(0)) nextSY = ecoMap.GetLength(0) - 1;
@@ -357,17 +353,18 @@ namespace GameAiAndControls.Controls.SeederControls
                     s.TargetIsLocalBio = false;
                     s.TargetStartTicks = nowTicks;
 
-                    SafeLog($"AI:GLOBAL_STEP onScreen={isOnScreen} from=[{curSY},{curSX}] best=[{bestSY},{bestSX}] next=[{nextSY},{nextSX}] smell={ecoMap[bestSY, bestSX].BioTileCount} target={V2(s.TargetWorld)} ObjectId:{id}");
+                    s.StepsRemaining = 0;
 
-                    // Hold position this tick; movement begins next call (no flicker)
+                    SafeLog($"AI:GLOBAL_STEP onScreen={isOnScreen} from=[{curSY},{curSX}] best=[{bestSY},{bestSX}] next=[{nextSY},{nextSX}] smell={ecoMap[bestSY, bestSX].BioTileCount} target={V2(s.TargetWorld)} ObjectId:{id}");
                     return s.AuthWorldPos;
                 }
 
-                // No smell -> roam
                 s.TargetWorld = SeederMovementHelpers.GetRandomRoamTargetWorldXZ(current, roamTiles);
                 s.HasMovementTarget = true;
                 s.TargetIsLocalBio = false;
                 s.TargetStartTicks = nowTicks;
+
+                s.StepsRemaining = 0;
 
                 SafeLog($"AI:GLOBAL_ROAM onScreen={isOnScreen} target={V2(s.TargetWorld)} ObjectId:{id}");
                 return s.AuthWorldPos;
@@ -380,6 +377,7 @@ namespace GameAiAndControls.Controls.SeederControls
             {
                 const float localRetargetSeconds = 3f;
 
+                // During local cooldown, we STALL: infect + release particles in this full window
                 if (nowTicks < s.NextLocalRetargetTicks)
                 {
                     if (nowTicks - s.LastWaitLogTicks > (TimeSpan.TicksPerSecond / 2))
@@ -387,6 +385,13 @@ namespace GameAiAndControls.Controls.SeederControls
                         s.LastWaitLogTicks = nowTicks;
                         SafeLog($"AI:LOCAL_WAIT onScreen={isOnScreen} cooldown={(s.NextLocalRetargetTicks - nowTicks) / (double)TimeSpan.TicksPerSecond:0.00}s pos={V2(current)} cursor={s.LocalPickCursor} ObjectId:{id}");
                     }
+
+                    // Stall signature: no target + local mode
+                    if (!s.HasMovementTarget && s.TargetIsLocalBio)
+                    {
+                        HandleStallSeeding(id, s, dt, isOnScreen, moveThisObject);
+                    }
+
                     return s.AuthWorldPos;
                 }
 
@@ -409,12 +414,38 @@ namespace GameAiAndControls.Controls.SeederControls
                 {
                     s.LocalPickCursor = cursor;
 
-                    s.TargetWorld = new Vector3 { x = localTarget.x, y = current.y, z = localTarget.z };
+                    // Candidate target
+                    var candidate = new Vector3 { x = localTarget.x, y = current.y, z = localTarget.z };
+
+                    // Local target distance cap by steps (60Hz baseline, local speed baseline)
+                    // NOTE: This cap is independent of on/offscreen right now; it's based on "onscreen steps"
+                    float localStep60 = localSpeed / 60f;
+                    float dist = DistanceXZ(current, candidate);
+                    int stepsNeeded = (int)Math.Ceiling(dist / Math.Max(0.0001f, localStep60));
+                    if (stepsNeeded < 1) stepsNeeded = 1;
+
+                    if (stepsNeeded > MaxLocalSteps)
+                    {
+                        SafeLog(
+                            $"AI:LOCAL_TARGET_REJECT tooFar stepsNeeded={stepsNeeded} max={MaxLocalSteps} dist={dist:0.0} " +
+                            $"pos={V2(current)} cand={V2(candidate)} cursor={s.LocalPickCursor} ObjectId:{id}"
+                        );
+
+                        // Force fast repick next tick (stay in LOCAL mode)
+                        s.NextLocalRetargetTicks = nowTicks;
+                        s.HasMovementTarget = false;
+                        s.TargetIsLocalBio = true;
+                        return s.AuthWorldPos;
+                    }
+
+                    s.TargetWorld = candidate;
                     s.HasMovementTarget = true;
                     s.TargetIsLocalBio = true;
                     s.TargetStartTicks = nowTicks;
 
-                    SafeLog($"AI:LOCAL_TARGET onScreen={isOnScreen} target={V2(s.TargetWorld)} cursor={s.LocalPickCursor} ObjectId:{id}");
+                    s.StepsRemaining = 0;
+
+                    SafeLog($"AI:LOCAL_TARGET onScreen={isOnScreen} target={V2(s.TargetWorld)} stepsNeeded={stepsNeeded} cursor={s.LocalPickCursor} ObjectId:{id}");
                     return s.AuthWorldPos;
                 }
 
@@ -427,6 +458,8 @@ namespace GameAiAndControls.Controls.SeederControls
                 s.TargetIsLocalBio = false;
                 s.NextGlobalDecisionTicks = nowTicks;
 
+                s.StepsRemaining = 0;
+
                 SafeLog($"AI:LOCAL_DEPLETED -> GLOBAL_SEARCH onScreen={isOnScreen} cursor={s.LocalPickCursor} ObjectId:{id}");
                 return s.AuthWorldPos;
             }
@@ -438,21 +471,65 @@ namespace GameAiAndControls.Controls.SeederControls
             s.HasMovementTarget = false;
             s.TargetIsLocalBio = false;
             s.NextGlobalDecisionTicks = nowTicks;
+            s.StepsRemaining = 0;
             return s.AuthWorldPos;
         }
 
-        private void HandleStallSeeding(I3dObject moveThisObject, int id, AiState s, double dt, bool isOnScreen)
+        private void HandleStallSeeding(int id, AiState s, float dt, bool isOnScreen, I3dObject theObject)
         {
-            //Convert current tile to red\infected bio tile
-            var tileX = (int)moveThisObject.WorldPosition.x / SurfaceSetup.tileSize;
-            //tileZ is the depth position, not Y
-            var tileZ = (int)moveThisObject.WorldPosition.z / SurfaceSetup.tileSize;
-            var tile = GameState.SurfaceState.Global2DMap[tileZ, tileX];
-            tile.isInfected = true;
-            //Release particles at this location if on screen, off screen particles are not visible
-            if (isOnScreen) ReleaseParticles(moveThisObject);
-        }
+            var surfaceState = GameState.SurfaceState;
+            if (surfaceState?.Global2DMap == null) return;
 
+            // Use authoritative position
+            var pos = s.AuthWorldPos;
+
+            // Convert world -> tile using same origin logic as viewport
+
+            int tileX = (int)pos.x / SurfaceSetup.tileSize;
+            int tileZ = (int)pos.z / SurfaceSetup.tileSize;
+
+            // Bounds
+            if (tileZ < 0 || tileX < 0 ||
+                tileZ >= surfaceState.Global2DMap.GetLength(0) ||
+                tileX >= surfaceState.Global2DMap.GetLength(1))
+                return;
+
+            long now = DateTime.Now.Ticks;
+
+            // Infect work (keep your throttle so we don't spam writes/logs)
+            if (now >= s.NextStallInfectTick)
+            {
+                s.NextStallInfectTick = now + (TimeSpan.TicksPerSecond / 5);
+
+                bool tileChanged = (tileX != s.StallTileX) || (tileZ != s.StallTileZ);
+                if (tileChanged)
+                {
+                    s.StallTileX = tileX;
+                    s.StallTileZ = tileZ;
+                    SafeLog($"AI:STALL_TILE onScreen={isOnScreen} tile=({tileX},{tileZ}) pos={V2(pos)} ObjectId:{id}");
+                }
+
+                var tile = surfaceState.Global2DMap[tileZ, tileX];
+                if (!tile.isInfected)
+                {
+                    tile.isInfected = true;
+                    surfaceState.Global2DMap[tileZ, tileX] = tile;
+
+                    SafeLog($"AI:INFECT tile=({tileX},{tileZ}) onScreen={isOnScreen} ObjectId:{id}");
+                }
+            }            
+            if (isOnScreen)
+            {
+                //Update the worldposition for the release of particles
+                theObject.WorldPosition = s.AuthWorldPos;
+                ReleaseParticles(theObject);
+                SafeLog($"AI:STALL_PARTICLES onScreen={isOnScreen} pos={V2(pos)} ObjectId:{id}");
+            }
+            else
+            {
+                SafeLog($"AI:STALL_SKIP_PARTICLES offScreen pos={V2(pos)} ObjectId:{id}");
+            }
+        }
         // *** AI Code Above ***
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
