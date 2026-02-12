@@ -51,7 +51,7 @@ namespace _3dRotations.Scene.Scene1
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
-            surfaceObject.ObjectOffsets = new Vector3 { x = 75, y = 500, z = 300 };
+            surfaceObject.ObjectOffsets = new Vector3 { x = 40, y = 500, z = 300 };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Crashboxes are added n the GetSurfaceViewPort method
@@ -85,7 +85,7 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
 
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tower.ObjectOffsets = new Vector3 { x = 75, y =280, z = 300 };
+                tower.ObjectOffsets = new Vector3 { x = 40, y =280, z = 300 };
                 tower.ObjectName = "Tower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
@@ -108,7 +108,7 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
 
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tree.ObjectOffsets = new Vector3 { x = 75, y = 430, z = 300 };
+                tree.ObjectOffsets = new Vector3 { x = 40, y = 430, z = 300 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
@@ -129,7 +129,7 @@ namespace _3dRotations.Scene.Scene1
                 house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
 
-                house.ObjectOffsets = new Vector3 { x = 75, y = 450, z = 300 };
+                house.ObjectOffsets = new Vector3 { x = 40, y = 450, z = 300 };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };

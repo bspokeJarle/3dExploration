@@ -95,5 +95,10 @@ namespace GameAiAndControls.Controls
         {
             // Nothing to dispose yet.
         }
+
+        public void ReleaseParticles(I3dObject theObject)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

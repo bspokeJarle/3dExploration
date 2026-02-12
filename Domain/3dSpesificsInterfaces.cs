@@ -111,6 +111,7 @@ namespace Domain
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry);
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public void ReleaseParticles(I3dObject theObject);
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
         public IPhysics Physics { get; set; }

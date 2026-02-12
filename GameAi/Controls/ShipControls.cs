@@ -505,5 +505,10 @@ namespace GameAiAndControls.Controls
             if (StartCoord != null) WeaponStartCoordinates = StartCoord;
             if (GuideCoord != null) WeaponGuideCoordinates = GuideCoord;
         }
+
+        public void ReleaseParticles(I3dObject theObject)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

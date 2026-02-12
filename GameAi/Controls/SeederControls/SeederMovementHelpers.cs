@@ -230,28 +230,19 @@ namespace GameAiAndControls.Helpers
         // ECO COUNT: decrement screen bio count for the screen containing (tileY,tileX)
         // Inputs are TILE INDICES (not world coords).
         // ------------------------------------------------------------
-        internal static void DecrementBioCountForTile(SurfaceState surfaceState, int tileY, int tileX)
+        internal static int? DecrementBioCountForTile(SurfaceState surfaceState, int tileY, int tileX)
         {
             int screenY = tileY / TilesPerScreen;
             int screenX = tileX / TilesPerScreen;
 
             var eco = surfaceState.ScreenEcoMetas;
             if ((uint)screenY >= (uint)eco.GetLength(0) || (uint)screenX >= (uint)eco.GetLength(1))
-                return;
+                return null;
 
             var meta = eco[screenY, screenX];
             if (meta.BioTileCount > 0) meta.BioTileCount--;
             eco[screenY, screenX] = meta;
-        }
-
-        // ------------------------------------------------------------
-        // MOVEMENT
-        // ------------------------------------------------------------
-        internal static bool IsCloseEnoughXZ(Vector3 a, Vector3 b, float threshold)
-        {
-            float dx = b.x - a.x;
-            float dz = b.z - a.z;
-            return (dx * dx + dz * dz) <= (threshold * threshold);
+            return meta.BioTileCount;
         }
 
         internal static Vector3 StepTowardTargetWorldXZ(Vector3 current, Vector3 target, float step)
