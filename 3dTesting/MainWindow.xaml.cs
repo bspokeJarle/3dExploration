@@ -193,6 +193,8 @@ namespace _3dTesting
             //TODO: Should wait until we actually have the new Scene
             if (pauseFrameCount<limitFrameCount && gameWorldManager.FadeInWorld && isFading && world.WorldInhabitants.Count > 100)
             {
+                //When fading in, replace the map bitmap with the new one to prevent showing an outdated map during fade in
+                //surfaceMapBitmap = GameState.SurfaceState.GlobalMapBitmap;
                 await FadeInAsync(1.5f);
                 gameWorldManager.FadeInWorld = false;
                 isFading = false;
@@ -210,6 +212,8 @@ namespace _3dTesting
                 // Wait 2 seconds before starting fade out
                 if (DateTime.Now >= fadeOutTrigged.AddSeconds(1.2))
                 {
+                    //Empty DirtyTiles to prevent crashes during restart
+                    GameState.SurfaceState.DirtyTiles.Clear();
                     isFading = true;
                     await FadeOutAsync(1.0f);
                     gameWorldManager.FadeOutWorld = false;
@@ -239,6 +243,10 @@ namespace _3dTesting
                 // Update minimap
                 if (GameState.SurfaceState.GlobalMapPosition != null)
                 {
+                    //Update the Bitmap with the dirty tiles TODO: Reset makes trouble
+                    GameHelpers.UpdateDirtyTilesInMap(surfaceMapBitmap);
+
+                    //Show the actual map
                     GameHelpers.UpdateMapOverlay(
                         mapOverlay,
                         surfaceMapBitmap,

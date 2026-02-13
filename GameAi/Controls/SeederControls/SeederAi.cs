@@ -182,7 +182,8 @@ namespace GameAiAndControls.Controls.SeederControls
                 if (!tile.isInfected)
                 {
                     tile.isInfected = true;
-                    surfaceState.Global2DMap[tileZ, tileX] = tile;
+                    surfaceState.Global2DMap[tileZ, tileX] = tile;                    
+                    surfaceState.DirtyTiles.Add(new Vector3 { x = tileX, y = 0, z = tileZ });
                     //Decrement Bio count
                     var tileCount = SeederMovementHelpers.DecrementBioCountForTile(surfaceState,tileZ,tileX);
                     SafeLog($"AI:INFECT tile=({tileX},{tileZ}) onScreen={isOnScreen} RemainingBioTileCount:{tileCount} ObjectId:{id}");

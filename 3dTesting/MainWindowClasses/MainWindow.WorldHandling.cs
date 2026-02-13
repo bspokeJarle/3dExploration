@@ -164,7 +164,11 @@ namespace _3dTesting.MainWindowClasses
                 FadeInWorld = true;
                 //Dispose the ship movement to free resources
                 ship.Movement.Dispose();
+                //Dispose weapon systems to free resources
                 world.WorldInhabitants.Clear();
+                //Clear AI objects and dirty tiles to free resources, should be no need to keep them after explosion
+                GameState.SurfaceState.AiObjects.Clear();
+                GameState.SurfaceState.DirtyTiles.Clear();
                 //Remove stars
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;

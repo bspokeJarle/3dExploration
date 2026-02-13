@@ -21,5 +21,6 @@ namespace CommonUtilities.CommonGlobalState.States
         public BitmapSource? GlobalMapBitmap { get; set; }
         public Vector3 GlobalMapPosition { get; set; } = new Vector3 { x = SurfaceSetup.DefaultMapPosition.x, y = SurfaceSetup.DefaultMapPosition.y, z = SurfaceSetup.DefaultMapPosition.z };
         public List<_3dObject> AiObjects { get; set; } = new List<_3dObject>();
+        public List<IVector3> DirtyTiles { get; set; } = new List<IVector3>();
     }
 }

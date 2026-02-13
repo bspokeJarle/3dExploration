@@ -82,9 +82,6 @@ namespace _3dRotations.Helpers
                 }
             }
 
-            // IMPORTANT:
-            // We iterate GLOBAL tile indices (globalY/globalX),
-            // but store LOCAL WORLD coordinates in BioTiles: (global*tileSize).
             for (int globalY = 1; globalY < MapSetup.globalMapSize - 1; globalY++)
             {
                 for (int globalX = 1; globalX < MapSetup.globalMapSize - 1; globalX++)
@@ -102,7 +99,7 @@ namespace _3dRotations.Helpers
                         var meta = ecoMap[screenY, screenX];
                         meta.BioTileCount++;
 
-                        // Store LOCAL WORLD (map-local) coordinates, not tile indices
+                        // These are global coords of the tile's top-left corner, which the AI can use to correlate with the global map
                         meta.BioTiles.Add(new TileCoord
                         {
                             Y = globalY * tileSize, // local world Z/Y
