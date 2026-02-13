@@ -212,8 +212,6 @@ namespace _3dTesting
                 // Wait 2 seconds before starting fade out
                 if (DateTime.Now >= fadeOutTrigged.AddSeconds(1.2))
                 {
-                    //Empty DirtyTiles to prevent crashes during restart
-                    GameState.SurfaceState.DirtyTiles.Clear();
                     isFading = true;
                     await FadeOutAsync(1.0f);
                     gameWorldManager.FadeOutWorld = false;

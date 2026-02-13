@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace _3dRotations.Helpers
 {
@@ -26,6 +27,7 @@ namespace _3dRotations.Helpers
         public static int maxHouses { get; set; }
         public static bool IncludeTestTreesInFrontOfPlatform = true;
         public static bool IncludeTestHousesInFrontOfPlatform = true;
+        public static bool enableLogging = false;
 
         public static SurfaceData[,] ReturnPseudoRandomMap(int mapSize, out int maxHeight, int? maxTs, int? maxHs)
         {
@@ -54,10 +56,7 @@ namespace _3dRotations.Helpers
             // 7) Crash boxes should use the same (final) classification thresholds
             GenerateCrashBoxes(surfaceValues, maxHeight);
 
-            // 8) Terrain bitmap should also use the same (final) maxHeight + final size
-            int wrappedSize = surfaceValues.GetLength(0);
-            GenerateTerrainBitmapSource(surfaceValues, wrappedSize, maxHeight);
-            // 9) Generate ecological meta-map for AI usage, stored in global state
+            // 8) Generate ecological meta-map for AI usage, stored in global state
             GameState.SurfaceState.ScreenEcoMetas = GenerateEcoMap(surfaceValues);
             return surfaceValues;
         }
@@ -286,10 +285,30 @@ namespace _3dRotations.Helpers
             }
         }
 
-        public static BitmapSource GenerateTerrainBitmapSource(SurfaceData[,] terrainMap, int mapSize, int maxHeight)
+        public static void GenerateTerrainBitmapSource(SurfaceData[,] terrainMap, int mapSize, int maxHeight)
         {
-            WriteableBitmap bitmap = new WriteableBitmap(mapSize, mapSize, 96, 96, PixelFormats.Bgra32, null);
-            int stride = mapSize * 4; // 4 bytes per pixel (BGRA32)
+            // Ensure we return a stable reference immediately
+            WriteableBitmap wb = GameState.SurfaceState.GlobalMapBitmap as WriteableBitmap;
+
+            try { 
+                if (wb == null)
+                {
+                    // MUST be created on UI thread, so we do a safe sync create if needed
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        wb = new WriteableBitmap(mapSize, mapSize, 96, 96, PixelFormats.Bgra32, null);
+                        GameState.SurfaceState.GlobalMapBitmap = wb;
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                if (enableLogging) Logger.Log($"Error creating WriteableBitmap: {ex.Message}", "SurfaceGeneration");
+                return;
+            }
+
+            // Build pixelData on current thread
+            int stride = mapSize * 4;
             byte[] pixelData = new byte[mapSize * mapSize * 4];
 
             for (int i = 0; i < mapSize; i++)
@@ -300,16 +319,25 @@ namespace _3dRotations.Helpers
                     Color color = GetTileColor(height, maxHeight);
 
                     int index = (j * mapSize + i) * 4;
-                    pixelData[index] = color.B; // Blue
-                    pixelData[index + 1] = color.G; // Green
-                    pixelData[index + 2] = color.R; // Red
-                    pixelData[index + 3] = 255; // Alpha
+                    pixelData[index] = color.B;
+                    pixelData[index + 1] = color.G;
+                    pixelData[index + 2] = color.R;
+                    pixelData[index + 3] = 255;
                 }
             }
 
-            bitmap.WritePixels(new Int32Rect(0, 0, mapSize, mapSize), pixelData, stride, 0);
-            return bitmap;
+            // Apply pixels on UI thread (async to avoid deadlock)
+            Application.Current.Dispatcher.BeginInvoke(new Action(() =>
+            {
+                // Re-fetch wb in case it was replaced on the UI thread
+                var currentWb = GameState.SurfaceState.GlobalMapBitmap as WriteableBitmap;
+                if (currentWb != null && currentWb.PixelWidth == mapSize && currentWb.PixelHeight == mapSize)
+                {
+                    currentWb.WritePixels(new Int32Rect(0, 0, mapSize, mapSize), pixelData, stride, 0);
+                }
+            }), DispatcherPriority.Render);
         }
+
 
         public static SurfaceData[,] Return2DViewPort(int viewPortSize, int GlobalX, int GlobalZ, SurfaceData[,] Global2DMap, int tileSize)
         {

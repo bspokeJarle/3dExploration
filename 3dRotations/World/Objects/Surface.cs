@@ -181,7 +181,7 @@ namespace _3dRotations.World.Objects
         {
             //Gets the pseudo random map in 2d
             GameState.SurfaceState.Global2DMap = SurfaceGeneration.ReturnPseudoRandomMap(MapSetup.globalMapSize, maxHeight: out MapSetup.maxHeight,maxTrees,maxHouses);
-            GameState.SurfaceState.GlobalMapBitmap = SurfaceGeneration.GenerateTerrainBitmapSource(GameState.SurfaceState.Global2DMap, MapSetup.globalMapSize, MapSetup.maxHeight);
+            SurfaceGeneration.GenerateTerrainBitmapSource(GameState.SurfaceState.Global2DMap, MapSetup.globalMapSize, MapSetup.maxHeight);
         }
     }
 }
