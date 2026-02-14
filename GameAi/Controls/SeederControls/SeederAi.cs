@@ -1,0 +1,644 @@
+﻿using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
+using Domain;
+using GameAiAndControls.Helpers;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using static CommonUtilities.GamePlayHelpers.GamePlayHelpers;
+using static Domain._3dSpecificsImplementations;
+
+namespace GameAiAndControls.Controls.SeederControls
+{
+    internal static class SeederAi
+    {
+        internal static bool enableLogging = true;
+
+        // ============================
+        // AI CONFIGURATION PARAMETERS
+        // ============================
+        // Movement cadence and speed:
+        // - SecondsPerScreenCross: Time to traverse one full screen width globally (lower = faster global travel).
+        // - LocalTileSpeedFactor: Local movement speed in tiles per second (higher = faster within-screen bio hunting).
+        // - GlobalOffscreenSpeedFactor: Multiplier applied to global speed when offscreen (1.0 = same, <1 slower, >1 faster).
+        private const float SecondsPerScreenCross = 4f;
+        private const float LocalTileSpeedFactor = 0.50f; // moves half a tile per second locally
+        private const float GlobalOffscreenSpeedFactor = 0.70f;
+
+        // Step model modifiers:
+        // - OffscreenStepFactor: How many times larger the step is offscreen (higher = faster simulation offscreen).
+        // - MaxLocalSteps: Upper bound on steps allowed to reach a local target (caps how far local hunts can go).
+        private const int OffscreenStepFactor = 6;
+        private const int MaxLocalSteps = 180;
+
+        // Targeting & infection cadence:
+        // - LocalRetargetSeconds: Cooldown between local target selections (lower = more frequent infections).
+        // - StallInfectSeconds: Interval between successive infections while stalling over a tile.
+        private const float LocalRetargetSeconds = 3.0f;
+        private const double StallInfectSeconds = 0.20; // 5 infections per second when stalling
+
+        // Global search heuristics:
+        // - SmellRadiusScreens: Radius in screens to evaluate BioTileCount for global decisions.
+        // - RoamTiles: Random roam distance in tiles when no good screen is found.
+        private const int SmellRadiusScreens = 5;
+        private const int RoamTiles = 10;
+
+        // -------------------------
+        // AI State (per object)
+        // -------------------------
+        private sealed class AiState
+        {
+            public bool IsSearchingGlobally = true;
+            public bool IsHuntingLocally = false;
+
+            public bool HasMovementTarget = false;
+            public bool TargetIsLocalBio = false;
+            public Vector3 TargetWorld;
+
+            public int LocalPickCursor = 0;
+
+            public long NextLocalRetargetTicks = 0;
+            public long NextGlobalDecisionTicks = 0;
+
+            public long LastMoveStamp = 0;          // Stopwatch ticks
+            public long TargetStartTicks = 0;       // DateTime ticks (for dynamic timeout)
+
+            public Vector3 AuthWorldPos;            // authoritative position for this AI object
+            public bool AuthPosInitialized = false;
+
+            // optional throttled logging
+            public long LastHeartbeatTicks = 0;
+            public long LastWaitLogTicks = 0;
+            public long LastDecisionLogTicks = 0;
+
+            public long NextStallParticleTicks = 0;
+            public long NextStallInfectTick = 0;
+            public int StallTileX = int.MinValue;
+            public int StallTileZ = int.MinValue;
+
+            public bool IsStalling = false;
+            public long StallUntilTicks = 0;
+            public int StepsRemaining = 0;
+        }
+
+        private static readonly Dictionary<int, AiState> _aiStates = new();
+
+        private static AiState GetAiState(int objectId)
+        {
+            if (!_aiStates.TryGetValue(objectId, out var s))
+            {
+                s = new AiState();
+                _aiStates[objectId] = s;
+            }
+            return s;
+        }
+
+        // Call this when a Seeder dies/explodes OR when scene resets, to avoid stale states
+        public static void RemoveAiState(int objectId)
+        {
+            _aiStates.Remove(objectId);
+        }
+
+        private static void SafeLog(string msg)
+        {
+            try
+            {
+                if (Logger.EnableFileLogging && enableLogging) Logger.Log(msg);
+            }
+            catch { /* never crash AI because of logging */ }
+        }
+
+        private static float DistanceXZ(Vector3 a, Vector3 b)
+        {
+            float dx = a.x - b.x;
+            float dz = a.z - b.z;
+            return (float)Math.Sqrt(dx * dx + dz * dz);
+        }
+
+        private static string V2(Vector3 v) => $"({(int)v.x},{(int)v.z})";
+
+        // -------------------------
+        // New AI movement (per object state)
+        // -------------------------
+        public static Vector3? MoveWorldPositionAccordingToAi(bool isOnScreen, I3dObject moveThisObject)
+        {
+            if (IsZeroWorldPos(moveThisObject))
+                return (Vector3)moveThisObject.WorldPosition;
+
+            if (moveThisObject == null)
+                return null;
+
+            if (moveThisObject.WorldPosition == null)
+            {
+                SafeLog($"AI:SKIP WorldPosition=null onScreen={isOnScreen} ObjectId:{moveThisObject.ObjectId}");
+                return null;
+            }
+
+            var surfaceState = GameState.SurfaceState;
+            var ecoMap = surfaceState?.ScreenEcoMetas;
+
+            int id = moveThisObject.ObjectId;
+            var s = GetAiState(id);
+
+            if (ecoMap == null || surfaceState == null)
+                return HoldPositionWhenMapMissing(s, moveThisObject);
+
+            EnsureAuthPositionInitialized(s, isOnScreen, moveThisObject, id);
+
+            Vector3 current = s.AuthWorldPos;
+
+            if (!TryGetDt(s, out float dt))
+                return s.AuthWorldPos;
+
+            long nowTicks = DateTime.Now.Ticks;
+
+            ComputeStepModel(isOnScreen, s, out float localSpeed, out float speed, out float step60, out float stepOff, out float step);
+
+            LogHeartbeatIfNeeded(isOnScreen, s, id, nowTicks, dt, step60, stepOff, OffscreenStepFactor, current);
+
+            if (s.HasMovementTarget)
+                return HandleMoveTowardTarget(isOnScreen, moveThisObject, s, id, nowTicks, dt, step60, step, OffscreenStepFactor, current);
+
+            if (s.IsSearchingGlobally)
+                return HandleGlobalSearch(isOnScreen, moveThisObject, s, id, nowTicks, ecoMap, current);
+
+            if (s.IsHuntingLocally)
+                return HandleLocalHunt(isOnScreen, moveThisObject, s, id, nowTicks, surfaceState, localSpeed, MaxLocalSteps, current);
+
+            return HandleFallback(isOnScreen, s, id, nowTicks, current);
+        }
+
+        private static void HandleStallSeeding(int id, AiState s, float dt, bool isOnScreen, I3dObject theObject)
+        {
+            var surfaceState = GameState.SurfaceState;
+            if (surfaceState?.Global2DMap == null) return;
+
+            // Use synchronized position and fall back safely if object is not _3dObject
+            var obj3d = theObject as _3dObject;
+            var posAligned = obj3d != null
+                ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                : (Vector3)theObject.WorldPosition;
+
+            // Convert world -> tile using same origin logic as viewport
+            int tileX = (int)posAligned.x / SurfaceSetup.tileSize;
+            int tileZ = (int)posAligned.z / SurfaceSetup.tileSize;
+            // Bounds
+            if (tileZ < 0 || tileX < 0 ||
+                tileZ >= surfaceState.Global2DMap.GetLength(0) ||
+                tileX >= surfaceState.Global2DMap.GetLength(1))
+                return;
+
+            long now = DateTime.Now.Ticks;
+
+            // Infect work (keep your throttle so we don't spam writes/logs)
+            if (now >= s.NextStallInfectTick)
+            {
+                s.NextStallInfectTick = now + (long)(StallInfectSeconds * TimeSpan.TicksPerSecond);
+
+                bool tileChanged = (tileX != s.StallTileX) || (tileZ != s.StallTileZ);
+                if (tileChanged)
+                {
+                    s.StallTileX = tileX;
+                    s.StallTileZ = tileZ;
+                    SafeLog($"AI:STALL_TILE onScreen={isOnScreen} tile=({tileX},{tileZ}) pos={V2(posAligned)} ObjectId:{id}");
+                }
+
+                var tile = surfaceState.Global2DMap[tileZ, tileX];
+                if (!tile.isInfected)
+                {
+                    var tileType = GamePlayHelpers.GetTerrainType(tile.mapDepth, MapSetup.maxHeight);
+                    if (tileType == TerrainType.Grassland || tileType == TerrainType.Highlands)
+                    {
+                        tile.isInfected = true;
+                        surfaceState.Global2DMap[tileZ, tileX] = tile;
+                        surfaceState.DirtyTiles.Add(new Vector3 { x = tileX, y = 0, z = tileZ });
+                        var tileCount = SeederMovementHelpers.DecrementBioCountForTile(surfaceState, tileZ, tileX);
+                        SafeLog($"AI:INFECT tile=({tileX},{tileZ}) onScreen={isOnScreen} RemainingBioTileCount:{tileCount} ObjectId:{id}");
+                    }
+                    else
+                    {
+                        // Check surrounding tiles to see they are infectable, if so infect it
+                        // Try 4-neighborhood (N,E,S,W) then diagonals (optional) for infectable tiles
+                        int width = surfaceState.Global2DMap.GetLength(1);
+                        int height = surfaceState.Global2DMap.GetLength(0);
+
+                        // Helper to infect a given neighbor if valid and infectable
+                        bool TryInfectNeighbour(int nx, int nz)
+                        {
+                            if (nx < 0 || nz < 0 || nx >= width || nz >= height) return false;
+                            var neighbor = surfaceState.Global2DMap[nz, nx];
+                            if (neighbor.isInfected) return false;
+
+                            var nType = GamePlayHelpers.GetTerrainType(neighbor.mapDepth, MapSetup.maxHeight);
+                            if (nType == TerrainType.Grassland || nType == TerrainType.Highlands)
+                            {
+                                neighbor.isInfected = true;
+                                surfaceState.Global2DMap[nz, nx] = neighbor;
+                                surfaceState.DirtyTiles.Add(new Vector3 { x = nx, y = 0, z = nz });
+                                var nCount = SeederMovementHelpers.DecrementBioCountForTile(surfaceState, nz, nx);
+                                SafeLog($"AI:INFECT_NEIGHBOR tile=({nx},{nz}) onScreen={isOnScreen} RemainingBioTileCount:{nCount} ObjectId:{id}");
+                                return true;
+                            }
+                            return false;
+                        }
+
+                        // First try cardinal neighbors
+                        bool infectedAny =
+                            TryInfectNeighbour(tileX,     tileZ - 1) | // N
+                            TryInfectNeighbour(tileX + 1, tileZ    ) | // E
+                            TryInfectNeighbour(tileX,     tileZ + 1) | // S
+                            TryInfectNeighbour(tileX - 1, tileZ    );  // W
+
+                        // If none of the cardinals were infectable, try diagonals
+                        if (!infectedAny)
+                        {
+                            infectedAny =
+                                TryInfectNeighbour(tileX - 1, tileZ - 1) | // NW
+                                TryInfectNeighbour(tileX + 1, tileZ - 1) | // NE
+                                TryInfectNeighbour(tileX + 1, tileZ + 1) | // SE
+                                TryInfectNeighbour(tileX - 1, tileZ + 1);  // SW
+                        }
+
+                        if (!infectedAny)
+                        {
+                            SafeLog($"AI:INFECT_SURROUNDINGS_NONE onScreen={isOnScreen} center=({tileX},{tileZ}) ObjectId:{id}");
+                        }
+                    }
+                }
+            }
+            if (isOnScreen)
+            {
+                //Update the worldposition for the release of particles
+                theObject.WorldPosition = s.AuthWorldPos;
+                theObject.Movement.ReleaseParticles(theObject);
+                SafeLog($"AI:STALL_PARTICLES onScreen={isOnScreen} pos={V2(s.AuthWorldPos)} ObjectId:{id}");
+            }
+            else
+            {
+                SafeLog($"AI:STALL_SKIP_PARTICLES offScreen pos={V2(s.AuthWorldPos)} ObjectId:{id}");
+            }
+        }
+        private static bool IsZeroWorldPos(I3dObject obj)
+        {
+            // Same special-case as you had
+            return obj.WorldPosition.x == 0 && obj.WorldPosition.y == 0 && obj.WorldPosition.z == 0;
+        }
+
+        private static Vector3 HoldPositionWhenMapMissing(AiState s, I3dObject moveThisObject)
+        {
+            if (!s.AuthPosInitialized)
+            {
+                s.AuthWorldPos = (Vector3)moveThisObject.WorldPosition;
+                s.AuthPosInitialized = true;
+            }
+            return s.AuthWorldPos;
+        }
+
+        private static void EnsureAuthPositionInitialized(AiState s, bool isOnScreen, I3dObject moveThisObject, int id)
+        {
+            if (!s.AuthPosInitialized)
+            {
+                s.AuthWorldPos = (Vector3)moveThisObject.WorldPosition;
+                s.AuthPosInitialized = true;
+                SafeLog($"AI:POS_INIT onScreen={isOnScreen} pos={V2(s.AuthWorldPos)} ObjectId:{id}");
+            }
+        }
+
+        private static bool TryGetDt(AiState s, out float dt)
+        {
+            long stamp = Stopwatch.GetTimestamp();
+            if (s.LastMoveStamp == 0)
+            {
+                s.LastMoveStamp = stamp;
+                dt = 0;
+                return false; // caller returns AuthWorldPos (same as before)
+            }
+
+            dt = (stamp - s.LastMoveStamp) / (float)Stopwatch.Frequency;
+            s.LastMoveStamp = stamp;
+
+            if (dt > 1.0f) dt = 1.0f;
+            if (dt < 1f / 240f) dt = 1f / 240f;
+
+            return true;
+        }
+
+        private static void ComputeStepModel(
+            bool isOnScreen,
+            AiState s,
+            out float localSpeed,
+            out float speed,
+            out float step60,
+            out float stepOff,
+            out float step)
+        {
+            float screenWorldWidth = SurfaceSetup.viewPortSize * SurfaceSetup.tileSize;
+
+            // Global movement speed in world units per second
+            float globalSpeed = screenWorldWidth / SecondsPerScreenCross;
+            // Local movement speed in world units per second (tileSize * factor)
+            localSpeed = SurfaceSetup.tileSize * LocalTileSpeedFactor;
+
+            // Choose speed based on target type
+            speed = s.TargetIsLocalBio ? localSpeed : globalSpeed;
+
+            // Adjust global speed when offscreen
+            if (!s.TargetIsLocalBio && GlobalOffscreenSpeedFactor != 1.0f)
+                speed *= GlobalOffscreenSpeedFactor;
+
+            // Base step at 60 FPS
+            step60 = speed / 60f;
+            // Offscreen acceleration
+            stepOff = step60 * OffscreenStepFactor;
+            // Final step depends on onscreen/offscreen (same formula, but uses above factors)
+            step = isOnScreen ? step60 : stepOff;
+        }
+
+        private static void LogHeartbeatIfNeeded(
+            bool isOnScreen,
+            AiState s,
+            int id,
+            long nowTicks,
+            float dt,
+            float step60,
+            float stepOff,
+            int offscreenStepFactor,
+            Vector3 current)
+        {
+            if (nowTicks - s.LastHeartbeatTicks < TimeSpan.TicksPerSecond)
+                return;
+
+            s.LastHeartbeatTicks = nowTicks;
+
+            string stateName = s.IsSearchingGlobally ? "GLOBAL" : (s.IsHuntingLocally ? "LOCAL" : "NONE");
+            string targetStr = s.HasMovementTarget ? V2(s.TargetWorld) : "(none)";
+
+            string gNext = s.NextGlobalDecisionTicks == 0 ? "n/a"
+                : $"{(s.NextGlobalDecisionTicks - nowTicks) / (double)TimeSpan.TicksPerSecond:0.00}s";
+            string lNext = s.NextLocalRetargetTicks == 0 ? "n/a"
+                : $"{(s.NextLocalRetargetTicks - nowTicks) / (double)TimeSpan.TicksPerSecond:0.00}s";
+
+            string stepsStr = s.StepsRemaining > 0 ? s.StepsRemaining.ToString() : "0";
+
+            SafeLog(
+                $"AI:HB onScreen={isOnScreen} state={stateName} " +
+                $"hasTarget={s.HasMovementTarget} localTarget={s.TargetIsLocalBio} " +
+                $"dt={dt:0.0000} step60={step60:0.00} stepOff={stepOff:0.00} factor={offscreenStepFactor} " +
+                $"pos={V2(current)} target={targetStr} stepsRemaining={stepsStr} " +
+                $"cooldowns globalNext={gNext} localNext={lNext} ObjectId:{id}"
+            );
+        }
+
+        private static Vector3 HandleMoveTowardTarget(
+            bool isOnScreen,
+            I3dObject moveThisObject,
+            AiState s,
+            int id,
+            long nowTicks,
+            float dt,
+            float step60,
+            float step,
+            int offscreenStepFactor,
+            Vector3 current)
+        {
+            // Initialize steps on first move toward this target
+            if (s.StepsRemaining <= 0)
+            {
+                float dist = DistanceXZ(current, s.TargetWorld);
+                int stepsNeeded = (int)Math.Ceiling(dist / Math.Max(0.0001f, step60));
+                if (stepsNeeded < 1) stepsNeeded = 1;
+
+                s.StepsRemaining = stepsNeeded;
+
+                SafeLog(
+                    $"AI:STEPS_INIT onScreen={isOnScreen} localTarget={s.TargetIsLocalBio} " +
+                    $"dist={dist:0.0} step60={step60:0.00} stepsNeeded={stepsNeeded} " +
+                    $"pos={V2(current)} target={V2(s.TargetWorld)} ObjectId:{id}"
+                );
+            }
+
+            Vector3 next = SeederMovementHelpers.StepTowardTargetWorldXZ(current, s.TargetWorld, step);
+
+            int dec = isOnScreen ? 1 : offscreenStepFactor;
+            s.StepsRemaining -= dec;
+
+            SafeLog(
+                $"AI:MOVE({(isOnScreen ? "onscreen" : "offscreen")}) " +
+                $"localTarget={s.TargetIsLocalBio} step={step:0.00} dec={dec} stepsLeft={s.StepsRemaining} " +
+                $"cur={V2(current)} next={V2(next)} target={V2(s.TargetWorld)} ObjectId:{id}"
+            );
+
+            s.AuthWorldPos = next;
+
+            // ARRIVAL: purely by step count
+            if (s.StepsRemaining <= 0)
+            {
+                s.AuthWorldPos = s.TargetWorld; // snap exactly
+                next = s.AuthWorldPos;
+
+                if (s.TargetIsLocalBio)
+                    SafeLog($"AI:REACHED_LOCAL_TARGET onScreen={isOnScreen} pos={V2(next)} ObjectId:{id}");
+                else
+                    SafeLog($"AI:REACHED_SCREEN_CENTER onScreen={isOnScreen} pos={V2(next)} ObjectId:{id}");
+
+                s.HasMovementTarget = false;
+                s.StepsRemaining = 0;
+
+                if (!s.TargetIsLocalBio)
+                {
+                    s.IsSearchingGlobally = false;
+                    s.IsHuntingLocally = true;
+                    s.NextLocalRetargetTicks = nowTicks;
+                    SafeLog($"AI:MODE_SWITCH GLOBAL->LOCAL onScreen={isOnScreen} ObjectId:{id}");
+                }
+                else
+                {
+                    s.NextLocalRetargetTicks = nowTicks + (long)(LocalRetargetSeconds * TimeSpan.TicksPerSecond);
+                    SafeLog($"AI:LOCAL_COOLDOWN set={LocalRetargetSeconds:0.00}s onScreen={isOnScreen} ObjectId:{id}");
+
+                    // Do a stall tick straight away (same as before)
+                    HandleStallSeeding(id, s, dt, isOnScreen, moveThisObject);
+                }
+            }
+
+            return s.AuthWorldPos;
+        }
+
+        private static Vector3 HandleGlobalSearch(
+            bool isOnScreen,
+            I3dObject moveThisObject,
+            AiState s,
+            int id,
+            long nowTicks,
+            ScreenEcoMeta[,] ecoMap,
+            Vector3 current)
+        {
+            if (nowTicks < s.NextGlobalDecisionTicks)
+            {
+                if (nowTicks - s.LastWaitLogTicks > (TimeSpan.TicksPerSecond / 2))
+                {
+                    s.LastWaitLogTicks = nowTicks;
+                    SafeLog($"AI:GLOBAL_WAIT onScreen={isOnScreen} cooldown={(s.NextGlobalDecisionTicks - nowTicks) / (double)TimeSpan.TicksPerSecond:0.00}s pos={V2(current)} ObjectId:{id}");
+                }
+                return s.AuthWorldPos;
+            }
+
+            s.NextGlobalDecisionTicks = nowTicks + (TimeSpan.TicksPerSecond / 2);
+
+            // Use synchronized position (safe cast fallback)
+            var obj3d = moveThisObject as _3dObject;
+            var alignedWorld = obj3d != null
+                ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                : (Vector3)moveThisObject.WorldPosition;
+
+            SeederMovementHelpers.GetScreenIndexFromWorldXZ(alignedWorld, out int curSY, out int curSX);
+
+            if (nowTicks - s.LastDecisionLogTicks > (TimeSpan.TicksPerSecond / 2))
+            {
+                s.LastDecisionLogTicks = nowTicks;
+                SafeLog($"AI:GLOBAL_DECIDE onScreen={isOnScreen} from=[{curSY},{curSX}] smellRadius={SmellRadiusScreens} roamTiles={RoamTiles} ObjectId:{id}");
+            }
+
+            if (SeederMovementHelpers.TryFindBestScreenInRadius(ecoMap, curSY, curSX, SmellRadiusScreens, out int bestSY, out int bestSX))
+            {
+                int stepY = bestSY == curSY ? 0 : (bestSY > curSY ? 1 : -1);
+                int stepX = bestSX == curSX ? 0 : (bestSX > curSX ? 1 : -1);
+
+                int nextSY = curSY + stepY;
+                int nextSX = curSX + stepX;
+
+                if (nextSY < 0) nextSY = 0;
+                if (nextSX < 0) nextSX = 0;
+                if (nextSY >= ecoMap.GetLength(0)) nextSY = ecoMap.GetLength(0) - 1;
+                if (nextSX >= ecoMap.GetLength(1)) nextSX = ecoMap.GetLength(1) - 1;
+
+                s.TargetWorld = SeederMovementHelpers.GetScreenCenterWorldXZ(nextSY, nextSX, alignedWorld.y);
+                s.HasMovementTarget = true;
+                s.TargetIsLocalBio = false;
+                s.TargetStartTicks = nowTicks;
+                s.StepsRemaining = 0;
+
+                SafeLog($"AI:GLOBAL_STEP onScreen={isOnScreen} from=[{curSY},{curSX}] best=[{bestSY},{bestSX}] next=[{nextSY},{nextSX}] smell={ecoMap[bestSY, bestSX].BioTileCount} target={V2(s.TargetWorld)} ObjectId:{id}");
+                return s.AuthWorldPos;
+            }
+
+            s.TargetWorld = SeederMovementHelpers.GetRandomRoamTargetWorldXZ(current, RoamTiles);
+            s.HasMovementTarget = true;
+            s.TargetIsLocalBio = false;
+            s.TargetStartTicks = nowTicks;
+            s.StepsRemaining = 0;
+
+            SafeLog($"AI:GLOBAL_ROAM onScreen={isOnScreen} target={V2(s.TargetWorld)} ObjectId:{id}");
+            return s.AuthWorldPos;
+        }
+
+        private static Vector3 HandleLocalHunt(
+            bool isOnScreen,
+            I3dObject moveThisObject,
+            AiState s,
+            int id,
+            long nowTicks,
+            SurfaceState surfaceState,
+            float localSpeed,
+            int maxLocalSteps,
+            Vector3 current)
+        {
+            // During local cooldown, we STALL
+            if (nowTicks < s.NextLocalRetargetTicks)
+            {
+                if (nowTicks - s.LastWaitLogTicks > (TimeSpan.TicksPerSecond / 2))
+                {
+                    s.LastWaitLogTicks = nowTicks;
+                    SafeLog($"AI:LOCAL_WAIT onScreen={isOnScreen} cooldown={(s.NextLocalRetargetTicks - nowTicks) / (double)TimeSpan.TicksPerSecond:0.00}s pos={V2(current)} cursor={s.LocalPickCursor} ObjectId:{id}");
+                }
+
+                if (!s.HasMovementTarget && s.TargetIsLocalBio)
+                    HandleStallSeeding(id, s, 0f, isOnScreen, moveThisObject); // dt not used for stall logic (keeps behavior)
+
+                return s.AuthWorldPos;
+            }
+
+            s.NextLocalRetargetTicks = nowTicks + (long)(LocalRetargetSeconds * TimeSpan.TicksPerSecond);
+
+            TerrainType GetTerrainTypeFromSurfaceData(SurfaceData sd) =>
+                GamePlayHelpers.GetTerrainType(sd.mapDepth, MapSetup.maxHeight);
+
+            SafeLog($"AI:LOCAL_PICK onScreen={isOnScreen} cursor={s.LocalPickCursor} attempts=32 validateMap=true ObjectId:{id}");
+
+            int cursor = s.LocalPickCursor;
+            if (SeederMovementHelpers.TryPickLocalBioTargetWorldXZ(
+                surfaceState,
+                moveThisObject,
+                GetTerrainTypeFromSurfaceData,
+                out Vector3 localTarget,
+                ref cursor,
+                maxAttemptsPerCall: 32,
+                validateAgainstMap: true))
+            {
+                s.LocalPickCursor = cursor;
+
+                // Use synchronized Y to align vertical position with surface (safe cast fallback)
+                var obj3d = moveThisObject as _3dObject;
+                var alignedWorld = obj3d != null
+                    ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                    : (Vector3)moveThisObject.WorldPosition;
+
+                var candidate = new Vector3 { x = localTarget.x, y = alignedWorld.y, z = localTarget.z };
+
+                float localStep60 = localSpeed / 60f;
+                float dist = DistanceXZ(current, candidate);
+                int stepsNeeded = (int)Math.Ceiling(dist / Math.Max(0.0001f, localStep60));
+                if (stepsNeeded < 1) stepsNeeded = 1;
+
+                if (stepsNeeded > maxLocalSteps)
+                {
+                    SafeLog(
+                        $"AI:LOCAL_TARGET_REJECT tooFar stepsNeeded={stepsNeeded} max={maxLocalSteps} dist={dist:0.0} " +
+                        $"pos={V2(current)} cand={V2(candidate)} cursor={s.LocalPickCursor} ObjectId:{id}"
+                    );
+
+                    s.NextLocalRetargetTicks = nowTicks;
+                    s.HasMovementTarget = false;
+                    s.TargetIsLocalBio = true;
+                    return s.AuthWorldPos;
+                }
+
+                s.TargetWorld = candidate;
+                s.HasMovementTarget = true;
+                s.TargetIsLocalBio = true;
+                s.TargetStartTicks = nowTicks;
+                s.StepsRemaining = 0;
+
+                SafeLog($"AI:LOCAL_TARGET onScreen={isOnScreen} target={V2(s.TargetWorld)} stepsNeeded={stepsNeeded} cursor={s.LocalPickCursor} ObjectId:{id}");
+                return s.AuthWorldPos;
+            }
+
+            s.LocalPickCursor = cursor;
+
+            s.IsHuntingLocally = false;
+            s.IsSearchingGlobally = true;
+            s.HasMovementTarget = false;
+            s.TargetIsLocalBio = false;
+            s.NextGlobalDecisionTicks = nowTicks;
+            s.StepsRemaining = 0;
+
+            SafeLog($"AI:LOCAL_DEPLETED -> GLOBAL_SEARCH onScreen={isOnScreen} cursor={s.LocalPickCursor} ObjectId:{id}");
+            return s.AuthWorldPos;
+        }
+
+        private static Vector3 HandleFallback(bool isOnScreen, AiState s, int id, long nowTicks, Vector3 current)
+        {
+            SafeLog($"AI:FALLBACK resetState onScreen={isOnScreen} pos={V2(current)} ObjectId:{id}");
+            s.IsSearchingGlobally = true;
+            s.IsHuntingLocally = false;
+            s.HasMovementTarget = false;
+            s.TargetIsLocalBio = false;
+            s.NextGlobalDecisionTicks = nowTicks;
+            s.StepsRemaining = 0;
+            return s.AuthWorldPos;
+        }
+
+    }
+}

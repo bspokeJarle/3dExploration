@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Controls;
+using GameAiAndControls.Controls.SeederControls;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.World.Objects
@@ -62,7 +64,10 @@ namespace _3dRotations.World.Objects
             var seederGuide = ParticlesDirectionGuide();
             var seederStartGuide = ParticlesStartGuide();
 
-            var seeder = new _3dObject();
+            var seeder = new _3dObject
+            {
+                ObjectId = GameState.ObjectIdCounter++ // Set to a valid unique ID as appropriate for your application
+            };
 
             // Visible parts
             if (topHull != null)
@@ -507,9 +512,9 @@ namespace _3dRotations.World.Objects
             var direction = new List<ITriangleMeshWithColor>
             {
                 CreateTriangleOutward(
-                    new Vector3 { x =  12, y = -10, z = -40 },
-                    new Vector3 { x = -12, y = -10, z = -40 },
-                    new Vector3 { x =   0, y = -20, z = -40 },
+                    new Vector3 { x =  12, y = -10, z = -20 },
+                    new Vector3 { x = -12, y = -10, z = -20 },
+                    new Vector3 { x =   0, y = -20, z = -20 },
                     BodyCenter,
                     "ffffff",
                     noHidden: true

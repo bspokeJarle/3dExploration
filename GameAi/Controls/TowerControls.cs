@@ -80,5 +80,10 @@ namespace GameAiAndControls.Controls
         {
             throw new NotImplementedException();
         }
+
+        public void ReleaseParticles(I3dObject theObject)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using _3dRotations.World.Objects;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -52,7 +53,7 @@ namespace _3dTesting.MainWindowClasses
         public StarFieldHandler(ISurface surface)
         {
             ParentSurface = surface;
-            PriorWorldPosition = surface?.GlobalMapPosition;
+            PriorWorldPosition = GameState.SurfaceState.GlobalMapPosition;
         }
 
         public void SetLogging(bool enabled)
@@ -73,7 +74,7 @@ namespace _3dTesting.MainWindowClasses
         {
             stars.Clear();
             starBaseWorldPositions.Clear();
-            PriorWorldPosition = ParentSurface?.GlobalMapPosition;
+            PriorWorldPosition = GameState.SurfaceState.GlobalMapPosition;
 
             if (enableLogging)
             {
@@ -92,7 +93,7 @@ namespace _3dTesting.MainWindowClasses
                 return;
 
 
-            var currentWorldPos = ParentSurface.GlobalMapPosition;
+            var currentWorldPos = GameState.SurfaceState.GlobalMapPosition;
 
             // 1) Recycle stars that moved too far away (no deletion).
             RecycleFarStars(currentWorldPos);

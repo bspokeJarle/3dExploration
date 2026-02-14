@@ -12,6 +12,7 @@ namespace Domain
         public int mapDepth;
         public int mapId;
         public bool hasLandbasedObject;
+        public required bool isInfected;
 
         public CrashBoxData? crashBox; // Null if not relevant
         public struct CrashBoxData
@@ -20,6 +21,23 @@ namespace Domain
             public int height; // Tiles in Z direction
             public int boxDepth; // Tiles in Y direction
         }
+    }
+
+    public struct ScreenEcoMeta
+    {
+        // BioMass related data
+        public int BioTileCount;
+        //What screen number is this
+        public int ScreenCount;
+
+        // Bio tiles inside THIS screen (tile coords in global map)
+        public List<TileCoord> BioTiles;
+    }
+
+    public struct TileCoord
+    {
+        public int Y;
+        public int X;
     }
 
     public interface ISceneHandler
@@ -68,10 +86,10 @@ namespace Domain
 
     public interface ISurface
     {
-        public Vector3 GlobalMapPosition { get; set; }
+        //public Vector3 GlobalMapPosition { get; set; }
         public Vector3 GlobalMapRotation { get; set; }
-        public SurfaceData[,]? Global2DMap { get; set; }
-        public BitmapSource GlobalMapBitmap { get; set; }
+        //public SurfaceData[,]? Global2DMap { get; set; }
+        //public BitmapSource GlobalMapBitmap { get; set; }
 
         public int SurfaceWidth();
         public int GlobalMapSize();
@@ -93,6 +111,7 @@ namespace Domain
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry);
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public void ReleaseParticles(I3dObject theObject);
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
         public IPhysics Physics { get; set; }
@@ -101,6 +120,7 @@ namespace Domain
 
     public interface I3dObject
     {
+        public int ObjectId { get; set; }
         public string ObjectName { get; set; }
         public int? RotationOffsetX { get; set; }
         public int? RotationOffsetY { get; set; }
@@ -120,6 +140,7 @@ namespace Domain
         public int? SurfaceBasedId { get; set; }
         public bool? CrashBoxDebugMode { get; set; }
         public IVector3? CalculatedWorldOffset { get; set; }
+        public bool IsOnScreen { get; set; }
     }
 
     public interface IImpactStatus

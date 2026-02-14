@@ -7,6 +7,7 @@ using System.Net.Security;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 using static Domain._3dSpecificsImplementations;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.CommonGlobalState;
 
 namespace GameAiAndControls.Controls
 {
@@ -77,7 +78,7 @@ namespace GameAiAndControls.Controls
             {
                 I3dObject template = _weaponObjects.Count > 0
                     ? _weaponObjects[0]
-                    : new _3dObject { ObjectName = "Lazer" };
+                    : new _3dObject { ObjectName = "Lazer", ObjectId = GameState.ObjectIdCounter++ };
 
                 I3dObject instance = Common3dObjectHelpers.DeepCopySingleObject(template);
                 instance.ImpactStatus = new ImpactStatus

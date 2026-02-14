@@ -12,6 +12,7 @@ namespace _3dTesting.Helpers
         {
             return new _3dObject
             {
+                ObjectId = 1,
                 ObjectName = "DynamicObject",
                 SurfaceBasedId = 0,
                 CrashBoxes = new List<List<IVector3>>
@@ -46,6 +47,7 @@ namespace _3dTesting.Helpers
         {
             return new _3dObject
             {
+                ObjectId = 2,
                 ObjectName = "House",
                 SurfaceBasedId = 1,
                 CrashBoxes = new List<List<IVector3>>
@@ -75,7 +77,6 @@ namespace _3dTesting.Helpers
                 },
                 ParentSurface = new Surface
                 {
-                    GlobalMapPosition = new Vector3 { x = 0, y = 0, z = 0 },
                     RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>
                     {
                         new TriangleMeshWithColor

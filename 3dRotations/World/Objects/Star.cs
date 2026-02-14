@@ -1,4 +1,5 @@
 ﻿using _3dTesting.Helpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Controls;
 using System.Collections.Generic;
@@ -41,7 +42,7 @@ namespace _3dRotations.World.Objects
             var starTriangles = BuildStarGeometry(size, chosenColor);
             _3dObjectHelpers.ApplyScaleToTriangles(starTriangles, ZoomRatio);
 
-            var star = new _3dObject();
+            var star = new _3dObject { ObjectId = GameState.ObjectIdCounter++ };
 
             // If something goes wrong, just return an empty object (safe fallback).
             if (starTriangles == null || starTriangles.Count == 0)
@@ -65,7 +66,7 @@ namespace _3dRotations.World.Objects
                 z = (float)(random.NextDouble() * 360.0)
             };
 
-            var surfacePos = parentSurface.GlobalMapPosition;
+            var surfacePos = GameState.SurfaceState.GlobalMapPosition;
             star.WorldPosition = new Vector3
             {
                 x = surfacePos.x,
