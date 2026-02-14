@@ -10,6 +10,26 @@ namespace GameAiAndControls.Controls.SeederControls
 {
     public class SeederControls : IObjectMovement
     {
+        // ============================
+        // CONTROLS CONFIGURATION
+        // ============================
+        // Visual rotation:
+        // - Base rotations applied each frame to the seeder object.
+        private const float BaseYRotation = 0f;
+        private const float BaseXRotation = 90f;
+        private const float BaseZRotationIncrementPerFrame = 2f;
+
+        // Sync offsets:
+        // - SyncFactorY: scales how much the seeder's Y-offset follows the surface's GlobalMapPosition.y.
+        // - SyncInitializedStartY: initial additive offset captured from the object when first synced (auto-set).
+        private const float SyncFactorY = 2.5f;
+
+        // Audio:
+        // - ExplosionForce: force factor passed to physics when exploding.
+        // - EnableControlsLogging: local logging toggle for controls-only events (crash/explosion).
+        private const float ExplosionForce = 200f;
+        private const bool EnableControlsLogging = false;
+
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
@@ -19,15 +39,13 @@ namespace GameAiAndControls.Controls.SeederControls
         private IAudioPlayer? _audio;
         private SoundDefinition? _explosionSound;
 
-        private float Yrotation = 0;
-        private float Xrotation = 90;
+        private float Yrotation = BaseYRotation;
+        private float Xrotation = BaseXRotation;
         private float Zrotation = 0;
 
         private bool _syncInitialized = false;
         private float _syncY = 0;
-        //Factor to stay in sync with surface movement
-        private float _syncFactor = 2.5f;
-        private bool enableLogging = false;
+        private bool enableLogging = EnableControlsLogging;
         private bool isExploding = false;
         private DateTime ExplosionDeltaTime;
 
@@ -79,10 +97,13 @@ namespace GameAiAndControls.Controls.SeederControls
             {
                 ParentObject.Particles.MoveParticles();
             }
-            //For now, just rotate the object at a fixed speed
-            Zrotation += 2;
-            //Xrotation += 1.5f;
+
+            // Visual spin
+            Zrotation += BaseZRotationIncrementPerFrame;
+
+            // Keep seeder offsets visually in sync with surface scrolling
             SyncMovement(theObject);
+
             return theObject;
         }
 
@@ -100,7 +121,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 ExplosionDeltaTime = DateTime.Now;
                 isExploding = true;
                 // Handle object destruction or other logic here
-                var explodedVersion = Physics.ExplodeObject(theObject, 200f);
+                var explodedVersion = Physics.ExplodeObject(theObject, ExplosionForce);
                 //Remove Crash boxes to avoid further collisions
                 theObject.CrashBoxes = new List<List<IVector3>>();
                 //Remove AI state to stop movement and other logic
@@ -121,7 +142,7 @@ namespace GameAiAndControls.Controls.SeederControls
             theObject.ObjectOffsets = new Vector3()
             {
                 x = theObject.ObjectOffsets.x,
-                y = GameState.SurfaceState.GlobalMapPosition.y * _syncFactor + _syncY,
+                y = GameState.SurfaceState.GlobalMapPosition.y * SyncFactorY + _syncY,
                 z = theObject.ObjectOffsets.z
             };
         }

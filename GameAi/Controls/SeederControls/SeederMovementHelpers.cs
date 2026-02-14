@@ -10,8 +10,37 @@ namespace GameAiAndControls.Helpers
 {
     internal static class SeederMovementHelpers
     {
-        private static readonly Random _rng = new Random();
+        // ============================
+        // AI MOVEMENT CONFIGURATION
+        // ============================
+        // Tile and screen geometry:
+        // - TileSize: world units per tile (pulled from SurfaceSetup).
+        // - TilesPerScreen: number of tiles visible per screen viewport.
+        private static int TileSize => SurfaceSetup.tileSize;            // e.g., 75 world units
+        private static int TilesPerScreen => SurfaceSetup.viewPortSize;  // e.g., 18 tiles
+
+        // Global roam behavior:
+        // - RoamTilesDefault: how many tiles the random roam jumps when no screen target is found.
+        private const int RoamTilesDefault = 10;
+
+        // Screen sniffing behavior:
+        // - SmellScoreWeight: multiplier for BioTileCount dominance when scoring screens.
+        // - DistancePenaltyWeight: penalty per Manhattan distance step to break ties toward closer screens.
+        private const int SmellScoreWeight = 1000;
+        private const int DistancePenaltyWeight = 10;
+
+        // Synchronization policy:
+        // - SyncToSurfaceForLocalPick: whether to use synchronized world position for local bio target selection (should stay true).
+        private const bool SyncToSurfaceForLocalPick = true;
+
+        // Logging:
+        // - EnableLogging: toggles helper-level logging via global Logger.
         private const bool EnableLogging = false;
+
+        // World bounds derived from map setup:
+        private static float MaxWorld => (MapSetup.globalMapSize - 1) * (float)TileSize;
+
+        private static readonly Random _rng = new Random();
 
         internal readonly struct MoveVector
         {
@@ -24,10 +53,6 @@ namespace GameAiAndControls.Helpers
                 Length = length;
             }
         }
-
-        private static int TileSize => SurfaceSetup.tileSize;            // 75
-        private static int TilesPerScreen => SurfaceSetup.viewPortSize;  // 18
-        private static float MaxWorld => (MapSetup.globalMapSize - 1) * (float)TileSize;
 
         internal static Vector3 SyncronizeSeederWithSurfacePosition(_3dObject seederObject)
         {
@@ -111,8 +136,8 @@ namespace GameAiAndControls.Helpers
                     int dx = x - currentX;
                     int dist = Math.Abs(dy) + Math.Abs(dx);
 
-                    // smell dominates, distance breaks ties
-                    int score = (smell * 1000) - (dist * 10);
+                    // smell dominates, distance breaks ties (tunable weights above)
+                    int score = (smell * SmellScoreWeight) - (dist * DistancePenaltyWeight);
 
                     if (score > bestScore)
                     {
@@ -127,7 +152,7 @@ namespace GameAiAndControls.Helpers
         }
 
         // ------------------------------------------------------------
-        // ROAM: 10 tiles in random direction (clamped)
+        // ROAM: N tiles in random direction (clamped)
         // ------------------------------------------------------------
         internal static Vector3 GetRandomRoamTargetWorldXZ(Vector3 fromWorld, int roamTiles)
         {
@@ -146,7 +171,9 @@ namespace GameAiAndControls.Helpers
                 case 7: dx = -1; dz = -1; break;
             }
 
-            float step = roamTiles * TileSize;
+            // Allow callers to pass 0 to use default roam distance
+            int tiles = roamTiles > 0 ? roamTiles : RoamTilesDefault;
+            float step = tiles * TileSize;
 
             float x = fromWorld.x + (dx * step);
             float z = fromWorld.z + (dz * step);
@@ -163,7 +190,7 @@ namespace GameAiAndControls.Helpers
         // LOCAL HUNT: pick BioTile inside CURRENT screen.
         // BioTiles contain GLOBAL WORLD coords:
         //   tile.X = worldX, tile.Y = worldZ
-        // For map validation: tileIndex = world / 75
+        // For map validation: tileIndex = world / TileSize
         // ------------------------------------------------------------
         internal static bool TryPickLocalBioTargetWorldXZ(
             SurfaceState surfaceState,
@@ -179,8 +206,11 @@ namespace GameAiAndControls.Helpers
             var ecoMap = surfaceState.ScreenEcoMetas;
             var map = surfaceState.Global2DMap;
 
-            // Use synchronized world position to align seeder center with surface center
-            var alignedWorld = SyncronizeSeederWithSurfacePosition((_3dObject)obj);
+            // Use synchronized world position to align seeder center with surface center (configurable)
+            Vector3 alignedWorld = SyncToSurfaceForLocalPick
+                ? SyncronizeSeederWithSurfacePosition((_3dObject)obj)
+                : (Vector3)obj.WorldPosition;
+
             GetScreenIndexFromWorldXZ(alignedWorld, out int screenY, out int screenX);
 
             if ((uint)screenY >= (uint)ecoMap.GetLength(0) || (uint)screenX >= (uint)ecoMap.GetLength(1))

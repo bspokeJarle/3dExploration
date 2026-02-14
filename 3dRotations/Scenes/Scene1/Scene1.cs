@@ -29,7 +29,7 @@ namespace _3dRotations.Scene.Scene1
             ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
 
-            for (int i = 0; i < 20; i++)
+            for (int i = 0; i < 40; i++)
             {
                 var rmd = new Random();
 

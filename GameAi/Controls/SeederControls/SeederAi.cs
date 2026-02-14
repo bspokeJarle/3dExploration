@@ -15,6 +15,36 @@ namespace GameAiAndControls.Controls.SeederControls
     internal static class SeederAi
     {
         internal static bool enableLogging = true;
+
+        // ============================
+        // AI CONFIGURATION PARAMETERS
+        // ============================
+        // Movement cadence and speed:
+        // - SecondsPerScreenCross: Time to traverse one full screen width globally (lower = faster global travel).
+        // - LocalTileSpeedFactor: Local movement speed in tiles per second (higher = faster within-screen bio hunting).
+        // - GlobalOffscreenSpeedFactor: Multiplier applied to global speed when offscreen (1.0 = same, <1 slower, >1 faster).
+        private const float SecondsPerScreenCross = 4f;
+        private const float LocalTileSpeedFactor = 0.50f; // moves half a tile per second locally
+        private const float GlobalOffscreenSpeedFactor = 0.70f;
+
+        // Step model modifiers:
+        // - OffscreenStepFactor: How many times larger the step is offscreen (higher = faster simulation offscreen).
+        // - MaxLocalSteps: Upper bound on steps allowed to reach a local target (caps how far local hunts can go).
+        private const int OffscreenStepFactor = 6;
+        private const int MaxLocalSteps = 180;
+
+        // Targeting & infection cadence:
+        // - LocalRetargetSeconds: Cooldown between local target selections (lower = more frequent infections).
+        // - StallInfectSeconds: Interval between successive infections while stalling over a tile.
+        private const float LocalRetargetSeconds = 3.0f;
+        private const double StallInfectSeconds = 0.20; // 5 infections per second when stalling
+
+        // Global search heuristics:
+        // - SmellRadiusScreens: Radius in screens to evaluate BioTileCount for global decisions.
+        // - RoamTiles: Random roam distance in tiles when no good screen is found.
+        private const int SmellRadiusScreens = 5;
+        private const int RoamTiles = 10;
+
         // -------------------------
         // AI State (per object)
         // -------------------------
@@ -124,11 +154,7 @@ namespace GameAiAndControls.Controls.SeederControls
 
             long nowTicks = DateTime.Now.Ticks;
 
-            const int OffscreenStepFactor = 6;
-            const int MaxLocalSteps = 180;
-
-            ComputeStepModel(isOnScreen, s, out float localSpeed, out float speed, out float step60, out float stepOff, out float step,
-                OffscreenStepFactor);
+            ComputeStepModel(isOnScreen, s, out float localSpeed, out float speed, out float step60, out float stepOff, out float step);
 
             LogHeartbeatIfNeeded(isOnScreen, s, id, nowTicks, dt, step60, stepOff, OffscreenStepFactor, current);
 
@@ -169,7 +195,7 @@ namespace GameAiAndControls.Controls.SeederControls
             // Infect work (keep your throttle so we don't spam writes/logs)
             if (now >= s.NextStallInfectTick)
             {
-                s.NextStallInfectTick = now + (TimeSpan.TicksPerSecond / 5);
+                s.NextStallInfectTick = now + (long)(StallInfectSeconds * TimeSpan.TicksPerSecond);
 
                 bool tileChanged = (tileX != s.StallTileX) || (tileZ != s.StallTileZ);
                 if (tileChanged)
@@ -182,12 +208,64 @@ namespace GameAiAndControls.Controls.SeederControls
                 var tile = surfaceState.Global2DMap[tileZ, tileX];
                 if (!tile.isInfected)
                 {
-                    tile.isInfected = true;
-                    surfaceState.Global2DMap[tileZ, tileX] = tile;
-                    surfaceState.DirtyTiles.Add(new Vector3 { x = tileX, y = 0, z = tileZ });
-                    //Decrement Bio count
-                    var tileCount = SeederMovementHelpers.DecrementBioCountForTile(surfaceState,tileZ,tileX);
-                    SafeLog($"AI:INFECT tile=({tileX},{tileZ}) onScreen={isOnScreen} RemainingBioTileCount:{tileCount} ObjectId:{id}");
+                    var tileType = GamePlayHelpers.GetTerrainType(tile.mapDepth, MapSetup.maxHeight);
+                    if (tileType == TerrainType.Grassland || tileType == TerrainType.Highlands)
+                    {
+                        tile.isInfected = true;
+                        surfaceState.Global2DMap[tileZ, tileX] = tile;
+                        surfaceState.DirtyTiles.Add(new Vector3 { x = tileX, y = 0, z = tileZ });
+                        var tileCount = SeederMovementHelpers.DecrementBioCountForTile(surfaceState, tileZ, tileX);
+                        SafeLog($"AI:INFECT tile=({tileX},{tileZ}) onScreen={isOnScreen} RemainingBioTileCount:{tileCount} ObjectId:{id}");
+                    }
+                    else
+                    {
+                        // Check surrounding tiles to see they are infectable, if so infect it
+                        // Try 4-neighborhood (N,E,S,W) then diagonals (optional) for infectable tiles
+                        int width = surfaceState.Global2DMap.GetLength(1);
+                        int height = surfaceState.Global2DMap.GetLength(0);
+
+                        // Helper to infect a given neighbor if valid and infectable
+                        bool TryInfectNeighbour(int nx, int nz)
+                        {
+                            if (nx < 0 || nz < 0 || nx >= width || nz >= height) return false;
+                            var neighbor = surfaceState.Global2DMap[nz, nx];
+                            if (neighbor.isInfected) return false;
+
+                            var nType = GamePlayHelpers.GetTerrainType(neighbor.mapDepth, MapSetup.maxHeight);
+                            if (nType == TerrainType.Grassland || nType == TerrainType.Highlands)
+                            {
+                                neighbor.isInfected = true;
+                                surfaceState.Global2DMap[nz, nx] = neighbor;
+                                surfaceState.DirtyTiles.Add(new Vector3 { x = nx, y = 0, z = nz });
+                                var nCount = SeederMovementHelpers.DecrementBioCountForTile(surfaceState, nz, nx);
+                                SafeLog($"AI:INFECT_NEIGHBOR tile=({nx},{nz}) onScreen={isOnScreen} RemainingBioTileCount:{nCount} ObjectId:{id}");
+                                return true;
+                            }
+                            return false;
+                        }
+
+                        // First try cardinal neighbors
+                        bool infectedAny =
+                            TryInfectNeighbour(tileX,     tileZ - 1) | // N
+                            TryInfectNeighbour(tileX + 1, tileZ    ) | // E
+                            TryInfectNeighbour(tileX,     tileZ + 1) | // S
+                            TryInfectNeighbour(tileX - 1, tileZ    );  // W
+
+                        // If none of the cardinals were infectable, try diagonals
+                        if (!infectedAny)
+                        {
+                            infectedAny =
+                                TryInfectNeighbour(tileX - 1, tileZ - 1) | // NW
+                                TryInfectNeighbour(tileX + 1, tileZ - 1) | // NE
+                                TryInfectNeighbour(tileX + 1, tileZ + 1) | // SE
+                                TryInfectNeighbour(tileX - 1, tileZ + 1);  // SW
+                        }
+
+                        if (!infectedAny)
+                        {
+                            SafeLog($"AI:INFECT_SURROUNDINGS_NONE onScreen={isOnScreen} center=({tileX},{tileZ}) ObjectId:{id}");
+                        }
+                    }
                 }
             }
             if (isOnScreen)
@@ -254,22 +332,27 @@ namespace GameAiAndControls.Controls.SeederControls
             out float speed,
             out float step60,
             out float stepOff,
-            out float step,
-            int offscreenStepFactor)
+            out float step)
         {
-            const float secondsPerScreenCross = 5f;
             float screenWorldWidth = SurfaceSetup.viewPortSize * SurfaceSetup.tileSize;
 
-            float globalSpeed = screenWorldWidth / secondsPerScreenCross;
-            localSpeed = SurfaceSetup.tileSize / 3f;
+            // Global movement speed in world units per second
+            float globalSpeed = screenWorldWidth / SecondsPerScreenCross;
+            // Local movement speed in world units per second (tileSize * factor)
+            localSpeed = SurfaceSetup.tileSize * LocalTileSpeedFactor;
 
+            // Choose speed based on target type
             speed = s.TargetIsLocalBio ? localSpeed : globalSpeed;
 
-            if (!isOnScreen && !s.TargetIsLocalBio)
-                speed *= 0.7f;
+            // Adjust global speed when offscreen
+            if (!s.TargetIsLocalBio && GlobalOffscreenSpeedFactor != 1.0f)
+                speed *= GlobalOffscreenSpeedFactor;
 
+            // Base step at 60 FPS
             step60 = speed / 60f;
-            stepOff = step60 * offscreenStepFactor;
+            // Offscreen acceleration
+            stepOff = step60 * OffscreenStepFactor;
+            // Final step depends on onscreen/offscreen (same formula, but uses above factors)
             step = isOnScreen ? step60 : stepOff;
         }
 
@@ -372,8 +455,8 @@ namespace GameAiAndControls.Controls.SeederControls
                 }
                 else
                 {
-                    s.NextLocalRetargetTicks = nowTicks + (long)(3f * TimeSpan.TicksPerSecond);
-                    SafeLog($"AI:LOCAL_COOLDOWN set=3.00s onScreen={isOnScreen} ObjectId:{id}");
+                    s.NextLocalRetargetTicks = nowTicks + (long)(LocalRetargetSeconds * TimeSpan.TicksPerSecond);
+                    SafeLog($"AI:LOCAL_COOLDOWN set={LocalRetargetSeconds:0.00}s onScreen={isOnScreen} ObjectId:{id}");
 
                     // Do a stall tick straight away (same as before)
                     HandleStallSeeding(id, s, dt, isOnScreen, moveThisObject);
@@ -412,16 +495,13 @@ namespace GameAiAndControls.Controls.SeederControls
 
             SeederMovementHelpers.GetScreenIndexFromWorldXZ(alignedWorld, out int curSY, out int curSX);
 
-            const int smellRadiusScreens = 5;
-            const int roamTiles = 10;
-
             if (nowTicks - s.LastDecisionLogTicks > (TimeSpan.TicksPerSecond / 2))
             {
                 s.LastDecisionLogTicks = nowTicks;
-                SafeLog($"AI:GLOBAL_DECIDE onScreen={isOnScreen} from=[{curSY},{curSX}] smellRadius={smellRadiusScreens} roamTiles={roamTiles} ObjectId:{id}");
+                SafeLog($"AI:GLOBAL_DECIDE onScreen={isOnScreen} from=[{curSY},{curSX}] smellRadius={SmellRadiusScreens} roamTiles={RoamTiles} ObjectId:{id}");
             }
 
-            if (SeederMovementHelpers.TryFindBestScreenInRadius(ecoMap, curSY, curSX, smellRadiusScreens, out int bestSY, out int bestSX))
+            if (SeederMovementHelpers.TryFindBestScreenInRadius(ecoMap, curSY, curSX, SmellRadiusScreens, out int bestSY, out int bestSX))
             {
                 int stepY = bestSY == curSY ? 0 : (bestSY > curSY ? 1 : -1);
                 int stepX = bestSX == curSX ? 0 : (bestSX > curSX ? 1 : -1);
@@ -444,7 +524,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 return s.AuthWorldPos;
             }
 
-            s.TargetWorld = SeederMovementHelpers.GetRandomRoamTargetWorldXZ(current, roamTiles);
+            s.TargetWorld = SeederMovementHelpers.GetRandomRoamTargetWorldXZ(current, RoamTiles);
             s.HasMovementTarget = true;
             s.TargetIsLocalBio = false;
             s.TargetStartTicks = nowTicks;
@@ -465,8 +545,6 @@ namespace GameAiAndControls.Controls.SeederControls
             int maxLocalSteps,
             Vector3 current)
         {
-            const float localRetargetSeconds = 3f;
-
             // During local cooldown, we STALL
             if (nowTicks < s.NextLocalRetargetTicks)
             {
@@ -482,7 +560,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 return s.AuthWorldPos;
             }
 
-            s.NextLocalRetargetTicks = nowTicks + (long)(localRetargetSeconds * TimeSpan.TicksPerSecond);
+            s.NextLocalRetargetTicks = nowTicks + (long)(LocalRetargetSeconds * TimeSpan.TicksPerSecond);
 
             TerrainType GetTerrainTypeFromSurfaceData(SurfaceData sd) =>
                 GamePlayHelpers.GetTerrainType(sd.mapDepth, MapSetup.maxHeight);
