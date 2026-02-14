@@ -1,20 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
+﻿using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
+using Domain;
+using System;
 using System.Linq;
 using System.Windows;
-using _3dTesting._3dRotation;
-using Domain;
-using static Domain._3dSpecificsImplementations;
 using System.Windows.Media.Imaging;
-using CommonUtilities._3DHelpers;
+using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting.Helpers
 {
     public static class GameHelpers
     {
         private static _3dRotationCommon Rotate3d = new _3dRotationCommon();
-
+        private static bool enableLogging = true;
         /// <summary>
         /// Applies the rotation offset to prevent flipping when rotating.
         /// </summary>
@@ -57,61 +56,75 @@ namespace _3dTesting.Helpers
             if (mapX == 0 || mapY == 0) return; // Avoid division by zero or invalid map coordinates 
             if (surfaceMapBitmap != null && mapOverlay != null)
             {
-                //TODO: Get values from the setup later, hardcoded for now
-                mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect((mapX - 2000) / 75, (mapY - 2000) / 75, 72, 72));
+                try
+                {
+                    mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect((mapX - MapSetup.bitmapMapCenterOffset) / MapSetup.tileSize, (mapY - MapSetup.bitmapMapCenterOffset) / MapSetup.tileSize, MapSetup.bitmapSize, MapSetup.bitmapSize));
+                }
+                catch (Exception ex)
+                {
+                    if (enableLogging) Logger.Log("UpdateMapOverlay: Exception while updating map overlay " + ex.Message, "Error");
+                }
+            }
+        }
+
+        public static void UpdateDirtyTilesInMap(BitmapSource surfaceMapBitmap)
+        {
+            var state = GameState.SurfaceState;
+            if (state == null) return;
+
+            // Scene reset: bitmap can be null or not ready
+            if (surfaceMapBitmap is not WriteableBitmap wb)
+            {
+                state.DirtyTiles?.Clear();
+                return;
+            }
+
+            if (state.DirtyTiles == null || state.DirtyTiles.Count == 0)
+                return;
+
+            try
+            {
+                int w = wb.PixelWidth;
+                int h = wb.PixelHeight;
+
+                // BGRA (pure red)
+                byte[] infectedPx = { 0, 0, 255, 255 };
+
+                // Snapshot + clear to avoid modifying collection while iterating,
+                // and to avoid repeated work if something adds more while we write.
+                var dirtySnapshot = state.DirtyTiles.ToList();
+                state.DirtyTiles.Clear();
+
+                foreach (var dirty in dirtySnapshot)
+                {
+                    int x = (int)dirty.x;
+                    int z = (int)dirty.z;
+
+                    if (x < 0 || z < 0 || x >= w || z >= h)
+                    {
+                        if (enableLogging) Logger.Log($"UpdateDirtyTilesInMap: skip OOB ({x},{z})");
+                        continue;
+                    }
+
+                    if (enableLogging) Logger.Log($"UpdateDirtyTilesInMap: Infect pixel ({x},{z})");
+                    wb.WritePixels(new Int32Rect(x, z, 1, 1), infectedPx, 4, 0);
+                }
+            }
+            catch (Exception ex)
+            {
+                if (enableLogging) Logger.Log("UpdateDirtyTilesInMap: Exception while updating dirty tiles  " + ex.Message, "Error");
+                return;
             }
         }
 
         public static void UpdateShipStatistics(System.Windows.Shapes.Rectangle healthRectangle, _3dObject ship)
-        {  
-            if (ship==null||ship.ImpactStatus==null) return;
+        {
+            if (ship == null || ship.ImpactStatus == null) return;
             if (ship.ImpactStatus.ObjectHealth > 0)
             {
                 healthRectangle.Width = ship.ImpactStatus.ObjectHealth.Value * 2;
             }
             else healthRectangle.Width = 1;
-        }
-
-
-        /// <summary>
-        /// Converts a standard System.Drawing.Bitmap to a WPF BitmapSource.
-        /// </summary>
-        public static BitmapSource ConvertBitmapToBitmapSource(Bitmap bitmap)
-        {
-            return System.Windows.Interop.Imaging.CreateBitmapSourceFromHBitmap(
-                bitmap.GetHbitmap(),
-                IntPtr.Zero,
-                Int32Rect.Empty,
-                BitmapSizeOptions.FromEmptyOptions());
-        }
-
-        /// <summary>
-        /// Rotates a mesh in all three axes.
-        /// </summary>
-        public static List<ITriangleMeshWithColor> RotateMesh(List<ITriangleMeshWithColor> mesh, Vector3 rotation)
-        {
-            var rotatedMesh = Rotate3d.RotateZMesh(mesh, rotation.z);
-            rotatedMesh = Rotate3d.RotateYMesh(rotatedMesh, rotation.y);
-            rotatedMesh = Rotate3d.RotateXMesh(rotatedMesh, rotation.x);
-            return rotatedMesh;
-        }
-
-        /// <summary>
-        /// Creates a deep copy of all objects in the world.
-        /// </summary>
-        public static List<_3dObject> DeepCopyObjects(List<_3dObject> worldInhabitants)
-        {
-            return Common3dObjectHelpers.DeepCopy3dObjects(worldInhabitants);
-        }
-
-        /// <summary>
-        /// Checks if two crashboxes are colliding.
-        /// </summary>
-        public static bool CheckCollision(List<IVector3> crashboxA, List<IVector3> crashboxB)
-        {
-            return _3dObjectHelpers.CheckCollisionBoxVsBox(
-                crashboxA.Select(v => new Vector3 { x = v.x, y = v.y, z = v.z }).ToList(),
-                crashboxB.Select(v => new Vector3 { x = v.x, y = v.y, z = v.z }).ToList());
         }
     }
 }

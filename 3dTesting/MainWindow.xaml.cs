@@ -1,6 +1,7 @@
 ﻿using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
 using _3dTesting.Rendering;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -114,7 +115,7 @@ namespace _3dTesting
             mainGrid.Children.Add(mapOverlay);
             mainGrid.Children.Add(FpsText);
 
-            surfaceMapBitmap = world.WorldInhabitants.FirstOrDefault(z => z.ObjectName == "Surface")?.ParentSurface?.GlobalMapBitmap;
+            surfaceMapBitmap = GameState.SurfaceState.GlobalMapBitmap;
 
             timer.Interval = TimeSpan.FromMilliseconds(8);
             timer.Tick += (s, e) => Handle3dWorld();
@@ -162,7 +163,7 @@ namespace _3dTesting
             FadeOverlay.Opacity = 1;
 
             var animation = new DoubleAnimation
-            {
+            {             
                 From = 1,
                 To = 0,
                 Duration = TimeSpan.FromSeconds(durationSeconds),
@@ -179,7 +180,7 @@ namespace _3dTesting
 
             FadeOverlay.BeginAnimation(UIElement.OpacityProperty, animation);
 
-            await tcs.Task;
+            await tcs.Task ;
         }
 
         private async void Handle3dWorld()
@@ -192,6 +193,8 @@ namespace _3dTesting
             //TODO: Should wait until we actually have the new Scene
             if (pauseFrameCount<limitFrameCount && gameWorldManager.FadeInWorld && isFading && world.WorldInhabitants.Count > 100)
             {
+                //When fading in, replace the map bitmap with the new one to prevent showing an outdated map during fade in
+                //surfaceMapBitmap = GameState.SurfaceState.GlobalMapBitmap;
                 await FadeInAsync(1.5f);
                 gameWorldManager.FadeInWorld = false;
                 isFading = false;
@@ -236,13 +239,17 @@ namespace _3dTesting
                     GameHelpers.UpdateShipStatistics(healthRectangle, (Domain._3dSpecificsImplementations._3dObject)ship);
 
                 // Update minimap
-                if (surface?.ParentSurface?.GlobalMapPosition != null)
+                if (GameState.SurfaceState.GlobalMapPosition != null)
                 {
+                    //Update the Bitmap with the dirty tiles TODO: Reset makes trouble
+                    GameHelpers.UpdateDirtyTilesInMap(surfaceMapBitmap);
+
+                    //Show the actual map
                     GameHelpers.UpdateMapOverlay(
                         mapOverlay,
                         surfaceMapBitmap,
-                        Convert.ToInt32(surface.ParentSurface.GlobalMapPosition.x),
-                        Convert.ToInt32(surface.ParentSurface.GlobalMapPosition.z)
+                        Convert.ToInt32(GameState.SurfaceState.GlobalMapPosition.x),
+                        Convert.ToInt32(GameState.SurfaceState.GlobalMapPosition.z)
                     );
                 }
             }

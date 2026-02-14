@@ -1,4 +1,5 @@
-﻿using Domain;
+﻿using CommonUtilities.CommonGlobalState;
+using Domain;
 using static Domain._3dSpecificsImplementations;
 
 namespace GameAiAndControls.Controls
@@ -45,7 +46,7 @@ namespace GameAiAndControls.Controls
             if (theObject.ParentSurface == null)
                 return;
 
-            var surfacePos = theObject.ParentSurface.GlobalMapPosition;
+            var surfacePos = GameState.SurfaceState.GlobalMapPosition;
 
             if (!_syncInitialized)
             {
@@ -93,6 +94,11 @@ namespace GameAiAndControls.Controls
         public void Dispose()
         {
             // Nothing to dispose yet.
+        }
+
+        public void ReleaseParticles(I3dObject theObject)
+        {
+            throw new System.NotImplementedException();
         }
     }
 }

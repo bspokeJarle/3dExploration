@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using static Domain._3dSpecificsImplementations;
 
@@ -116,7 +117,7 @@ namespace _3dRotations.World.Objects
 
             var crashBoxes = TowerCrashBoxes();
 
-            var tower = new _3dObject();
+            var tower = new _3dObject{ ObjectId = GameState.ObjectIdCounter++ };
 
             AddPart(tower, "TowerBase", baseBlock, true);
             AddPart(tower, "TowerBaseDecals", baseDecals, true); // keep after base for stable sorting

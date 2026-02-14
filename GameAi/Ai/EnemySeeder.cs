@@ -29,6 +29,11 @@ namespace GameAiAndControls.Ai
             throw new NotImplementedException();
         }
 
+        public void ReleaseParticles(I3dObject theObject)
+        {
+            throw new NotImplementedException();
+        }
+
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
             throw new NotImplementedException();

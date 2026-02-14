@@ -1,5 +1,6 @@
 ﻿using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Ai;
 using System.Collections.Generic;
@@ -16,7 +17,7 @@ namespace _3dRotations.World.Objects
             var seg3 = LazerSegment3(); // shortest, grey
             var crash = LazerCrashBoxes();
 
-            var beam = new _3dObject();
+            var beam = new _3dObject { ObjectId = GameState.ObjectIdCounter++ };
             if (seg1 == null || seg2 == null || seg3 == null) return beam;
 
             beam.ObjectParts.Add(new _3dObjectPart { PartName = "Lazer_Long_Bright", Triangles = seg1, IsVisible = true });

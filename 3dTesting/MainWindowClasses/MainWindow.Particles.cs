@@ -1,6 +1,7 @@
 ﻿using _3dTesting._3dRotation;
 using _3dTesting._3dWorld;
 using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -30,6 +31,7 @@ namespace _3dTesting.MainWindowClasses
 
                 particleObjectList.Add(new _3dObject
                 {
+                    ObjectId = GameState.ObjectIdCounter++,
                     ObjectName = "Particle",
                     WorldPosition = particle.WorldPosition,
                     ParentSurface = inhabitant.ParentSurface,

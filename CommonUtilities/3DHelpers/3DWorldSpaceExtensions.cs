@@ -1,4 +1,5 @@
-﻿using Domain;
+﻿using CommonUtilities.CommonGlobalState;
+using Domain;
 using System.Collections;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -43,8 +44,8 @@ namespace _3dTesting.Helpers
             var world = obj?.CalculatedWorldOffset ?? new Vector3(0, 0, 0);
 
             float surfaceYOffset = 0f;
-            if (obj?.ObjectName == "Surface" && obj.ParentSurface?.GlobalMapPosition != null)
-                surfaceYOffset = obj.ParentSurface.GlobalMapPosition.y;
+            if (obj?.ObjectName == "Surface" && GameState.SurfaceState.GlobalMapPosition != null)
+                surfaceYOffset = GameState.SurfaceState.GlobalMapPosition.y;
 
             return new Vector3(
                 local.x + world.x,

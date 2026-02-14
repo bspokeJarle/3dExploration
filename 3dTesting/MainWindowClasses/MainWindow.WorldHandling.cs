@@ -2,6 +2,7 @@
 using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAudioInstances;
 using System.Collections.Generic;
@@ -14,6 +15,8 @@ namespace _3dTesting.MainWindowClasses
     public class GameWorldManager
     {
         private long FrameCounter = 0;
+        private int AiUpdateCounter = 0;
+        private const int AiUpdateInterval = 5; // Update offscreen AI every 5 frames
         private readonly _3dTo2d From3dTo2d = new();
         private readonly _3dRotationCommon Rotate3d = new();
         private readonly ParticleManager particleManager = new();
@@ -79,9 +82,24 @@ namespace _3dTesting.MainWindowClasses
             var renderedList = new List<_3dObject>();
             DebugMessage = string.Empty;
 
+            AiUpdateCounter++;
+            bool doAiMark = AiUpdateCounter >= AiUpdateInterval;
+            if (doAiMark) AiUpdateCounter = 0;
+
+            Dictionary<int, _3dObject> aiById = null;
+            if (doAiMark)
+            {
+                aiById = InitializeAiOnScreenTracking();
+            }
+
             foreach (var inhabitant in deepCopiedWorld)
             {
                 if (!inhabitant.CheckInhabitantVisibility()) continue;
+                inhabitant.IsOnScreen = true;
+                if (doAiMark)
+                {
+                    SetAiIsOnScreen(aiById, inhabitant.ObjectId);
+                }
 
                 inhabitant.Movement?.MoveObject(inhabitant, audioPlayer, soundRegistry);
                 if (inhabitant.CrashBoxesFollowRotation) inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
@@ -146,19 +164,68 @@ namespace _3dTesting.MainWindowClasses
                 FadeInWorld = true;
                 //Dispose the ship movement to free resources
                 ship.Movement.Dispose();
+                //Dispose weapon systems to free resources
                 world.WorldInhabitants.Clear();
+                //Clear AI objects and dirty tiles to free resources, should be no need to keep them after explosion
+                GameState.SurfaceState.AiObjects.Clear();
+                GameState.SurfaceState.DirtyTiles.Clear();
                 //Remove stars
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
                 //When explosion has happened, reset the scene
                 world.SceneHandler.ResetActiveScene(world);
+                //Reset back to Default Map Position
                 return [];
+            }
+
+            if (doAiMark)
+            {
+                AiUpdateCounter = 0;
+                //Separate loop for objects that need to interact with AI while off screen
+                foreach (var aiObject in GameState.SurfaceState.AiObjects)
+                {
+                    //Move object offscreen, for now no audio when moving off screen
+                    if (aiObject.IsOnScreen == false)
+                    {
+                        aiObject.Movement.MoveObject(aiObject, null, null);
+                        aiObject.IsOnScreen = false;
+                    }
+                }
             }
 
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             HandleMusic(renderedList);
             return projectedCoordinates;
+        }
+
+        private Dictionary<int, _3dObject> InitializeAiOnScreenTracking()
+        {
+            var aiObjects = GameState.SurfaceState.AiObjects;
+            if (aiObjects == null || aiObjects.Count == 0)
+                return null;
+
+            var aiById = new Dictionary<int, _3dObject>(aiObjects.Count);
+
+            foreach (var ai in aiObjects)
+            {
+                ai.IsOnScreen = false;          // reset for this AI tick
+                aiById[ai.ObjectId] = ai;       // O(1) lookup later
+            }
+
+            return aiById;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void SetAiIsOnScreen(
+            Dictionary<int, _3dObject> aiById,
+            int objectId
+        )
+        {
+            if (aiById != null && aiById.TryGetValue(objectId, out var aiObj))
+            {
+                aiObj.IsOnScreen = true;
+            }
         }
 
         public void HandleMusic(List<_3dObject> renderedObjects)
@@ -211,19 +278,20 @@ namespace _3dTesting.MainWindowClasses
             switch (part.PartName)
             {
                 case "SeederParticlesStartGuide":
-                case "JetMotor":
                     inhabitant.Movement.SetParticleGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
                     break;
                 case "SeederParticlesGuide":
+                    inhabitant.Movement.SetParticleGuideCoordinates(null,rotatedMesh.First() as TriangleMeshWithColor);
+                    break;
+                case "JetMotor":
+                    inhabitant.Movement.SetParticleGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    break;
                 case "WeaponDirectionGuide":
                     inhabitant.Movement.SetWeaponGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
                     break;
-
                 case "WeaponStartGuide":
-
                     inhabitant.Movement.SetWeaponGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
                     break;
-
                 case "JetMotorDirectionGuide":
                     if (enableLocalLogging) Logger.Log($"MainLoop Set Guide after rotation: {rotatedMesh.First().vert1.x + ", " + rotatedMesh.First().vert1.y + ", " + rotatedMesh.First().vert1.z} Inhabitant:{inhabitant.ObjectName} ");
                     inhabitant.Movement.SetParticleGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);

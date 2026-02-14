@@ -1,10 +1,13 @@
-﻿
-using _3dRotations.World.Objects;
+﻿using _3dRotations.World.Objects;
 using static Domain._3dSpecificsImplementations;
 using GameAiAndControls.Controls;
 using _3dRotations.Helpers;
 using Domain;
 using System.Collections.Generic;
+using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
+using GameAiAndControls.Controls.SeederControls;
+using System;
 
 namespace _3dRotations.Scene.Scene1
 {
@@ -26,45 +29,29 @@ namespace _3dRotations.Scene.Scene1
             ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
 
-            var seeder = Seeder.CreateSeeder(Surface);
-            //Initialize the seeder rotation
-            seeder.Rotation = new Vector3 { };
-            seeder.WorldPosition = new Vector3 { x = 95700, y = 0, z = 92000 };
-            seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-            seeder.ObjectName = "Seeder";
-            seeder.Movement = new SeederControls();
-            seeder.CrashBoxDebugMode = false;
-            seeder.ImpactStatus = new ImpactStatus { };
-            world.WorldInhabitants.Add(seeder);
+            for (int i = 0; i < 40; i++)
+            {
+                var rmd = new Random();
 
-            var seeder2 = Seeder.CreateSeeder(Surface);
-            //Initialize the seeder rotation
-            seeder2.Rotation = new Vector3 { };
-            seeder2.WorldPosition = new Vector3 { x = 96200, y = 0, z = 93000 };
-            seeder2.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 600 };
-            seeder2.ObjectName = "Seeder";
-            seeder2.Movement = new SeederControls();
-            seeder2.CrashBoxDebugMode = false;
-            seeder2.ImpactStatus = new ImpactStatus { };
-            world.WorldInhabitants.Add(seeder2);
-
-            var seeder3 = Seeder.CreateSeeder(Surface);
-            //Initialize the seeder rotation
-            seeder3.Rotation = new Vector3 { };
-            seeder3.WorldPosition = new Vector3 { x = 94000, y = 0, z = 90000 };
-            seeder3.ObjectOffsets = new Vector3 { x = 0, y = -100, z = 600 };
-            seeder3.ObjectName = "Seeder";
-            seeder3.Movement = new SeederControls();
-            seeder3.CrashBoxDebugMode = false;
-            seeder3.ImpactStatus = new ImpactStatus { };
-            world.WorldInhabitants.Add(seeder3);
+                var seeder = Seeder.CreateSeeder(Surface);
+                //Initialize the seeder rotation
+                seeder.Rotation = new Vector3 { };
+                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-15000, 15000), y = 0, z = 92000 + rmd.Next(-15000, 15000)};
+                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                seeder.ObjectName = "Seeder";
+                seeder.Movement = new SeederControls();
+                seeder.CrashBoxDebugMode = false;
+                seeder.ImpactStatus = new ImpactStatus { };
+                world.WorldInhabitants.Add(seeder);
+                GameState.SurfaceState.AiObjects.Add(seeder);
+            }
 
             //Get the surface viewport based on the global Map Position
             //Important: In a Scene, Surface should be amongst the first objects added to the world
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
-            surfaceObject.ObjectOffsets = new Vector3 { x = 75, y = 500, z = 300 };
+            surfaceObject.ObjectOffsets = new Vector3 { x = 40, y = 500, z = 300 };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Crashboxes are added n the GetSurfaceViewPort method
@@ -74,15 +61,16 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.CrashBoxDebugMode = false;
             surfaceObject.CrashBoxesFollowRotation = false;
             world.WorldInhabitants.Add(surfaceObject);
+            GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
 
-            var towerPlacements = SurfaceGeneration.FindTowerPlacements(Surface.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
+            var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
 
             //For a more natural look, flatten the area around the towers
             SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
-                Surface.Global2DMap,
+                GameState.SurfaceState.Global2DMap,
                 Surface.MaxHeight(),
                 towerPlacements,
-                writeDebugLogs: true
+                writeDebugLogs: false
             );
 
             var towerIndex = 0;
@@ -94,11 +82,11 @@ namespace _3dRotations.Scene.Scene1
                 //Initialize the seeder rotation
                 tower.Rotation = new Vector3 { };
                 tower.WorldPosition = new Vector3 { };
-                tower.SurfaceBasedId = Surface.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
-                Surface.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
+                tower.SurfaceBasedId = GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
 
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tower.ObjectOffsets = new Vector3 { x = 75, y =280, z = 300 };
+                tower.ObjectOffsets = new Vector3 { x = 40, y =280, z = 300 };
                 tower.ObjectName = "Tower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
@@ -107,7 +95,7 @@ namespace _3dRotations.Scene.Scene1
             }
 
 
-            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(Surface.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
+            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
             var treeIndex = 0;
             foreach (var treePlacement in treePlacements)
             {
@@ -117,11 +105,11 @@ namespace _3dRotations.Scene.Scene1
                 var tree = Tree.CreateTree(Surface);
                 //The tree don't need a world position, it's a surface based object
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-                tree.SurfaceBasedId = Surface.Global2DMap[treePlacement.y, treePlacement.x].mapId;
-                Surface.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
+                tree.SurfaceBasedId = GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
 
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tree.ObjectOffsets = new Vector3 { x = 75, y = 430, z = 300 };
+                tree.ObjectOffsets = new Vector3 { x = 40, y = 430, z = 300 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
@@ -129,7 +117,7 @@ namespace _3dRotations.Scene.Scene1
                 if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
             }
 
-            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(Surface.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements);
+            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements);
             foreach (var housePlacement in housePlacements)
             {
                 //Debug.WriteLine($"House placement: {housePlacement.x} {housePlacement.y}");
@@ -139,10 +127,10 @@ namespace _3dRotations.Scene.Scene1
                 //The tree don't need a world position, it's a surface based object
                 house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 //Find the surface based id for the tree
-                house.SurfaceBasedId = Surface.Global2DMap[housePlacement.y, housePlacement.x].mapId;
-                Surface.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
+                house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
 
-                house.ObjectOffsets = new Vector3 { x = 75, y = 450, z = 300 };
+                house.ObjectOffsets = new Vector3 { x = 40, y = 450, z = 300 };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };
