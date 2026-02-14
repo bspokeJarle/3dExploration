@@ -149,14 +149,15 @@ namespace GameAiAndControls.Controls.SeederControls
             var surfaceState = GameState.SurfaceState;
             if (surfaceState?.Global2DMap == null) return;
 
-            // Use authoritative position
-            var pos = s.AuthWorldPos;
+            // Use synchronized position and fall back safely if object is not _3dObject
+            var obj3d = theObject as _3dObject;
+            var posAligned = obj3d != null
+                ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                : (Vector3)theObject.WorldPosition;
 
             // Convert world -> tile using same origin logic as viewport
-
-            int tileX = (int)pos.x / SurfaceSetup.tileSize;
-            int tileZ = (int)pos.z / SurfaceSetup.tileSize;
-
+            int tileX = (int)posAligned.x / SurfaceSetup.tileSize;
+            int tileZ = (int)posAligned.z / SurfaceSetup.tileSize;
             // Bounds
             if (tileZ < 0 || tileX < 0 ||
                 tileZ >= surfaceState.Global2DMap.GetLength(0) ||
@@ -175,14 +176,14 @@ namespace GameAiAndControls.Controls.SeederControls
                 {
                     s.StallTileX = tileX;
                     s.StallTileZ = tileZ;
-                    SafeLog($"AI:STALL_TILE onScreen={isOnScreen} tile=({tileX},{tileZ}) pos={V2(pos)} ObjectId:{id}");
+                    SafeLog($"AI:STALL_TILE onScreen={isOnScreen} tile=({tileX},{tileZ}) pos={V2(posAligned)} ObjectId:{id}");
                 }
 
                 var tile = surfaceState.Global2DMap[tileZ, tileX];
                 if (!tile.isInfected)
                 {
                     tile.isInfected = true;
-                    surfaceState.Global2DMap[tileZ, tileX] = tile;                    
+                    surfaceState.Global2DMap[tileZ, tileX] = tile;
                     surfaceState.DirtyTiles.Add(new Vector3 { x = tileX, y = 0, z = tileZ });
                     //Decrement Bio count
                     var tileCount = SeederMovementHelpers.DecrementBioCountForTile(surfaceState,tileZ,tileX);
@@ -194,11 +195,11 @@ namespace GameAiAndControls.Controls.SeederControls
                 //Update the worldposition for the release of particles
                 theObject.WorldPosition = s.AuthWorldPos;
                 theObject.Movement.ReleaseParticles(theObject);
-                SafeLog($"AI:STALL_PARTICLES onScreen={isOnScreen} pos={V2(pos)} ObjectId:{id}");
+                SafeLog($"AI:STALL_PARTICLES onScreen={isOnScreen} pos={V2(s.AuthWorldPos)} ObjectId:{id}");
             }
             else
             {
-                SafeLog($"AI:STALL_SKIP_PARTICLES offScreen pos={V2(pos)} ObjectId:{id}");
+                SafeLog($"AI:STALL_SKIP_PARTICLES offScreen pos={V2(s.AuthWorldPos)} ObjectId:{id}");
             }
         }
         private static bool IsZeroWorldPos(I3dObject obj)
@@ -403,7 +404,13 @@ namespace GameAiAndControls.Controls.SeederControls
 
             s.NextGlobalDecisionTicks = nowTicks + (TimeSpan.TicksPerSecond / 2);
 
-            SeederMovementHelpers.GetScreenIndexFromWorldXZ(current, out int curSY, out int curSX);
+            // Use synchronized position (safe cast fallback)
+            var obj3d = moveThisObject as _3dObject;
+            var alignedWorld = obj3d != null
+                ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                : (Vector3)moveThisObject.WorldPosition;
+
+            SeederMovementHelpers.GetScreenIndexFromWorldXZ(alignedWorld, out int curSY, out int curSX);
 
             const int smellRadiusScreens = 5;
             const int roamTiles = 10;
@@ -427,7 +434,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 if (nextSY >= ecoMap.GetLength(0)) nextSY = ecoMap.GetLength(0) - 1;
                 if (nextSX >= ecoMap.GetLength(1)) nextSX = ecoMap.GetLength(1) - 1;
 
-                s.TargetWorld = SeederMovementHelpers.GetScreenCenterWorldXZ(nextSY, nextSX, current.y);
+                s.TargetWorld = SeederMovementHelpers.GetScreenCenterWorldXZ(nextSY, nextSX, alignedWorld.y);
                 s.HasMovementTarget = true;
                 s.TargetIsLocalBio = false;
                 s.TargetStartTicks = nowTicks;
@@ -494,7 +501,13 @@ namespace GameAiAndControls.Controls.SeederControls
             {
                 s.LocalPickCursor = cursor;
 
-                var candidate = new Vector3 { x = localTarget.x, y = current.y, z = localTarget.z };
+                // Use synchronized Y to align vertical position with surface (safe cast fallback)
+                var obj3d = moveThisObject as _3dObject;
+                var alignedWorld = obj3d != null
+                    ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                    : (Vector3)moveThisObject.WorldPosition;
+
+                var candidate = new Vector3 { x = localTarget.x, y = alignedWorld.y, z = localTarget.z };
 
                 float localStep60 = localSpeed / 60f;
                 float dist = DistanceXZ(current, candidate);

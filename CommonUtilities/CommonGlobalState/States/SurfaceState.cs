@@ -1,10 +1,5 @@
 ﻿using CommonUtilities.CommonSetup;
 using Domain;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
 
@@ -22,5 +17,6 @@ namespace CommonUtilities.CommonGlobalState.States
         public Vector3 GlobalMapPosition { get; set; } = new Vector3 { x = SurfaceSetup.DefaultMapPosition.x, y = SurfaceSetup.DefaultMapPosition.y, z = SurfaceSetup.DefaultMapPosition.z };
         public List<_3dObject> AiObjects { get; set; } = new List<_3dObject>();
         public List<IVector3> DirtyTiles { get; set; } = new List<IVector3>();
+        public _3dObject? SurfaceViewportObject { get; set; }
     }
 }

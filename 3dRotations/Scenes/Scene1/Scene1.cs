@@ -61,6 +61,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.CrashBoxDebugMode = false;
             surfaceObject.CrashBoxesFollowRotation = false;
             world.WorldInhabitants.Add(surfaceObject);
+            GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
 
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
 
@@ -69,7 +70,7 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.Global2DMap,
                 Surface.MaxHeight(),
                 towerPlacements,
-                writeDebugLogs: true
+                writeDebugLogs: false
             );
 
             var towerIndex = 0;

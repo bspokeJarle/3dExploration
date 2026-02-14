@@ -1,6 +1,7 @@
 ﻿using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Helpers;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -50,8 +51,7 @@ namespace GameAiAndControls.Controls.SeederControls
 
             // Update world position according to AI
             theObject.WorldPosition = SeederAi.MoveWorldPositionAccordingToAi(theObject.IsOnScreen, theObject);
-
-            
+      
             //Set parent object
             ParentObject = theObject;
             if (theObject.Rotation != null) theObject.Rotation.y = Yrotation;
@@ -129,7 +129,20 @@ namespace GameAiAndControls.Controls.SeederControls
         public void ReleaseParticles(I3dObject theObject)
         {
             if (StartCoordinates == null || GuideCoordinates == null) return;
-            ParentObject?.Particles?.ReleaseParticles(GuideCoordinates, StartCoordinates, theObject.WorldPosition, this, 1, null);
+
+            // Align emission origin with surface-centered position used by AI
+            var obj3d = theObject as _3dObject;
+            var alignedWorld = obj3d != null
+                ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                : (Vector3)theObject.WorldPosition;
+
+            ParentObject?.Particles?.ReleaseParticles(
+                GuideCoordinates,
+                StartCoordinates,
+                alignedWorld,
+                this,
+                1,
+                null);
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
