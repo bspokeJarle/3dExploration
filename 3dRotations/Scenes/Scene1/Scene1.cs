@@ -14,6 +14,9 @@ namespace _3dRotations.Scene.Scene1
     public class Scene1:IScene
     {
         Surface Surface = new();
+
+        public bool scripted { get; } = false;
+
         public void SetupScene(I3dWorld world)
         {            
             //Add ship as first inhabitant

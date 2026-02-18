@@ -28,7 +28,6 @@ namespace GameAiAndControls.Controls.SeederControls
         // - ExplosionForce: force factor passed to physics when exploding.
         // - EnableControlsLogging: local logging toggle for controls-only events (crash/explosion).
         private const float ExplosionForce = 200f;
-        private const bool EnableControlsLogging = false;
 
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
@@ -45,7 +44,7 @@ namespace GameAiAndControls.Controls.SeederControls
 
         private bool _syncInitialized = false;
         private float _syncY = 0;
-        private bool enableLogging = EnableControlsLogging;
+        private bool enableLogging = false;
         private bool isExploding = false;
         private DateTime ExplosionDeltaTime;
 

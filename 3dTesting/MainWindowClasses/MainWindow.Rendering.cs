@@ -134,20 +134,25 @@ namespace _3dTesting.Rendering
                     if (triangle.CalculatedZ > 1200 || triangle.CalculatedZ < -2000)
                         continue;
 
-                    float factor01 = GetDepthFactor01(triangle.CalculatedZ);
-                    float zKey = (float)Math.Round(factor01, 2, MidpointRounding.AwayFromZero);
+                    float depthFactor01 = GetDepthFactor01(triangle.CalculatedZ);
+                    float angleFactor01 = NormalizeAngleTo01(triangle.TriangleAngle);
+
+                    // First shade by angle, then by depth => combined factor
+                    float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
+                    float shadeKey = (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
 
                     // Normalize baseColor so "#FF8B00" and "ff8b00" become the same key
                     string baseColor = triangle.Color?.Trim().ToLowerInvariant() ?? "000000";
+
                     if (baseColor.StartsWith("#"))
                         baseColor = baseColor.Substring(1);
 
-                    if (!colorCache.TryGetValue((zKey, baseColor), out Color color))
+                    if (!colorCache.TryGetValue((shadeKey, baseColor), out Color color))
                     {
-                        if (ShouldLog()) Logger.Log($"[WorldRenderer] ⚠️ Color cache miss for key ({zKey}, {baseColor}). Generating new color. CalculatedZ:{triangle.CalculatedZ}");
+                        if (ShouldLog()) Logger.Log($"[WorldRenderer] ⚠️ Color cache miss for key ({shadeKey}, {baseColor}). CalculatedZ:{triangle.CalculatedZ} Angle:{triangle.TriangleAngle:0.00}");
                         color = (Color)ColorConverter.ConvertFromString(
-                            Helpers.Colors.getShadeOfColorFromNormal(zKey, baseColor));
-                        colorCache[(zKey, baseColor)] = color;
+                            Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor));
+                        colorCache[(shadeKey, baseColor)] = color;
                         if (trackStats) colorMisses++;
                     }
                     else if (trackStats)
@@ -202,6 +207,14 @@ namespace _3dTesting.Rendering
             if (calculatedZ >= far) return 1f;
 
             return (calculatedZ - near) / (far - near);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static float NormalizeAngleTo01(float angle)
+        {
+            // Angle is typically a dot product in [-1, 1]; map to [0, 1]
+            float normalized = (angle + 1f) * 0.5f;
+            return Math.Clamp(normalized, 0f, 1f);
         }
 
         private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)

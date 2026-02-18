@@ -50,6 +50,7 @@ namespace Domain
     }
     public interface IScene
     {
+        public bool scripted { get; }
         public void SetupScene(I3dWorld world);
     }
 
