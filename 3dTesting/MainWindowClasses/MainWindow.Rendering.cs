@@ -19,6 +19,9 @@ namespace _3dTesting.Rendering
         private readonly Dictionary<Color, SolidColorBrush> brushCache = new();
         private readonly Dictionary<Color, Pen> penCache = new();
 
+        private readonly List<StreamGeometry> geometryPool = new();
+        private int geometryPoolIndex = 0;
+
         private const float FarZ = 2000f;
         private const float NearZ = -2000f;
 
@@ -120,6 +123,8 @@ namespace _3dTesting.Rendering
             var triangleArray = screenCoordinates.ToArray();
             Array.Sort(triangleArray, (a, b) => a.CalculatedZ.CompareTo(b.CalculatedZ));
 
+            geometryPoolIndex = 0;
+
             bool trackStats = ShouldLog();
             int colorHits = 0, colorMisses = 0;
             int brushHits = 0, brushMisses = 0;
@@ -150,8 +155,8 @@ namespace _3dTesting.Rendering
                     if (!colorCache.TryGetValue((shadeKey, baseColor), out Color color))
                     {
                         if (ShouldLog()) Logger.Log($"[WorldRenderer] ⚠️ Color cache miss for key ({shadeKey}, {baseColor}). CalculatedZ:{triangle.CalculatedZ} Angle:{triangle.TriangleAngle:0.00}");
-                        color = (Color)ColorConverter.ConvertFromString(
-                            Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor));
+                        string hex = Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor);
+                        color = HexToColor(hex);
                         colorCache[(shadeKey, baseColor)] = color;
                         if (trackStats) colorMisses++;
                     }
@@ -197,33 +202,16 @@ namespace _3dTesting.Rendering
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static float GetDepthFactor01(float calculatedZ)
-        {
-            float near = NearZ; // lav Z -> mørkere (0)
-            float far = FarZ;  // høy Z -> lysere (1)
-
-            if (calculatedZ <= near) return 0f;
-            if (calculatedZ >= far) return 1f;
-
-            return (calculatedZ - near) / (far - near);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float NormalizeAngleTo01(float angle)
-        {
-            // Angle is typically a dot product in [-1, 1]; map to [0, 1]
-            float normalized = (angle + 1f) * 0.5f;
-            return Math.Clamp(normalized, 0f, 1f);
-        }
-
         private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)
         {
             var p1 = new Point(triangle.X1, triangle.Y1);
             var p2 = new Point(triangle.X2, triangle.Y2);
             var p3 = new Point(triangle.X3, triangle.Y3);
 
-            var geometry = new StreamGeometry();
+            if (geometryPoolIndex >= geometryPool.Count)
+                geometryPool.Add(new StreamGeometry());
+
+            var geometry = geometryPool[geometryPoolIndex++];
             using (var ctx = geometry.Open())
             {
                 ctx.BeginFigure(p1, true, true);
@@ -245,5 +233,69 @@ namespace _3dTesting.Rendering
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static float GetDepthFactor01(float calculatedZ)
+        {
+            float near = NearZ; // lav Z -> mørkere (0)
+            float far = FarZ;  // høy Z -> lysere (1)
+
+            if (calculatedZ <= near) return 0f;
+            if (calculatedZ >= far) return 1f;
+
+            return (calculatedZ - near) / (far - near);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static float NormalizeAngleTo01(float angle)
+        {
+            // Angle is typically a dot product in [-1, 1]; map to [0, 1]
+            float normalized = (angle + 1f) * 0.5f;
+            return Math.Clamp(normalized, 0f, 1f);
+        }
+
+        /*private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)
+        {
+            var p1 = new Point(triangle.X1, triangle.Y1);
+            var p2 = new Point(triangle.X2, triangle.Y2);
+            var p3 = new Point(triangle.X3, triangle.Y3);
+
+            if (geometryPoolIndex >= geometryPool.Count)
+                geometryPool.Add(new StreamGeometry());
+
+            var geometry = geometryPool[geometryPoolIndex++];
+            using (var ctx = geometry.Open())
+            {
+                ctx.BeginFigure(p1, true, true);
+                ctx.LineTo(p2, true, false);
+                ctx.LineTo(p3, true, false);
+            }
+
+            if (triangle.PartName != null && triangle.PartName.StartsWith("CrashBox-"))
+            {
+                // If rendering CrashBoxes -> use semi-transparent brush
+                var transparentBrush = new SolidColorBrush(brush.Color) { Opacity = 0.25 };
+                transparentBrush.Freeze();
+                dc.DrawGeometry(transparentBrush, pen, geometry);
+            }
+            else
+            {
+                // Normal rendering
+                dc.DrawGeometry(brush, pen, geometry);
+            }
+        }*/
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Color HexToColor(string hex)
+        {
+            if (string.IsNullOrWhiteSpace(hex)) return Colors.Black;
+            if (hex[0] == '#') hex = hex.Substring(1);
+            if (hex.Length < 6) return Colors.Black;
+
+            byte r = Convert.ToByte(hex.Substring(0, 2), 16);
+            byte g = Convert.ToByte(hex.Substring(2, 2), 16);
+            byte b = Convert.ToByte(hex.Substring(4, 2), 16);
+
+            return Color.FromArgb(255, r, g, b);
+        }
     }
 }
