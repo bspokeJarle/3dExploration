@@ -29,12 +29,138 @@ namespace _3dTesting.Helpers
         public static double MaxCrashDistance = 750.0;
 
         private static readonly Dictionary<_3dObject, List<List<Vector3>>> RotatedBoxCache = new();
+        private static readonly Dictionary<_3dObject, Vector3> OffsetCache = new();
+        private static readonly Dictionary<_3dObject, List<Vector3>> WorldPointsCache = new();
+        private static readonly Dictionary<_3dObject, Vector3> CenterCache = new();
+        private static readonly Dictionary<(_3dObject obj, int boxIndex), List<Vector3>> WorldBoxCache = new();
+        private static readonly Dictionary<_3dObject, ObjectTypeFlags> TypeFlagCache = new();
+        private static int _cacheFrame = -1;
+
         private static int CacheHits = 0;
         private static int CacheMisses = 0;
         private static int SkippedByDistance = 0;
         private static int numFrame = 0;
 
         private static bool ShouldLogAny => Logger.EnableFileLogging && LocalEnableLogging;
+
+        private readonly struct ObjectTypeFlags
+        {
+            public readonly bool IsStatic;
+            public readonly bool IsParticle;
+            public readonly bool IsLazer;
+            public readonly bool IsSeeder;
+            public readonly bool IsShip;
+            public readonly bool IsSurface;
+            public readonly string Name;
+
+            public ObjectTypeFlags(string name)
+            {
+                Name = name;
+                IsStatic = IsStaticName(name);
+                IsParticle = name == "Particle";
+                IsLazer = name == "Lazer";
+                IsSeeder = name == "Seeder";
+                IsShip = name == "Ship";
+                IsSurface = name == "Surface";
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void ResetFrameCachesIfNeeded()
+        {
+            if (_cacheFrame == numFrame) return;
+
+            _cacheFrame = numFrame;
+            OffsetCache.Clear();
+            WorldPointsCache.Clear();
+            CenterCache.Clear();
+            WorldBoxCache.Clear();
+            TypeFlagCache.Clear();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ObjectTypeFlags GetTypeFlagsCached(_3dObject obj)
+        {
+            if (TypeFlagCache.TryGetValue(obj, out var flags))
+            {
+                CacheHits++;
+                return flags;
+            }
+
+            CacheMisses++;
+            var name = obj.ObjectName ?? string.Empty;
+            flags = new ObjectTypeFlags(name);
+            TypeFlagCache[obj] = flags;
+            return flags;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsStaticName(string objectName) =>
+            objectName == "Tree" || objectName == "Surface" || objectName == "House";
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Vector3 GetOffsetCached(_3dObject obj)
+        {
+            if (OffsetCache.TryGetValue(obj, out var offset))
+            {
+                CacheHits++;
+                return offset;
+            }
+
+            CacheMisses++;
+            offset = obj.GetCrashWorldOffset();
+            OffsetCache[obj] = offset;
+            return offset;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static List<Vector3> GetWorldPointsCached(_3dObject obj)
+        {
+            if (WorldPointsCache.TryGetValue(obj, out var points))
+            {
+                CacheHits++;
+                return points;
+            }
+
+            CacheMisses++;
+            var offset = GetOffsetCached(obj);
+            points = obj.GetAllCrashPointsWorld(offset);
+            WorldPointsCache[obj] = points;
+            return points;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Vector3 GetCenterCached(_3dObject obj)
+        {
+            if (CenterCache.TryGetValue(obj, out var center))
+            {
+                CacheHits++;
+                return center;
+            }
+
+            CacheMisses++;
+            var points = GetWorldPointsCached(obj);
+            center = GetCenterOfBox(points);
+            CenterCache[obj] = center;
+            return center;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static List<Vector3> GetWorldBoxPointsCached(_3dObject obj, int boxIndex, List<IVector3> box)
+        {
+            var key = (obj, boxIndex);
+            if (WorldBoxCache.TryGetValue(key, out var points))
+            {
+                CacheHits++;
+                return points;
+            }
+
+            CacheMisses++;
+            var offset = GetOffsetCached(obj);
+            points = box.ToCrashWorldPoints(offset);
+            WorldBoxCache[key] = points;
+            return points;
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool ShouldLogPair(_3dObject a, _3dObject b)
@@ -71,6 +197,8 @@ namespace _3dTesting.Helpers
         public static void HandleCrashboxes(List<_3dObject> activeWorld, bool isPaused)
         {
             numFrame++;
+            ResetFrameCachesIfNeeded();
+
             int count = activeWorld.Count;
             bool shouldCheckStaticObjects = (DateTime.Now - _lastStaticCheck).TotalMilliseconds > 100;
             _skipParticles = !_skipParticles;
@@ -91,24 +219,27 @@ namespace _3dTesting.Helpers
                     var otherInhabitant = activeWorld[j];
                     if (otherInhabitant == null || otherInhabitant.CrashBoxes == null) continue;
 
-                    bool isInhabitantStatic = IsStatic(inhabitant.ObjectName);
-                    bool isOtherStatic = IsStatic(otherInhabitant.ObjectName);
-                    bool isInhabitantParticle = inhabitant.ObjectName == "Particle";
-                    bool isOtherParticle = otherInhabitant.ObjectName == "Particle";
-                    bool isInhabitantLazer = inhabitant.ObjectName == "Lazer";
-                    bool isOtherLazer = otherInhabitant.ObjectName == "Lazer";
-                    bool isInhabitantSeeder = inhabitant.ObjectName == "Seeder";
-                    bool isOtherSeeder = otherInhabitant.ObjectName == "Seeder";
+                    var flagsA = GetTypeFlagsCached(inhabitant);
+                    var flagsB = GetTypeFlagsCached(otherInhabitant);
+
+                    bool isInhabitantStatic = flagsA.IsStatic;
+                    bool isOtherStatic = flagsB.IsStatic;
+                    bool isInhabitantParticle = flagsA.IsParticle;
+                    bool isOtherParticle = flagsB.IsParticle;
+                    bool isInhabitantLazer = flagsA.IsLazer;
+                    bool isOtherLazer = flagsB.IsLazer;
+                    bool isInhabitantSeeder = flagsA.IsSeeder;
+                    bool isOtherSeeder = flagsB.IsSeeder;
                     bool isSeeder = isInhabitantSeeder || isOtherSeeder;
                     bool isParticle = isInhabitantParticle || isOtherParticle;
                     bool isLazer = isInhabitantLazer || isOtherLazer;
                     bool isBothParticles = isInhabitantParticle && isOtherParticle;
-                    bool isShip = inhabitant.ObjectName == "Ship" || otherInhabitant.ObjectName == "Ship";
-                    bool isSurface = inhabitant.ObjectName == "Surface" || otherInhabitant.ObjectName == "Surface";
+                    bool isShip = flagsA.IsShip || flagsB.IsShip;
+                    bool isSurface = flagsA.IsSurface || flagsB.IsSurface;
 
                     // Empty objectnames should not be accepted
-                    if (string.IsNullOrEmpty(inhabitant.ObjectName) || string.IsNullOrEmpty(otherInhabitant.ObjectName)) continue;
-                    if (inhabitant.ObjectName == otherInhabitant.ObjectName) continue;
+                    if (string.IsNullOrEmpty(flagsA.Name) || string.IsNullOrEmpty(flagsB.Name)) continue;
+                    if (flagsA.Name == flagsB.Name) continue;
                     if (isInhabitantStatic && isOtherStatic) continue;
                     if ((isInhabitantStatic || isOtherStatic) && !shouldCheckStaticObjects) continue;
                     if (isParticle && isShip) continue;
@@ -126,13 +257,9 @@ namespace _3dTesting.Helpers
                         }
                     }
 
-                    // Effective crashbox offset = ObjectOffsets (local) + CalculatedWorldOffset (world/map optional) + SurfaceY (optional)
-                    var offsetA = inhabitant.GetCrashWorldOffset();
-                    var offsetB = otherInhabitant.GetCrashWorldOffset();
-
-                    // Distance check should use the same effective coordinates as collision tests
-                    var centerA = GetCenterOfBox(inhabitant.GetAllCrashPointsWorld(offsetA));
-                    var centerB = GetCenterOfBox(otherInhabitant.GetAllCrashPointsWorld(offsetB));
+                    // Distance check should use the same effective coordinates as collision tests (cached)
+                    var centerA = GetCenterCached(inhabitant);
+                    var centerB = GetCenterCached(otherInhabitant);
 
                     double distance = _3dObjectHelpers.GetDistance(centerA, centerB);
 
@@ -213,16 +340,12 @@ namespace _3dTesting.Helpers
             var particle = a.ObjectName == "Particle" ? a : b;
             var other = particle == a ? b : a;
 
-            // Effective crash offset (local ObjectOffsets + optional CalculatedWorldOffset + optional SurfaceY)
-            var particleOffset = particle.GetCrashWorldOffset();
-            var otherOffset = other.GetCrashWorldOffset();
-
             for (int pb = 0; pb < particle.CrashBoxes.Count; pb++)
             {
                 var particleBox = particle.CrashBoxes[pb];
 
-                // World points for particle box (type-safe via extension)
-                var worldParticlePoints = particleBox.ToCrashWorldPoints(particleOffset);
+                // World points for particle box (cached per-frame)
+                var worldParticlePoints = GetWorldBoxPointsCached(particle, pb, particleBox);
                 if (worldParticlePoints.Count == 0) continue;
 
                 var center = GetCenterOfBox(worldParticlePoints);
@@ -231,8 +354,8 @@ namespace _3dTesting.Helpers
                 {
                     var otherBox = other.CrashBoxes[ob];
 
-                    // World points for other box (type-safe via extension)
-                    var worldOtherPoints = otherBox.ToCrashWorldPoints(otherOffset);
+                    // World points for other box (cached per-frame)
+                    var worldOtherPoints = GetWorldBoxPointsCached(other, ob, otherBox);
                     if (worldOtherPoints.Count == 0) continue;
 
                     // Build other AABB in WORLD from worldOtherPoints
@@ -290,19 +413,14 @@ namespace _3dTesting.Helpers
                         if (LogCollisionDetails)
                         {
                             if (!SkipParticleLogging) LogCollisionDetail(a, b,
-                                $"[COLLISION OFFSETS] ParticleOffset=({particleOffset.x:0.##},{particleOffset.y:0.##},{particleOffset.z:0.##}) OtherOffset=({otherOffset.x:0.##},{otherOffset.y:0.##},{otherOffset.z:0.##})");
-
-                            if (!SkipParticleLogging) LogCollisionDetail(a, b,
                                 $"[PARTICLE CENTER] ({center.x:0.##},{center.y:0.##},{center.z:0.##})");
 
                             if (!SkipParticleLogging) LogCollisionDetail(a, b,
                                 $"[OTHER AABB] Min=({min.x:0.##},{min.y:0.##},{min.z:0.##}) Max=({max.x:0.##},{max.y:0.##},{max.z:0.##})");
 
-                            // Log particle box (world)
                             if (!SkipParticleLogging)
                                 LogCrashBoxWorldPoints($"[PARTICLE BOX WORLD] {particle.ObjectName} Box[{pb}]", worldParticlePoints);
 
-                            // Log other box (world) - uses same points as AABB
                             if (!SkipParticleLogging)
                                 LogCrashBoxWorldPoints($"[OTHER BOX WORLD] {other.ObjectName} Box[{ob}]", worldOtherPoints);
                         }
@@ -315,30 +433,26 @@ namespace _3dTesting.Helpers
             return false;
         }
 
-
         // -----------------------------
         // General collision (NO early overlap test, world offset + readable logging)
         // -----------------------------
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool HandleGeneralCollision(_3dObject a, _3dObject b)
         {
-            var offsetA = a.GetCrashWorldOffset();
-            var offsetB = b.GetCrashWorldOffset();
-
             for (int ai = 0; ai < a.CrashBoxes.Count; ai++)
             {
                 var boxA = a.CrashBoxes[ai];
 
-                // Build world points for A box (robust against list types)
-                var safeBoxA = boxA.ToCrashWorldPoints(offsetA);
+                // Build world points for A box (cached per-frame)
+                var safeBoxA = GetWorldBoxPointsCached(a, ai, boxA);
                 if (safeBoxA.Count == 0) continue;
 
                 for (int bi = 0; bi < b.CrashBoxes.Count; bi++)
                 {
                     var boxB = b.CrashBoxes[bi];
 
-                    // Build world points for B box (robust against list types)
-                    var safeBoxB = ((System.Collections.IEnumerable)boxB).ToCrashWorldPoints(offsetB);
+                    // Build world points for B box (cached per-frame)
+                    var safeBoxB = GetWorldBoxPointsCached(b, bi, boxB);
 
                     if (ShouldLogAny && CheckLogFilter(a, b) && LogCollisionDetails)
                     {
@@ -365,6 +479,9 @@ namespace _3dTesting.Helpers
 
                         if (LogCollisionDetails)
                         {
+                            var offsetA = GetOffsetCached(a);
+                            var offsetB = GetOffsetCached(b);
+
                             LogCollisionDetail(a, b,
                                 $"[COLLISION OFFSETS] AEffective=({offsetA.x:0.##},{offsetA.y:0.##},{offsetA.z:0.##}) " +
                                 $"BEffective=({offsetB.x:0.##},{offsetB.y:0.##},{offsetB.z:0.##})");
@@ -575,6 +692,6 @@ namespace _3dTesting.Helpers
         }
 
         public static bool IsStatic(string objectName) =>
-            objectName == "Tree" || objectName == "Surface" || objectName == "House";
+            IsStaticName(objectName);
     }
 }
