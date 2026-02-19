@@ -44,7 +44,7 @@ namespace _3dRotations.World.Objects.LogoCube
                 faceY: +CubeHalf + LogoPushOut,
                 outwardCenter: new Vector3 { x = 0, y = +CubeHalf, z = 0 },
                 scale: LogoScale,
-                flipX: false);
+                flipZ: false);
 
             // Back (-Y) logo
             // Flip X so the back-face reads correctly (avoid mirrored logo).
@@ -53,7 +53,7 @@ namespace _3dRotations.World.Objects.LogoCube
                 faceY: -CubeHalf - LogoPushOut,
                 outwardCenter: new Vector3 { x = 0, y = -CubeHalf, z = 0 },
                 scale: LogoScale,
-                flipX: true);
+                flipZ: true);
 
             var obj = new _3dObject { ObjectId = GameState.ObjectIdCounter++ };
 
@@ -167,7 +167,7 @@ namespace _3dRotations.World.Objects.LogoCube
             float faceY,
             Vector3 outwardCenter,
             float scale,
-            bool flipX)
+            bool flipZ)
         {
             var tris = new List<ITriangleMeshWithColor>();
 
@@ -199,11 +199,11 @@ namespace _3dRotations.World.Objects.LogoCube
                 var b = ParseXZ(parts[1], scale);
                 var c = ParseXZ(parts[2], scale);
 
-                if (flipX)
+                if (flipZ)
                 {
-                    a.x = -a.x;
-                    b.x = -b.x;
-                    c.x = -c.x;
+                    a.z = -a.z;
+                    b.z = -b.z;
+                    c.z = -c.z;
                 }
 
                 var v1 = new Vector3 { x = a.x, y = faceY, z = a.z };

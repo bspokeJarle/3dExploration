@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Windows.Media.Imaging;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 using static Domain._3dSpecificsImplementations;
@@ -7,6 +8,45 @@ using static Domain._3dSpecificsImplementations;
 
 namespace Domain
 {
+    public interface IGameReplay
+    {
+        public string ReplayFile { get; }
+        public string ReplayName { get; }
+        public List<IFrameState> ReplayFrames { get; }
+    }
+    public interface IFrameState
+    {
+        public int FrameCount { get; set; }
+        public List<IReplayObjectState> ObjectStates { get; set; }
+        public void Clear(int frameIndex)
+        {
+            //Add framecount when clearing
+            FrameCount = frameIndex + 1;
+            ObjectStates.Clear();
+        }
+    }
+    public interface IReplayObjectState
+    {
+        IVector3 WorldPosition { get; set; }
+        IVector3 ObjectOffset { get; set; }
+        string ObjectName { get; set; }
+        int ObjectId { get; set; }
+        public List<EventState> ObjectEvents { get; set; }
+    }
+
+    public interface EventState
+    {
+        public EventTypes EventType { get; set; }
+    }
+    public enum EventTypes
+    {
+        Explode,
+        FireLazer,
+        Collision,
+        Thrust,
+        Seed
+    }
+
     public struct SurfaceData
     {
         public int mapDepth;
@@ -50,8 +90,15 @@ namespace Domain
     }
     public interface IScene
     {
-        public bool scripted { get; }
+        public GameModes GameMode { get; }
         public void SetupScene(I3dWorld world);
+    }
+
+    public enum GameModes
+    {
+        Live,
+        Record,
+        Playback
     }
 
     public interface I3dWorld

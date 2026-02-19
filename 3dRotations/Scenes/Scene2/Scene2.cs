@@ -16,7 +16,7 @@ namespace _3dRotations.Scene.Scene1
     {
         Surface Surface = new();
 
-        public bool scripted { get; } = false;
+        public GameModes GameMode { get; } = GameModes.Live;
 
         public void SetupScene(I3dWorld world)
         {            

@@ -12,12 +12,12 @@ namespace _3dRotations.Scenes.Intro
 {
     public class Intro : IScene
     {
-        public bool scripted { get; } = true;
+        public GameModes GameMode { get; } = GameModes.Playback;
 
         public void SetupScene(I3dWorld world)
         {
             var TheOmegaStrainLogo = LogoCube.CreateLogoCube();
-            TheOmegaStrainLogo.ObjectOffsets = new Vector3 { x = 0, y = 0, z = 0 };
+            TheOmegaStrainLogo.ObjectOffsets = new Vector3 { x = 1000, y = 0, z = 0 };
             TheOmegaStrainLogo.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             //This object is centered on the world origin, so no offsets are needed, and it starts with no rotation.
             TheOmegaStrainLogo.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };

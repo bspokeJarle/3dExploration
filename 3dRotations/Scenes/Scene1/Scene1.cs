@@ -11,11 +11,11 @@ using System;
 
 namespace _3dRotations.Scene.Scene1
 {
-    public class Scene1:IScene
+    public class Scene1 : IScene
     {
         Surface Surface = new();
 
-        public bool scripted { get; } = false;
+        public GameModes GameMode { get; } = GameModes.Live;
 
         public void SetupScene(I3dWorld world)
         {            
