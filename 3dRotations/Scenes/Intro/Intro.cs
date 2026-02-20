@@ -16,6 +16,8 @@ namespace _3dRotations.Scenes.Intro
 
         public string SceneMusic { get; } = "music_intro";
 
+        public SceneTypes SceneType { get; } = SceneTypes.Intro;
+
         public void SetupScene(I3dWorld world)
         {
             var TheOmegaStrainLogo = LogoCube.CreateLogoCube();

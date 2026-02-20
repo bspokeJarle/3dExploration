@@ -91,6 +91,7 @@ namespace Domain
     }
     public interface IScene
     {
+        public SceneTypes SceneType { get; }
         public GameModes GameMode { get; }
         public void SetupScene(I3dWorld world);
         public string SceneMusic { get; }
@@ -101,6 +102,12 @@ namespace Domain
         Live,
         Record,
         Playback
+    }
+    public enum SceneTypes
+    {
+        Intro,
+        Game,
+        Outro
     }
 
     public interface I3dWorld

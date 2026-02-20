@@ -16,6 +16,7 @@ namespace _3dRotations.Scene.Scene1
         Surface Surface = new();
 
         public string SceneMusic { get; } = "music_flight";
+        public SceneTypes SceneType { get; } = SceneTypes.Game;
 
         public GameModes GameMode { get; } = GameModes.Live;
 

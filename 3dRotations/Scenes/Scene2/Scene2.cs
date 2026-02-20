@@ -1,13 +1,9 @@
 ﻿
-using _3dTesting._3dWorld;
 using _3dRotations.World.Objects;
 using static Domain._3dSpecificsImplementations;
 using GameAiAndControls.Controls;
 using _3dRotations.Helpers;
 using Domain;
-using System.Collections.Generic;
-using System.Diagnostics;
-using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonGlobalState;
 
 namespace _3dRotations.Scene.Scene1
@@ -17,6 +13,7 @@ namespace _3dRotations.Scene.Scene1
         Surface Surface = new();
 
         public string SceneMusic { get; } = "music_flight";
+        public SceneTypes SceneType { get; } = SceneTypes.Game;
         public GameModes GameMode { get; } = GameModes.Live;
 
         public void SetupScene(I3dWorld world)

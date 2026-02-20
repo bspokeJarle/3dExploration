@@ -220,15 +220,14 @@ namespace GameAiAndControls.Controls
                 else
                 {
                     Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
+
+                    if (theObject.ImpactStatus?.HasExploded==true)
+                    {
+                        //Eliminate the object
+                        theObject.ObjectParts.Clear();
+                    }
                 }
             }
-
-            // Optional cleanup after full intro
-            if (t > T7_ZoomEnd + 4f)
-            {
-                theObject.ObjectParts.Clear();
-            }
-
             return theObject;
         }
 
