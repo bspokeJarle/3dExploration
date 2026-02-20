@@ -11,9 +11,13 @@ namespace _3DWorld.Scene
     public class SceneHandler : ISceneHandler
     {
         // List of the available scenes for the game
-        //private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2() };
-        private List<IScene> scenes = new List<IScene> { new Scene1(), new Scene2() };
+        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2() };        
         private int currentSceneIndex = 0;
+
+        public IScene GetActiveScene()
+        {
+            return scenes[currentSceneIndex];
+        }
 
         public void SetupActiveScene(I3dWorld world)
         {

@@ -87,11 +87,13 @@ namespace Domain
         public void ResetActiveScene(I3dWorld world);
 
         public void NextScene(I3dWorld world);
+        public IScene GetActiveScene();
     }
     public interface IScene
     {
         public GameModes GameMode { get; }
         public void SetupScene(I3dWorld world);
+        public string SceneMusic { get; }
     }
 
     public enum GameModes

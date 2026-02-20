@@ -195,7 +195,11 @@ namespace _3dTesting.MainWindowClasses
 
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
-            HandleMusic(renderedList);
+            var activeScene = world.SceneHandler.GetActiveScene();
+            if (activeScene != null)
+            {
+                HandleMusic(renderedList,activeScene.SceneMusic);
+            }
             return projectedCoordinates;
         }
 
@@ -228,9 +232,10 @@ namespace _3dTesting.MainWindowClasses
             }
         }
 
-        public void HandleMusic(List<_3dObject> renderedObjects)
+        public void HandleMusic(List<_3dObject> renderedObjects, string sceneMusic)
         {
-            if (MusicDef == null) MusicDef = soundRegistry.Get("music_flight");
+            //var music = wor
+            if (MusicDef == null) MusicDef = soundRegistry.Get(sceneMusic);
             if (!MusicIsPlaying)
             {
                 MusicIsPlaying = true;

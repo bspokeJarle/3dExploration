@@ -15,6 +15,8 @@ namespace _3dRotations.Scene.Scene1
     {
         Surface Surface = new();
 
+        public string SceneMusic { get; } = "music_flight";
+
         public GameModes GameMode { get; } = GameModes.Live;
 
         public void SetupScene(I3dWorld world)

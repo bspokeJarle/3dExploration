@@ -14,10 +14,14 @@ namespace _3dRotations.World.Objects.LogoCube
         //  SIZE / PLACEMENT
         // ----------------------------------------------------
         private static float CubeHalf = 70f;
-        private static float LogoPushOut = 1.5f; // avoids z-fighting
+
+        // Push decals outward from cube to avoid z-fighting
+        private static float LogoPushOut = 1.5f;
+
+        // Scale for all decal coordinate data (adjust if needed)
         private static float LogoScale = 1.00f;
 
-        // 4x4 squares per face for the 4 side faces
+        // 4x4 squares per face (only for +Z/-Z faces)
         private static int SideGrid = 4;
 
         // ----------------------------------------------------
@@ -36,23 +40,57 @@ namespace _3dRotations.World.Objects.LogoCube
         // ----------------------------------------------------
         public static _3dObject CreateLogoCube()
         {
-            var cubeShell = CreateCubeShell_NoFrontNoBack_4x4Squares(CubeHalf, SideGrid);
+            // Cube shell: ONLY +Z and -Z faces as 4x4 squares
+            // - +Y/-Y omitted entirely (nothing behind Omega/Retro)
+            // - +X/-X omitted (nothing behind MusicBy/047)
+            var cubeShell = CreateCubeShell_PartialFaces(CubeHalf, SideGrid);
 
-            // Front (+Y) logo
-            var omega = BuildLogoFaceDecal(
+            // -------------------------
+            // +Y face: Omega (front)
+            // -------------------------
+            var omega = BuildLogoFaceDecal_YFace(
                 LogoCubeVectorData.OmegaStrainTrianglesData,
                 faceY: +CubeHalf + LogoPushOut,
                 outwardCenter: new Vector3 { x = 0, y = +CubeHalf, z = 0 },
                 scale: LogoScale,
+                flipX: false,
                 flipZ: false);
 
-            // Back (-Y) logo
-            // Flip X so the back-face reads correctly (avoid mirrored logo).
-            var retro = BuildLogoFaceDecal(
+            // -------------------------
+            // -Y face: Retro (back)
+            // IMPORTANT: your world needs Z flip here (not X)
+            // -------------------------
+            var retro = BuildLogoFaceDecal_YFace(
                 LogoCubeVectorData.RetroMeshTrianglesData,
                 faceY: -CubeHalf - LogoPushOut,
                 outwardCenter: new Vector3 { x = 0, y = -CubeHalf, z = 0 },
                 scale: LogoScale,
+                flipX: false,
+                flipZ: true);
+
+            // -------------------------
+            // +X face: MUSIC BY
+            // place decals on X face (x constant)
+            // -------------------------
+            var musicBy = BuildLogoFaceDecal_XFace(
+                LogoCubeVectorData.MusicByTrianglesData,
+                faceX: +CubeHalf + LogoPushOut,
+                outwardCenter: new Vector3 { x = +CubeHalf, y = 0, z = 0 },
+                scale: LogoScale,
+                flipX: false,
+                flipZ: true);
+
+            // -------------------------
+            // -X face: -047-
+            // FIX: "X flip" on an X-face means flipping the FILE X component,
+            // which maps to WORLD Y (because file X -> world Y on X-face).
+            // -------------------------
+            var zero47 = BuildLogoFaceDecal_XFace(
+                LogoCubeVectorData._047TrianglesData,
+                faceX: -CubeHalf - LogoPushOut,
+                outwardCenter: new Vector3 { x = -CubeHalf, y = 0, z = 0 },
+                scale: LogoScale,
+                flipX: true,     // <-- this is the missing fix
                 flipZ: true);
 
             var obj = new _3dObject { ObjectId = GameState.ObjectIdCounter++ };
@@ -60,6 +98,8 @@ namespace _3dRotations.World.Objects.LogoCube
             AddPart(obj, "CubeShell", cubeShell, true);
             AddPart(obj, "OmegaStrainLogo", omega, true);
             AddPart(obj, "RetroMeshLogo", retro, true);
+            AddPart(obj, "MusicBy", musicBy, true);
+            AddPart(obj, "047", zero47, true);
 
             obj.ObjectOffsets = new Vector3 { x = 0, y = 0, z = 0 };
             obj.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
@@ -87,11 +127,10 @@ namespace _3dRotations.World.Objects.LogoCube
         }
 
         // ----------------------------------------------------
-        //  CUBE SHELL (NO FRONT/BACK FACES)
-        //  -> nothing behind emblems
-        //  -> 4x4 squares on 4 side faces using palette colors
+        //  CUBE SHELL: only +Z and -Z faces as 4x4 squares
+        //  (no +Y/-Y faces, and no solid +X/-X faces to avoid "stuff behind decals")
         // ----------------------------------------------------
-        private static List<ITriangleMeshWithColor> CreateCubeShell_NoFrontNoBack_4x4Squares(float half, int grid)
+        private static List<ITriangleMeshWithColor> CreateCubeShell_PartialFaces(float half, int grid)
         {
             var tris = new List<ITriangleMeshWithColor>();
             var rand = new Random(1337); // stable colors per run
@@ -114,13 +153,11 @@ namespace _3dRotations.World.Objects.LogoCube
                         float v0 = (float)v / grid;
                         float v1 = (float)(v + 1) / grid;
 
-                        // square corners
                         var p00 = Add(origin, Add(Mul(axisU, u0), Mul(axisV, v0)));
                         var p10 = Add(origin, Add(Mul(axisU, u1), Mul(axisV, v0)));
                         var p11 = Add(origin, Add(Mul(axisU, u1), Mul(axisV, v1)));
                         var p01 = Add(origin, Add(Mul(axisU, u0), Mul(axisV, v1)));
 
-                        // one color per square
                         string col = CubePalette[rand.Next(CubePalette.Length)];
 
                         tris.Add(CreateTriangleOutward(p00, p10, p11, center, col));
@@ -129,50 +166,38 @@ namespace _3dRotations.World.Objects.LogoCube
                 }
             }
 
-            // +Z face
+            // +Z face only
             AddGridFace(
                 origin: new Vector3 { x = x0, y = y0, z = z1 },
                 axisU: new Vector3 { x = x1 - x0, y = 0, z = 0 },
                 axisV: new Vector3 { x = 0, y = y1 - y0, z = 0 });
 
-            // -Z face
+            // -Z face only
             AddGridFace(
                 origin: new Vector3 { x = x1, y = y0, z = z0 },
                 axisU: new Vector3 { x = x0 - x1, y = 0, z = 0 },
                 axisV: new Vector3 { x = 0, y = y1 - y0, z = 0 });
 
-            // +X face
-            AddGridFace(
-                origin: new Vector3 { x = x1, y = y0, z = z0 },
-                axisU: new Vector3 { x = 0, y = 0, z = z1 - z0 },
-                axisV: new Vector3 { x = 0, y = y1 - y0, z = 0 });
-
-            // -X face
-            AddGridFace(
-                origin: new Vector3 { x = x0, y = y0, z = z1 },
-                axisU: new Vector3 { x = 0, y = 0, z = z0 - z1 },
-                axisV: new Vector3 { x = 0, y = y1 - y0, z = 0 });
-
-            // Intentionally omit +Y and -Y faces
-
             return tris;
         }
 
         // ----------------------------------------------------
-        //  LOGO DECAL (per-triangle color)
-        //  line format: x1,z1;x2,z2;x3,z3|RRGGBB
+        //  DECAL BUILDERS
+        //  Data format per line: x1,z1;x2,z2;x3,z3|RRGGBB
+        //  ParseXZ returns (x,z) in Vector3.x and Vector3.z
         // ----------------------------------------------------
-        private static List<ITriangleMeshWithColor> BuildLogoFaceDecal(
+
+        // Place decal on a Y face (y constant)
+        private static List<ITriangleMeshWithColor> BuildLogoFaceDecal_YFace(
             string data,
             float faceY,
             Vector3 outwardCenter,
             float scale,
+            bool flipX,
             bool flipZ)
         {
             var tris = new List<ITriangleMeshWithColor>();
-
-            if (string.IsNullOrWhiteSpace(data))
-                return tris;
+            if (string.IsNullOrWhiteSpace(data)) return tris;
 
             var lines = data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
@@ -206,9 +231,83 @@ namespace _3dRotations.World.Objects.LogoCube
                     c.z = -c.z;
                 }
 
+                if (flipX)
+                {
+                    a.x = -a.x;
+                    b.x = -b.x;
+                    c.x = -c.x;
+                }
+
                 var v1 = new Vector3 { x = a.x, y = faceY, z = a.z };
                 var v2 = new Vector3 { x = b.x, y = faceY, z = b.z };
                 var v3 = new Vector3 { x = c.x, y = faceY, z = c.z };
+
+                tris.Add(CreateTriangleOutward(v1, v2, v3, outwardCenter, hex));
+            }
+
+            return tris;
+        }
+
+        // Place decal on an X face (x constant), mapping:
+        //   file X -> world Y
+        //   file Z -> world Z
+        private static List<ITriangleMeshWithColor> BuildLogoFaceDecal_XFace(
+            string data,
+            float faceX,
+            Vector3 outwardCenter,
+            float scale,
+            bool flipX,
+            bool flipZ)
+        {
+            var tris = new List<ITriangleMeshWithColor>();
+            if (string.IsNullOrWhiteSpace(data)) return tris;
+
+            var lines = data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var raw in lines)
+            {
+                var line = raw.Trim();
+                if (line.Length < 10) continue;
+
+                string geom = line;
+                string hex = "FFFFFF";
+
+                int pipe = line.LastIndexOf('|');
+                if (pipe > 0 && pipe < line.Length - 1)
+                {
+                    geom = line.Substring(0, pipe);
+                    hex = line.Substring(pipe + 1).Trim();
+                    if (hex.Length != 6) hex = "FFFFFF";
+                }
+
+                var parts = geom.Split(';');
+                if (parts.Length != 3) continue;
+
+                var a = ParseXZ(parts[0], scale);
+                var b = ParseXZ(parts[1], scale);
+                var c = ParseXZ(parts[2], scale);
+
+                // IMPORTANT:
+                // X-face mapping means file X becomes world Y.
+                // So flipX => flip file X => flips world Y.
+                if (flipX)
+                {
+                    a.x = -a.x;
+                    b.x = -b.x;
+                    c.x = -c.x;
+                }
+
+                if (flipZ)
+                {
+                    a.z = -a.z;
+                    b.z = -b.z;
+                    c.z = -c.z;
+                }
+
+                // x fixed, file x->world y, file z->world z
+                var v1 = new Vector3 { x = faceX, y = a.x, z = a.z };
+                var v2 = new Vector3 { x = faceX, y = b.x, z = b.z };
+                var v3 = new Vector3 { x = faceX, y = c.x, z = c.z };
 
                 tris.Add(CreateTriangleOutward(v1, v2, v3, outwardCenter, hex));
             }
@@ -228,7 +327,7 @@ namespace _3dRotations.World.Objects.LogoCube
         }
 
         // ----------------------------------------------------
-        //  HELPERS (Tower style)
+        //  TRIANGLE OUTWARD (Tower style)
         // ----------------------------------------------------
         private static TriangleMeshWithColor CreateTriangleOutward(
             Vector3 v1,
@@ -269,6 +368,9 @@ namespace _3dRotations.World.Objects.LogoCube
             };
         }
 
+        // ----------------------------------------------------
+        //  VECTOR HELPERS
+        // ----------------------------------------------------
         private static Vector3 Add(Vector3 a, Vector3 b)
             => new Vector3 { x = a.x + b.x, y = a.y + b.y, z = a.z + b.z };
 
