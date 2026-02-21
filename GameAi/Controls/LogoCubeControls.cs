@@ -1,4 +1,5 @@
 ﻿using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using System;
 
@@ -223,6 +224,8 @@ namespace GameAiAndControls.Controls
 
                     if (theObject.ImpactStatus?.HasExploded==true)
                     {
+                        //Show overlay
+                        GameState.ScreenOverlayState.ShowOverlay = true;
                         //Eliminate the object
                         theObject.ObjectParts.Clear();
                     }

@@ -21,7 +21,7 @@ namespace _3dRotations.Scene.Scene1
         public GameModes GameMode { get; } = GameModes.Live;
 
         public void SetupScene(I3dWorld world)
-        {            
+        {          
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
@@ -143,6 +143,12 @@ namespace _3dRotations.Scene.Scene1
                 house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
             }
+        }
+
+        public void SetupSceneOverlay()
+        {
+            GameState.ScreenOverlayState.ResetToDefaults();
+            //No Sceneoverlay for now
         }
     }
 }

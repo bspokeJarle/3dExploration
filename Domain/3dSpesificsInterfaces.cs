@@ -95,6 +95,7 @@ namespace Domain
         public GameModes GameMode { get; }
         public void SetupScene(I3dWorld world);
         public string SceneMusic { get; }
+        public void SetupSceneOverlay();
     }
 
     public enum GameModes

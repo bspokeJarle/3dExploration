@@ -121,5 +121,10 @@ namespace _3dRotations.Scene.Scene1
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
             }
         }
+
+        public void SetupSceneOverlay()
+        {
+            GameState.ScreenOverlayState.ResetToDefaults();
+        }
     }
 }

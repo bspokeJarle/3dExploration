@@ -6,7 +6,6 @@ using Domain;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -43,23 +42,31 @@ namespace _3dTesting
         private readonly DispatcherTimer timer = new DispatcherTimer();
         private readonly Stopwatch stopwatch = new Stopwatch();
         private int frameCount = 0;
+
         private Grid mainGrid;
         private GameWorldManager gameWorldManager = new GameWorldManager();
         private WorldRenderer worldRenderer;
+
         public _3dWorld._3dWorld world = new();
         public MediaPlayer player = new MediaPlayer();
+
         public BitmapSource surfaceMapBitmap;
         private Image mapOverlay;
         private System.Windows.Shapes.Rectangle healthRectangle;
+
         private bool isPaused = false;
         private int pauseFrameCount = 0;
         private const int limitFrameCount = 10;
         private DateTime fadeOutTrigged = DateTime.MinValue;
         private int _updateInProgress = 0;
 
+        // Overlay handler (new)
+        private OverlayHandler _overlayHandler;
+
+        private bool isFading = false;
+
         public MainWindow()
         {
-            //Turn this on when debugging
             Logger.EnableFileLogging = true;
             Logger.ClearLog();
 
@@ -68,6 +75,7 @@ namespace _3dTesting
 
             mainGrid = new Grid();
             Content = mainGrid;
+
             mainGrid.Children.Add(visualHost);
             worldRenderer = new WorldRenderer(visualHost);
 
@@ -90,6 +98,7 @@ namespace _3dTesting
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top
             };
+
             mapOverlay = new Image
             {
                 Width = 200,
@@ -100,7 +109,6 @@ namespace _3dTesting
             };
 
             var yellowBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 255, 0));
-            //Update the Ship statistics
             healthRectangle = new System.Windows.Shapes.Rectangle
             {
                 Stroke = yellowBrush,
@@ -109,35 +117,40 @@ namespace _3dTesting
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Top,
                 Height = 50
-
             };
+
             mainGrid.Children.Add(healthRectangle);
             mainGrid.Children.Add(mapOverlay);
             mainGrid.Children.Add(FpsText);
 
             surfaceMapBitmap = GameState.SurfaceState.GlobalMapBitmap;
 
+            //Overlayhandles must be put in the grid
+            _overlayHandler = new OverlayHandler(mainGrid);
+
             timer.Interval = TimeSpan.FromMilliseconds(8);
             timer.Tick += (s, e) => Handle3dWorld();
             timer.Start();
             stopwatch.Start();
-
         }
 
         private void HandleEsc(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
                 Application.Current.Shutdown();
-            //This is the pause the game
-            if (e.Key == Key.LeftCtrl) 
+
+            if (e.Key == Key.LeftCtrl)
             {
                 isPaused = !isPaused;
                 world.IsPaused = !isPaused;
                 pauseFrameCount = 0;
             }
+
+            // TODO: When you are tired of the intro, press space to start game
+            // if (GameState.ScreenOverlayState != null && GameState.ScreenOverlayState.ShowOverlay)
+            //     GameState.ScreenOverlayState.ShowOverlay = false;
         }
 
-        private bool isFading = false;
         public async Task FadeOutAsync(float durationSeconds = 1.0f)
         {
             FadeOverlay.Visibility = Visibility.Visible;
@@ -163,7 +176,7 @@ namespace _3dTesting
             FadeOverlay.Opacity = 1;
 
             var animation = new DoubleAnimation
-            {             
+            {
                 From = 1,
                 To = 0,
                 Duration = TimeSpan.FromSeconds(durationSeconds),
@@ -180,49 +193,68 @@ namespace _3dTesting
 
             FadeOverlay.BeginAnimation(UIElement.OpacityProperty, animation);
 
-            await tcs.Task ;
+            await tcs.Task;
         }
 
         private async void Handle3dWorld()
         {
+            float dt = (float)timer.Interval.TotalSeconds;
+
             if (world.IsPaused)
             {
-                //When pausing let it run for X frames to settle (debugging purposes)
                 pauseFrameCount++;
             }
-            //TODO: Should wait until we actually have the new Scene
-            if (pauseFrameCount<limitFrameCount && gameWorldManager.FadeInWorld && isFading && world.WorldInhabitants.Count > 100)
+
+            if (pauseFrameCount < limitFrameCount && gameWorldManager.FadeInWorld && isFading && world.WorldInhabitants.Count > 100)
             {
-                //When fading in, replace the map bitmap with the new one to prevent showing an outdated map during fade in
-                //surfaceMapBitmap = GameState.SurfaceState.GlobalMapBitmap;
                 await FadeInAsync(1.5f);
                 gameWorldManager.FadeInWorld = false;
                 isFading = false;
             }
 
-            if (pauseFrameCount<=limitFrameCount && gameWorldManager.FadeOutWorld && !isFading)
+            if (pauseFrameCount <= limitFrameCount && gameWorldManager.FadeOutWorld && !isFading)
             {
-                // Delay fade out until the ship is finished exploding
                 if (fadeOutTrigged == DateTime.MinValue)
                 {
                     fadeOutTrigged = DateTime.Now;
-                    return; // wait until next tick
+                    return;
                 }
 
-                // Wait 2 seconds before starting fade out
                 if (DateTime.Now >= fadeOutTrigged.AddSeconds(1.2))
                 {
                     isFading = true;
                     await FadeOutAsync(1.0f);
                     gameWorldManager.FadeOutWorld = false;
-                    fadeOutTrigged = DateTime.MinValue; // reset for next time
+                    fadeOutTrigged = DateTime.MinValue;
                 }
+            }
+
+            // NEW: Overlay update + render (UI layer)
+            // NOTE: Hvis ScreenOverlayState heter noe annet hos deg, bytt her.
+            if (GameState.ScreenOverlayState != null)
+            {
+                // FadeOverlay vinner alltid – unngå double-dim
+                if (isFading || FadeOverlay.Visibility == Visibility.Visible)
+                {
+                    // Ikke force state av hvis du ikke vil – men da må OverlayHandler få et "suppress" flagg.
+                    // Enkelt: bare skjul overlay mens fade kjører.
+                    GameState.ScreenOverlayState.ShowOverlay = false;
+                }
+
+                GameState.ScreenOverlayState.Update(dt);
+
+                double w = ActualWidth > 0 ? ActualWidth : Width;
+                double h = ActualHeight > 0 ? ActualHeight : Height;
+                if (w <= 0) w = 1920;
+                if (h <= 0) h = 1080;
+
+                _overlayHandler.Update(GameState.ScreenOverlayState, w, h);
             }
 
             frameCount++;
             if (stopwatch.ElapsedMilliseconds >= 1000)
             {
-                Dispatcher.Invoke(() => 
+                Dispatcher.Invoke(() =>
                     FpsText.Text = $"FPS: {frameCount} Triangles:{worldRenderer.GetRenderingTriangleCount()} {gameWorldManager.DebugMessage}"
                 );
                 frameCount = 0;
@@ -232,19 +264,14 @@ namespace _3dTesting
             if (!isFading && world.WorldInhabitants.Count > 100)
             {
                 var ship = gameWorldManager.ShipCopy;
-                var surface = gameWorldManager.SurfaceCopy;
 
-                // Update HUD for ship
                 if (ship != null)
                     GameHelpers.UpdateShipStatistics(healthRectangle, (Domain._3dSpecificsImplementations._3dObject)ship);
 
-                // Update minimap
                 if (GameState.SurfaceState.GlobalMapPosition != null)
                 {
-                    //Update the Bitmap with the dirty tiles TODO: Reset makes trouble
                     GameHelpers.UpdateDirtyTilesInMap(surfaceMapBitmap);
 
-                    //Show the actual map
                     GameHelpers.UpdateMapOverlay(
                         mapOverlay,
                         surfaceMapBitmap,
@@ -254,13 +281,11 @@ namespace _3dTesting
                 }
             }
 
-
             _ = Task.Run(() =>
             {
                 if (pauseFrameCount >= limitFrameCount)
                     return;
-                   
-                // Prevent overlapping UpdateWorld calls
+
                 if (System.Threading.Interlocked.Exchange(ref _updateInProgress, 1) == 1)
                     return;
 
@@ -268,7 +293,7 @@ namespace _3dTesting
                 {
                     var screenCoordinates = new List<_Coordinates._2dTriangleMesh>();
                     var crashBoxCoordinates = new List<_Coordinates._2dTriangleMesh>();
-                        
+
                     gameWorldManager.UpdateWorld(world, ref screenCoordinates, ref crashBoxCoordinates);
 
                     if (!isFading)
@@ -279,7 +304,6 @@ namespace _3dTesting
                     System.Threading.Interlocked.Exchange(ref _updateInProgress, 0);
                 }
             });
-                           
         }
     }
 }
