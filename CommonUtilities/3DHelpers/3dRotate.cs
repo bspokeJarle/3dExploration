@@ -86,44 +86,58 @@ namespace CommonUtilities._3DHelpers
         private static Vector3 ConvertToDomainVector(System.Numerics.Vector3 v) =>
             new Vector3 { x = v.X, y = v.Y, z = v.Z };
 
+        private static void RotateToDomainX(Vector3 v, Vector3 target, float cosRes, float sinRes)
+        {
+            target.x = v.x;
+            target.y = v.y * cosRes - v.z * sinRes;
+            target.z = v.z * cosRes + v.y * sinRes;
+        }
+
+        private static void RotateToDomainY(Vector3 v, Vector3 target, float cosRes, float sinRes)
+        {
+            target.x = v.x * cosRes + v.z * sinRes;
+            target.y = v.y;
+            target.z = v.z * cosRes - v.x * sinRes;
+        }
+
+        private static void RotateToDomainZ(Vector3 v, Vector3 target, float cosRes, float sinRes)
+        {
+            target.x = v.x * cosRes - v.y * sinRes;
+            target.y = v.y * cosRes + v.x * sinRes;
+            target.z = v.z;
+        }
+
+        private static void CopyToDomain(Vector3 v, Vector3 target)
+        {
+            target.x = v.x;
+            target.y = v.y;
+            target.z = v.z;
+        }
+
         private static void RotateToDomain(Vector3 v, Vector3 target, float cosRes, float sinRes, char axis)
         {
             switch (axis)
             {
                 case 'X':
-                    target.x = v.x;
-                    target.y = v.y * cosRes - v.z * sinRes;
-                    target.z = v.z * cosRes + v.y * sinRes;
+                    RotateToDomainX(v, target, cosRes, sinRes);
                     break;
                 case 'Y':
-                    target.x = v.x * cosRes + v.z * sinRes;
-                    target.y = v.y;
-                    target.z = v.z * cosRes - v.x * sinRes;
+                    RotateToDomainY(v, target, cosRes, sinRes);
                     break;
                 case 'Z':
-                    target.x = v.x * cosRes - v.y * sinRes;
-                    target.y = v.y * cosRes + v.x * sinRes;
-                    target.z = v.z;
+                    RotateToDomainZ(v, target, cosRes, sinRes);
                     break;
                 default:
-                    target.x = v.x;
-                    target.y = v.y;
-                    target.z = v.z;
+                    CopyToDomain(v, target);
                     break;
             }
         }
 
-        // Convert Domain.Vector3 <-> System.Numerics.Vector3
         private static Vector3 RotateToDomain(Vector3 v, float cosRes, float sinRes, char axis)
         {
-            var rotated = axis switch
-            {
-                'X' => new System.Numerics.Vector3(v.x, v.y * cosRes - v.z * sinRes, v.z * cosRes + v.y * sinRes),
-                'Y' => new System.Numerics.Vector3(v.x * cosRes + v.z * sinRes, v.y, v.z * cosRes - v.x * sinRes),
-                'Z' => new System.Numerics.Vector3(v.x * cosRes - v.y * sinRes, v.y * cosRes + v.x * sinRes, v.z),
-                _ => new System.Numerics.Vector3(v.x, v.y, v.z)
-            };
-            return ConvertToDomainVector(rotated);
+            var rotated = new Vector3();
+            RotateToDomain(v, rotated, cosRes, sinRes, axis);
+            return rotated;
         }
 
         // ✅ Backward Compatible Methods (Internally Call Optimized Code)

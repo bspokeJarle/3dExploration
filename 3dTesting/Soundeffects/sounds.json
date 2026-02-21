@@ -34,13 +34,13 @@
 
       "segments": {
         "start": 0,
-        "loopStart": 208.8,
+        "loopStart": 0,
         "loopEnd": 208.8,
         "end": 208.8
       },
 
       "settings": {
-        "volume": 0.6,
+        "volume": 0.8,
         "maxVoices": 1,
         "is3D": false,
         "priority": 10
@@ -67,7 +67,7 @@
       },
 
       "settings": {
-        "volume": 0.6,
+        "volume": 0.8,
         "maxVoices": 1,
         "is3D": false,
         "priority": 15
@@ -93,7 +93,7 @@
       },
 
       "settings": {
-        "volume": 0.6,
+        "volume": 0.8,
         "maxVoices": 1,
         "is3D": false,
         "priority": 5
@@ -171,7 +171,7 @@
       },
 
       "settings": {
-        "volume": 0.9,
+        "volume": 0.6,
         "maxVoices": 1,
         "is3D": true,
         "priority": 120

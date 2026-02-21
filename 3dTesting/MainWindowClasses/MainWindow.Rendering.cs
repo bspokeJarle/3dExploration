@@ -146,11 +146,18 @@ namespace _3dTesting.Rendering
                     float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
                     float shadeKey = (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
 
-                    // Normalize baseColor so "#FF8B00" and "ff8b00" become the same key
-                    string baseColor = triangle.Color?.Trim().ToLowerInvariant() ?? "000000";
-
-                    if (baseColor.StartsWith("#"))
-                        baseColor = baseColor.Substring(1);
+                    string? baseColor = triangle.Color;
+                    if (string.IsNullOrWhiteSpace(baseColor))
+                    {
+                        baseColor = "000000";
+                    }
+                    else
+                    {
+                        baseColor = baseColor.Trim();
+                        if (baseColor.Length > 0 && baseColor[0] == '#')
+                            baseColor = baseColor.Substring(1);
+                        baseColor = baseColor.ToLowerInvariant();
+                    }
 
                     if (!colorCache.TryGetValue((shadeKey, baseColor), out Color color))
                     {
@@ -200,6 +207,67 @@ namespace _3dTesting.Rendering
                 Logger.Log($"[WorldRenderer] Caching stats - Colors: {colorHits} hits / {colorMisses} misses, " +
                            $"Brushes: {brushHits} hits / {brushMisses} misses, Pens: {penHits} hits / {penMisses} misses");
             }
+        }
+
+        public static int ProcessTrianglesForRender(
+            List<_2dTriangleMesh> triangles,
+            Dictionary<(float, string), Color> colorCache,
+            Dictionary<Color, SolidColorBrush> brushCache,
+            Dictionary<Color, Pen> penCache)
+        {
+            int processed = 0;
+
+            for (int i = 0; i < triangles.Count; i++)
+            {
+                var triangle = triangles[i];
+
+                if (triangle.CalculatedZ > 1200 || triangle.CalculatedZ < -2000)
+                    continue;
+
+                float depthFactor01 = GetDepthFactor01(triangle.CalculatedZ);
+                float angleFactor01 = NormalizeAngleTo01(triangle.TriangleAngle);
+
+                float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
+                float shadeKey = (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
+
+                string? baseColor = triangle.Color;
+                if (string.IsNullOrWhiteSpace(baseColor))
+                {
+                    baseColor = "000000";
+                }
+                else
+                {
+                    baseColor = baseColor.Trim();
+                    if (baseColor.Length > 0 && baseColor[0] == '#')
+                        baseColor = baseColor.Substring(1);
+                    baseColor = baseColor.ToLowerInvariant();
+                }
+
+                if (!colorCache.TryGetValue((shadeKey, baseColor), out Color color))
+                {
+                    string hex = Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor);
+                    color = HexToColor(hex);
+                    colorCache[(shadeKey, baseColor)] = color;
+                }
+
+                if (!brushCache.TryGetValue(color, out SolidColorBrush brush))
+                {
+                    brush = new SolidColorBrush(color);
+                    brush.Freeze();
+                    brushCache[color] = brush;
+                }
+
+                if (!penCache.TryGetValue(color, out Pen pen))
+                {
+                    pen = new Pen(brush, 1);
+                    pen.Freeze();
+                    penCache[color] = pen;
+                }
+
+                processed++;
+            }
+
+            return processed;
         }
 
         public static bool IsCrashBoxPartName(string? partName)
