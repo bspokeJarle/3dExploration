@@ -202,6 +202,24 @@ namespace _3dTesting.Rendering
             }
         }
 
+        public static bool IsCrashBoxPartName(string? partName)
+        {
+            return partName != null && partName.StartsWith("CrashBox-", StringComparison.Ordinal);
+        }
+
+        public static int CountCrashBoxParts(string[] partNames)
+        {
+            int count = 0;
+            for (int i = 0; i < partNames.Length; i++)
+            {
+                if (IsCrashBoxPartName(partNames[i]))
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
+
         private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)
         {
             var p1 = new Point(triangle.X1, triangle.Y1);
@@ -219,7 +237,7 @@ namespace _3dTesting.Rendering
                 ctx.LineTo(p3, true, false);
             }
 
-            if (triangle.PartName != null && triangle.PartName.StartsWith("CrashBox-"))
+            if (IsCrashBoxPartName(triangle.PartName))
             {
                 // If rendering CrashBoxes -> use semi-transparent brush
                 var transparentBrush = new SolidColorBrush(brush.Color) { Opacity = 0.25 };

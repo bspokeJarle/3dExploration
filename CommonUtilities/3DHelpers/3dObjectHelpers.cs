@@ -145,29 +145,36 @@ namespace CommonUtilities._3DHelpers
 
         public static I3dObject DeepCopySingleObject(I3dObject original)
         {
-            var objectParts = original.ObjectParts.Select(part =>
-            {
-                var triangles = part.Triangles.Select(triangle => new TriangleMeshWithColor
-                {
-                    vert1 = new Vector3 { x = triangle.vert1.x, y = triangle.vert1.y, z = triangle.vert1.z },
-                    vert2 = new Vector3 { x = triangle.vert2.x, y = triangle.vert2.y, z = triangle.vert2.z },
-                    vert3 = new Vector3 { x = triangle.vert3.x, y = triangle.vert3.y, z = triangle.vert3.z },
-                    normal1 = new Vector3 { x = triangle.normal1.x, y = triangle.normal1.y, z = triangle.normal1.z },
-                    normal2 = new Vector3 { x = triangle.normal2.x, y = triangle.normal2.y, z = triangle.normal2.z },
-                    normal3 = new Vector3 { x = triangle.normal3.x, y = triangle.normal3.y, z = triangle.normal3.z },
-                    landBasedPosition = triangle.landBasedPosition,
-                    angle = triangle.angle,
-                    Color = triangle.Color,
-                    noHidden = triangle.noHidden
-                }).ToList();
+            var objectParts = new List<I3dObjectPart>(original.ObjectParts.Count);
 
-                return new _3dObjectPart
+            foreach (var part in original.ObjectParts)
+            {
+                var triangles = new List<ITriangleMeshWithColor>(part.Triangles.Count);
+
+                foreach (var triangle in part.Triangles)
+                {
+                    triangles.Add(new TriangleMeshWithColor
+                    {
+                        vert1 = new Vector3 { x = triangle.vert1.x, y = triangle.vert1.y, z = triangle.vert1.z },
+                        vert2 = new Vector3 { x = triangle.vert2.x, y = triangle.vert2.y, z = triangle.vert2.z },
+                        vert3 = new Vector3 { x = triangle.vert3.x, y = triangle.vert3.y, z = triangle.vert3.z },
+                        normal1 = new Vector3 { x = triangle.normal1.x, y = triangle.normal1.y, z = triangle.normal1.z },
+                        normal2 = new Vector3 { x = triangle.normal2.x, y = triangle.normal2.y, z = triangle.normal2.z },
+                        normal3 = new Vector3 { x = triangle.normal3.x, y = triangle.normal3.y, z = triangle.normal3.z },
+                        landBasedPosition = triangle.landBasedPosition,
+                        angle = triangle.angle,
+                        Color = triangle.Color,
+                        noHidden = triangle.noHidden
+                    });
+                }
+
+                objectParts.Add(new _3dObjectPart
                 {
                     PartName = part.PartName,
-                    Triangles = triangles.Select(t => (ITriangleMeshWithColor)t).ToList(),
+                    Triangles = triangles,
                     IsVisible = part.IsVisible
-                };
-            }).ToList();
+                });
+            }
 
             var copy = new _3dObject
             {
@@ -190,7 +197,7 @@ namespace CommonUtilities._3DHelpers
                     y = original.WorldPosition.y,
                     z = original.WorldPosition.z
                 },
-                ObjectParts = objectParts.Cast<I3dObjectPart>().ToList(),
+                ObjectParts = objectParts,
                 Movement = original.Movement,
                 Particles = original.Particles,
                 ImpactStatus = original.ImpactStatus,
