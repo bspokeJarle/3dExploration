@@ -12,6 +12,9 @@
     <ProjectReference Include="..\GameAudio\GameAudio.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="GameGraphics\HudOverlay.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="GameObjects\seeder_ball.stl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

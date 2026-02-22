@@ -3,6 +3,7 @@ using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Input;
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
@@ -103,6 +104,7 @@ namespace GameAiAndControls.Controls
 
         private void GlobalHookKeyDown(object sender, KeyEventArgs e)
         {
+            if (GameState.ScreenOverlayState.Type == ScreenOverlayType.Intro) return;
             if (e.KeyCode == Keys.Left) rotationZ -= RotationStep;
             if (e.KeyCode == Keys.Right) rotationZ += RotationStep;
             if (e.KeyCode == Keys.Up) tilt += RotationStep;
@@ -237,6 +239,9 @@ namespace GameAiAndControls.Controls
         // Merk: du har endret signatur her – sørg for at IObjectMovement matcher!
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            //Update gamestate with thrust
+            GameState.GamePlayState.Thrust = Thrust;
+
             // Lazy audio-konfig – gjøres første gang MoveObject kalles
             ConfigureAudio(audioPlayer, soundRegistry);
 

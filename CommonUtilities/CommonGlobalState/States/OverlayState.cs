@@ -30,6 +30,11 @@ namespace Domain
         // -----------------------------
         public ScreenOverlayType Type { get; set; } = ScreenOverlayType.None;
 
+        // -----------------------------
+        // Hide or show Debug overlays
+        // -----------------------------
+        public bool ShowDebugOverlay { get; set; } = false;
+
         /// <summary>
         /// Main on/off switch. When false, overlay fades out to Opacity=0.
         /// When true, overlay fades in to Opacity=1.

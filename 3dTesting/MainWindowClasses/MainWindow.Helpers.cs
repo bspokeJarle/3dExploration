@@ -13,7 +13,7 @@ namespace _3dTesting.Helpers
     public static class GameHelpers
     {
         private static _3dRotationCommon Rotate3d = new _3dRotationCommon();
-        private static bool enableLogging = true;
+        private static bool enableLogging = false;
         /// <summary>
         /// Applies the rotation offset to prevent flipping when rotating.
         /// </summary>
@@ -58,7 +58,7 @@ namespace _3dTesting.Helpers
             {
                 try
                 {
-                    mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect((mapX - MapSetup.bitmapMapCenterOffset) / MapSetup.tileSize, (mapY - MapSetup.bitmapMapCenterOffset) / MapSetup.tileSize, MapSetup.bitmapSize, MapSetup.bitmapSize));
+                    mapOverlay.Source = new CroppedBitmap(surfaceMapBitmap, new Int32Rect((mapX - MapSetup.bitmapMapCenterOffsetX) / MapSetup.tileSize, (mapY - MapSetup.bitmapMapCenterOffsetY) / MapSetup.tileSize, MapSetup.bitmapSize * 2, MapSetup.bitmapSize));
                 }
                 catch (Exception ex)
                 {

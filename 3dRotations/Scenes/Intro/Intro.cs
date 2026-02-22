@@ -19,6 +19,11 @@ namespace _3dRotations.Scenes.Intro
 
         public SceneTypes SceneType { get; } = SceneTypes.Intro;
 
+        public void SetupGameOverlay()
+        {
+            //No need for that in the intro
+        }
+
         public void SetupScene(I3dWorld world)
         {
             var TheOmegaStrainLogo = LogoCube.CreateLogoCube();
@@ -62,6 +67,8 @@ namespace _3dRotations.Scenes.Intro
             o.DimStrength = 0.55f;
             o.PanelWidthRatio = 0.72f;
             o.PanelHeightRatio = 0.32f;
+            //Hide Debug overlay
+            o.ShowDebugOverlay = false;
         }
     }
 }

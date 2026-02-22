@@ -145,10 +145,54 @@ namespace _3dRotations.Scene.Scene1
             }
         }
 
+        public void SetupGameOverlay()
+        {
+            Logger.Log("Scene1: Setup Gameoverlay", "General");
+
+            GameState.ScreenOverlayState.ResetToDefaults();
+            GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
+            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "The Omega Strain", "", "");
+            GameState.ScreenOverlayState.ShowOverlay = false;
+            GameState.ScreenOverlayState.ShowDebugOverlay = false;
+        }
+
         public void SetupSceneOverlay()
         {
+            Logger.Log("Scene1: Setup Sceneoverlay");
             GameState.ScreenOverlayState.ResetToDefaults();
-            //No Sceneoverlay for now
+            var o = GameState.ScreenOverlayState;
+
+            o.Type = ScreenOverlayType.Intro;
+            o.Anchor = ScreenOverlayAnchor.Top;
+
+            o.Header = "RETROMESH // BOOT SEQUENCE";
+            o.Title = "THE OMEGA STRAIN";
+
+            o.Body =
+                "Year 2147.\n\n" +
+                "Signal received from the NEREID perimeter colonies.\n" +
+                "Biological anomaly confirmed.\n" +
+                "Designation: OMEGA STRAIN.\n\n" +
+                "Seeder activity detected across multiple sectors.\n" +
+                "Infection rate: ACCELERATING.\n" +
+                "Containment probability: 12%.\n\n" +
+                "PRIMARY DIRECTIVE:\n" +
+                "Eliminate Seeders before Critical Mass.";
+
+            o.Footer = "PRESS ANY KEY TO INITIATE PROTOCOL";
+
+            // Scene intro overlay should be visible until player input
+            o.ShowOverlay = true;
+            o.AutoHide = false;
+            o.AutoHideSeconds = 0f;
+
+            // Cinematic / readability
+            o.DimStrength = 0.60f;
+            o.PanelWidthRatio = 0.74f;
+            o.PanelHeightRatio = 0.34f;
+
+            // Hide debug overlay during intro
+            o.ShowDebugOverlay = false;
         }
     }
 }

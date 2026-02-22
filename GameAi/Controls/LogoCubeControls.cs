@@ -23,6 +23,7 @@ namespace GameAiAndControls.Controls
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             ParentObject = theObject;
+            if (theObject.ImpactStatus?.HasExploded == true || GameState.ScreenOverlayState.Type == ScreenOverlayType.Game ) return theObject;
 
             if (!introStarted)
             {

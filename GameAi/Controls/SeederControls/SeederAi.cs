@@ -211,6 +211,7 @@ namespace GameAiAndControls.Controls.SeederControls
                     var tileType = GamePlayHelpers.GetTerrainType(tile.mapDepth, MapSetup.maxHeight);
                     if (tileType == TerrainType.Grassland || tileType == TerrainType.Highlands)
                     {
+                        GameState.GamePlayState.InfectionLevel += 1;
                         tile.isInfected = true;
                         surfaceState.Global2DMap[tileZ, tileX] = tile;
                         surfaceState.DirtyTiles.Add(new Vector3 { x = tileX, y = 0, z = tileZ });

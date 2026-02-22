@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks;
+using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 using static Domain._3dSpecificsImplementations;
@@ -88,6 +90,7 @@ namespace Domain
 
         public void NextScene(I3dWorld world);
         public IScene GetActiveScene();
+        public void HandleKeyPress(KeyEventArgs k, I3dWorld world);
     }
     public interface IScene
     {
@@ -95,7 +98,10 @@ namespace Domain
         public GameModes GameMode { get; }
         public void SetupScene(I3dWorld world);
         public string SceneMusic { get; }
+        //Set up overlay before gameplay
         public void SetupSceneOverlay();
+        //Set up overlay during gameplay
+        public void SetupGameOverlay();
     }
 
     public enum GameModes

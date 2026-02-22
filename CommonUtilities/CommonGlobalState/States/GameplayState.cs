@@ -33,6 +33,8 @@ namespace Domain
 
         // Keep as float to allow smooth damage later (e.g., collision damage scaling)
         public float Health { get; set; } = 100f;
+        public float Alt { get; set; } = 0f;
+        public float Thrust { get; set; } = 0f;
         public float MaxHealth { get; set; } = 100f;
 
         public bool IsDead => Health <= 0f;
@@ -60,7 +62,7 @@ namespace Domain
         /// 0..1. Default 1.0 means "full infection = lose".
         /// You can set e.g. 0.85f if you want earlier fail.
         /// </summary>
-        public float InfectionCriticalMass { get; set; } = 1.0f;
+        public float InfectionCriticalMass { get; set; } = 100f;
 
         public bool IsInfectionCritical => InfectionLevel >= InfectionCriticalMass;
 

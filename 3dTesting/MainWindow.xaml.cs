@@ -50,20 +50,18 @@ namespace _3dTesting
         public _3dWorld._3dWorld world = new();
         public MediaPlayer player = new MediaPlayer();
 
-        public BitmapSource surfaceMapBitmap;
-        private Image mapOverlay;
-        private System.Windows.Shapes.Rectangle healthRectangle;
-
         private bool isPaused = false;
         private int pauseFrameCount = 0;
         private const int limitFrameCount = 10;
         private DateTime fadeOutTrigged = DateTime.MinValue;
         private int _updateInProgress = 0;
 
-        // Overlay handler (new)
+        // Overlay handlers
         private OverlayHandler _overlayHandler;
+        private HudOverlayHandlerV2 _hudHandler;
 
         private bool isFading = false;
+        private int Fps = 0;
 
         public MainWindow()
         {
@@ -71,7 +69,7 @@ namespace _3dTesting
             Logger.ClearLog();
 
             InitializeComponent();
-            this.PreviewKeyDown += new KeyEventHandler(HandleEsc);
+            this.PreviewKeyDown += new KeyEventHandler(HandleKeys);
 
             mainGrid = new Grid();
             Content = mainGrid;
@@ -98,35 +96,13 @@ namespace _3dTesting
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top
             };
-
-            mapOverlay = new Image
-            {
-                Width = 200,
-                Height = 200,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top,
-                Opacity = 0.7
-            };
-
-            var yellowBrush = new SolidColorBrush(System.Windows.Media.Color.FromRgb(255, 255, 0));
-            healthRectangle = new System.Windows.Shapes.Rectangle
-            {
-                Stroke = yellowBrush,
-                Fill = yellowBrush,
-                Width = 200,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Top,
-                Height = 50
-            };
-
-            mainGrid.Children.Add(healthRectangle);
-            mainGrid.Children.Add(mapOverlay);
             mainGrid.Children.Add(FpsText);
 
-            surfaceMapBitmap = GameState.SurfaceState.GlobalMapBitmap;
+            //surfaceMapBitmap = GameState.SurfaceState.GlobalMapBitmap;
 
-            //Overlayhandles must be put in the grid
+            // Overlay handlers must be put in the grid
             _overlayHandler = new OverlayHandler(mainGrid);
+            _hudHandler = new HudOverlayHandlerV2(mainGrid);
 
             timer.Interval = TimeSpan.FromMilliseconds(8);
             timer.Tick += (s, e) => Handle3dWorld();
@@ -134,7 +110,7 @@ namespace _3dTesting
             stopwatch.Start();
         }
 
-        private void HandleEsc(object sender, KeyEventArgs e)
+        private void HandleKeys(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
                 Application.Current.Shutdown();
@@ -145,10 +121,8 @@ namespace _3dTesting
                 world.IsPaused = !isPaused;
                 pauseFrameCount = 0;
             }
-
-            // TODO: When you are tired of the intro, press space to start game
-            // if (GameState.ScreenOverlayState != null && GameState.ScreenOverlayState.ShowOverlay)
-            //     GameState.ScreenOverlayState.ShowOverlay = false;
+            //Send keys to Scenehandler to handle scene switches and overlay switches
+            world.SceneHandler.HandleKeyPress(e,world);
         }
 
         public async Task FadeOutAsync(float durationSeconds = 1.0f)
@@ -200,10 +174,13 @@ namespace _3dTesting
         {
             float dt = (float)timer.Interval.TotalSeconds;
 
+            if (GameState.ScreenOverlayState.ShowDebugOverlay == false)
+                FpsText.Visibility = Visibility.Collapsed;
+            else
+                FpsText.Visibility = Visibility.Visible;
+
             if (world.IsPaused)
-            {
                 pauseFrameCount++;
-            }
 
             if (pauseFrameCount < limitFrameCount && gameWorldManager.FadeInWorld && isFading && world.WorldInhabitants.Count > 100)
             {
@@ -229,15 +206,13 @@ namespace _3dTesting
                 }
             }
 
-            // NEW: Overlay update + render (UI layer)
-            // NOTE: Hvis ScreenOverlayState heter noe annet hos deg, bytt her.
+            // Overlay update + render (UI layer)
             if (GameState.ScreenOverlayState != null)
             {
-                // FadeOverlay vinner alltid – unngå double-dim
+                // FadeOverlay wins – avoid double-dim
                 if (isFading || FadeOverlay.Visibility == Visibility.Visible)
                 {
-                    // Ikke force state av hvis du ikke vil – men da må OverlayHandler få et "suppress" flagg.
-                    // Enkelt: bare skjul overlay mens fade kjører.
+                    // keep existing behavior
                     GameState.ScreenOverlayState.ShowOverlay = false;
                 }
 
@@ -249,11 +224,18 @@ namespace _3dTesting
                 if (h <= 0) h = 1080;
 
                 _overlayHandler.Update(GameState.ScreenOverlayState, w, h);
+
+                // HUD V2: update each tick (it hides itself when ShowOverlay==true)
+                var gameplay = GameState.GamePlayState;
+
+                int triangles = worldRenderer.GetRenderingTriangleCount();
+                _hudHandler.Update(GameState.ScreenOverlayState, gameplay, w, h, Fps, triangles);
             }
 
             frameCount++;
             if (stopwatch.ElapsedMilliseconds >= 1000)
             {
+                Fps = frameCount;
                 Dispatcher.Invoke(() =>
                     FpsText.Text = $"FPS: {frameCount} Triangles:{worldRenderer.GetRenderingTriangleCount()} {gameWorldManager.DebugMessage}"
                 );
@@ -261,20 +243,16 @@ namespace _3dTesting
                 stopwatch.Restart();
             }
 
+            // Minimap -> HUD slot only
             if (!isFading && world.WorldInhabitants.Count > 100)
             {
-                var ship = gameWorldManager.ShipCopy;
-
-                if (ship != null)
-                    GameHelpers.UpdateShipStatistics(healthRectangle, (Domain._3dSpecificsImplementations._3dObject)ship);
-
                 if (GameState.SurfaceState.GlobalMapPosition != null)
                 {
-                    GameHelpers.UpdateDirtyTilesInMap(surfaceMapBitmap);
+                    GameHelpers.UpdateDirtyTilesInMap(GameState.SurfaceState.GlobalMapBitmap);
 
                     GameHelpers.UpdateMapOverlay(
-                        mapOverlay,
-                        surfaceMapBitmap,
+                        _hudHandler.GetMinimapImage(),
+                        GameState.SurfaceState.GlobalMapBitmap,
                         Convert.ToInt32(GameState.SurfaceState.GlobalMapPosition.x),
                         Convert.ToInt32(GameState.SurfaceState.GlobalMapPosition.z)
                     );

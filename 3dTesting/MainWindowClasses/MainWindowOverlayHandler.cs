@@ -119,6 +119,13 @@ namespace _3dTesting.MainWindowClasses
         {
             if (state == null) return;
 
+            if (state.Type == ScreenOverlayType.Game)
+            {
+                _overlayRoot.Visibility = Visibility.Collapsed;
+                _overlayRoot.Opacity = 0;
+                return;
+            }
+
             if (!state.ShouldRender)
             {
                 _overlayRoot.Visibility = Visibility.Collapsed;
@@ -143,8 +150,8 @@ namespace _3dTesting.MainWindowClasses
 
             // Hide empty blocks -> tighter layout
             _header.Visibility = string.IsNullOrWhiteSpace(_header.Text) ? Visibility.Collapsed : Visibility.Visible;
-            _title.Visibility = string.IsNullOrWhiteSpace(_title.Text) ? Visibility.Collapsed : Visibility.Visible;
-            _body.Visibility = string.IsNullOrWhiteSpace(_body.Text) ? Visibility.Collapsed : Visibility.Visible;
+            _title.Visibility  = string.IsNullOrWhiteSpace(_title.Text)  ? Visibility.Collapsed : Visibility.Visible;
+            _body.Visibility   = string.IsNullOrWhiteSpace(_body.Text)   ? Visibility.Collapsed : Visibility.Visible;
             _footer.Visibility = string.IsNullOrWhiteSpace(_footer.Text) ? Visibility.Collapsed : Visibility.Visible;
 
             // Panel width from ratio

@@ -126,5 +126,9 @@ namespace _3dRotations.Scene.Scene1
         {
             GameState.ScreenOverlayState.ResetToDefaults();
         }
+        public void SetupGameOverlay()
+        {
+            GameState.ScreenOverlayState.ResetToDefaults();
+        }
     }
 }
