@@ -27,7 +27,7 @@ namespace _3DWorld.Scene
         public void SetupActiveScene(I3dWorld world)
         {
             // Setup the active scene (overlay + world objects)
-            var scene = scenes[currentSceneIndex];
+            var scene = GetActiveScene();
             scene.SetupSceneOverlay();
             scene.SetupScene((_3dWorld)world);
         }
@@ -35,12 +35,12 @@ namespace _3DWorld.Scene
         public void ResetActiveScene(I3dWorld world)
         {
             if (enableLogging) Logger.Log("Scenehandler: ResetActiveScene");
-            var oldScene = scenes[currentSceneIndex];
+            var oldScene = GetActiveScene();
             var newScene = (IScene?)Activator.CreateInstance(oldScene.GetType());
 
             if (newScene != null)
             {
-                scenes[currentSceneIndex] = newScene;                
+                scenes[currentSceneIndex] = newScene;
                 GameState.ScreenOverlayState.HardHide();
                 newScene.SetupGameOverlay();
                 newScene.SetupScene((_3dWorld)world);
@@ -53,7 +53,7 @@ namespace _3DWorld.Scene
 
         public void HandleKeyPress(KeyEventArgs k, I3dWorld world)
         {
-            var scene = scenes[currentSceneIndex];
+            var scene = GetActiveScene();
             if (GameState.ScreenOverlayState.ShowOverlay == false) return;
 
             // Intro scene: any key continues
@@ -62,7 +62,7 @@ namespace _3DWorld.Scene
                 if (enableLogging) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {GameState.ScreenOverlayState.ShowOverlay} ", "General");
 
                 GameState.ScreenOverlayState.HardHide();
-                currentSceneIndex++;
+                currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
                 SetupActiveScene(world);
                 return;
             }
