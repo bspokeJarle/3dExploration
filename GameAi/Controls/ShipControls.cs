@@ -33,6 +33,10 @@ namespace GameAiAndControls.Controls
         private const float VerticalThrustSmoothing = 0.6f;
         private const float VerticalLiftAcceleration = 0.15f;
 
+        public float MaxHeight { get; set; } = 1000f;
+        public float MinHeight { get; set; } = -100f;
+        public float MaxScreenDrop { get; set; } = 450f;
+
         // Audio setup (gjøres lazy via ConfigureAudio)
         private IAudioPlayer? _audio;
         private SoundDefinition? _rocketSound;
@@ -228,6 +232,12 @@ namespace GameAiAndControls.Controls
         private float Clamp(float value, float min, float max) => MathF.Min(MathF.Max(value, min), max);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float ClampHeight(float value) => Clamp(value, MinHeight, MaxHeight);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float ClampScreenHeight(float value) => MathF.Min(value, MaxScreenDrop);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static float GetWrappedPosition(float position, float diff, float minValue, float maxValue)
         {
             float newPos = position + diff;
@@ -277,9 +287,14 @@ namespace GameAiAndControls.Controls
 
             if (theObject.ObjectOffsets != null)
             {
-                theObject.ObjectOffsets.y = ParentObject.ObjectOffsets.y;
+                theObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y));
                 theObject.ObjectOffsets.z = zoom;
             }
+
+            GameState.GamePlayState.UpdateAltitude(
+                GameState.SurfaceState.GlobalMapPosition.y,
+                MinHeight,
+                MaxHeight);
 
             // Only update explosion if it has already started
             if (isExploding)
@@ -446,11 +461,11 @@ namespace GameAiAndControls.Controls
             if (delta > 2f || delta < -2f)
             {
                 float liftAdjust = (upwardFactor > 0f) ? delta * 0.1f : 0f;
-                ParentObject.ObjectOffsets.y += liftAdjust + yDiff * 0.1f;
+                ParentObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y + liftAdjust + yDiff * 0.1f));
             }
             else
             {
-                GameState.SurfaceState.GlobalMapPosition.y += 2.5f;
+                GameState.SurfaceState.GlobalMapPosition.y = ClampHeight(GameState.SurfaceState.GlobalMapPosition.y + 2.5f);
             }
         }
 
@@ -465,15 +480,11 @@ namespace GameAiAndControls.Controls
                 float adjustedGravity = GravityAcceleration * gravityModifier * GravityMultiplier * deltaTime;
 
                 fallVelocity = Math.Min(fallVelocity + adjustedGravity, MaxFallSpeed);
-                ParentObject.ObjectOffsets.y += fallVelocity;
+                ParentObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y + fallVelocity));
 
-                if (GameState.SurfaceState.GlobalMapPosition.y > -75)
+                if (GameState.SurfaceState.GlobalMapPosition.y > MinHeight)
                 {
-                    GameState.SurfaceState.GlobalMapPosition.y -= fallVelocity;
-                    if (GameState.SurfaceState.GlobalMapPosition.y < -75)
-                    {
-                        GameState.SurfaceState.GlobalMapPosition.y = -75;
-                    }
+                    GameState.SurfaceState.GlobalMapPosition.y = ClampHeight(GameState.SurfaceState.GlobalMapPosition.y - fallVelocity);
                 }
             }
             else

@@ -190,5 +190,17 @@ namespace Domain
             LaserCooldownLeft = 0f;
             RocketCooldownLeft = 0f;
         }
+
+        public void UpdateAltitude(float height, float minHeight, float maxHeight)
+        {
+            if (maxHeight <= minHeight)
+            {
+                Alt = 0f;
+                return;
+            }
+
+            float normalized = (height - minHeight) / (maxHeight - minHeight);
+            Alt = MathF.Min(MathF.Max(normalized, 0f), 1f);
+        }
     }
 }
