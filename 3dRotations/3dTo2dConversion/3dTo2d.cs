@@ -21,7 +21,7 @@ namespace _3dTesting._3dRotation
         {
             //If available use global framecounter
             if (currentFrame > 0) CurrentFrame = (long)currentFrame;
-            var screenCoordinates = new List<_2dTriangleMesh>();
+            var screenCoordinates = new List<_2dTriangleMesh>(inhabitants.Count * 2);
 
             foreach (var obj in inhabitants)
             {
@@ -31,14 +31,12 @@ namespace _3dTesting._3dRotation
                     continue;
 
                 //Standard 3d Rendring
-                var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
-                screenCoordinates.AddRange(projected);
+                ConvertObjectTo2d(obj, screenX, screenY, screenZ, screenCoordinates);
 
                 if (obj.CrashBoxDebugMode!=null && (bool)obj.CrashBoxDebugMode)
                 { 
                     //Debug visualization of crashboxes
-                    var crashBox2d = ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ);
-                    screenCoordinates.AddRange(crashBox2d);
+                    ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ, screenCoordinates);
                 }
             }
 
@@ -46,10 +44,8 @@ namespace _3dTesting._3dRotation
         }
 
         //This method is for debugging av crashboxes only
-        private List<_2dTriangleMesh> ConvertCrashBoxesTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ)
+        private void ConvertCrashBoxesTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ, List<_2dTriangleMesh> result)
         {
-            var result = new List<_2dTriangleMesh>();
-
             foreach (var crashBox in obj.CrashBoxes)
             {
                 // Skip if not a valid 8-corner box
@@ -83,10 +79,7 @@ namespace _3dTesting._3dRotation
                     result.Add(triangle);
                 }
             }
-
-            return result;
         }
-
 
         // Creating Triangles for rendring the CrashBoxes for debugging purposes
         private _2dTriangleMesh CreateCrashBoxTriangle((double x, double y) p1, (double x, double y) p2, (double x, double y) p3, string color, _3dObject obj)
@@ -105,11 +98,8 @@ namespace _3dTesting._3dRotation
             };
         }
 
-
-        private List<_2dTriangleMesh> ConvertObjectTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ)
+        private void ConvertObjectTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ, List<_2dTriangleMesh> result)
         {
-            var result = new List<_2dTriangleMesh>();
-
             foreach (var part in obj.ObjectParts)
             {
                 if (!part.IsVisible) continue;
@@ -150,7 +140,6 @@ namespace _3dTesting._3dRotation
                     
                 }
             }
-            return result;
         }
 
         private (double x, double y) ProjectVertex(Vector3 v, double objPosX, double objPosY, double objPosZ)

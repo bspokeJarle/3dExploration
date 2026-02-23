@@ -288,6 +288,26 @@ namespace _3dTesting.Rendering
             return count;
         }
 
+        private static readonly Dictionary<Color, SolidColorBrush> CrashBoxBrushCache = new();
+
+        public static SolidColorBrush CreateCrashBoxBrush(Color baseColor)
+        {
+            if (CrashBoxBrushCache.TryGetValue(baseColor, out var cached))
+            {
+                return cached;
+            }
+
+            var transparentBrush = new SolidColorBrush(baseColor) { Opacity = 0.25 };
+            transparentBrush.Freeze();
+            CrashBoxBrushCache[baseColor] = transparentBrush;
+            return transparentBrush;
+        }
+
+        public static void ClearCrashBoxBrushCache()
+        {
+            CrashBoxBrushCache.Clear();
+        }
+
         private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)
         {
             var p1 = new Point(triangle.X1, triangle.Y1);
@@ -307,9 +327,7 @@ namespace _3dTesting.Rendering
 
             if (IsCrashBoxPartName(triangle.PartName))
             {
-                // If rendering CrashBoxes -> use semi-transparent brush
-                var transparentBrush = new SolidColorBrush(brush.Color) { Opacity = 0.25 };
-                transparentBrush.Freeze();
+                var transparentBrush = CreateCrashBoxBrush(brush.Color);
                 dc.DrawGeometry(transparentBrush, pen, geometry);
             }
             else

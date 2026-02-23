@@ -40,26 +40,23 @@ namespace _3dTesting.MainWindowClasses
         public List<_2dTriangleMesh> UpdateWorld(_3dWorld._3dWorld world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
             FrameCounter++;
-            var deepCopiedWorld = new List<_3dObject>();
-            var activeWorld = new List<_3dObject>();
+            List<_3dObject> deepCopiedWorld;
+            List<_3dObject> activeWorld;
             lock (_lock)
             {
-                // Filter and cast the world inhabitants to _3dObject, then snapshot them
-                activeWorld = world.WorldInhabitants
-                    .Where(inhabitant =>
-                    {
-                        if (inhabitant.ObjectParts.Count == 0) return false; // Exclude objects with no parts
-                        // Filter only the objects that are of type _3dObject and visible
-                        if (inhabitant is _3dObject concreteInhabitant)
-                        {
-                            return concreteInhabitant.CheckInhabitantVisibility(); // Apply the visibility check
-                        }
-                        return false; // If not of type _3dObject, exclude
-                    })
-                    .Cast<_3dObject>() // Cast to _3dObject to safely use _3dObject methods
-                    .ToList(); // Create a snapshot (materialized list) of the filtered objects
+                var inhabitants = world.WorldInhabitants;
+                activeWorld = new List<_3dObject>(inhabitants.Count);
 
-                // Now perform the deep copy on the snapshot of visible objects
+                foreach (var inhabitant in inhabitants)
+                {
+                    if (inhabitant.ObjectParts.Count == 0) continue;
+
+                    if (inhabitant is _3dObject concreteInhabitant && concreteInhabitant.CheckInhabitantVisibility())
+                    {
+                        activeWorld.Add(concreteInhabitant);
+                    }
+                }
+
                 deepCopiedWorld = Common3dObjectHelpers.DeepCopy3dObjects(activeWorld);
             }
             if (StarFieldHandler == null)
@@ -79,7 +76,7 @@ namespace _3dTesting.MainWindowClasses
 
             var particleObjectList = new List<_3dObject>();
             var weaponObjectList = new List<_3dObject>();
-            var renderedList = new List<_3dObject>();
+            var renderedList = new List<_3dObject>(deepCopiedWorld.Count);
             DebugMessage = string.Empty;
 
             AiUpdateCounter++;
@@ -122,8 +119,12 @@ namespace _3dTesting.MainWindowClasses
                     {
                         inhabitant.ParentSurface.RotatedSurfaceTriangles = part.Triangles;
 
-                        // Build fast lookup set
-                        inhabitant.ParentSurface.LandBasedIds = [.. part.Triangles.Select(t => t.landBasedPosition)];
+                        var landBasedIds = new HashSet<long?>(part.Triangles.Count);
+                        foreach (var triangle in part.Triangles)
+                        {
+                            landBasedIds.Add(triangle.landBasedPosition);
+                        }
+                        inhabitant.ParentSurface.LandBasedIds = landBasedIds;
                     }
 
                     SetMovementGuides(inhabitant, part, part.Triangles);
