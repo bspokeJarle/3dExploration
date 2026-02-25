@@ -61,7 +61,7 @@ namespace _3dRotations.Helpers
             return surfaceValues;
         }
 
-        private static ScreenEcoMeta[,] GenerateEcoMap(SurfaceData[,] map)
+        public static ScreenEcoMeta[,] GenerateEcoMap(SurfaceData[,] map)
         {
             int tilesPerScreen = SurfaceSetup.viewPortSize; // 18
             int tileSize = SurfaceSetup.tileSize;           // 75
@@ -290,9 +290,13 @@ namespace _3dRotations.Helpers
             // Ensure we return a stable reference immediately
             WriteableBitmap wb = GameState.SurfaceState.GlobalMapBitmap as WriteableBitmap;
 
-            try { 
-                if (wb == null)
+            try
+            {
+                if (wb == null || wb.PixelWidth != mapSize || wb.PixelHeight != mapSize)
                 {
+                    if (enableLogging)
+                        Logger.Log($"GenerateTerrainBitmapSource: recreating bitmap (existing={(wb == null ? "null" : $"{wb.PixelWidth}x{wb.PixelHeight}")})", "SurfaceGeneration");
+
                     // MUST be created on UI thread, so we do a safe sync create if needed
                     Application.Current.Dispatcher.Invoke(() =>
                     {
@@ -334,6 +338,10 @@ namespace _3dRotations.Helpers
                 if (currentWb != null && currentWb.PixelWidth == mapSize && currentWb.PixelHeight == mapSize)
                 {
                     currentWb.WritePixels(new Int32Rect(0, 0, mapSize, mapSize), pixelData, stride, 0);
+                }
+                else if (enableLogging)
+                {
+                    Logger.Log("GenerateTerrainBitmapSource: bitmap size mismatch; skipping WritePixels", "SurfaceGeneration");
                 }
             }), DispatcherPriority.Render);
         }
@@ -466,7 +474,7 @@ namespace _3dRotations.Helpers
         }
 
         public static List<(int x, int y, int height)> FindTreePlacementAreas(
-            SurfaceData[,] map, int mapSize, int tileSize, int maxHeight)
+            SurfaceData[,] map, int mapSize, int tileSize, int maxHeight, int? overrideMaxTrees)
         {
             // real sizes (wrapped map is square, but keep explicit X/Y to avoid XY/YX bugs)
             int sizeY = map.GetLength(0);
@@ -480,6 +488,11 @@ namespace _3dRotations.Helpers
             const int ScreenSize = 18;
             const int WaterBufferRadius = 1;
             const int MinTreeSpacing = 1;
+
+            if (overrideMaxTrees.HasValue)
+            {
+                maxTrees = overrideMaxTrees.Value;
+            }
 
             int numberOfTrees = random.Next((int)(maxTrees * 0.95), maxTrees);
 
@@ -682,12 +695,15 @@ namespace _3dRotations.Helpers
         }
 
         public static List<(int x, int y, int height)> FindHousePlacementAreas(
-            SurfaceData[,] map, int mapSize, int maxHeight, List<(int x, int y, int height)> existingTrees)
+            SurfaceData[,] map, int mapSize, int maxHeight, List<(int x, int y, int height)> existingTrees, int? overrideMaxHouses = null)
         {
             int sizeY = map.GetLength(0);
             int sizeX = map.GetLength(1);
             mapSize = Math.Min(sizeX, sizeY);
-
+            if (overrideMaxHouses.HasValue)
+            {
+                maxHouses = overrideMaxHouses.Value;
+            }   
             int H(int x, int y) => map[y, x].mapDepth;
 
             var houseLocations = new List<(int x, int y, int height)>();
@@ -868,7 +884,7 @@ namespace _3dRotations.Helpers
 
             int nearRadius = 17;
             int spacing = 6;                 // same “looks good” value you liked
-            int landingBufferTiles = 1;      // exclude platform + 1 tile ring around it
+            int landingBufferTiles = 1;      // exclude platform + 1 tile ring rundt det
 
             // ------------------------------------------------------------
             // 0) Find landing platform robustly (8x8 flat block, highest depth near center)

@@ -244,9 +244,9 @@ namespace _3dTesting
             }
 
             // Minimap -> HUD slot only
-            if (!isFading && world.WorldInhabitants.Count > 100)
+            if (!isFading && world.WorldInhabitants.Count > 50)
             {
-                if (GameState.SurfaceState.GlobalMapPosition != null)
+                 if (GameState.SurfaceState.GlobalMapPosition != null)
                 {
                     GameHelpers.UpdateDirtyTilesInMap(GameState.SurfaceState.GlobalMapBitmap);
 

@@ -18,14 +18,14 @@ namespace _3dRotations.Scene.Scene1
         public string SceneMusic { get; } = "music_flight";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
 
-        public GameModes GameMode { get; } = GameModes.Live;
+        public GameModes GameMode { get; } = GameModes.Playback;
 
         public void SetupScene(I3dWorld world)
         {          
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
-            Surface.Create2DMap(30000,15000);
+            Surface.Create2DMap(30000,15000, GameMode, "Scene1SurfaceRecording.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -101,7 +101,7 @@ namespace _3dRotations.Scene.Scene1
             }
 
 
-            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
+            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight(), 30000);
             var treeIndex = 0;
             foreach (var treePlacement in treePlacements)
             {
@@ -123,7 +123,7 @@ namespace _3dRotations.Scene.Scene1
                 if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
             }
 
-            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements);
+            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
             foreach (var housePlacement in housePlacements)
             {
                 //Debug.WriteLine($"House placement: {housePlacement.x} {housePlacement.y}");
@@ -147,8 +147,6 @@ namespace _3dRotations.Scene.Scene1
 
         public void SetupGameOverlay()
         {
-            Logger.Log("Scene1: Setup Gameoverlay", "General");
-
             GameState.ScreenOverlayState.ResetToDefaults();
             GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
             GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "The Omega Strain", "", "");
@@ -158,7 +156,6 @@ namespace _3dRotations.Scene.Scene1
 
         public void SetupSceneOverlay()
         {
-            Logger.Log("Scene1: Setup Sceneoverlay");
             GameState.ScreenOverlayState.ResetToDefaults();
             var o = GameState.ScreenOverlayState;
 

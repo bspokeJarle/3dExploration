@@ -51,7 +51,7 @@ namespace _3dTesting.Helpers
         /// <summary>
         /// Updates the minimap overlay with the correct cropped portion.
         /// </summary>
-        public static void UpdateMapOverlay(System.Windows.Controls.Image mapOverlay, BitmapSource surfaceMapBitmap, int mapX, int mapY)
+        public static void  UpdateMapOverlay(System.Windows.Controls.Image mapOverlay, BitmapSource surfaceMapBitmap, int mapX, int mapY)
         {
             if (mapX == 0 || mapY == 0) return; // Avoid division by zero or invalid map coordinates 
             if (surfaceMapBitmap != null && mapOverlay != null)

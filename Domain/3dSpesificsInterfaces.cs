@@ -150,11 +150,7 @@ namespace Domain
 
     public interface ISurface
     {
-        //public Vector3 GlobalMapPosition { get; set; }
         public Vector3 GlobalMapRotation { get; set; }
-        //public SurfaceData[,]? Global2DMap { get; set; }
-        //public BitmapSource GlobalMapBitmap { get; set; }
-
         public int SurfaceWidth();
         public int GlobalMapSize();
         public int ViewPortSize();
@@ -166,7 +162,7 @@ namespace Domain
 
         public I3dObject GetSurfaceViewPort();
 
-        public void Create2DMap(int? maxTrees, int? maxHouses);
+        public void Create2DMap(int? maxTrees, int? maxHouses, GameModes gameMode, string? recordedSurface);
     }
 
     public interface IObjectMovement

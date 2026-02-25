@@ -21,7 +21,7 @@ namespace _3dRotations.Scene.Scene1
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
-            Surface.Create2DMap(500,50);
+            Surface.Create2DMap(500,50,GameMode,null);
 
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -78,7 +78,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(surfaceObject);
 
-            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
+            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight(),null);
             var treeIndex = 0;
             foreach (var treePlacement in treePlacements)
             {

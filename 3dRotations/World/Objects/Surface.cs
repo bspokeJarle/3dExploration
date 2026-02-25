@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.GamePlayHelpers;
 
 
 namespace _3dRotations.World.Objects
@@ -177,11 +178,93 @@ namespace _3dRotations.World.Objects
             return $"{Math.Clamp(red, 0, 255):X2}{Math.Clamp(green, 0, 255):X2}{Math.Clamp(blue, 0, 255):X2}";
         }
 
-        public void Create2DMap(int? maxTrees,int? maxHouses)
+        public void Create2DMap(int? maxTrees, int? maxHouses, GameModes gameMode,string? surfaceFile)
         {
-            //Gets the pseudo random map in 2d
-            GameState.SurfaceState.Global2DMap = SurfaceGeneration.ReturnPseudoRandomMap(MapSetup.globalMapSize, maxHeight: out MapSetup.maxHeight,maxTrees,maxHouses);
-            SurfaceGeneration.GenerateTerrainBitmapSource(GameState.SurfaceState.Global2DMap, MapSetup.globalMapSize, MapSetup.maxHeight);
+            // ------------------------------------------------------------
+            // LIVE
+            // ------------------------------------------------------------
+            if (gameMode == GameModes.Live)
+            {
+                GameState.SurfaceState.Global2DMap =
+                    SurfaceGeneration.ReturnPseudoRandomMap(
+                        MapSetup.globalMapSize,
+                        maxHeight: out MapSetup.maxHeight,
+                        maxTrees,
+                        maxHouses);
+
+                GameState.SurfaceState.SurfaceHash = 0; // not replay eligible
+            }
+
+            // ------------------------------------------------------------
+            // PLAYBACK
+            // ------------------------------------------------------------
+            else if (gameMode == GameModes.Playback)
+            {
+                if (GameplayHelpers.SurfaceIO.SurfaceIO.TryLoad(
+                        surfaceFile,
+                        out var loadedMap,
+                        out var hash))
+                {
+                    GameState.SurfaceState.Global2DMap = loadedMap;
+                    GameState.SurfaceState.SurfaceHash = hash;
+                    MapSetup.maxHeight = GetActualMaxHeight(loadedMap);
+                }
+                else
+                {
+                    // Fail-safe: generate instead and effectively disable replay
+                    GameState.SurfaceState.Global2DMap =
+                        SurfaceGeneration.ReturnPseudoRandomMap(
+                            MapSetup.globalMapSize,
+                            maxHeight: out MapSetup.maxHeight,
+                            maxTrees,
+                            maxHouses);
+
+                    GameState.SurfaceState.SurfaceHash = 0;
+                }
+            }
+
+            // ------------------------------------------------------------
+            // RECORD
+            // ------------------------------------------------------------
+            else if (gameMode == GameModes.Record)
+            {
+                 GameState.SurfaceState.Global2DMap =
+                    SurfaceGeneration.ReturnPseudoRandomMap(
+                        MapSetup.globalMapSize,
+                        maxHeight: out MapSetup.maxHeight,
+                        maxTrees,
+                        maxHouses);
+
+                var hash = GameplayHelpers.SurfaceIO.SurfaceIO.Save(
+                    surfaceFile,
+                    GameState.SurfaceState.Global2DMap);
+
+                GameState.SurfaceState.SurfaceHash = hash;
+            }
+            // ------------------------------------------------------------
+            // Always build bitmap from surface
+            // ------------------------------------------------------------
+            //We need to generate Ecomaps if they are not generated already, as they are used for AI
+            if (GameState.SurfaceState.ScreenEcoMetas[0,0].BioTiles==null)
+            {
+                GameState.SurfaceState.ScreenEcoMetas = SurfaceGeneration.GenerateEcoMap(
+                    GameState.SurfaceState.Global2DMap);
+            }
+
+            int mapSize = GameState.SurfaceState.Global2DMap.GetLength(0); // siden kartet er square
+            SurfaceGeneration.GenerateTerrainBitmapSource(
+                GameState.SurfaceState.Global2DMap,
+                mapSize,
+                MapSetup.maxHeight);
+        }
+
+        private static int GetActualMaxHeight(SurfaceData[,] map)
+        {
+            int sx = map.GetLength(0), sy = map.GetLength(1), m = 0;
+            for (int i = 0; i < sx; i++)
+                for (int j = 0; j < sy; j++)
+                    if (map[i, j].mapDepth > m) m = map[i, j].mapDepth;
+            return m;
         }
     }
 }

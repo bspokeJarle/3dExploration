@@ -1,7 +1,6 @@
 ﻿using CommonUtilities.CommonGlobalState;
 using Domain;
 using System;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -226,10 +225,8 @@ namespace _3dTesting.MainWindowClasses
             // Center line – numbers only (labels are in PNG)
             _fpsCenter.Text = $"{fps}                       {triangles}";
 
-            // ALT   
             SetBarFill(_altBarFill, gameplay.Alt);
 
-            //TODO: Temporary fix
             SetBarFill(_thrBarFill, gameplay.Thrust/10);
            
             //TODO: Temporary fix
