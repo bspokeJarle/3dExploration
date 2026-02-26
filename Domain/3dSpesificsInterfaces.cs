@@ -12,43 +12,51 @@ namespace Domain
 {
     public interface IGameReplay
     {
-        public string ReplayFile { get; }
-        public string ReplayName { get; }
-        public List<IFrameState> ReplayFrames { get; }
+        string ReplayFile { get; }
+        string ReplayName { get; }
+
+        // Must match the precomputed surface used for this replay.
+        // If mismatch -> do NOT playback.
+        ulong SurfaceHash { get; }
+
+        // Playback timing
+        int Fps { get; }                 // e.g. 60
+
+        // Frames in chronological order (0..N-1)
+        List<IFrameState> ReplayFrames { get; }
     }
+
     public interface IFrameState
     {
-        public int FrameCount { get; set; }
-        public List<IReplayObjectState> ObjectStates { get; set; }
-        public void Clear(int frameIndex)
+        // 0-based frame index (prefer this over "FrameCount")
+        int FrameIndex { get; set; }
+
+        // Only objects visible/handled in this frame.
+        // If an object is not listed here => it is ignored this frame.
+        List<IReplayObjectState> ObjectStates { get; set; }
+
+        // Convenience for record-loop reuse
+        void Clear(int frameIndex)
         {
-            //Add framecount when clearing
-            FrameCount = frameIndex + 1;
+            FrameIndex = frameIndex;
             ObjectStates.Clear();
         }
     }
+
     public interface IReplayObjectState
     {
-        IVector3 WorldPosition { get; set; }
-        IVector3 ObjectOffset { get; set; }
-        string ObjectName { get; set; }
-        int ObjectId { get; set; }
-        public List<EventState> ObjectEvents { get; set; }
-    }
+        int ObjectId { get; set; }       // stable id (already exists in your engine)
+        string ObjectName { get; set; }  // debug only, optional but handy
 
-    public interface EventState
-    {
-        public EventTypes EventType { get; set; }
-    }
-    public enum EventTypes
-    {
-        Explode,
-        FireLazer,
-        Collision,
-        Thrust,
-        Seed
-    }
+        // World-space state
+        Vector3 WorldPosition { get; set; }
+        Vector3 ObjectOffset { get; set; }
+        Vector3 Rotation { get; set; }   // strongly recommended for correct replay
 
+        // One-shot trigger for starting explosion (call ExplodeObject as normal).
+        // Playback must ensure this only triggers once per object.
+        bool TriggerExplode { get; set; }
+    }
     public struct SurfaceData
     {
         public int mapDepth;
