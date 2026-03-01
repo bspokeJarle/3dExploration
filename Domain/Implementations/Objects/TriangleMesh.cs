@@ -1,0 +1,55 @@
+namespace Domain
+{
+    public partial class _3dSpecificsImplementations
+    {
+        public class TriangleMesh : ITriangleMesh
+        {
+            private IVector3? _normal1;
+            private IVector3? _normal2;
+            private IVector3? _normal3;
+            private IVector3? _vert1;
+            private IVector3? _vert2;
+            private IVector3? _vert3;
+
+            public IVector3 normal1
+            {
+                get => _normal1 ??= new Vector3();
+                set => _normal1 = value;
+            }
+
+            public IVector3 normal2
+            {
+                get => _normal2 ??= new Vector3();
+                set => _normal2 = value;
+            }
+
+            public IVector3 normal3
+            {
+                get => _normal3 ??= new Vector3();
+                set => _normal3 = value;
+            }
+
+            public IVector3 vert1
+            {
+                get => _vert1 ??= new Vector3();
+                set => _vert1 = value;
+            }
+
+            public IVector3 vert2
+            {
+                get => _vert2 ??= new Vector3();
+                set => _vert2 = value;
+            }
+
+            public IVector3 vert3
+            {
+                get => _vert3 ??= new Vector3();
+                set => _vert3 = value;
+            }
+
+            public long? landBasedPosition { get; set; }
+            public float angle { get; set; }
+            public bool? noHidden { get; set; }
+        }
+    }
+}

@@ -1,0 +1,240 @@
+using CommonUtilities.CommonGlobalState;
+using Domain;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using static Domain._3dSpecificsImplementations;
+
+namespace _3dTesting.Helpers
+{
+    public static partial class CrashDetection
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool HandleParticleCollision(_3dObject a, _3dObject b)
+        {
+            var particle = a.ObjectName == "Particle" ? a : b;
+            var other = particle == a ? b : a;
+
+            for (int pb = 0; pb < particle.CrashBoxes.Count; pb++)
+            {
+                var particleBox = particle.CrashBoxes[pb];
+
+                var worldParticlePoints = GetWorldBoxPointsCached(particle, pb, particleBox);
+                if (worldParticlePoints.Count == 0) continue;
+
+                var center = GetCenterOfBox(worldParticlePoints);
+
+                for (int ob = 0; ob < other.CrashBoxes.Count; ob++)
+                {
+                    var otherBox = other.CrashBoxes[ob];
+
+                    var worldOtherPoints = GetWorldBoxPointsCached(other, ob, otherBox);
+                    if (worldOtherPoints.Count == 0) continue;
+
+                    float oMinX = float.MaxValue, oMinY = float.MaxValue, oMinZ = float.MaxValue;
+                    float oMaxX = float.MinValue, oMaxY = float.MinValue, oMaxZ = float.MinValue;
+
+                    for (int i = 0; i < worldOtherPoints.Count; i++)
+                    {
+                        var p = worldOtherPoints[i];
+
+                        float x = p.x;
+                        float y = p.y;
+                        float z = p.z;
+
+                        if (x < oMinX) oMinX = x; if (x > oMaxX) oMaxX = x;
+                        if (y < oMinY) oMinY = y; if (y > oMaxY) oMaxY = y;
+                        if (z < oMinZ) oMinZ = z; if (z > oMaxZ) oMaxZ = z;
+                    }
+
+                    if (center.x >= oMinX && center.x <= oMaxX &&
+                        center.y >= oMinY && center.y <= oMaxY &&
+                        center.z >= oMinZ && center.z <= oMaxZ)
+                    {
+                        var min = new Vector3(oMinX, oMinY, oMinZ);
+                        var max = new Vector3(oMaxX, oMaxY, oMaxZ);
+
+                        var direction = EstimateDirectionFromSurface(center, min, max);
+
+                        particle.ImpactStatus.HasCrashed = true;
+                        particle.ImpactStatus.ImpactDirection = direction;
+
+                        if (particle.ImpactStatus.SourceParticle?.ImpactStatus != null)
+                        {
+                            particle.ImpactStatus.SourceParticle.ImpactStatus.HasCrashed = true;
+                            particle.ImpactStatus.SourceParticle.ImpactStatus.ImpactDirection = direction;
+                            particle.ImpactStatus.SourceParticle.ImpactStatus.ObjectName = a.ObjectName;
+                        }
+
+                        if (other.ImpactStatus != null)
+                        {
+                            other.ImpactStatus.HasCrashed = true;
+                            other.ImpactStatus.ImpactDirection = direction;
+                            other.ImpactStatus.ObjectName = b.ObjectName;
+                        }
+
+                        if (!SkipParticleLogging)
+                        {
+                            LogCollision(a, b,
+                                $"[FRAME:{numFrame}] [PARTICLE COLLISION] {particle.ObjectName} <-> {other.ObjectName} | Dir:{direction} | ParticleBox:{pb} OtherBox:{ob}");
+                        }
+
+                        if (LogCollisionDetails)
+                        {
+                            if (!SkipParticleLogging) LogCollisionDetail(a, b,
+                                $"[PARTICLE CENTER] ({center.x:0.##},{center.y:0.##},{center.z:0.##})");
+
+                            if (!SkipParticleLogging) LogCollisionDetail(a, b,
+                                $"[OTHER AABB] Min=({min.x:0.##},{min.y:0.##},{min.z:0.##}) Max=({max.x:0.##},{max.y:0.##},{max.z:0.##})");
+
+                            if (!SkipParticleLogging)
+                                LogCrashBoxWorldPoints($"[PARTICLE BOX WORLD] {particle.ObjectName} Box[{pb}]", worldParticlePoints);
+
+                            if (!SkipParticleLogging)
+                                LogCrashBoxWorldPoints($"[OTHER BOX WORLD] {other.ObjectName} Box[{ob}]", worldOtherPoints);
+                        }
+
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool HandleGeneralCollision(_3dObject a, _3dObject b)
+        {
+            for (int ai = 0; ai < a.CrashBoxes.Count; ai++)
+            {
+                var boxA = a.CrashBoxes[ai];
+
+                var safeBoxA = GetWorldBoxPointsCached(a, ai, boxA);
+                if (safeBoxA.Count == 0) continue;
+
+                for (int bi = 0; bi < b.CrashBoxes.Count; bi++)
+                {
+                    var boxB = b.CrashBoxes[bi];
+
+                    var safeBoxB = GetWorldBoxPointsCached(b, bi, boxB);
+
+                    if (ShouldLogAny && CheckLogFilter(a, b) && LogCollisionDetails)
+                    {
+                        Logger.Log($"PTS {a.ObjectName}[{ai}] vs {b.ObjectName}[{bi}] A:{string.Join(";", safeBoxA.Select(p => $"({p.x:0.#},{p.y:0.#},{p.z:0.#})"))} | B:{string.Join(";", safeBoxB.Select(p => $"({p.x:0.#},{p.y:0.#},{p.z:0.#})"))}");
+                    }
+
+                    if (safeBoxB.Count == 0) continue;
+
+                    if (_3dObjectHelpers.CheckCollisionBoxVsBox(safeBoxA, safeBoxB, a.ObjectName, b.ObjectName))
+                    {
+                        a.ImpactStatus.HasCrashed = true;
+                        b.ImpactStatus.HasCrashed = true;
+                        a.ImpactStatus.ObjectName = b.ObjectName;
+                        b.ImpactStatus.ObjectName = a.ObjectName;
+
+                        var centerA = GetCenterOfBox(safeBoxA);
+                        var centerB = GetCenterOfBox(safeBoxB);
+
+                        a.ImpactStatus.ImpactDirection = EstimateDirection(centerA, centerB);
+                        b.ImpactStatus.ImpactDirection = EstimateDirection(centerB, centerA);
+
+                        LogCollision(a, b,
+                            $"[FRAME:{numFrame}] [GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName} | ABox:{ai} BBox:{bi}");
+
+                        if (LogCollisionDetails)
+                        {
+                            var offsetA = GetOffsetCached(a);
+                            var offsetB = GetOffsetCached(b);
+
+                            LogCollisionDetail(a, b,
+                                $"[COLLISION OFFSETS] AEffective=({offsetA.x:0.##},{offsetA.y:0.##},{offsetA.z:0.##}) " +
+                                $"BEffective=({offsetB.x:0.##},{offsetB.y:0.##},{offsetB.z:0.##})");
+
+                            LogCollisionDetail(a, b,
+                                $"[COLLISION CENTERS] A=({centerA.x:0.##},{centerA.y:0.##},{centerA.z:0.##}) " +
+                                $"B=({centerB.x:0.##},{centerB.y:0.##},{centerB.z:0.##})");
+
+                            LogCollisionDetail(a, b,
+                                $"[COLLISION DIR] {a.ObjectName}->{b.ObjectName}:{a.ImpactStatus.ImpactDirection} | " +
+                                $"{b.ObjectName}->{a.ObjectName}:{b.ImpactStatus.ImpactDirection}");
+
+                            LogCrashBoxWorldPoints($"[A BOX WORLD] {a.ObjectName} Box[{ai}]", safeBoxA);
+                            LogCrashBoxWorldPoints($"[B BOX WORLD] {b.ObjectName} Box[{bi}]", safeBoxB);
+                        }
+
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static Vector3 GetCenterOfBox(List<Vector3> points)
+        {
+            if (points == null || points.Count == 0)
+                return new Vector3();
+
+            float minX = float.MaxValue, maxX = float.MinValue;
+            float minY = float.MaxValue, maxY = float.MinValue;
+            float minZ = float.MaxValue, maxZ = float.MinValue;
+
+            foreach (var p in points)
+            {
+                minX = Math.Min(minX, p.x);
+                maxX = Math.Max(maxX, p.x);
+
+                minY = Math.Min(minY, p.y);
+                maxY = Math.Max(maxY, p.y);
+
+                minZ = Math.Min(minZ, p.z);
+                maxZ = Math.Max(maxZ, p.z);
+            }
+
+            return new Vector3
+            {
+                x = (minX + maxX) / 2f,
+                y = (minY + maxY) / 2f,
+                z = (minZ + maxZ) / 2f
+            };
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ImpactDirection EstimateDirectionFromSurface(Vector3 point, Vector3 min, Vector3 max)
+        {
+            var center = new Vector3
+            {
+                x = (min.x + max.x) / 2,
+                y = (min.y + max.y) / 2,
+                z = (min.z + max.z) / 2
+            };
+            float dx = point.x - center.x;
+            float dy = point.y - center.y;
+            float dz = point.z - center.z;
+
+            if (Math.Abs(dy) > Math.Abs(dx) && Math.Abs(dy) > Math.Abs(dz))
+                return dy < 0 ? ImpactDirection.Top : ImpactDirection.Bottom;
+            else if (Math.Abs(dx) > Math.Abs(dz))
+                return dx > 0 ? ImpactDirection.Right : ImpactDirection.Left;
+            else
+                return ImpactDirection.Center;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ImpactDirection EstimateDirection(Vector3 from, Vector3 to)
+        {
+            float dx = from.x - to.x;
+            float dy = from.y - to.y;
+            float dz = from.z - to.z;
+
+            if (Math.Abs(dy) > Math.Abs(dx) && Math.Abs(dy) > Math.Abs(dz))
+                return dy < 0 ? ImpactDirection.Top : ImpactDirection.Bottom;
+            else if (Math.Abs(dx) > Math.Abs(dz))
+                return dx > 0 ? ImpactDirection.Right : ImpactDirection.Left;
+            else
+                return ImpactDirection.Center;
+        }
+    }
+}
