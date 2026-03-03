@@ -70,6 +70,7 @@ namespace _3dTesting
 
             InitializeComponent();
             this.PreviewKeyDown += new KeyEventHandler(HandleKeys);
+            Closing += MainWindow_Closing;
 
             mainGrid = new Grid();
             Content = mainGrid;
@@ -108,6 +109,11 @@ namespace _3dTesting
             timer.Tick += (s, e) => Handle3dWorld();
             timer.Start();
             stopwatch.Start();
+        }
+
+        private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            gameWorldManager.FinalizeRecording();
         }
 
         private void HandleKeys(object sender, KeyEventArgs e)

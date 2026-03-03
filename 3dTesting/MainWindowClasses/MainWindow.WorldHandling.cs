@@ -2,20 +2,19 @@
 using _3dTesting.MainWindowClasses.Loops;
 using Domain;
 using System.Collections.Generic;
-using World3d = _3dTesting._3dWorld._3dWorld;
 
 namespace _3dTesting.MainWindowClasses
 {
     public class GameWorldManager
     {
-        private readonly IGameLoop gameLoop;
+        private readonly IGameLoop<_2dTriangleMesh> gameLoop;
 
         public GameWorldManager()
             : this(new LiveGameLoop())
         {
         }
 
-        public GameWorldManager(IGameLoop gameLoop)
+        public GameWorldManager(IGameLoop<_2dTriangleMesh> gameLoop)
         {
             this.gameLoop = gameLoop;
         }
@@ -50,9 +49,14 @@ namespace _3dTesting.MainWindowClasses
             set => gameLoop.SurfaceCopy = value;
         }
 
-        public List<_2dTriangleMesh> UpdateWorld(World3d world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
+        public List<_2dTriangleMesh> UpdateWorld(I3dWorld world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
             return gameLoop.UpdateWorld(world, ref projectedCoordinates, ref crashBoxCoordinates);
+        }
+
+        public void FinalizeRecording()
+        {
+            gameLoop.FinalizeRecording();
         }
     }
 }

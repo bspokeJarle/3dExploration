@@ -23,7 +23,7 @@ namespace _3dTesting.Helpers
             bool shouldCheckStaticObjects = (DateTime.Now - _lastStaticCheck).TotalMilliseconds > 100;
             _skipParticles = !_skipParticles;
 
-            CommonUtilities.CommonGlobalState.GameState.ShipState.BestCandidateStates.Clear();
+            GameState.ShipState.BestCandidateStates.Clear();
 
             for (int i = 0; i < count; i++)
             {

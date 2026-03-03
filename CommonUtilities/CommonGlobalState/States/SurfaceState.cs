@@ -19,5 +19,6 @@ namespace CommonUtilities.CommonGlobalState.States
         public List<IVector3> DirtyTiles { get; set; } = new List<IVector3>();
         public _3dObject? SurfaceViewportObject { get; set; }
         public ulong SurfaceHash { get; set; }
+        public string? SurfaceFilePath { get; set; }
     }
 }

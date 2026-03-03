@@ -15,6 +15,7 @@ namespace Domain
     public interface IFrameState
     {
         int FrameIndex { get; set; }
+        int RecordedObjectCount { get; set; }
         List<IReplayObjectState> ObjectStates { get; set; }
 
         void Clear(int frameIndex)

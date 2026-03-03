@@ -180,6 +180,7 @@ namespace _3dRotations.World.Objects
 
         public void Create2DMap(int? maxTrees, int? maxHouses, GameModes gameMode,string? surfaceFile)
         {
+            GameState.SurfaceState.SurfaceFilePath = surfaceFile;
             // ------------------------------------------------------------
             // LIVE
             // ------------------------------------------------------------

@@ -5,16 +5,20 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAudioInstances;
+using GameplayHelpers.ReplayIO;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using static Domain._3dSpecificsImplementations;
-using World3d = _3dTesting._3dWorld._3dWorld;
 
 namespace _3dTesting.MainWindowClasses.Loops
 {
-    public class LiveGameLoop : IGameLoop
+    public class LiveGameLoop : IGameLoop<_2dTriangleMesh>
     {
+        private const int RecordFps = 60;
+        private readonly ReplayRecorder replayRecorder = new();
+
         private long FrameCounter = 0;
         private int AiUpdateCounter = 0;
         private const int AiUpdateInterval = 5; // Update offscreen AI every 5 frames
@@ -38,7 +42,7 @@ namespace _3dTesting.MainWindowClasses.Loops
         public I3dObject ShipCopy { get; set; }
         public I3dObject SurfaceCopy { get; set; }
 
-        public List<_2dTriangleMesh> UpdateWorld(World3d world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
+        public List<_2dTriangleMesh> UpdateWorld(I3dWorld world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
             FrameCounter++;
             List<_3dObject> deepCopiedWorld;
@@ -150,6 +154,22 @@ namespace _3dTesting.MainWindowClasses.Loops
                 DebugMessage += $" Number of Weapons on screen {weaponObjectList.Count}";
             }
 
+            var activeScene = world.SceneHandler.GetActiveScene();
+            if (activeScene?.GameMode == GameModes.Record)
+            {
+                if (!replayRecorder.IsRecording)
+                    replayRecorder.BeginRecording(GameState.SurfaceState.SurfaceHash, RecordFps);
+            }
+            else
+            {
+                FinalizeRecording();
+            }
+
+            if (activeScene?.GameMode == GameModes.Record)
+            {
+                replayRecorder.RecordFrame((int)FrameCounter, renderedList);
+            }
+
             var ship = activeWorld.FirstOrDefault(x => x.ObjectName == "Ship");
             if (ship != null && ship.ImpactStatus.ObjectHealth <= 0 && !FadeOutWorld)
             {
@@ -157,6 +177,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             }
             if (ship != null && ship.ImpactStatus.HasExploded)
             {
+                FinalizeRecording();
                 FadeOutWorld = false;
                 FadeInWorld = true;
                 ship.Movement.Dispose();
@@ -184,12 +205,45 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
-            var activeScene = world.SceneHandler.GetActiveScene();
             if (activeScene != null)
             {
                 HandleMusic(renderedList, activeScene.SceneMusic);
             }
             return projectedCoordinates;
+        }
+
+        public void FinalizeRecording()
+        {
+            FinalizeRecordingIfNeeded();
+        }
+
+        private void FinalizeRecordingIfNeeded()
+        {
+            if (!replayRecorder.IsRecording)
+                return;
+
+            var surfaceFile = GameState.SurfaceState.SurfaceFilePath;
+            if (string.IsNullOrWhiteSpace(surfaceFile))
+            {
+                replayRecorder.StopRecording();
+                return;
+            }
+
+            var replayPath = BuildReplayPath(surfaceFile);
+            var replay = replayRecorder.EndRecording(replayPath, Path.GetFileNameWithoutExtension(replayPath));
+            ReplayIO.Save(replayPath, (IGameReplay)replay);
+        }
+
+        private static string BuildReplayPath(string surfaceFile)
+        {
+            var directory = Path.GetDirectoryName(surfaceFile) ?? string.Empty;
+            var fileName = Path.GetFileNameWithoutExtension(surfaceFile);
+            var extension = Path.GetExtension(surfaceFile);
+            var replayName = string.IsNullOrWhiteSpace(extension)
+                ? $"{fileName}_playback"
+                : $"{fileName}_playback{extension}";
+
+            return Path.Combine(directory, replayName);
         }
 
         private Dictionary<int, _3dObject> InitializeAiOnScreenTracking()
