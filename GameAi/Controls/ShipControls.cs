@@ -14,6 +14,8 @@ namespace GameAiAndControls.Controls
     public class ShipControls : IObjectMovement
     {
         private bool logging = false;
+        private const bool enableMovementDiagnostics = false;
+        private int movementLogCounter = 0;
         private const float MaxThrust = 10.0f;
         private const float ThrustIncreaseRate = 0.5f;
         private const float GravityAcceleration = 0.75f;
@@ -369,6 +371,16 @@ namespace GameAiAndControls.Controls
                 }
 
                 theObject.ImpactStatus.HasCrashed = false;
+            }
+
+            if (enableMovementDiagnostics)
+            {
+                movementLogCounter++;
+                if (movementLogCounter % 60 == 0)
+                {
+                    var mapPos = GameState.SurfaceState.GlobalMapPosition;
+                    Logger.Log($"[MoveDiag] map=({mapPos.x:0.##},{mapPos.y:0.##},{mapPos.z:0.##}) offsets=({theObject.ObjectOffsets.x:0.##},{theObject.ObjectOffsets.y:0.##},{theObject.ObjectOffsets.z:0.##}) thrustOn={ThrustOn} thrust={Thrust:0.##}");
+                }
             }
 
             // The weapon needs to move as well 

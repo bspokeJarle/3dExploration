@@ -17,7 +17,9 @@ namespace _3dTesting.MainWindowClasses.Loops
     public class LiveGameLoop : IGameLoop<_2dTriangleMesh>
     {
         private const int RecordFps = 60;
+
         private readonly ReplayRecorder replayRecorder = new();
+        private readonly HashSet<int> recordedExplosions = new();
 
         private long FrameCounter = 0;
         private int AiUpdateCounter = 0;
@@ -81,6 +83,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             var particleObjectList = new List<_3dObject>();
             var weaponObjectList = new List<_3dObject>();
             var renderedList = new List<_3dObject>(deepCopiedWorld.Count);
+            var pendingExplosionIds = new List<int>();
             DebugMessage = string.Empty;
 
             AiUpdateCounter++;
@@ -141,6 +144,9 @@ namespace _3dTesting.MainWindowClasses.Loops
                 particleManager.HandleParticles(inhabitant, particleObjectList);
                 weaponsManager.HandleWeapons(inhabitant, weaponObjectList);
                 renderedList.Add(inhabitant);
+
+                if (ShouldTriggerReplayExplosion(inhabitant))
+                    pendingExplosionIds.Add(inhabitant.ObjectId);
             }
 
             if (particleObjectList.Count > 0)
@@ -163,11 +169,6 @@ namespace _3dTesting.MainWindowClasses.Loops
             else
             {
                 FinalizeRecording();
-            }
-
-            if (activeScene?.GameMode == GameModes.Record)
-            {
-                replayRecorder.RecordFrame((int)FrameCounter, renderedList);
             }
 
             var ship = activeWorld.FirstOrDefault(x => x.ObjectName == "Ship");
@@ -209,7 +210,29 @@ namespace _3dTesting.MainWindowClasses.Loops
             {
                 HandleMusic(renderedList, activeScene.SceneMusic);
             }
+
+            if (activeScene?.GameMode == GameModes.Record)
+            {
+                replayRecorder.RecordFrame((int)FrameCounter, renderedList);
+                MarkExplosionsForReplay(pendingExplosionIds);
+            }
+
             return projectedCoordinates;
+        }
+
+        private bool ShouldTriggerReplayExplosion(_3dObject obj)
+        {
+            if (obj?.ImpactStatus == null)
+                return false;
+
+            if (recordedExplosions.Contains(obj.ObjectId))
+                return false;
+
+            int health = obj.ImpactStatus.ObjectHealth ?? 0;
+            if (health <= 0)
+                return true;
+
+            return obj.ObjectParts.Any(part => part.PartName == "ExplodingPart");
         }
 
         public void FinalizeRecording()
@@ -222,6 +245,8 @@ namespace _3dTesting.MainWindowClasses.Loops
             if (!replayRecorder.IsRecording)
                 return;
 
+            recordedExplosions.Clear();
+
             var surfaceFile = GameState.SurfaceState.SurfaceFilePath;
             if (string.IsNullOrWhiteSpace(surfaceFile))
             {
@@ -232,6 +257,18 @@ namespace _3dTesting.MainWindowClasses.Loops
             var replayPath = BuildReplayPath(surfaceFile);
             var replay = replayRecorder.EndRecording(replayPath, Path.GetFileNameWithoutExtension(replayPath));
             ReplayIO.Save(replayPath, (IGameReplay)replay);
+        }
+
+        private void MarkExplosionsForReplay(List<int> pendingExplosionIds)
+        {
+            foreach (var objectId in pendingExplosionIds)
+            {
+                if (recordedExplosions.Contains(objectId))
+                    continue;
+
+                replayRecorder.TriggerExplodeForCurrentFrame(objectId);
+                recordedExplosions.Add(objectId);
+            }
         }
 
         private static string BuildReplayPath(string surfaceFile)

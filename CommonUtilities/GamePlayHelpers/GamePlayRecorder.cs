@@ -30,12 +30,14 @@ namespace GameplayHelpers.ReplayIO
     public sealed class ReplayRecorder
     {
         private readonly bool _enableLogging;
-
         private bool _isRecording;
         private int _currentFrameIndex = -1;
 
         private readonly List<IFrameState> _frames = new();
         private readonly Dictionary<int, ReplayObjectState> _currentFrameStatesById = new();
+        private Vector3 _lastRecordedMap = new Vector3();
+        private Vector3 _lastRecordedShipOffset = new Vector3();
+        private int _unchangedFrameCount = 0;
 
         public ReplayRecorder(bool enableLogging = false)
         {
@@ -51,6 +53,10 @@ namespace GameplayHelpers.ReplayIO
 
             _frames.Clear();
             _currentFrameStatesById.Clear();
+
+            _lastRecordedMap = new Vector3();
+            _lastRecordedShipOffset = new Vector3();
+            _unchangedFrameCount = 0;
 
             SurfaceHash = surfaceHash;
             Fps = fps <= 0 ? 60 : fps;
@@ -80,10 +86,15 @@ namespace GameplayHelpers.ReplayIO
             _currentFrameIndex = frameIndex;
             _currentFrameStatesById.Clear();
 
-            // Build frame
+            var mapPos = new Vector3(
+                GameState.SurfaceState.GlobalMapPosition.x,
+                GameState.SurfaceState.GlobalMapPosition.y,
+                GameState.SurfaceState.GlobalMapPosition.z);
+
             var frame = new FrameState
             {
                 FrameIndex = frameIndex,
+                GlobalMapPosition = mapPos,
                 ObjectStates = new List<IReplayObjectState>(renderObjects.Count)
             };
 
@@ -108,6 +119,27 @@ namespace GameplayHelpers.ReplayIO
 
             _frames.Add(frame);
             frame.RecordedObjectCount = frame.ObjectStates.Count;
+
+            var shipState = frame.ObjectStates.FirstOrDefault(s => string.Equals(s.ObjectName, "Ship", StringComparison.OrdinalIgnoreCase));
+            var shipOffset = shipState != null ? new Vector3(shipState.ObjectOffset.x, shipState.ObjectOffset.y, shipState.ObjectOffset.z) : new Vector3();
+            var mapSnapshot = new Vector3(mapPos.x, mapPos.y, mapPos.z);
+            bool mapUnchanged = mapSnapshot.x == _lastRecordedMap.x && mapSnapshot.y == _lastRecordedMap.y && mapSnapshot.z == _lastRecordedMap.z;
+            bool shipUnchanged = shipOffset.x == _lastRecordedShipOffset.x && shipOffset.y == _lastRecordedShipOffset.y && shipOffset.z == _lastRecordedShipOffset.z;
+
+            if (mapUnchanged && shipUnchanged)
+            {
+                _unchangedFrameCount++;
+                if (_enableLogging && _unchangedFrameCount % 60 == 0)
+                {
+                    Logger.Log($"ReplayRecorder: unchanged frames={_unchangedFrameCount} at frame {frameIndex}", "Replay");
+                }
+            }
+            else
+            {
+                _unchangedFrameCount = 0;
+                _lastRecordedMap = mapSnapshot;
+                _lastRecordedShipOffset = shipOffset;
+            }
 
             if (_enableLogging && (frameIndex % 60 == 0))
             {
@@ -176,6 +208,7 @@ namespace GameplayHelpers.ReplayIO
     {
         public int FrameIndex { get; set; }
         public int RecordedObjectCount { get; set; }
+        public Vector3 GlobalMapPosition { get; set; } = new Vector3();
         public List<IReplayObjectState> ObjectStates { get; set; } = new();
 
         public void Clear(int frameIndex)

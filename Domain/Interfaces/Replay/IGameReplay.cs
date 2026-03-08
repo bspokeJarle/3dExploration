@@ -16,6 +16,7 @@ namespace Domain
     {
         int FrameIndex { get; set; }
         int RecordedObjectCount { get; set; }
+        Vector3 GlobalMapPosition { get; set; }
         List<IReplayObjectState> ObjectStates { get; set; }
 
         void Clear(int frameIndex)

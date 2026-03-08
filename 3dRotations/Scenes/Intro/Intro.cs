@@ -13,7 +13,7 @@ namespace _3dRotations.Scenes.Intro
 {
     public class Intro : IScene
     {
-        public GameModes GameMode { get; } = GameModes.Playback;
+        public GameModes GameMode { get; } = GameModes.Live;
 
         public string SceneMusic { get; } = "music_intro";
 

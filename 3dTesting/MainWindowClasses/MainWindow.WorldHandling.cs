@@ -7,56 +7,67 @@ namespace _3dTesting.MainWindowClasses
 {
     public class GameWorldManager
     {
-        private readonly IGameLoop<_2dTriangleMesh> gameLoop;
+        private IGameLoop<_2dTriangleMesh> liveLoop;
+        private readonly IGameLoop<_2dTriangleMesh> playbackLoop = new PlaybackGameLoop();
+        private IGameLoop<_2dTriangleMesh> currentLoop;
 
         public GameWorldManager()
-            : this(new LiveGameLoop())
         {
+            liveLoop = new LiveGameLoop();
+            currentLoop = liveLoop;
         }
 
         public GameWorldManager(IGameLoop<_2dTriangleMesh> gameLoop)
         {
-            this.gameLoop = gameLoop;
+            liveLoop = gameLoop;
+            currentLoop = gameLoop;
+        }
+
+        private IGameLoop<_2dTriangleMesh> GetActiveLoop(I3dWorld world)
+        {
+            var mode = world.SceneHandler.GetActiveScene()?.GameMode;
+            currentLoop = mode == GameModes.Playback ? playbackLoop : liveLoop;
+            return currentLoop;
         }
 
         public string DebugMessage
         {
-            get => gameLoop.DebugMessage;
-            set => gameLoop.DebugMessage = value;
+            get => currentLoop.DebugMessage;
+            set => currentLoop.DebugMessage = value;
         }
 
         public bool FadeOutWorld
         {
-            get => gameLoop.FadeOutWorld;
-            set => gameLoop.FadeOutWorld = value;
+            get => currentLoop.FadeOutWorld;
+            set => currentLoop.FadeOutWorld = value;
         }
 
         public bool FadeInWorld
         {
-            get => gameLoop.FadeInWorld;
-            set => gameLoop.FadeInWorld = value;
+            get => currentLoop.FadeInWorld;
+            set => currentLoop.FadeInWorld = value;
         }
 
         public I3dObject ShipCopy
         {
-            get => gameLoop.ShipCopy;
-            set => gameLoop.ShipCopy = value;
+            get => currentLoop.ShipCopy;
+            set => currentLoop.ShipCopy = value;
         }
 
         public I3dObject SurfaceCopy
         {
-            get => gameLoop.SurfaceCopy;
-            set => gameLoop.SurfaceCopy = value;
+            get => currentLoop.SurfaceCopy;
+            set => currentLoop.SurfaceCopy = value;
         }
 
         public List<_2dTriangleMesh> UpdateWorld(I3dWorld world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
-            return gameLoop.UpdateWorld(world, ref projectedCoordinates, ref crashBoxCoordinates);
+            return GetActiveLoop(world).UpdateWorld(world, ref projectedCoordinates, ref crashBoxCoordinates);
         }
 
         public void FinalizeRecording()
         {
-            gameLoop.FinalizeRecording();
+            currentLoop.FinalizeRecording();
         }
     }
 }

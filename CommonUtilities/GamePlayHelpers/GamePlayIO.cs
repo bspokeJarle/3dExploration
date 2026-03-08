@@ -13,7 +13,7 @@ namespace GameplayHelpers.ReplayIO
     public static class ReplayIO
     {
         private const string Magic = "OSRP";
-        private const ushort Version = 1;
+        private const ushort Version = 2;
 
         private const byte FlagTriggerExplode = 1 << 0;
 
@@ -33,6 +33,7 @@ namespace GameplayHelpers.ReplayIO
                 foreach (var f in replay.ReplayFrames)
                 {
                     bw.Write(f.FrameIndex);
+                    WriteVector3(bw, f.GlobalMapPosition);
 
                     int objectCount = f.RecordedObjectCount > 0
                         ? f.RecordedObjectCount
@@ -54,6 +55,8 @@ namespace GameplayHelpers.ReplayIO
                         WriteVector3(bw, o.WorldPosition);
                         WriteVector3(bw, o.ObjectOffset);
                         WriteVector3(bw, o.Rotation);
+
+                        WriteString(bw, o.ObjectName ?? string.Empty);
                     }
                 }
 
@@ -106,7 +109,7 @@ namespace GameplayHelpers.ReplayIO
                 if (magic != Magic) { surfaceHash = 0; fps = 0; frames = new List<FrameState>(); return false; }
 
                 ushort ver = br.ReadUInt16();
-                if (ver != Version) { surfaceHash = 0; fps = 0; frames = new List<FrameState>(); return false; }
+                if (ver != 1 && ver != Version) { surfaceHash = 0; fps = 0; frames = new List<FrameState>(); return false; }
 
                 fps = br.ReadUInt16();
                 _ = br.ReadUInt32(); // reserved
@@ -133,12 +136,14 @@ namespace GameplayHelpers.ReplayIO
                 for (int f = 0; f < frameCount; f++)
                 {
                     int frameIndex = pr.ReadInt32();
+                    Vector3 globalMapPosition = ver >= 2 ? ReadVector3(pr) : new Vector3();
                     ushort objectCount = pr.ReadUInt16();
 
                     var frame = new FrameState
                     {
                         FrameIndex = frameIndex,
                         RecordedObjectCount = objectCount,
+                        GlobalMapPosition = globalMapPosition,
                         ObjectStates = new List<ReplayObjectState>(objectCount)
                     };
 
@@ -154,7 +159,7 @@ namespace GameplayHelpers.ReplayIO
                             WorldPosition = ReadVector3(pr),
                             ObjectOffset = ReadVector3(pr),
                             Rotation = ReadVector3(pr),
-                            ObjectName = "" // not stored in v1 binary
+                            ObjectName = ver >= 2 ? ReadString(pr) : string.Empty
                         };
 
                         frame.ObjectStates.Add(obj);
@@ -172,6 +177,22 @@ namespace GameplayHelpers.ReplayIO
                 frames = new List<FrameState>();
                 return false;
             }
+        }
+
+        private static void WriteString(BinaryWriter bw, string value)
+        {
+            var bytes = Encoding.UTF8.GetBytes(value ?? string.Empty);
+            ushort length = (ushort)Math.Min(bytes.Length, ushort.MaxValue);
+            bw.Write(length);
+            bw.Write(bytes, 0, length);
+        }
+
+        private static string ReadString(BinaryReader br)
+        {
+            ushort length = br.ReadUInt16();
+            if (length == 0) return string.Empty;
+            var bytes = br.ReadBytes(length);
+            return Encoding.UTF8.GetString(bytes);
         }
 
         // ------------------------------------------------------------
@@ -202,6 +223,7 @@ namespace GameplayHelpers.ReplayIO
         {
             public int FrameIndex { get; set; }
             public int RecordedObjectCount { get; set; }
+            public Vector3 GlobalMapPosition { get; set; } = new Vector3();
             public List<ReplayObjectState> ObjectStates { get; set; } = new();
             List<IReplayObjectState> IFrameState.ObjectStates
             {

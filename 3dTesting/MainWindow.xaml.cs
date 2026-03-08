@@ -55,6 +55,7 @@ namespace _3dTesting
         private const int limitFrameCount = 10;
         private DateTime fadeOutTrigged = DateTime.MinValue;
         private int _updateInProgress = 0;
+        private long _lastTickTimestamp = 0;
 
         // Overlay handlers
         private OverlayHandler _overlayHandler;
@@ -62,6 +63,11 @@ namespace _3dTesting
 
         private bool isFading = false;
         private int Fps = 0;
+
+        private const int TargetFps = 70;
+        private readonly double targetFrameIntervalMs = 1000.0 / TargetFps;
+        private long _lastFrameTick = 0;
+        private double _tickAccumulatorMs = 0;
 
         public MainWindow()
         {
@@ -106,8 +112,7 @@ namespace _3dTesting
             _hudHandler = new HudOverlayHandlerV2(mainGrid);
 
             timer.Interval = TimeSpan.FromMilliseconds(8);
-            timer.Tick += (s, e) => Handle3dWorld();
-            timer.Start();
+            CompositionTarget.Rendering += Handle3dWorldRendering;
             stopwatch.Start();
         }
 
@@ -176,9 +181,47 @@ namespace _3dTesting
             await tcs.Task;
         }
 
-        private async void Handle3dWorld()
+        private void Handle3dWorldRendering(object? sender, EventArgs e)
         {
-            float dt = (float)timer.Interval.TotalSeconds;
+            var nowTicks = Stopwatch.GetTimestamp();
+            if (_lastFrameTick == 0)
+            {
+                _lastFrameTick = nowTicks;
+                return;
+            }
+
+            var elapsedMs = (nowTicks - _lastFrameTick) * 1000.0 / Stopwatch.Frequency;
+            _lastFrameTick = nowTicks;
+            _tickAccumulatorMs += elapsedMs;
+
+            if (_tickAccumulatorMs < targetFrameIntervalMs)
+                return;
+
+            int steps = (int)Math.Floor(_tickAccumulatorMs / targetFrameIntervalMs);
+            if (steps > 5) steps = 5;
+
+            _tickAccumulatorMs -= steps * targetFrameIntervalMs;
+
+            for (int i = 0; i < steps; i++)
+            {
+                Handle3dWorld(targetFrameIntervalMs / 1000.0);
+            }
+        }
+
+        private async void Handle3dWorld(double dtSeconds)
+        {
+            if (Logger.EnableFileLogging)
+            {
+                var nowTicks = Stopwatch.GetTimestamp();
+                if (_lastTickTimestamp != 0)
+                {
+                    var tickMs = (nowTicks - _lastTickTimestamp) * 1000.0 / Stopwatch.Frequency;
+                    Logger.Log($"[Tick] dtMs={tickMs:0.###}");
+                }
+                _lastTickTimestamp = nowTicks;
+            }
+
+            float dt = (float)dtSeconds;
 
             if (GameState.ScreenOverlayState.ShowDebugOverlay == false)
                 FpsText.Visibility = Visibility.Collapsed;
@@ -265,20 +308,27 @@ namespace _3dTesting
                 }
             }
 
+            if (pauseFrameCount >= limitFrameCount)
+                return;
+
+            if (System.Threading.Interlocked.Exchange(ref _updateInProgress, 1) == 1)
+                return;
+
             _ = Task.Run(() =>
             {
-                if (pauseFrameCount >= limitFrameCount)
-                    return;
-
-                if (System.Threading.Interlocked.Exchange(ref _updateInProgress, 1) == 1)
-                    return;
-
+                long startTicks = Logger.EnableFileLogging ? Stopwatch.GetTimestamp() : 0;
                 try
                 {
                     var screenCoordinates = new List<_Coordinates._2dTriangleMesh>();
                     var crashBoxCoordinates = new List<_Coordinates._2dTriangleMesh>();
 
                     gameWorldManager.UpdateWorld(world, ref screenCoordinates, ref crashBoxCoordinates);
+
+                    if (Logger.EnableFileLogging)
+                    {
+                        var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
+                        Logger.Log($"[UpdateWorld] ms={elapsedMs:0.###}");
+                    }
 
                     if (!isFading)
                         Dispatcher.BeginInvoke(() => worldRenderer.RenderTriangles(screenCoordinates));
