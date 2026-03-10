@@ -29,7 +29,8 @@ namespace GameplayHelpers.ReplayIO
 
     public sealed class ReplayRecorder
     {
-        private readonly bool _enableLogging;
+        private readonly bool _enableLogging = true;
+        private const int LogInterval = 60;
         private bool _isRecording;
         private int _currentFrameIndex = -1;
 
@@ -61,17 +62,19 @@ namespace GameplayHelpers.ReplayIO
             SurfaceHash = surfaceHash;
             Fps = fps <= 0 ? 60 : fps;
 
-            if (_enableLogging) Logger.Log($"ReplayRecorder: BeginRecording surfaceHash={SurfaceHash} fps={Fps}", "Replay");
+            if (_enableLogging && Logger.EnableFileLogging)
+                Logger.Log($"ReplayRecorder: BeginRecording surfaceHash={SurfaceHash} fps={Fps}", "Replay");
         }
 
         public void StopRecording()
         {
-            if (_enableLogging) Logger.Log("ReplayRecorder: StopRecording", "Replay");
+            if (_enableLogging && Logger.EnableFileLogging)
+                Logger.Log("ReplayRecorder: StopRecording", "Replay");
             _isRecording = false;
         }
 
         public ulong SurfaceHash { get; private set; }
-        public int Fps { get; private set; } = 60;
+        public int Fps { get; private set; } = 90;
 
         /// <summary>
         /// Records the given list as the truth for this frame.
@@ -129,7 +132,7 @@ namespace GameplayHelpers.ReplayIO
             if (mapUnchanged && shipUnchanged)
             {
                 _unchangedFrameCount++;
-                if (_enableLogging && _unchangedFrameCount % 60 == 0)
+                if (_enableLogging && Logger.EnableFileLogging && _unchangedFrameCount % LogInterval == 0)
                 {
                     Logger.Log($"ReplayRecorder: unchanged frames={_unchangedFrameCount} at frame {frameIndex}", "Replay");
                 }
@@ -141,9 +144,9 @@ namespace GameplayHelpers.ReplayIO
                 _lastRecordedShipOffset = shipOffset;
             }
 
-            if (_enableLogging && (frameIndex % 60 == 0))
+            if (_enableLogging && Logger.EnableFileLogging && frameIndex % LogInterval == 0)
             {
-                Logger.Log($"ReplayRecorder: Recorded frame {frameIndex}, objects={frame.ObjectStates.Count}", "Replay");
+                Logger.Log($"ReplayRecorder: Recorded frame {frameIndex}, objects={frame.ObjectStates.Count} map=({mapPos.x:0.##};{mapPos.y:0.##};{mapPos.z:0.##}) shipOff=({shipOffset.x:0.##};{shipOffset.y:0.##};{shipOffset.z:0.##})", "Replay");
             }
         }
 
@@ -161,12 +164,13 @@ namespace GameplayHelpers.ReplayIO
             if (_currentFrameStatesById.TryGetValue(objectId, out var state))
             {
                 state.TriggerExplode = true;
-                if (_enableLogging) Logger.Log($"ReplayRecorder: TriggerExplode frame={_currentFrameIndex} objectId={objectId}", "Replay");
+                if (_enableLogging && Logger.EnableFileLogging)
+                    Logger.Log($"ReplayRecorder: TriggerExplode frame={_currentFrameIndex} objectId={objectId}", "Replay");
             }
             else
             {
                 // Optional log - can be noisy
-                if (_enableLogging)
+                if (_enableLogging && Logger.EnableFileLogging)
                     Logger.Log($"ReplayRecorder: TriggerExplode ignored (object not in frame). frame={_currentFrameIndex} objectId={objectId}", "Replay");
             }
         }
@@ -185,7 +189,8 @@ namespace GameplayHelpers.ReplayIO
                 ReplayFrames = _frames
             };
 
-            if (_enableLogging) Logger.Log($"ReplayRecorder: EndRecording frames={_frames.Count}", "Replay");
+            if (_enableLogging && Logger.EnableFileLogging)
+                Logger.Log($"ReplayRecorder: EndRecording frames={_frames.Count}", "Replay");
             return replay;
         }
     }

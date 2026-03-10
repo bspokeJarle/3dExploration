@@ -7,8 +7,7 @@ namespace _3dTesting.MainWindowClasses
 {
     public class GameWorldManager
     {
-        private IGameLoop<_2dTriangleMesh> liveLoop;
-        private readonly IGameLoop<_2dTriangleMesh> playbackLoop = new PlaybackGameLoop();
+        private readonly IGameLoop<_2dTriangleMesh> liveLoop;
         private IGameLoop<_2dTriangleMesh> currentLoop;
 
         public GameWorldManager()
@@ -25,8 +24,7 @@ namespace _3dTesting.MainWindowClasses
 
         private IGameLoop<_2dTriangleMesh> GetActiveLoop(I3dWorld world)
         {
-            var mode = world.SceneHandler.GetActiveScene()?.GameMode;
-            currentLoop = mode == GameModes.Playback ? playbackLoop : liveLoop;
+            currentLoop = liveLoop;
             return currentLoop;
         }
 

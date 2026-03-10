@@ -20,5 +20,6 @@ namespace CommonUtilities.CommonGlobalState.States
         public _3dObject? SurfaceViewportObject { get; set; }
         public ulong SurfaceHash { get; set; }
         public string? SurfaceFilePath { get; set; }
+        public int RecordingFps { get; set; } = ScreenSetup.targetFps;
     }
 }

@@ -100,27 +100,45 @@ namespace _3dTesting._3dRotation
 
         private void ConvertObjectTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ, List<_2dTriangleMesh> result)
         {
-            foreach (var part in obj.ObjectParts)
+            var parts = obj.ObjectParts;
+            var objectOffsets = obj.ObjectOffsets;
+            var objectOffsetsZ = objectOffsets.z;
+            var objectName = obj.ObjectName;
+
+            for (int partIndex = 0; partIndex < parts.Count; partIndex++)
             {
+                var part = parts[partIndex];
                 if (!part.IsVisible) continue;
 
-                foreach (var triangle in part.Triangles)
+                var triangles = part.Triangles;
+                for (int triangleIndex = 0; triangleIndex < triangles.Count; triangleIndex++)
                 {
-                    var (x1, y1) = ProjectVertex((Vector3)triangle.vert1, objPosX, objPosY, objPosZ);
-                    var (x2, y2) = ProjectVertex((Vector3)triangle.vert2, objPosX, objPosY, objPosZ);
-                    var (x3, y3) = ProjectVertex((Vector3)triangle.vert3, objPosX, objPosY, objPosZ);
+                    var triangle = triangles[triangleIndex];
+                    var v1 = (Vector3)triangle.vert1;
+                    var v2 = (Vector3)triangle.vert2;
+                    var v3 = (Vector3)triangle.vert3;
+
+                    var (x1, y1) = ProjectVertex(v1, objPosX, objPosY, objPosZ);
+                    var (x2, y2) = ProjectVertex(v2, objPosX, objPosY, objPosZ);
+                    var (x3, y3) = ProjectVertex(v3, objPosX, objPosY, objPosZ);
+
+                    if (double.IsNaN(x1) || double.IsNaN(x2) || double.IsNaN(x3))
+                    {
+                        continue;
+                    }
 
                     double xFactor = (x1 + x2 + x3) / 3;
                     double yFactor = (y1 + y2 + y3) / 3;
 
                     if (!IsOnScreen(xFactor, yFactor)) continue;
 
-                    if (triangle.normal1.z > 0 || (triangle.noHidden ?? false))
+                    var normal = triangle.normal1;
+                    if (normal.z > 0 || (triangle.noHidden ?? false))
                     {
                         //Debugging Object sorting issues for specific objects
-                        if (obj.ObjectName == "Seeder" || obj.ObjectName == "Lazer")
+                        if (enableLogging && Logger.EnableFileLogging && (objectName == "Seeder" || objectName == "Lazer"))
                         {
-                            if (enableLogging) Logger.Log($"Converted 3D object '{obj.ObjectName}' to 2D. CalculatedZ: {(float)((float)(((triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3) + obj.ObjectOffsets.z) - objPosZ)}");
+                            Logger.Log($"Converted 3D object '{objectName}' to 2D. CalculatedZ: {(float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ)}");
                         }
                         result.Add(new _2dTriangleMesh
                         {
@@ -130,14 +148,13 @@ namespace _3dTesting._3dRotation
                             Y2 = Convert.ToInt32(y2),
                             X3 = Convert.ToInt32(x3),
                             Y3 = Convert.ToInt32(y3),
-                            CalculatedZ = (float)((float)(((triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3) + obj.ObjectOffsets.z) - objPosZ),
-                            Normal = triangle.normal1.z,
+                            CalculatedZ = (float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ),
+                            Normal = normal.z,
                             TriangleAngle = triangle.angle,
                             Color = triangle.Color,
                             PartName = part.PartName
                         });
                     }
-                    
                 }
             }
         }

@@ -5,9 +5,8 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAudioInstances;
-using GameplayHelpers.ReplayIO;
+using System.Diagnostics;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using static Domain._3dSpecificsImplementations;
@@ -16,12 +15,13 @@ namespace _3dTesting.MainWindowClasses.Loops
 {
     public class LiveGameLoop : IGameLoop<_2dTriangleMesh>
     {
-        private const int RecordFps = 60;
-
-        private readonly ReplayRecorder replayRecorder = new();
-        private readonly HashSet<int> recordedExplosions = new();
+        private const int perfLogInterval = 10;
 
         private long FrameCounter = 0;
+        private readonly Stopwatch frameTimer = new();
+        private long performanceFrameCount = 0;
+        private double averageFrameMs = 0;
+        private double averageHeadroomMs = 0;
         private int AiUpdateCounter = 0;
         private const int AiUpdateInterval = 5; // Update offscreen AI every 5 frames
         private readonly _3dTo2d From3dTo2d = new();
@@ -46,6 +46,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
         public List<_2dTriangleMesh> UpdateWorld(I3dWorld world, ref List<_2dTriangleMesh> projectedCoordinates, ref List<_2dTriangleMesh> crashBoxCoordinates)
         {
+            frameTimer.Restart();
             FrameCounter++;
             List<_3dObject> deepCopiedWorld;
             List<_3dObject> activeWorld;
@@ -83,7 +84,6 @@ namespace _3dTesting.MainWindowClasses.Loops
             var particleObjectList = new List<_3dObject>();
             var weaponObjectList = new List<_3dObject>();
             var renderedList = new List<_3dObject>(deepCopiedWorld.Count);
-            var pendingExplosionIds = new List<int>();
             DebugMessage = string.Empty;
 
             AiUpdateCounter++;
@@ -145,8 +145,6 @@ namespace _3dTesting.MainWindowClasses.Loops
                 weaponsManager.HandleWeapons(inhabitant, weaponObjectList);
                 renderedList.Add(inhabitant);
 
-                if (ShouldTriggerReplayExplosion(inhabitant))
-                    pendingExplosionIds.Add(inhabitant.ObjectId);
             }
 
             if (particleObjectList.Count > 0)
@@ -161,15 +159,6 @@ namespace _3dTesting.MainWindowClasses.Loops
             }
 
             var activeScene = world.SceneHandler.GetActiveScene();
-            if (activeScene?.GameMode == GameModes.Record)
-            {
-                if (!replayRecorder.IsRecording)
-                    replayRecorder.BeginRecording(GameState.SurfaceState.SurfaceHash, RecordFps);
-            }
-            else
-            {
-                FinalizeRecording();
-            }
 
             var ship = activeWorld.FirstOrDefault(x => x.ObjectName == "Ship");
             if (ship != null && ship.ImpactStatus.ObjectHealth <= 0 && !FadeOutWorld)
@@ -188,6 +177,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
                 world.SceneHandler.ResetActiveScene(world);
+                TrackFrameTiming((int)FrameCounter);
                 return [];
             }
 
@@ -211,76 +201,13 @@ namespace _3dTesting.MainWindowClasses.Loops
                 HandleMusic(renderedList, activeScene.SceneMusic);
             }
 
-            if (activeScene?.GameMode == GameModes.Record)
-            {
-                replayRecorder.RecordFrame((int)FrameCounter, renderedList);
-                MarkExplosionsForReplay(pendingExplosionIds);
-            }
-
+            TrackFrameTiming((int)FrameCounter);
             return projectedCoordinates;
-        }
-
-        private bool ShouldTriggerReplayExplosion(_3dObject obj)
-        {
-            if (obj?.ImpactStatus == null)
-                return false;
-
-            if (recordedExplosions.Contains(obj.ObjectId))
-                return false;
-
-            int health = obj.ImpactStatus.ObjectHealth ?? 0;
-            if (health <= 0)
-                return true;
-
-            return obj.ObjectParts.Any(part => part.PartName == "ExplodingPart");
         }
 
         public void FinalizeRecording()
         {
-            FinalizeRecordingIfNeeded();
-        }
-
-        private void FinalizeRecordingIfNeeded()
-        {
-            if (!replayRecorder.IsRecording)
-                return;
-
-            recordedExplosions.Clear();
-
-            var surfaceFile = GameState.SurfaceState.SurfaceFilePath;
-            if (string.IsNullOrWhiteSpace(surfaceFile))
-            {
-                replayRecorder.StopRecording();
-                return;
-            }
-
-            var replayPath = BuildReplayPath(surfaceFile);
-            var replay = replayRecorder.EndRecording(replayPath, Path.GetFileNameWithoutExtension(replayPath));
-            ReplayIO.Save(replayPath, (IGameReplay)replay);
-        }
-
-        private void MarkExplosionsForReplay(List<int> pendingExplosionIds)
-        {
-            foreach (var objectId in pendingExplosionIds)
-            {
-                if (recordedExplosions.Contains(objectId))
-                    continue;
-
-                replayRecorder.TriggerExplodeForCurrentFrame(objectId);
-                recordedExplosions.Add(objectId);
-            }
-        }
-
-        private static string BuildReplayPath(string surfaceFile)
-        {
-            var directory = Path.GetDirectoryName(surfaceFile) ?? string.Empty;
-            var fileName = Path.GetFileNameWithoutExtension(surfaceFile);
-            var extension = Path.GetExtension(surfaceFile);
-            var replayName = string.IsNullOrWhiteSpace(extension)
-                ? $"{fileName}_playback"
-                : $"{fileName}_playback{extension}";
-
-            return Path.Combine(directory, replayName);
+            // Recording/playback removed.
         }
 
         private Dictionary<int, _3dObject> InitializeAiOnScreenTracking()
@@ -381,5 +308,35 @@ namespace _3dTesting.MainWindowClasses.Loops
                     break;
             }
         }
+
+        private void TrackFrameTiming(int frameIndex)
+        {
+            if (!frameTimer.IsRunning)
+                return;
+
+            frameTimer.Stop();
+            if (!enableLocalLogging)
+                return;
+            if (!Logger.EnableFileLogging)
+                return;
+
+            var budgetMs = 1000.0 / CommonUtilities.CommonSetup.ScreenSetup.targetFps;
+            var elapsedMs = frameTimer.Elapsed.TotalMilliseconds;
+            var headroomMs = budgetMs - elapsedMs;
+            var headroomPct = (headroomMs / budgetMs) * 100.0;
+
+            performanceFrameCount++;
+            averageFrameMs += (elapsedMs - averageFrameMs) / performanceFrameCount;
+            averageHeadroomMs += (headroomMs - averageHeadroomMs) / performanceFrameCount;
+
+            DebugMessage += $" PerfHeadroom: {headroomPct:0.#}%";
+
+            if (performanceFrameCount % perfLogInterval == 0)
+            {
+                var avgHeadroomPct = (averageHeadroomMs / budgetMs) * 100.0;
+                Logger.Log($"[LivePerf] frame={frameIndex} frameMs={elapsedMs:0.###} headroomMs={headroomMs:0.###} headroomPct={headroomPct:0.#} avgFrameMs={averageFrameMs:0.###} avgHeadroomMs={averageHeadroomMs:0.###} avgHeadroomPct={avgHeadroomPct:0.#}");
+            }
+        }
+
     }
 }

@@ -7,6 +7,16 @@ namespace CommonUtilities._3DHelpers
 {
     public static class Common3dObjectHelpers
     {
+        private static Vector3? CopyVector(IVector3? vector)
+        {
+            if (vector == null)
+            {
+                return null;
+            }
+
+            return new Vector3(vector.x, vector.y, vector.z);
+        }
+
         public static float DotNormalized(IVector3 a, IVector3 b)
         {
             //Returns 1.0 if the vectors are perfectly aligned
@@ -153,19 +163,52 @@ namespace CommonUtilities._3DHelpers
 
                 foreach (var triangle in part.Triangles)
                 {
-                    triangles.Add(new TriangleMeshWithColor
+                    var mesh = triangle as TriangleMesh;
+                    var triangleCopy = new TriangleMeshWithColor
                     {
-                        vert1 = new Vector3 { x = triangle.vert1.x, y = triangle.vert1.y, z = triangle.vert1.z },
-                        vert2 = new Vector3 { x = triangle.vert2.x, y = triangle.vert2.y, z = triangle.vert2.z },
-                        vert3 = new Vector3 { x = triangle.vert3.x, y = triangle.vert3.y, z = triangle.vert3.z },
-                        normal1 = new Vector3 { x = triangle.normal1.x, y = triangle.normal1.y, z = triangle.normal1.z },
-                        normal2 = new Vector3 { x = triangle.normal2.x, y = triangle.normal2.y, z = triangle.normal2.z },
-                        normal3 = new Vector3 { x = triangle.normal3.x, y = triangle.normal3.y, z = triangle.normal3.z },
                         landBasedPosition = triangle.landBasedPosition,
                         angle = triangle.angle,
                         Color = triangle.Color,
                         noHidden = triangle.noHidden
-                    });
+                    };
+
+                    var vert1 = CopyVector(mesh != null ? mesh.Vert1Raw : triangle.vert1);
+                    if (vert1 != null)
+                    {
+                        triangleCopy.vert1 = vert1;
+                    }
+
+                    var vert2 = CopyVector(mesh != null ? mesh.Vert2Raw : triangle.vert2);
+                    if (vert2 != null)
+                    {
+                        triangleCopy.vert2 = vert2;
+                    }
+
+                    var vert3 = CopyVector(mesh != null ? mesh.Vert3Raw : triangle.vert3);
+                    if (vert3 != null)
+                    {
+                        triangleCopy.vert3 = vert3;
+                    }
+
+                    var normal1 = CopyVector(mesh != null ? mesh.Normal1Raw : triangle.normal1);
+                    if (normal1 != null)
+                    {
+                        triangleCopy.normal1 = normal1;
+                    }
+
+                    var normal2 = CopyVector(mesh != null ? mesh.Normal2Raw : triangle.normal2);
+                    if (normal2 != null)
+                    {
+                        triangleCopy.normal2 = normal2;
+                    }
+
+                    var normal3 = CopyVector(mesh != null ? mesh.Normal3Raw : triangle.normal3);
+                    if (normal3 != null)
+                    {
+                        triangleCopy.normal3 = normal3;
+                    }
+
+                    triangles.Add(triangleCopy);
                 }
 
                 objectParts.Add(new _3dObjectPart
@@ -220,6 +263,8 @@ namespace CommonUtilities._3DHelpers
 
         public static List<List<IVector3>> CopyCrashboxes(List<List<IVector3>> original)
         {
+            if (original == null)
+                return new List<List<IVector3>>();
             var result = new List<List<IVector3>>(original.Count);
             foreach (var box in original)
             {

@@ -2,6 +2,7 @@
 using _3dTesting.MainWindowClasses;
 using _3dTesting.Rendering;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -38,6 +39,7 @@ namespace _3dTesting
 
     public partial class MainWindow : Window
     {
+        private const bool enableLogging = false;
         private DrawingVisualHost visualHost = new DrawingVisualHost();
         private readonly DispatcherTimer timer = new DispatcherTimer();
         private readonly Stopwatch stopwatch = new Stopwatch();
@@ -64,7 +66,7 @@ namespace _3dTesting
         private bool isFading = false;
         private int Fps = 0;
 
-        private const int TargetFps = 70;
+        private const int TargetFps = ScreenSetup.targetFps;
         private readonly double targetFrameIntervalMs = 1000.0 / TargetFps;
         private long _lastFrameTick = 0;
         private double _tickAccumulatorMs = 0;
@@ -73,6 +75,7 @@ namespace _3dTesting
         {
             Logger.EnableFileLogging = true;
             Logger.ClearLog();
+            GameState.SurfaceState.RecordingFps = ScreenSetup.targetFps;
 
             InitializeComponent();
             this.PreviewKeyDown += new KeyEventHandler(HandleKeys);
@@ -216,7 +219,7 @@ namespace _3dTesting
                 if (_lastTickTimestamp != 0)
                 {
                     var tickMs = (nowTicks - _lastTickTimestamp) * 1000.0 / Stopwatch.Frequency;
-                    Logger.Log($"[Tick] dtMs={tickMs:0.###}");
+                    if (enableLogging) Logger.Log($"[Tick] dtMs={tickMs:0.###}");
                 }
                 _lastTickTimestamp = nowTicks;
             }
@@ -324,7 +327,7 @@ namespace _3dTesting
 
                     gameWorldManager.UpdateWorld(world, ref screenCoordinates, ref crashBoxCoordinates);
 
-                    if (Logger.EnableFileLogging)
+                    if (enableLogging)
                     {
                         var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
                         Logger.Log($"[UpdateWorld] ms={elapsedMs:0.###}");
