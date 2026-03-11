@@ -18,5 +18,8 @@ namespace CommonUtilities.CommonGlobalState.States
         public List<_3dObject> AiObjects { get; set; } = new List<_3dObject>();
         public List<IVector3> DirtyTiles { get; set; } = new List<IVector3>();
         public _3dObject? SurfaceViewportObject { get; set; }
+        public ulong SurfaceHash { get; set; }
+        public string? SurfaceFilePath { get; set; }
+        public int RecordingFps { get; set; } = ScreenSetup.targetFps;
     }
 }

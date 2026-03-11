@@ -19,6 +19,9 @@ namespace _3dTesting.Rendering
         private readonly Dictionary<Color, SolidColorBrush> brushCache = new();
         private readonly Dictionary<Color, Pen> penCache = new();
 
+        private readonly List<StreamGeometry> geometryPool = new();
+        private int geometryPoolIndex = 0;
+
         private const float FarZ = 2000f;
         private const float NearZ = -2000f;
 
@@ -120,6 +123,8 @@ namespace _3dTesting.Rendering
             var triangleArray = screenCoordinates.ToArray();
             Array.Sort(triangleArray, (a, b) => a.CalculatedZ.CompareTo(b.CalculatedZ));
 
+            geometryPoolIndex = 0;
+
             bool trackStats = ShouldLog();
             int colorHits = 0, colorMisses = 0;
             int brushHits = 0, brushMisses = 0;
@@ -134,20 +139,32 @@ namespace _3dTesting.Rendering
                     if (triangle.CalculatedZ > 1200 || triangle.CalculatedZ < -2000)
                         continue;
 
-                    float factor01 = GetDepthFactor01(triangle.CalculatedZ);
-                    float zKey = (float)Math.Round(factor01, 2, MidpointRounding.AwayFromZero);
+                    float depthFactor01 = GetDepthFactor01(triangle.CalculatedZ);
+                    float angleFactor01 = NormalizeAngleTo01(triangle.TriangleAngle);
 
-                    // Normalize baseColor so "#FF8B00" and "ff8b00" become the same key
-                    string baseColor = triangle.Color?.Trim().ToLowerInvariant() ?? "000000";
-                    if (baseColor.StartsWith("#"))
-                        baseColor = baseColor.Substring(1);
+                    // First shade by angle, then by depth => combined factor
+                    float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
+                    float shadeKey = (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
 
-                    if (!colorCache.TryGetValue((zKey, baseColor), out Color color))
+                    string? baseColor = triangle.Color;
+                    if (string.IsNullOrWhiteSpace(baseColor))
                     {
-                        if (ShouldLog()) Logger.Log($"[WorldRenderer] ⚠️ Color cache miss for key ({zKey}, {baseColor}). Generating new color. CalculatedZ:{triangle.CalculatedZ}");
-                        color = (Color)ColorConverter.ConvertFromString(
-                            Helpers.Colors.getShadeOfColorFromNormal(zKey, baseColor));
-                        colorCache[(zKey, baseColor)] = color;
+                        baseColor = "000000";
+                    }
+                    else
+                    {
+                        baseColor = baseColor.Trim();
+                        if (baseColor.Length > 0 && baseColor[0] == '#')
+                            baseColor = baseColor.Substring(1);
+                        baseColor = baseColor.ToLowerInvariant();
+                    }
+
+                    if (!colorCache.TryGetValue((shadeKey, baseColor), out Color color))
+                    {
+                        if (ShouldLog()) Logger.Log($"[WorldRenderer] ⚠️ Color cache miss for key ({shadeKey}, {baseColor}). CalculatedZ:{triangle.CalculatedZ} Angle:{triangle.TriangleAngle:0.00}");
+                        string hex = Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor);
+                        color = HexToColor(hex);
+                        colorCache[(shadeKey, baseColor)] = color;
                         if (trackStats) colorMisses++;
                     }
                     else if (trackStats)
@@ -192,6 +209,134 @@ namespace _3dTesting.Rendering
             }
         }
 
+        public static int ProcessTrianglesForRender(
+            List<_2dTriangleMesh> triangles,
+            Dictionary<(float, string), Color> colorCache,
+            Dictionary<Color, SolidColorBrush> brushCache,
+            Dictionary<Color, Pen> penCache)
+        {
+            int processed = 0;
+
+            for (int i = 0; i < triangles.Count; i++)
+            {
+                var triangle = triangles[i];
+
+                if (triangle.CalculatedZ > 1200 || triangle.CalculatedZ < -2000)
+                    continue;
+
+                float depthFactor01 = GetDepthFactor01(triangle.CalculatedZ);
+                float angleFactor01 = NormalizeAngleTo01(triangle.TriangleAngle);
+
+                float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
+                float shadeKey = (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
+
+                string? baseColor = triangle.Color;
+                if (string.IsNullOrWhiteSpace(baseColor))
+                {
+                    baseColor = "000000";
+                }
+                else
+                {
+                    baseColor = baseColor.Trim();
+                    if (baseColor.Length > 0 && baseColor[0] == '#')
+                        baseColor = baseColor.Substring(1);
+                    baseColor = baseColor.ToLowerInvariant();
+                }
+
+                if (!colorCache.TryGetValue((shadeKey, baseColor), out Color color))
+                {
+                    string hex = Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor);
+                    color = HexToColor(hex);
+                    colorCache[(shadeKey, baseColor)] = color;
+                }
+
+                if (!brushCache.TryGetValue(color, out SolidColorBrush brush))
+                {
+                    brush = new SolidColorBrush(color);
+                    brush.Freeze();
+                    brushCache[color] = brush;
+                }
+
+                if (!penCache.TryGetValue(color, out Pen pen))
+                {
+                    pen = new Pen(brush, 1);
+                    pen.Freeze();
+                    penCache[color] = pen;
+                }
+
+                processed++;
+            }
+
+            return processed;
+        }
+
+        public static bool IsCrashBoxPartName(string? partName)
+        {
+            return partName != null && partName.StartsWith("CrashBox-", StringComparison.Ordinal);
+        }
+
+        public static int CountCrashBoxParts(string[] partNames)
+        {
+            int count = 0;
+            for (int i = 0; i < partNames.Length; i++)
+            {
+                if (IsCrashBoxPartName(partNames[i]))
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        private static readonly Dictionary<Color, SolidColorBrush> CrashBoxBrushCache = new();
+
+        public static SolidColorBrush CreateCrashBoxBrush(Color baseColor)
+        {
+            if (CrashBoxBrushCache.TryGetValue(baseColor, out var cached))
+            {
+                return cached;
+            }
+
+            var transparentBrush = new SolidColorBrush(baseColor) { Opacity = 0.25 };
+            transparentBrush.Freeze();
+            CrashBoxBrushCache[baseColor] = transparentBrush;
+            return transparentBrush;
+        }
+
+        public static void ClearCrashBoxBrushCache()
+        {
+            CrashBoxBrushCache.Clear();
+        }
+
+        private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)
+        {
+            var p1 = new Point(triangle.X1, triangle.Y1);
+            var p2 = new Point(triangle.X2, triangle.Y2);
+            var p3 = new Point(triangle.X3, triangle.Y3);
+
+            if (geometryPoolIndex >= geometryPool.Count)
+                geometryPool.Add(new StreamGeometry());
+
+            var geometry = geometryPool[geometryPoolIndex++];
+            using (var ctx = geometry.Open())
+            {
+                ctx.BeginFigure(p1, true, true);
+                ctx.LineTo(p2, true, false);
+                ctx.LineTo(p3, true, false);
+            }
+
+            if (IsCrashBoxPartName(triangle.PartName))
+            {
+                var transparentBrush = CreateCrashBoxBrush(brush.Color);
+                dc.DrawGeometry(transparentBrush, pen, geometry);
+            }
+            else
+            {
+                // Normal rendering
+                dc.DrawGeometry(brush, pen, geometry);
+            }
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float GetDepthFactor01(float calculatedZ)
         {
@@ -204,13 +349,24 @@ namespace _3dTesting.Rendering
             return (calculatedZ - near) / (far - near);
         }
 
-        private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static float NormalizeAngleTo01(float angle)
+        {
+            // Angle is typically a dot product in [-1, 1]; map to [0, 1]
+            float normalized = (angle + 1f) * 0.5f;
+            return Math.Clamp(normalized, 0f, 1f);
+        }
+
+        /*private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)
         {
             var p1 = new Point(triangle.X1, triangle.Y1);
             var p2 = new Point(triangle.X2, triangle.Y2);
             var p3 = new Point(triangle.X3, triangle.Y3);
 
-            var geometry = new StreamGeometry();
+            if (geometryPoolIndex >= geometryPool.Count)
+                geometryPool.Add(new StreamGeometry());
+
+            var geometry = geometryPool[geometryPoolIndex++];
             using (var ctx = geometry.Open())
             {
                 ctx.BeginFigure(p1, true, true);
@@ -230,7 +386,20 @@ namespace _3dTesting.Rendering
                 // Normal rendering
                 dc.DrawGeometry(brush, pen, geometry);
             }
-        }
+        }*/
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Color HexToColor(string hex)
+        {
+            if (string.IsNullOrWhiteSpace(hex)) return Colors.Black;
+            if (hex[0] == '#') hex = hex.Substring(1);
+            if (hex.Length < 6) return Colors.Black;
+
+            byte r = Convert.ToByte(hex.Substring(0, 2), 16);
+            byte g = Convert.ToByte(hex.Substring(2, 2), 16);
+            byte b = Convert.ToByte(hex.Substring(4, 2), 16);
+
+            return Color.FromArgb(255, r, g, b);
+        }
     }
 }

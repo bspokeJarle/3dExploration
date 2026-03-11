@@ -11,15 +11,21 @@ using System;
 
 namespace _3dRotations.Scene.Scene1
 {
-    public class Scene1:IScene
+    public class Scene1 : IScene
     {
         Surface Surface = new();
+
+        public string SceneMusic { get; } = "music_flight";
+        public SceneTypes SceneType { get; } = SceneTypes.Game;
+
+        public GameModes GameMode { get; } = GameModes.Playback;
+
         public void SetupScene(I3dWorld world)
-        {            
+        {          
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
-            Surface.Create2DMap(30000,15000);
+            Surface.Create2DMap(30000,15000, GameMode, "Scene1SurfaceRecording.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -95,7 +101,7 @@ namespace _3dRotations.Scene.Scene1
             }
 
 
-            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
+            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight(), 30000);
             var treeIndex = 0;
             foreach (var treePlacement in treePlacements)
             {
@@ -117,7 +123,7 @@ namespace _3dRotations.Scene.Scene1
                 if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
             }
 
-            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements);
+            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
             foreach (var housePlacement in housePlacements)
             {
                 //Debug.WriteLine($"House placement: {housePlacement.x} {housePlacement.y}");
@@ -137,6 +143,58 @@ namespace _3dRotations.Scene.Scene1
                 house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
             }
+        }
+
+        public void SetupGameOverlay()
+        {
+            GameState.ScreenOverlayState.ResetToDefaults();
+            GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
+            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "The Omega Strain", "", "");
+            GameState.ScreenOverlayState.ShowOverlay = false;
+            GameState.ScreenOverlayState.ShowDebugOverlay = false;
+        }
+
+        public void SetupSceneOverlay()
+        {
+            GameState.ScreenOverlayState.ResetToDefaults();
+            var o = GameState.ScreenOverlayState;
+
+            o.Type = ScreenOverlayType.Intro;
+            o.Anchor = ScreenOverlayAnchor.Top;
+
+            o.Header = "RETROMESH // BOOT SEQUENCE";
+            o.Title = "THE OMEGA STRAIN";
+
+            o.Body =
+                "Year 2147.\n\n" +
+                "Signal received from the NEREID perimeter colonies.\n" +
+                "Biological anomaly confirmed.\n" +
+                "Designation: OMEGA STRAIN.\n\n" +
+                "Seeder activity detected across multiple sectors.\n" +
+                "Infection rate: ACCELERATING.\n" +
+                "Containment probability: 12%.\n\n" +
+                "PRIMARY DIRECTIVE:\n" +
+                "Eliminate Seeders before Critical Mass.";
+
+            o.Footer = "PRESS ANY KEY TO INITIATE PROTOCOL";
+
+            // Scene intro overlay should be visible until player input
+            o.ShowOverlay = true;
+            o.AutoHide = false;
+            o.AutoHideSeconds = 0f;
+
+            // Cinematic / readability
+            o.DimStrength = 0.60f;
+            o.PanelWidthRatio = 0.74f;
+            o.PanelHeightRatio = 0.34f;
+
+            // Hide debug overlay during intro
+            o.ShowDebugOverlay = false;
+        }
+
+        public void SetupVideoOverlay(string fileName)
+        {
+            throw new NotImplementedException();
         }
     }
 }

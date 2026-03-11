@@ -3,13 +3,13 @@
     {
       "id": "music_intro",
       "usage": "MusicIntro",
-      "file": "OmegaStrain_Music_Intro.flac",
+      "file": "Don'tStop_Intro.wav",
 
       "segments": {
         "start": 0.0,
         "loopStart": 0.0,
-        "loopEnd": 208.8,
-        "end": 208.8
+        "loopEnd": 204.0,
+        "end": 204.0
       },
 
       "settings": {
@@ -30,17 +30,17 @@
     {
       "id": "music_flight",
       "usage": "MusicFlight",
-      "file": "OmegaStrain_Music_Flight.flac",
+      "file": "Trekker_Flight.wav",
 
       "segments": {
-        "start": 208.8,
-        "loopStart": 208.8,
-        "loopEnd": 454.4,
-        "end": 454.4
+        "start": 0,
+        "loopStart": 0,
+        "loopEnd": 208.8,
+        "end": 208.8
       },
 
       "settings": {
-        "volume": 0.6,
+        "volume": 0.8,
         "maxVoices": 1,
         "is3D": false,
         "priority": 10
@@ -57,17 +57,17 @@
     {
       "id": "music_battle",
       "usage": "MusicBattle",
-      "file": "OmegaStrain_Music_Battle.flac",
+      "file": "GeneralError_battle.wa",
 
       "segments": {
-        "start": 454.4,
-        "loopStart": 454.4,
-        "loopEnd": 714.1,
-        "end": 714.1
+        "start": 0,
+        "loopStart": 0,
+        "loopEnd": 199.8,
+        "end": 199.8
       },
 
       "settings": {
-        "volume": 0.6,
+        "volume": 0.8,
         "maxVoices": 1,
         "is3D": false,
         "priority": 15
@@ -83,17 +83,17 @@
     {
       "id": "music_outro",
       "usage": "MusicOutro",
-      "file": "OmegaStrain_Music_Outro.flac",
+      "file": "Goodbye,BytWhy-Outro.wav",
 
       "segments": {
-        "start": 714.1,
-        "loopStart": 714.1,
-        "loopEnd": 924.2,
-        "end": 924.2
+        "start": 0,
+        "loopStart": 0,
+        "loopEnd": 201.6,
+        "end": 201.6
       },
 
       "settings": {
-        "volume": 0.6,
+        "volume": 0.8,
         "maxVoices": 1,
         "is3D": false,
         "priority": 5
@@ -171,7 +171,7 @@
       },
 
       "settings": {
-        "volume": 0.9,
+        "volume": 0.6,
         "maxVoices": 1,
         "is3D": true,
         "priority": 120

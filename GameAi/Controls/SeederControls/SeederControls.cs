@@ -28,7 +28,6 @@ namespace GameAiAndControls.Controls.SeederControls
         // - ExplosionForce: force factor passed to physics when exploding.
         // - EnableControlsLogging: local logging toggle for controls-only events (crash/explosion).
         private const float ExplosionForce = 200f;
-        private const bool EnableControlsLogging = false;
 
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
@@ -45,9 +44,11 @@ namespace GameAiAndControls.Controls.SeederControls
 
         private bool _syncInitialized = false;
         private float _syncY = 0;
-        private bool enableLogging = EnableControlsLogging;
+        private bool enableLogging = false;
         private bool isExploding = false;
         private DateTime ExplosionDeltaTime;
+        private Vector3? explosionWorldPosition;
+        private Vector3? explosionObjectOffsets;
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
@@ -67,8 +68,11 @@ namespace GameAiAndControls.Controls.SeederControls
             // Lazy audio-konfig – gjøres første gang MoveObject kalles
             ConfigureAudio(audioPlayer, soundRegistry);
 
-            // Update world position according to AI
-            theObject.WorldPosition = SeederAi.MoveWorldPositionAccordingToAi(theObject.IsOnScreen, theObject);
+            // Update world position according to AI (skip while exploding to keep the explosion anchored)
+            if (!isExploding)
+            {
+                theObject.WorldPosition = SeederAi.MoveWorldPositionAccordingToAi(theObject.IsOnScreen, theObject);
+            }
       
             //Set parent object
             ParentObject = theObject;
@@ -84,6 +88,16 @@ namespace GameAiAndControls.Controls.SeederControls
 
             if (isExploding)
             {
+                if (explosionWorldPosition != null)
+                {
+                    theObject.WorldPosition = explosionWorldPosition;
+                }
+
+                if (explosionObjectOffsets != null)
+                {
+                    theObject.ObjectOffsets = explosionObjectOffsets;
+                }
+
                 //Update explosion
                 Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
                 if (theObject.ImpactStatus.HasExploded == true)
@@ -102,7 +116,10 @@ namespace GameAiAndControls.Controls.SeederControls
             Zrotation += BaseZRotationIncrementPerFrame;
 
             // Keep seeder offsets visually in sync with surface scrolling
-            SyncMovement(theObject);
+            if (!isExploding)
+            {
+                SyncMovement(theObject);
+            }
 
             return theObject;
         }
@@ -120,6 +137,8 @@ namespace GameAiAndControls.Controls.SeederControls
 
                 ExplosionDeltaTime = DateTime.Now;
                 isExploding = true;
+                explosionWorldPosition = theObject.WorldPosition as Vector3;
+                explosionObjectOffsets = theObject.ObjectOffsets as Vector3;
                 // Handle object destruction or other logic here
                 var explodedVersion = Physics.ExplodeObject(theObject, ExplosionForce);
                 //Remove Crash boxes to avoid further collisions
