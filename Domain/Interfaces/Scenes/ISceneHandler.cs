@@ -9,6 +9,7 @@ namespace Domain
         void NextScene(I3dWorld world);
         IScene GetActiveScene();
         void HandleKeyPress(KeyEventArgs k, I3dWorld world);
+        void UpdateFrame(I3dWorld world);
     }
 
     public interface IScene

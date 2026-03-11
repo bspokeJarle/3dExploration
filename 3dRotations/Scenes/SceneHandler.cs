@@ -18,6 +18,9 @@ namespace _3DWorld.Scene
         private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2() };
         private int currentSceneIndex = 0;
         private const bool enableLogging = false;
+        private const int SceneAdvanceDelayFrames = 3;
+        private bool _pendingSceneAdvance = false;
+        private int _pendingSceneAdvanceFramesLeft = 0;
 
         public IScene GetActiveScene()
         {
@@ -42,11 +45,12 @@ namespace _3DWorld.Scene
 
             if (newScene != null)
             {
+                GameState.ScreenOverlayState.ShowVideoOverlay = false;
+                GameState.ScreenOverlayState.VideoClipPath = string.Empty; 
                 scenes[currentSceneIndex] = newScene;
                 GameState.ScreenOverlayState.HardHide();
                 newScene.SetupGameOverlay();
-                GameState.ScreenOverlayState.ShowVideoOverlay = false;
-                GameState.ScreenOverlayState.VideoClipPath = string.Empty;
+                
                 newScene.SetupScene((_3dWorld)world);
             }
             else
@@ -66,8 +70,10 @@ namespace _3DWorld.Scene
                 if (enableLogging) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {GameState.ScreenOverlayState.ShowOverlay} ", "General");
 
                 GameState.ScreenOverlayState.HardHide();
-                currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
-                SetupActiveScene(world);
+                GameState.ScreenOverlayState.ShowVideoOverlay = false;
+                GameState.ScreenOverlayState.VideoClipPath = string.Empty;
+                _pendingSceneAdvance = true;
+                _pendingSceneAdvanceFramesLeft = SceneAdvanceDelayFrames;
                 return;
             }
 
@@ -92,6 +98,22 @@ namespace _3DWorld.Scene
             currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
             GameState.ScreenOverlayState.ShowVideoOverlay = false;
             GameState.ScreenOverlayState.VideoClipPath = string.Empty;
+            SetupActiveScene(world);
+        }
+
+        public void UpdateFrame(I3dWorld world)
+        {
+            if (!_pendingSceneAdvance)
+                return;
+
+            if (_pendingSceneAdvanceFramesLeft > 0)
+            {
+                _pendingSceneAdvanceFramesLeft--;
+                return;
+            }
+
+            _pendingSceneAdvance = false;
+            currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
             SetupActiveScene(world);
         }
     }

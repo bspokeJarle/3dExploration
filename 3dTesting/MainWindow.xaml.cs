@@ -307,6 +307,8 @@ namespace _3dTesting
                 _hudHandler.Update(GameState.ScreenOverlayState, gameplay, w, h, Fps, triangles);
             }
 
+            world.SceneHandler.UpdateFrame(world);
+
             frameCount++;
             if (stopwatch.ElapsedMilliseconds >= 1000)
             {

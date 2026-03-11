@@ -70,6 +70,10 @@ public class UpdateWorldBenchmarks
         {
         }
 
+        public void UpdateFrame(I3dWorld world)
+        {
+        }
+
         private sealed class StubScene : IScene
         {
             public SceneTypes SceneType => SceneTypes.Game;
