@@ -87,6 +87,11 @@ public class UpdateWorldBenchmarks
             public void SetupGameOverlay()
             {
             }
+
+            public void SetupVideoOverlay(string fileName)
+            {
+                throw new System.NotImplementedException();
+            }
         }
     }
 }

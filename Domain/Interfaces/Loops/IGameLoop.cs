@@ -14,7 +14,5 @@ namespace Domain
             I3dWorld world,
             ref List<TTriangle> projectedCoordinates,
             ref List<TTriangle> crashBoxCoordinates);
-
-        void FinalizeRecording();
     }
 }

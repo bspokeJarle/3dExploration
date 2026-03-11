@@ -29,6 +29,8 @@ namespace _3DWorld.Scene
             // Setup the active scene (overlay + world objects)
             var scene = GetActiveScene();
             scene.SetupSceneOverlay();
+            GameState.ScreenOverlayState.ShowVideoOverlay = false;
+            GameState.ScreenOverlayState.VideoClipPath = string.Empty;
             scene.SetupScene((_3dWorld)world);
         }
 
@@ -43,6 +45,8 @@ namespace _3DWorld.Scene
                 scenes[currentSceneIndex] = newScene;
                 GameState.ScreenOverlayState.HardHide();
                 newScene.SetupGameOverlay();
+                GameState.ScreenOverlayState.ShowVideoOverlay = false;
+                GameState.ScreenOverlayState.VideoClipPath = string.Empty;
                 newScene.SetupScene((_3dWorld)world);
             }
             else
@@ -86,6 +90,8 @@ namespace _3DWorld.Scene
             if (enableLogging) Logger.Log($"Scenehandler: NextScene :{GameState.ScreenOverlayState.ShowOverlay} ");
             // Increment the scene index and wrap around if necessary
             currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
+            GameState.ScreenOverlayState.ShowVideoOverlay = false;
+            GameState.ScreenOverlayState.VideoClipPath = string.Empty;
             SetupActiveScene(world);
         }
     }

@@ -191,5 +191,10 @@ namespace _3dRotations.Scene.Scene1
             // Hide debug overlay during intro
             o.ShowDebugOverlay = false;
         }
+
+        public void SetupVideoOverlay(string fileName)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

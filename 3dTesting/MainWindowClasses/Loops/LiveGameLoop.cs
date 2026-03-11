@@ -167,7 +167,6 @@ namespace _3dTesting.MainWindowClasses.Loops
             }
             if (ship != null && ship.ImpactStatus.HasExploded)
             {
-                FinalizeRecording();
                 FadeOutWorld = false;
                 FadeInWorld = true;
                 ship.Movement.Dispose();
@@ -203,11 +202,6 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             TrackFrameTiming((int)FrameCounter);
             return projectedCoordinates;
-        }
-
-        public void FinalizeRecording()
-        {
-            // Recording/playback removed.
         }
 
         private Dictionary<int, _3dObject> InitializeAiOnScreenTracking()

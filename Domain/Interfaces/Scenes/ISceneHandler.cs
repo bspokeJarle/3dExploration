@@ -19,5 +19,6 @@ namespace Domain
         string SceneMusic { get; }
         void SetupSceneOverlay();
         void SetupGameOverlay();
+        void SetupVideoOverlay(string fileName);
     }
 }

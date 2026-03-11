@@ -130,5 +130,10 @@ namespace _3dRotations.Scene.Scene1
         {
             GameState.ScreenOverlayState.ResetToDefaults();
         }
+
+        public void SetupVideoOverlay(string fileName)
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

@@ -2,6 +2,7 @@
 using CommonUtilities.CommonGlobalState;
 using Domain;
 using System;
+using System.IO;
 
 namespace GameAiAndControls.Controls
 {
@@ -14,6 +15,7 @@ namespace GameAiAndControls.Controls
 
         private bool exploded = false;
         private DateTime ExplosionDeltaTime;
+        private bool videoTriggered = false;
 
         private bool introStarted = false;
         private DateTime introStartTime;
@@ -227,6 +229,12 @@ namespace GameAiAndControls.Controls
                     {
                         //Show overlay
                         GameState.ScreenOverlayState.ShowOverlay = true;
+                        if (!videoTriggered)
+                        {
+                            GameState.ScreenOverlayState.ShowVideoOverlay = true;
+                            GameState.ScreenOverlayState.VideoClipPath = Path.Combine("gamegraphics", "introclip.mp4");
+                            videoTriggered = true;
+                        }
                         //Eliminate the object
                         theObject.ObjectParts.Clear();
                     }

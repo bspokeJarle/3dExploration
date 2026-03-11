@@ -41,6 +41,9 @@ namespace Domain
         /// </summary>
         public bool ShowOverlay { get; set; } = false;
 
+        public bool ShowVideoOverlay { get; set; } = false;
+        public string VideoClipPath { get; set; } = "";
+
         /// <summary>
         /// Optional: blocks gameplay input (scene/game can use this if desired).
         /// Renderer does not care.
@@ -143,6 +146,8 @@ namespace Domain
         public void HardHide()
         {
             ShowOverlay = false;
+            ShowVideoOverlay = false;
+            VideoClipPath = "";
             Opacity = 0f;
             _shownTimeSeconds = 0f;
             _wasShowingLastUpdate = false;
@@ -161,6 +166,9 @@ namespace Domain
             Title = "";
             Body = "";
             Footer = "";
+
+            ShowVideoOverlay = false;
+            VideoClipPath = "";
 
             Anchor = ScreenOverlayAnchor.Top;
             DimStrength = 0.55f;

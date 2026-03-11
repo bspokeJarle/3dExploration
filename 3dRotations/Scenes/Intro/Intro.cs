@@ -3,6 +3,7 @@ using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Controls;
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -69,6 +70,12 @@ namespace _3dRotations.Scenes.Intro
             o.PanelHeightRatio = 0.32f;
             //Hide Debug overlay
             o.ShowDebugOverlay = false;
+        }
+
+        public void SetupVideoOverlay(string fileName)
+        {
+            GameState.ScreenOverlayState.ShowVideoOverlay = true;
+            GameState.ScreenOverlayState.VideoClipPath = Path.Combine("gamegraphics", "introclip.mp4");
         }
     }
 }

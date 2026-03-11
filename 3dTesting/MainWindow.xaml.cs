@@ -5,6 +5,7 @@ using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -62,6 +63,10 @@ namespace _3dTesting
         // Overlay handlers
         private OverlayHandler _overlayHandler;
         private HudOverlayHandlerV2 _hudHandler;
+        private MediaElement _videoOverlay;
+        private string? _currentVideoClipPath;
+        private bool _videoOverlayIsPlaying;
+        private bool _videoEntrancePlayed;
 
         private bool isFading = false;
         private int Fps = 0;
@@ -86,6 +91,23 @@ namespace _3dTesting
 
             mainGrid.Children.Add(visualHost);
             worldRenderer = new WorldRenderer(visualHost);
+
+            _videoOverlay = new MediaElement
+            {
+                LoadedBehavior = MediaState.Manual,
+                UnloadedBehavior = MediaState.Manual,
+                IsMuted = true,
+                Stretch = Stretch.UniformToFill,
+                Visibility = Visibility.Collapsed,
+                IsHitTestVisible = false,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalAlignment = VerticalAlignment.Stretch
+            };
+            _videoOverlay.MediaEnded += VideoOverlayOnMediaEnded;
+            _videoOverlay.RenderTransform = new TranslateTransform(0, 0);
+            _videoOverlay.RenderTransformOrigin = new Point(0.5, 0.5);
+            Panel.SetZIndex(_videoOverlay, 1);
+            mainGrid.Children.Add(_videoOverlay);
 
             FadeOverlay = new System.Windows.Shapes.Rectangle
             {
@@ -121,7 +143,6 @@ namespace _3dTesting
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
-            gameWorldManager.FinalizeRecording();
         }
 
         private void HandleKeys(object sender, KeyEventArgs e)
@@ -270,6 +291,8 @@ namespace _3dTesting
 
                 GameState.ScreenOverlayState.Update(dt);
 
+                UpdateVideoOverlay();
+
                 double w = ActualWidth > 0 ? ActualWidth : Width;
                 double h = ActualHeight > 0 ? ActualHeight : Height;
                 if (w <= 0) w = 1920;
@@ -341,6 +364,98 @@ namespace _3dTesting
                     System.Threading.Interlocked.Exchange(ref _updateInProgress, 0);
                 }
             });
+        }
+
+        private void UpdateVideoOverlay()
+        {
+            var state = GameState.ScreenOverlayState;
+            if (state == null)
+                return;
+
+            if (state.ShowVideoOverlay && !string.IsNullOrWhiteSpace(state.VideoClipPath))
+            {
+                var resolvedPath = ResolveVideoPath(state.VideoClipPath);
+                if (!string.Equals(_currentVideoClipPath, resolvedPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    _videoOverlay.Stop();
+                    _videoOverlay.Source = new Uri(resolvedPath, UriKind.Absolute);
+                    _currentVideoClipPath = resolvedPath;
+                    _videoOverlayIsPlaying = false;
+                    _videoEntrancePlayed = false;
+                }
+
+                double w = ActualWidth > 0 ? ActualWidth : Width;
+                double h = ActualHeight > 0 ? ActualHeight : Height;
+                if (w <= 0) w = 1920;
+                if (h <= 0) h = 1080;
+
+                _videoOverlay.Width = w;
+                _videoOverlay.Height = h;
+                _videoOverlay.Visibility = Visibility.Visible;
+
+                if (!_videoEntrancePlayed)
+                {
+                    StartVideoEntranceAnimation(h);
+                    _videoEntrancePlayed = true;
+                }
+
+                if (!_videoOverlayIsPlaying && _videoOverlay.Source != null)
+                {
+                    _videoOverlay.Play();
+                    _videoOverlayIsPlaying = true;
+                }
+            }
+            else
+            {
+                if (_videoOverlay.Visibility != Visibility.Collapsed)
+                {
+                    _videoOverlay.Stop();
+                    _videoOverlay.Visibility = Visibility.Collapsed;
+                }
+
+                _currentVideoClipPath = null;
+                _videoOverlayIsPlaying = false;
+                _videoEntrancePlayed = false;
+            }
+        }
+
+    private void VideoOverlayOnMediaEnded(object? sender, RoutedEventArgs e)
+    {
+        if (_videoOverlay.Visibility != Visibility.Visible)
+            return;
+
+        _videoOverlay.Position = TimeSpan.Zero;
+        _videoOverlay.Play();
+    }
+
+        private static string ResolveVideoPath(string clipPath)
+        {
+            if (Path.IsPathRooted(clipPath))
+                return clipPath;
+
+            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, clipPath);
+        }
+
+        private void StartVideoEntranceAnimation(double screenHeight)
+        {
+            if (_videoOverlay.RenderTransform is not TranslateTransform translate)
+            {
+                translate = new TranslateTransform(0, 0);
+                _videoOverlay.RenderTransform = translate;
+            }
+
+            var startOffset = screenHeight * 1.25;
+            translate.Y = startOffset;
+
+            var animation = new DoubleAnimation
+            {
+                From = startOffset,
+                To = 0,
+                Duration = TimeSpan.FromSeconds(3.0),
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+            };
+
+            translate.BeginAnimation(TranslateTransform.YProperty, animation, HandoffBehavior.SnapshotAndReplace);
         }
     }
 }
