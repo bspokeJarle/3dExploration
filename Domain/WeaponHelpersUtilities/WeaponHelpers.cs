@@ -13,7 +13,8 @@ namespace CommonUtilities.WeaponHelpers
         {
             Bullet,
             Missile,
-            Lazer
+            Lazer,
+            Rocket
         }
         public enum WeaponDamageType
         {

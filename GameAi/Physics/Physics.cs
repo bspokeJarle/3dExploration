@@ -286,7 +286,11 @@ namespace GameAiAndControls.Physics
                 // Skip movement if done, set Explosion to finished, reset Scene
                 if (exploding.ElapsedTime >= exploding.Duration)
                 {
-                    if (explodingObject.ImpactStatus!=null) explodingObject.ImpactStatus.HasExploded = true;
+                    if (explodingObject.ImpactStatus != null) explodingObject.ImpactStatus.HasExploded = true;
+                    else
+                    {
+                        explodingObject.ImpactStatus = new ImpactStatus { HasExploded = true};
+                    }
                     continue;
                 }
 

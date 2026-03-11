@@ -3,6 +3,7 @@ using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Input;
 using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
@@ -13,6 +14,8 @@ namespace GameAiAndControls.Controls
     public class ShipControls : IObjectMovement
     {
         private bool logging = false;
+        private const bool enableMovementDiagnostics = false;
+        private int movementLogCounter = 0;
         private const float MaxThrust = 10.0f;
         private const float ThrustIncreaseRate = 0.5f;
         private const float GravityAcceleration = 0.75f;
@@ -31,6 +34,10 @@ namespace GameAiAndControls.Controls
 
         private const float VerticalThrustSmoothing = 0.6f;
         private const float VerticalLiftAcceleration = 0.15f;
+
+        public float MaxHeight { get; set; } = 1000f;
+        public float MinHeight { get; set; } = -100f;
+        public float MaxScreenDrop { get; set; } = 450f;
 
         // Audio setup (gjøres lazy via ConfigureAudio)
         private IAudioPlayer? _audio;
@@ -103,6 +110,7 @@ namespace GameAiAndControls.Controls
 
         private void GlobalHookKeyDown(object sender, KeyEventArgs e)
         {
+            if (GameState.ScreenOverlayState.Type == ScreenOverlayType.Intro) return;
             if (e.KeyCode == Keys.Left) rotationZ -= RotationStep;
             if (e.KeyCode == Keys.Right) rotationZ += RotationStep;
             if (e.KeyCode == Keys.Up) tilt += RotationStep;
@@ -226,6 +234,12 @@ namespace GameAiAndControls.Controls
         private float Clamp(float value, float min, float max) => MathF.Min(MathF.Max(value, min), max);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float ClampHeight(float value) => Clamp(value, MinHeight, MaxHeight);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float ClampScreenHeight(float value) => MathF.Min(value, MaxScreenDrop);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static float GetWrappedPosition(float position, float diff, float minValue, float maxValue)
         {
             float newPos = position + diff;
@@ -237,6 +251,9 @@ namespace GameAiAndControls.Controls
         // Merk: du har endret signatur her – sørg for at IObjectMovement matcher!
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            //Update gamestate with thrust
+            GameState.GamePlayState.Thrust = Thrust;
+
             // Lazy audio-konfig – gjøres første gang MoveObject kalles
             ConfigureAudio(audioPlayer, soundRegistry);
 
@@ -272,9 +289,14 @@ namespace GameAiAndControls.Controls
 
             if (theObject.ObjectOffsets != null)
             {
-                theObject.ObjectOffsets.y = ParentObject.ObjectOffsets.y;
+                theObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y));
                 theObject.ObjectOffsets.z = zoom;
             }
+
+            GameState.GamePlayState.UpdateAltitude(
+                GameState.SurfaceState.GlobalMapPosition.y,
+                MinHeight,
+                MaxHeight);
 
             // Only update explosion if it has already started
             if (isExploding)
@@ -349,6 +371,16 @@ namespace GameAiAndControls.Controls
                 }
 
                 theObject.ImpactStatus.HasCrashed = false;
+            }
+
+            if (enableMovementDiagnostics)
+            {
+                movementLogCounter++;
+                if (movementLogCounter % 60 == 0)
+                {
+                    var mapPos = GameState.SurfaceState.GlobalMapPosition;
+                    Logger.Log($"[MoveDiag] map=({mapPos.x:0.##},{mapPos.y:0.##},{mapPos.z:0.##}) offsets=({theObject.ObjectOffsets.x:0.##},{theObject.ObjectOffsets.y:0.##},{theObject.ObjectOffsets.z:0.##}) thrustOn={ThrustOn} thrust={Thrust:0.##}");
+                }
             }
 
             // The weapon needs to move as well 
@@ -441,11 +473,11 @@ namespace GameAiAndControls.Controls
             if (delta > 2f || delta < -2f)
             {
                 float liftAdjust = (upwardFactor > 0f) ? delta * 0.1f : 0f;
-                ParentObject.ObjectOffsets.y += liftAdjust + yDiff * 0.1f;
+                ParentObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y + liftAdjust + yDiff * 0.1f));
             }
             else
             {
-                GameState.SurfaceState.GlobalMapPosition.y += 2.5f;
+                GameState.SurfaceState.GlobalMapPosition.y = ClampHeight(GameState.SurfaceState.GlobalMapPosition.y + 2.5f);
             }
         }
 
@@ -460,15 +492,11 @@ namespace GameAiAndControls.Controls
                 float adjustedGravity = GravityAcceleration * gravityModifier * GravityMultiplier * deltaTime;
 
                 fallVelocity = Math.Min(fallVelocity + adjustedGravity, MaxFallSpeed);
-                ParentObject.ObjectOffsets.y += fallVelocity;
+                ParentObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y + fallVelocity));
 
-                if (GameState.SurfaceState.GlobalMapPosition.y > -75)
+                if (GameState.SurfaceState.GlobalMapPosition.y > MinHeight)
                 {
-                    GameState.SurfaceState.GlobalMapPosition.y -= fallVelocity;
-                    if (GameState.SurfaceState.GlobalMapPosition.y < -75)
-                    {
-                        GameState.SurfaceState.GlobalMapPosition.y = -75;
-                    }
+                    GameState.SurfaceState.GlobalMapPosition.y = ClampHeight(GameState.SurfaceState.GlobalMapPosition.y - fallVelocity);
                 }
             }
             else

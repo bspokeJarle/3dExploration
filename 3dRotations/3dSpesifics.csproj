@@ -6,7 +6,6 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
   <ItemGroup>
-    <Folder Include="Scenes\Intro\" />
     <Folder Include="Scenes\Outtro\" />
   </ItemGroup>
   <ItemGroup>

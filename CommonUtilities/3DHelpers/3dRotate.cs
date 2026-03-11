@@ -7,12 +7,12 @@ namespace CommonUtilities._3DHelpers
     public class _3dRotationCommon
     {
         private static readonly System.Numerics.Vector3 LightVector = new System.Numerics.Vector3(0, 0, 250);
+        private static readonly System.Numerics.Vector3 LightDir = System.Numerics.Vector3.Normalize(LightVector);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private float CalculateAngle(System.Numerics.Vector3 normal)
         {
-            var lightDir = System.Numerics.Vector3.Normalize(LightVector);
-            return System.Numerics.Vector3.Dot(lightDir, normal);
+            return System.Numerics.Vector3.Dot(LightDir, normal);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -29,47 +29,115 @@ namespace CommonUtilities._3DHelpers
 
         private TriangleMeshWithColor RotateTriangle(TriangleMeshWithColor coord, float cosRes, float sinRes, char axis)
         {
-            return CalculateNormalAndAngle(new TriangleMeshWithColor
+            var rotated = new TriangleMeshWithColor
             {
-                vert1 = RotateToDomain((Vector3)coord.vert1, cosRes, sinRes, axis),
-                vert2 = RotateToDomain((Vector3)coord.vert2, cosRes, sinRes, axis),
-                vert3 = RotateToDomain((Vector3)coord.vert3, cosRes, sinRes, axis),
                 Color = coord.Color,
                 noHidden = coord.noHidden,
                 landBasedPosition = coord.landBasedPosition
-            });
+            };
+
+            RotateToDomain((Vector3)coord.vert1, (Vector3)rotated.vert1, cosRes, sinRes, axis);
+            RotateToDomain((Vector3)coord.vert2, (Vector3)rotated.vert2, cosRes, sinRes, axis);
+            RotateToDomain((Vector3)coord.vert3, (Vector3)rotated.vert3, cosRes, sinRes, axis);
+
+            return CalculateNormalAndAngle(rotated);
         }
 
         private TriangleMeshWithColor CalculateNormalAndAngle(TriangleMeshWithColor coord)
         {
-            var U = ConvertToSystemNumerics((Vector3)coord.vert2) - ConvertToSystemNumerics((Vector3)coord.vert1);
-            var V = ConvertToSystemNumerics((Vector3)coord.vert3) - ConvertToSystemNumerics((Vector3)coord.vert1);
-            var normal = System.Numerics.Vector3.Cross(U, V);
-            var normalLength = MathF.Max(1e-6f, normal.Length());
+            var v1 = (Vector3)coord.vert1;
+            var v2 = (Vector3)coord.vert2;
+            var v3 = (Vector3)coord.vert3;
 
-            normal /= normalLength;
-            coord.normal1 = ConvertToDomainVector(normal);
-            coord.angle = CalculateAngle(normal);
+            float ux = v2.x - v1.x;
+            float uy = v2.y - v1.y;
+            float uz = v2.z - v1.z;
+
+            float vx = v3.x - v1.x;
+            float vy = v3.y - v1.y;
+            float vz = v3.z - v1.z;
+
+            float nx = uy * vz - uz * vy;
+            float ny = uz * vx - ux * vz;
+            float nz = ux * vy - uy * vx;
+
+            float normalLength = MathF.Max(1e-6f, MathF.Sqrt(nx * nx + ny * ny + nz * nz));
+            float invLength = 1f / normalLength;
+
+            nx *= invLength;
+            ny *= invLength;
+            nz *= invLength;
+
+            if (coord.normal1 is Vector3 normal)
+            {
+                normal.x = nx;
+                normal.y = ny;
+                normal.z = nz;
+            }
+            else
+            {
+                coord.normal1 = new Vector3 { x = nx, y = ny, z = nz };
+            }
+
+            coord.angle = (LightDir.X * nx) + (LightDir.Y * ny) + (LightDir.Z * nz);
             return coord;
         }
-
-        // Convert Domain.Vector3 <-> System.Numerics.Vector3
-        private static System.Numerics.Vector3 ConvertToSystemNumerics(Vector3 v) =>
-            new System.Numerics.Vector3(v.x, v.y, v.z);
 
         private static Vector3 ConvertToDomainVector(System.Numerics.Vector3 v) =>
             new Vector3 { x = v.X, y = v.Y, z = v.Z };
 
+        private static void RotateToDomainX(Vector3 v, Vector3 target, float cosRes, float sinRes)
+        {
+            target.x = v.x;
+            target.y = v.y * cosRes - v.z * sinRes;
+            target.z = v.z * cosRes + v.y * sinRes;
+        }
+
+        private static void RotateToDomainY(Vector3 v, Vector3 target, float cosRes, float sinRes)
+        {
+            target.x = v.x * cosRes + v.z * sinRes;
+            target.y = v.y;
+            target.z = v.z * cosRes - v.x * sinRes;
+        }
+
+        private static void RotateToDomainZ(Vector3 v, Vector3 target, float cosRes, float sinRes)
+        {
+            target.x = v.x * cosRes - v.y * sinRes;
+            target.y = v.y * cosRes + v.x * sinRes;
+            target.z = v.z;
+        }
+
+        private static void CopyToDomain(Vector3 v, Vector3 target)
+        {
+            target.x = v.x;
+            target.y = v.y;
+            target.z = v.z;
+        }
+
+        private static void RotateToDomain(Vector3 v, Vector3 target, float cosRes, float sinRes, char axis)
+        {
+            switch (axis)
+            {
+                case 'X':
+                    RotateToDomainX(v, target, cosRes, sinRes);
+                    break;
+                case 'Y':
+                    RotateToDomainY(v, target, cosRes, sinRes);
+                    break;
+                case 'Z':
+                    RotateToDomainZ(v, target, cosRes, sinRes);
+                    break;
+                default:
+                    CopyToDomain(v, target);
+                    break;
+            }
+        }
+
         private static Vector3 RotateToDomain(Vector3 v, float cosRes, float sinRes, char axis)
         {
-            var rotated = axis switch
-            {
-                'X' => new System.Numerics.Vector3(v.x, v.y * cosRes - v.z * sinRes, v.z * cosRes + v.y * sinRes),
-                'Y' => new System.Numerics.Vector3(v.x * cosRes + v.z * sinRes, v.y, v.z * cosRes - v.x * sinRes),
-                'Z' => new System.Numerics.Vector3(v.x * cosRes - v.y * sinRes, v.y * cosRes + v.x * sinRes, v.z),
-                _ => new System.Numerics.Vector3(v.x, v.y, v.z)
-            };
-            return ConvertToDomainVector(rotated);
+            var rotated = new Vector3();
+            RotateToDomain(v, rotated, cosRes, sinRes, axis);
+            return rotated;
         }
 
         // ✅ Backward Compatible Methods (Internally Call Optimized Code)
@@ -88,9 +156,10 @@ namespace CommonUtilities._3DHelpers
             var cosRes = (float)Math.Cos(radian);
             var sinRes = (float)Math.Sin(radian);
 
-            var rotatedMesh = new List<ITriangleMeshWithColor>();
-            foreach (TriangleMeshWithColor triangle in mesh)
+            var rotatedMesh = new List<ITriangleMeshWithColor>(mesh.Count);
+            for (int i = 0; i < mesh.Count; i++)
             {
+                var triangle = (TriangleMeshWithColor)mesh[i];
                 if (triangle.vert1 == null || triangle.vert2 == null || triangle.vert3 == null)
                 {
                     Console.WriteLine("Warning: Skipping uninitialized triangle");

@@ -1,13 +1,9 @@
 ﻿
-using _3dTesting._3dWorld;
 using _3dRotations.World.Objects;
 using static Domain._3dSpecificsImplementations;
 using GameAiAndControls.Controls;
 using _3dRotations.Helpers;
 using Domain;
-using System.Collections.Generic;
-using System.Diagnostics;
-using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonGlobalState;
 
 namespace _3dRotations.Scene.Scene1
@@ -16,13 +12,16 @@ namespace _3dRotations.Scene.Scene1
     {
         Surface Surface = new();
 
-        //TODO: Just a copy for now this Scene
+        public string SceneMusic { get; } = "music_flight";
+        public SceneTypes SceneType { get; } = SceneTypes.Game;
+        public GameModes GameMode { get; } = GameModes.Live;
+
         public void SetupScene(I3dWorld world)
         {            
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
-            Surface.Create2DMap(500,50);
+            Surface.Create2DMap(500,50,GameMode,null);
 
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -79,7 +78,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(surfaceObject);
 
-            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight());
+            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight(),null);
             var treeIndex = 0;
             foreach (var treePlacement in treePlacements)
             {
@@ -121,6 +120,20 @@ namespace _3dRotations.Scene.Scene1
                 house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
             }
+        }
+
+        public void SetupSceneOverlay()
+        {
+            GameState.ScreenOverlayState.ResetToDefaults();
+        }
+        public void SetupGameOverlay()
+        {
+            GameState.ScreenOverlayState.ResetToDefaults();
+        }
+
+        public void SetupVideoOverlay(string fileName)
+        {
+            throw new System.NotImplementedException();
         }
     }
 }

@@ -21,7 +21,7 @@ namespace _3dTesting._3dRotation
         {
             //If available use global framecounter
             if (currentFrame > 0) CurrentFrame = (long)currentFrame;
-            var screenCoordinates = new List<_2dTriangleMesh>();
+            var screenCoordinates = new List<_2dTriangleMesh>(inhabitants.Count * 2);
 
             foreach (var obj in inhabitants)
             {
@@ -31,14 +31,12 @@ namespace _3dTesting._3dRotation
                     continue;
 
                 //Standard 3d Rendring
-                var projected = ConvertObjectTo2d(obj, screenX, screenY, screenZ);
-                screenCoordinates.AddRange(projected);
+                ConvertObjectTo2d(obj, screenX, screenY, screenZ, screenCoordinates);
 
                 if (obj.CrashBoxDebugMode!=null && (bool)obj.CrashBoxDebugMode)
                 { 
                     //Debug visualization of crashboxes
-                    var crashBox2d = ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ);
-                    screenCoordinates.AddRange(crashBox2d);
+                    ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ, screenCoordinates);
                 }
             }
 
@@ -46,10 +44,8 @@ namespace _3dTesting._3dRotation
         }
 
         //This method is for debugging av crashboxes only
-        private List<_2dTriangleMesh> ConvertCrashBoxesTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ)
+        private void ConvertCrashBoxesTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ, List<_2dTriangleMesh> result)
         {
-            var result = new List<_2dTriangleMesh>();
-
             foreach (var crashBox in obj.CrashBoxes)
             {
                 // Skip if not a valid 8-corner box
@@ -83,10 +79,7 @@ namespace _3dTesting._3dRotation
                     result.Add(triangle);
                 }
             }
-
-            return result;
         }
-
 
         // Creating Triangles for rendring the CrashBoxes for debugging purposes
         private _2dTriangleMesh CreateCrashBoxTriangle((double x, double y) p1, (double x, double y) p2, (double x, double y) p3, string color, _3dObject obj)
@@ -105,32 +98,47 @@ namespace _3dTesting._3dRotation
             };
         }
 
-
-        private List<_2dTriangleMesh> ConvertObjectTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ)
+        private void ConvertObjectTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ, List<_2dTriangleMesh> result)
         {
-            var result = new List<_2dTriangleMesh>();
+            var parts = obj.ObjectParts;
+            var objectOffsets = obj.ObjectOffsets;
+            var objectOffsetsZ = objectOffsets.z;
+            var objectName = obj.ObjectName;
 
-            foreach (var part in obj.ObjectParts)
+            for (int partIndex = 0; partIndex < parts.Count; partIndex++)
             {
+                var part = parts[partIndex];
                 if (!part.IsVisible) continue;
 
-                foreach (var triangle in part.Triangles)
+                var triangles = part.Triangles;
+                for (int triangleIndex = 0; triangleIndex < triangles.Count; triangleIndex++)
                 {
-                    var (x1, y1) = ProjectVertex((Vector3)triangle.vert1, objPosX, objPosY, objPosZ);
-                    var (x2, y2) = ProjectVertex((Vector3)triangle.vert2, objPosX, objPosY, objPosZ);
-                    var (x3, y3) = ProjectVertex((Vector3)triangle.vert3, objPosX, objPosY, objPosZ);
+                    var triangle = triangles[triangleIndex];
+                    var v1 = (Vector3)triangle.vert1;
+                    var v2 = (Vector3)triangle.vert2;
+                    var v3 = (Vector3)triangle.vert3;
+
+                    var (x1, y1) = ProjectVertex(v1, objPosX, objPosY, objPosZ);
+                    var (x2, y2) = ProjectVertex(v2, objPosX, objPosY, objPosZ);
+                    var (x3, y3) = ProjectVertex(v3, objPosX, objPosY, objPosZ);
+
+                    if (double.IsNaN(x1) || double.IsNaN(x2) || double.IsNaN(x3))
+                    {
+                        continue;
+                    }
 
                     double xFactor = (x1 + x2 + x3) / 3;
                     double yFactor = (y1 + y2 + y3) / 3;
 
                     if (!IsOnScreen(xFactor, yFactor)) continue;
 
-                    if (triangle.normal1.z > 0 || (triangle.noHidden ?? false))
+                    var normal = triangle.normal1;
+                    if (normal.z > 0 || (triangle.noHidden ?? false))
                     {
                         //Debugging Object sorting issues for specific objects
-                        if (obj.ObjectName == "Seeder" || obj.ObjectName == "Lazer")
+                        if (enableLogging && Logger.EnableFileLogging && (objectName == "Seeder" || objectName == "Lazer"))
                         {
-                            if (enableLogging) Logger.Log($"Converted 3D object '{obj.ObjectName}' to 2D. CalculatedZ: {(float)((float)(((triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3) + obj.ObjectOffsets.z) - objPosZ)}");
+                            Logger.Log($"Converted 3D object '{objectName}' to 2D. CalculatedZ: {(float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ)}");
                         }
                         result.Add(new _2dTriangleMesh
                         {
@@ -140,17 +148,15 @@ namespace _3dTesting._3dRotation
                             Y2 = Convert.ToInt32(y2),
                             X3 = Convert.ToInt32(x3),
                             Y3 = Convert.ToInt32(y3),
-                            CalculatedZ = (float)((float)(((triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3) + obj.ObjectOffsets.z) - objPosZ),
-                            Normal = triangle.normal1.z,
+                            CalculatedZ = (float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ),
+                            Normal = normal.z,
                             TriangleAngle = triangle.angle,
                             Color = triangle.Color,
                             PartName = part.PartName
                         });
                     }
-                    
                 }
             }
-            return result;
         }
 
         private (double x, double y) ProjectVertex(Vector3 v, double objPosX, double objPosY, double objPosZ)
