@@ -144,6 +144,12 @@ namespace _3dTesting.Rendering
 
                     // First shade by angle, then by depth => combined factor
                     float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
+
+                    if (triangle.PartName.Contains("Star_Core"))
+                    {
+                        combinedFactor01 = depthFactor01;
+                    }
+
                     float shadeKey = (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
 
                     string? baseColor = triangle.Color;
@@ -163,6 +169,7 @@ namespace _3dTesting.Rendering
                     {
                         if (ShouldLog()) Logger.Log($"[WorldRenderer] ⚠️ Color cache miss for key ({shadeKey}, {baseColor}). CalculatedZ:{triangle.CalculatedZ} Angle:{triangle.TriangleAngle:0.00}");
                         string hex = Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor);
+
                         color = HexToColor(hex);
                         colorCache[(shadeKey, baseColor)] = color;
                         if (trackStats) colorMisses++;

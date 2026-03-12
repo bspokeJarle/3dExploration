@@ -94,6 +94,7 @@ namespace _3dTesting.MainWindowClasses
 
 
             var currentWorldPos = GameState.SurfaceState.GlobalMapPosition;
+            var effectiveSurfaceY = currentWorldPos.y;
 
             // 1) Recycle stars that moved too far away (no deletion).
             RecycleFarStars(currentWorldPos);
@@ -101,16 +102,16 @@ namespace _3dTesting.MainWindowClasses
             if (enableLogging)
             {
                 Logger.Log(
-                    $"[StarField] Frame start: Surface=({currentWorldPos.x:0.0}, {currentWorldPos.y:0.0}, {currentWorldPos.z:0.0}), " +
+                    $"[StarField] Frame start: Surface=({currentWorldPos.x:0.0}, {effectiveSurfaceY:0.0}, {currentWorldPos.z:0.0}), " +
                     $"Stars={stars.Count}"
                 );
             }
 
-            // 2) Do not spawn new stars if the surface is too close to "camera".
-            if (currentWorldPos.y <= GroundDistanceY)
+            // 2) Do not spawn new stars until the surface is close enough to the camera.
+            if (effectiveSurfaceY <= GroundDistanceY)
             {
                 if (enableLogging)
-                    Logger.Log($"[StarField] Surface Y={currentWorldPos.y:0.0} <= {GroundDistanceY} -> no new stars this frame.");
+                    Logger.Log($"[StarField] Surface Y={effectiveSurfaceY:0.0} <= {GroundDistanceY} -> no new stars this frame.");
 
                 PriorWorldPosition = currentWorldPos;
                 ClearStars();
