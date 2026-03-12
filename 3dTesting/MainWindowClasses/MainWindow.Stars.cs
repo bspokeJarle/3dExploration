@@ -33,12 +33,12 @@ namespace _3dTesting.MainWindowClasses
         private const float SpawnZFar = -1000f; // furthest away
         private const float SpawnZNear = -200f; // closest
 
-        private readonly List<_3dObject> stars = new();
+        private readonly List<_3dObject> stars = new(maxStarCount);
 
         // Our own base world position for each star.
         // This is the world position snapshot from Surface when the star is spawned/recycled.
         // starWorld = baseWorld + offset, and this baseWorld stays until the star is recycled.
-        private readonly List<EngineVector3> starBaseWorldPositions = new();
+        private readonly List<EngineVector3> starBaseWorldPositions = new(maxStarCount);
 
         public ISurface ParentSurface { get; set; }
 
@@ -333,28 +333,30 @@ namespace _3dTesting.MainWindowClasses
 
                 var offsets = star.ObjectOffsets;
 
-                // Final world position for the star (this is what should stay until we recycle it).
-                var starWorld = new EngineVector3
+                var starWorld = star.WorldPosition as EngineVector3;
+                if (starWorld == null)
                 {
-                    x = baseWorld.x + offsets.x,
-                    y = baseWorld.y + offsets.y,
-                    z = baseWorld.z + offsets.z
-                };
+                    starWorld = new EngineVector3();
+                    star.WorldPosition = starWorld;
+                }
 
-                // Keep the 3d object in sync with our calculated world position.
-                star.WorldPosition = starWorld;
+                // Final world position for the star (this is what should stay until we recycle it).
+                starWorld.x = baseWorld.x + offsets.x;
+                starWorld.y = baseWorld.y + offsets.y;
+                starWorld.z = baseWorld.z + offsets.z;
 
                 float dx = starWorld.x - centerWorld.x;
                 float dy = starWorld.y - centerWorld.y;
                 float dz = starWorld.z - centerWorld.z;
 
                 float distSq = dx * dx + dy * dy + dz * dz;
-                float dist = MathF.Sqrt(distSq);
+                float dist = 0f;
 
                 bool shouldRecycle = distSq > maxDistSq;
 
                 if (enableLogging)
                 {
+                    dist = MathF.Sqrt(distSq);
                     Logger.Log(
                         $"[StarField] STAR[{i}] Offsets=({offsets.x:0.0}, {offsets.y:0.0}, {offsets.z:0.0}) " +
                         $"BaseWorldPos=({baseWorld.x:0.0}, {baseWorld.y:0.0}, {baseWorld.z:0.0}) " +
@@ -369,35 +371,35 @@ namespace _3dTesting.MainWindowClasses
                     var newOffset = FindRandomPosition(centerWorld);
 
                     // New base world snapshot at the moment of recycle.
-                    var newBaseWorld = new EngineVector3
-                    {
-                        x = centerWorld.x,
-                        y = centerWorld.y,
-                        z = centerWorld.z
-                    };
-
-                    // New final world position for this recycled star.
-                    var newStarWorld = new EngineVector3
-                    {
-                        x = newBaseWorld.x + newOffset.x,
-                        y = newBaseWorld.y + newOffset.y,
-                        z = newBaseWorld.z + newOffset.z
-                    };
-
                     if (i < starBaseWorldPositions.Count)
-                        starBaseWorldPositions[i] = newBaseWorld;
+                    {
+                        baseWorld.x = centerWorld.x;
+                        baseWorld.y = centerWorld.y;
+                        baseWorld.z = centerWorld.z;
+                    }
                     else
-                        starBaseWorldPositions.Add(newBaseWorld);
+                    {
+                        baseWorld = new EngineVector3
+                        {
+                            x = centerWorld.x,
+                            y = centerWorld.y,
+                            z = centerWorld.z
+                        };
+                        starBaseWorldPositions.Add(baseWorld);
+                    }
 
-                    stars[i].ObjectOffsets = newOffset;
-                    stars[i].WorldPosition = newStarWorld;
+                    star.ObjectOffsets = newOffset;
+
+                    starWorld.x = baseWorld.x + newOffset.x;
+                    starWorld.y = baseWorld.y + newOffset.y;
+                    starWorld.z = baseWorld.z + newOffset.z;
 
                     if (enableLogging)
                     {
                         Logger.Log(
-                            $"[StarField] RECYCLE[{i}] new BaseWorld=({newBaseWorld.x:0.0}, {newBaseWorld.y:0.0}, {newBaseWorld.z:0.0}), " +
+                            $"[StarField] RECYCLE[{i}] new BaseWorld=({baseWorld.x:0.0}, {baseWorld.y:0.0}, {baseWorld.z:0.0}), " +
                             $"new Offsets=({newOffset.x:0.0}, {newOffset.y:0.0}, {newOffset.z:0.0}), " +
-                            $"new StarWorld=({newStarWorld.x:0.0}, {newStarWorld.y:0.0}, {newStarWorld.z:0.0})"
+                            $"new StarWorld=({starWorld.x:0.0}, {starWorld.y:0.0}, {starWorld.z:0.0})"
                         );
                     }
                 }

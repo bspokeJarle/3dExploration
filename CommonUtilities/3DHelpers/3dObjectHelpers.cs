@@ -62,9 +62,11 @@ namespace CommonUtilities._3DHelpers
             var globalMapPosition = GameState.SurfaceState.GlobalMapPosition;
             var inhabitantPosition = inhabitant.WorldPosition;
 
-            float distance = (float)GetDistance(globalMapPosition, (Vector3)inhabitantPosition);
+            const float maxDistance = 1400f;
+            float maxDistanceSq = maxDistance * maxDistance;
+            float distanceSq = GetDistanceSquared(globalMapPosition, inhabitantPosition);
 
-            return Math.Abs(distance) <= 1400;
+            return distanceSq <= maxDistanceSq;
         }
 
 
@@ -75,6 +77,15 @@ namespace CommonUtilities._3DHelpers
             float dz = point1.z - point2.z;
 
             return Math.Sqrt(dx * dx + dy * dy + dz * dz);
+        }
+
+        public static float GetDistanceSquared(IVector3 point1, IVector3 point2)
+        {
+            float dx = point1.x - point2.x;
+            float dy = point1.y - point2.y;
+            float dz = point1.z - point2.z;
+
+            return dx * dx + dy * dy + dz * dz;
         }
 
         public struct CosSin
@@ -138,17 +149,22 @@ namespace CommonUtilities._3DHelpers
 
         public static List<_3dObject> DeepCopy3dObjects(List<_3dObject> inhabitants)
         {
-            var result = inhabitants
-            .Where(i => i.CheckInhabitantVisibility())
-            .Select(inhabitant =>
-             {
-                 var copy = Common3dObjectHelpers.DeepCopySingleObject(inhabitant);
+            var result = new List<_3dObject>(inhabitants.Count);
 
-                 // Restore crashboxes as well
-                 copy.CrashBoxes = CopyCrashboxes(inhabitant.CrashBoxes);
+            foreach (var inhabitant in inhabitants)
+            {
+                if (!inhabitant.CheckInhabitantVisibility())
+                {
+                    continue;
+                }
 
-                 return (_3dObject)copy;
-             }).ToList();
+                var copy = Common3dObjectHelpers.DeepCopySingleObject(inhabitant);
+
+                // Restore crashboxes as well
+                copy.CrashBoxes = CopyCrashboxes(inhabitant.CrashBoxes);
+
+                result.Add((_3dObject)copy);
+            }
 
             return result;
         }
