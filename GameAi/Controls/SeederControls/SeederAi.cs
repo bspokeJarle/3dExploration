@@ -178,7 +178,7 @@ namespace GameAiAndControls.Controls.SeederControls
             // Use synchronized position and fall back safely if object is not _3dObject
             var obj3d = theObject as _3dObject;
             var posAligned = obj3d != null
-                ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
                 : (Vector3)theObject.WorldPosition;
 
             // Convert world -> tile using same origin logic as viewport
@@ -491,7 +491,7 @@ namespace GameAiAndControls.Controls.SeederControls
             // Use synchronized position (safe cast fallback)
             var obj3d = moveThisObject as _3dObject;
             var alignedWorld = obj3d != null
-                ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
                 : (Vector3)moveThisObject.WorldPosition;
 
             SeederMovementHelpers.GetScreenIndexFromWorldXZ(alignedWorld, out int curSY, out int curSX);
@@ -583,7 +583,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 // Use synchronized Y to align vertical position with surface (safe cast fallback)
                 var obj3d = moveThisObject as _3dObject;
                 var alignedWorld = obj3d != null
-                    ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                    ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
                     : (Vector3)moveThisObject.WorldPosition;
 
                 var candidate = new Vector3 { x = localTarget.x, y = alignedWorld.y, z = localTarget.z };

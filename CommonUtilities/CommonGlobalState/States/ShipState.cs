@@ -12,6 +12,8 @@ namespace CommonUtilities.CommonGlobalState.States
     public class ShipState
     {
         public IVector3? ShipWorldPosition { get; set; } = null;
+        public IVector3? ShipCrashCenterWorldPosition { get; set; } = null;
+        public IVector3? ShipObjectOffsets { get; set; } = null;
         public IVector3? ShipVelocity { get; set; } = null;
         public List<BestCandidateState> BestCandidateStates { get; set; } = [];
     }

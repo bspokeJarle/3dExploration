@@ -158,12 +158,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 _syncY = theObject.ObjectOffsets.y;
             }
 
-            theObject.ObjectOffsets = new Vector3()
-            {
-                x = theObject.ObjectOffsets.x,
-                y = GameState.SurfaceState.GlobalMapPosition.y * SyncFactorY + _syncY,
-                z = theObject.ObjectOffsets.z
-            };
+            theObject.ObjectOffsets = CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY, SyncFactorY);
         }
 
         public void ReleaseParticles(I3dObject theObject)
@@ -173,7 +168,7 @@ namespace GameAiAndControls.Controls.SeederControls
             // Align emission origin with surface-centered position used by AI
             var obj3d = theObject as _3dObject;
             var alignedWorld = obj3d != null
-                ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
                 : (Vector3)theObject.WorldPosition;
 
             ParentObject?.Particles?.ReleaseParticles(

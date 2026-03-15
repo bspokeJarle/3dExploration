@@ -35,6 +35,24 @@ namespace _3dRotations.Scene.Scene1
             ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
 
+            for (int i = 0; i < 10; i++)
+            {
+                var rmd = new Random();
+
+                //Add ship as first inhabitant
+                var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
+                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-15000, 15000), y = 0, z = 92000 + rmd.Next(-15000, 15000) };
+                kamikaze.Rotation = new Vector3 { };
+                kamikaze.ObjectOffsets = new Vector3 { x = 0, y = -150, z = 600 };
+                kamikaze.ObjectName = "KamikazeDrone";
+                kamikaze.ImpactStatus = new ImpactStatus { };
+                kamikaze.CrashBoxDebugMode = false;
+                kamikaze.WeaponSystems = null;
+                world.WorldInhabitants.Add(kamikaze);
+                GameState.SurfaceState.AiObjects.Add(kamikaze);
+            }
+
+
             for (int i = 0; i < 40; i++)
             {
                 var rmd = new Random();

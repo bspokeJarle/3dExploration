@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace CommonUtilities.CommonSetup
+﻿namespace CommonUtilities.CommonSetup
 {
     //TODO: Expand this as needed, common Screen properties can go here
     public static class ScreenSetup

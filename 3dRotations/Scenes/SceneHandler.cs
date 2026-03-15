@@ -18,7 +18,7 @@ namespace _3DWorld.Scene
         private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2() };
         private int currentSceneIndex = 1;
         private const bool enableLogging = false;
-        private const int SceneAdvanceDelayFrames = 3;
+        private const int SceneAdvanceDelayFrames = 5;
         private bool _pendingSceneAdvance = false;
         private int _pendingSceneAdvanceFramesLeft = 0;
 

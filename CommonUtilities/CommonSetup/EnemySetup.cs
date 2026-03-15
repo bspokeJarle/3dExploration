@@ -12,6 +12,7 @@ namespace CommonUtilities.CommonSetup
         public static List<string> EnemyTypes = new List<string>
         {
             "Seeder",
+            "KamikazeDrone",
             "Bomber",
             "AttackShip",
             "Endboss1",
