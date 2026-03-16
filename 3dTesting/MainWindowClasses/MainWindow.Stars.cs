@@ -15,7 +15,7 @@ namespace _3dTesting.MainWindowClasses
         private readonly Random random = new();
 
         // Max number of stars we want at any time.
-        private const int maxStarCount = 100;
+        private const int maxStarCount = 150;
 
         // Stars that move outside this world radius are recycled.
         private const float despawnRadius = 1500f;
@@ -30,8 +30,8 @@ namespace _3dTesting.MainWindowClasses
         private const int GroundDistanceY = 250;
 
         // Z: in front of camera (into the screen) = NEGATIVE Z.
-        private const float SpawnZFar = -1000f; // furthest away
-        private const float SpawnZNear = -200f; // closest
+        private const float SpawnZFar = -700f; // furthest away
+        private const float SpawnZNear = 400f; // closest
 
         private readonly List<_3dObject> stars = new(maxStarCount);
 

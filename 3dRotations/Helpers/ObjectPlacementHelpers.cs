@@ -34,7 +34,7 @@ namespace _3dTesting.Helpers
             x = y = z = 0;
             if (obj == null) return false;
 
-            //Calculates local position based on the world position
+            // Calculates the local render/collision-sync position based on the world position.
             var localWorldPosition = obj.GetLocalWorldPosition();
 
             if (localWorldPosition == null)
@@ -59,12 +59,12 @@ namespace _3dTesting.Helpers
             }
             else
             {
-                //Store this for use in Crashdetection
-                obj.CalculatedWorldOffset = new Vector3
+                // Store the calculated local crash-sync offset used by crash detection.
+                obj.CalculatedCrashOffset = new Vector3
                 {
-                    x = localWorldPosition.x,
-                    y = localWorldPosition.y,
-                    z = localWorldPosition.z
+                    x = localWorldPosition.x + obj.ObjectOffsets!.x ,
+                    y = localWorldPosition.y + obj.ObjectOffsets!.y,
+                    z = localWorldPosition.z + obj.ObjectOffsets!.z
                 };
                 //Calculate screen position
                 x = screenCenterX - localWorldPosition.x + obj.ObjectOffsets.x;

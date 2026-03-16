@@ -23,7 +23,7 @@ namespace Domain
         ISurface? ParentSurface { get; set; }
         int? SurfaceBasedId { get; set; }
         bool? CrashBoxDebugMode { get; set; }
-        IVector3? CalculatedWorldOffset { get; set; }
+        IVector3? CalculatedCrashOffset { get; set; }
         bool IsOnScreen { get; set; }
     }
 }

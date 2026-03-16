@@ -3,6 +3,7 @@ using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Controls;
 using System.Collections.Generic;
+using System.Linq;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.World.Objects
@@ -10,6 +11,11 @@ namespace _3dRotations.World.Objects
     public static class Ship
     {
         private const float ZoomRatio = 1f;
+        private const float ShipCrashBoxSizeMultiplier = 1.1f;
+        private static readonly Vector3 ShipCrashBoxPadding = new() { x = 0f, y = 8f, z = 0f };
+        private const float TopCannonCrashBoxSizeMultiplier = 0.7f;
+        private static readonly Vector3 TopCannonCrashBoxPadding = new() { x = 1f, y = 4f, z = 2f };
+
         public static _3dObject CreateShip(ISurface parentSurface)
         {
             var upperTriangles = UpperTriangles();
@@ -17,12 +23,7 @@ namespace _3dRotations.World.Objects
             var rearTriangles = RearTriangles();
             var jetMotorTriangle = JetMotorTriangle();
             var jetMotorDirectionGuide = JetMotorDirectionGuide();
-            var shipCrashBox = ShipCrashBoxes();
-            var topCannonCrashBox = TopCannonCrashBoxes();
             var cannon = TopCannonTriangles();
-            var crashBoxes = new List<List<IVector3>>();
-            if (shipCrashBox != null) crashBoxes.AddRange(shipCrashBox);
-            if (topCannonCrashBox != null) crashBoxes.AddRange(topCannonCrashBox);
             var topCannonDirectionGuide = CannonDirectionGuide();
 
 
@@ -38,38 +39,68 @@ namespace _3dRotations.World.Objects
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "WeaponDirectionGuide", Triangles = topCannonDirectionGuide!, IsVisible = false });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "WeaponStartGuide", Triangles = CannonStartGuide()!, IsVisible = false });
 
+            var crashBoxes = new List<List<IVector3>>();
+            crashBoxes.Add(CreateCrashBoxFromTriangles(
+                upperTriangles
+                    .Concat(lowerTriangles)
+                    .Concat(rearTriangles)
+                    .Concat(jetMotorTriangle!),
+                ShipCrashBoxSizeMultiplier,
+                ShipCrashBoxPadding));
+            crashBoxes.Add(CreateCrashBoxFromTriangles(
+                cannon!,
+                TopCannonCrashBoxSizeMultiplier,
+                TopCannonCrashBoxPadding));
+
             ship.ObjectOffsets = new Vector3 { };
             ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             ship.Movement = new ShipControls();
             ship.Particles = new ParticlesAI();
             ship.ParentSurface = parentSurface;
-            if (shipCrashBox != null) ship.CrashBoxes = crashBoxes;
+            ship.CrashBoxes = crashBoxes;
 
             _3dObjectHelpers.ApplyScaleToObject(ship, ZoomRatio);
 
             return ship;
         }
 
-        public static List<List<IVector3>>? ShipCrashBoxes()
+        private static List<IVector3> CreateCrashBoxFromTriangles(
+            IEnumerable<ITriangleMeshWithColor> triangles,
+            float sizeMultiplier,
+            Vector3 padding)
         {
-            var min = new Vector3 { x = -75, y = -50, z = -45 };
-            var max = new Vector3 { x = 75, y = 50, z = 45 };
+            var vertices = triangles
+                .SelectMany(triangle => new[] { triangle.vert1, triangle.vert2, triangle.vert3 })
+                .Cast<Vector3>()
+                .ToList();
 
-            return new List<List<IVector3>>
+            if (vertices.Count == 0)
             {
-                _3dObjectHelpers.GenerateCrashBoxCorners(min, max)
-            };
-        }
+                return new List<IVector3>();
+            }
 
-        public static List<List<IVector3>>? TopCannonCrashBoxes()
-        {
-            var min = new Vector3 { x = -7, y = -45, z = 18 };
-            var max = new Vector3 { x = 7, y = 20, z = 38 };
+            float minX = vertices.Min(v => v.x);
+            float maxX = vertices.Max(v => v.x);
+            float minY = vertices.Min(v => v.y);
+            float maxY = vertices.Max(v => v.y);
+            float minZ = vertices.Min(v => v.z);
+            float maxZ = vertices.Max(v => v.z);
 
-            return new List<List<IVector3>>
+            var center = new Vector3
             {
-                _3dObjectHelpers.GenerateCrashBoxCorners(min, max)
+                x = (minX + maxX) / 2f,
+                y = (minY + maxY) / 2f,
+                z = (minZ + maxZ) / 2f
             };
+
+            float halfX = ((maxX - minX) / 2f) * sizeMultiplier + padding.x;
+            float halfY = ((maxY - minY) / 2f) * sizeMultiplier + padding.y;
+            float halfZ = ((maxZ - minZ) / 2f) * sizeMultiplier + padding.z;
+
+            var min = new Vector3 { x = center.x - halfX, y = center.y - halfY, z = center.z - halfZ };
+            var max = new Vector3 { x = center.x + halfX, y = center.y + halfY, z = center.z + halfZ };
+
+            return _3dObjectHelpers.GenerateCrashBoxCorners(min, max);
         }
 
         public static List<ITriangleMeshWithColor>? TopCannonTriangles()

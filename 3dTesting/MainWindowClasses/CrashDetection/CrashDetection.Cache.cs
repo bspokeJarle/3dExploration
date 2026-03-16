@@ -86,7 +86,7 @@ namespace _3dTesting.Helpers
             }
 
             CacheMisses++;
-            offset = obj.GetCrashWorldOffset();
+            offset = obj.GetEffectiveCrashOffset();
             OffsetCache[obj] = offset;
             return offset;
         }

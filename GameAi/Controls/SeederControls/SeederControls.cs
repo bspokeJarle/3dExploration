@@ -158,12 +158,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 _syncY = theObject.ObjectOffsets.y;
             }
 
-            theObject.ObjectOffsets = new Vector3()
-            {
-                x = theObject.ObjectOffsets.x,
-                y = GameState.SurfaceState.GlobalMapPosition.y * SyncFactorY + _syncY,
-                z = theObject.ObjectOffsets.z
-            };
+            theObject.ObjectOffsets = CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY, SyncFactorY);
         }
 
         public void ReleaseParticles(I3dObject theObject)
@@ -173,7 +168,7 @@ namespace GameAiAndControls.Controls.SeederControls
             // Align emission origin with surface-centered position used by AI
             var obj3d = theObject as _3dObject;
             var alignedWorld = obj3d != null
-                ? SeederMovementHelpers.SyncronizeSeederWithSurfacePosition(obj3d)
+                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
                 : (Vector3)theObject.WorldPosition;
 
             ParentObject?.Particles?.ReleaseParticles(
@@ -193,7 +188,20 @@ namespace GameAiAndControls.Controls.SeederControls
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            if (ParentObject != null)
+            {
+                SeederAi.RemoveAiState(ParentObject.ObjectId);
+            }
+
+            isExploding = false;
+            _syncInitialized = false;
+            _syncY = 0;
+            explosionWorldPosition = null;
+            explosionObjectOffsets = null;
+            StartCoordinates = null;
+            GuideCoordinates = null;
+            _audio = null;
+            _explosionSound = null;
         }
 
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
