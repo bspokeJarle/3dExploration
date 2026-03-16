@@ -188,7 +188,20 @@ namespace GameAiAndControls.Controls.SeederControls
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            if (ParentObject != null)
+            {
+                SeederAi.RemoveAiState(ParentObject.ObjectId);
+            }
+
+            isExploding = false;
+            _syncInitialized = false;
+            _syncY = 0;
+            explosionWorldPosition = null;
+            explosionObjectOffsets = null;
+            StartCoordinates = null;
+            GuideCoordinates = null;
+            _audio = null;
+            _explosionSound = null;
         }
 
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)

@@ -496,7 +496,22 @@ namespace GameAiAndControls.Controls
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            _audioConfigured = false;
+            _isExploding = false;
+            _syncInitialized = false;
+            _syncY = 0;
+            _trackedObjectId = -1;
+            _storedWorldPositionInitialized = false;
+            _storedWorldPosition = new Vector3();
+            _explosionWorldPosition = null;
+            _explosionObjectOffsets = null;
+            StartCoordinates = null;
+            GuideCoordinates = null;
+            DirectionVelocity = new Vector3 { x = 0, y = 0, z = 0 };
+            LastDirectionUpdateDateTime = DateTime.MinValue;
+            LastMovementDateTime = DateTime.MinValue;
+            _audio = null;
+            _explosionSound = null;
         }
 
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)

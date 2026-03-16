@@ -5,6 +5,7 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAudioInstances;
+using System;
 using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
@@ -169,10 +170,11 @@ namespace _3dTesting.MainWindowClasses.Loops
             {
                 FadeOutWorld = false;
                 FadeInWorld = true;
-                ship.Movement.Dispose();
+                CleanupWorldObjects(world.WorldInhabitants.OfType<_3dObject>().ToList());
                 world.WorldInhabitants.Clear();
                 GameState.SurfaceState.AiObjects.Clear();
                 GameState.SurfaceState.DirtyTiles.Clear();
+                GameState.ShipState.BestCandidateStates.Clear();
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
                 world.SceneHandler.ResetActiveScene(world);
@@ -195,6 +197,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
+            CleanupExplodedObjects(world);
             if (activeScene != null)
             {
                 HandleMusic(renderedList, activeScene.SceneMusic);
@@ -202,6 +205,76 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             TrackFrameTiming((int)FrameCounter);
             return projectedCoordinates;
+        }
+
+        private void CleanupExplodedObjects(I3dWorld world)
+        {
+            lock (_lock)
+            {
+                var explodedObjects = world.WorldInhabitants
+                    .OfType<_3dObject>()
+                    .Where(obj => obj.ObjectName != "Ship" && obj.ImpactStatus?.HasExploded == true)
+                    .ToList();
+
+                if (explodedObjects.Count == 0)
+                {
+                    return;
+                }
+
+                CleanupWorldObjects(explodedObjects);
+
+                var explodedIds = explodedObjects.Select(obj => obj.ObjectId).ToHashSet();
+                world.WorldInhabitants.RemoveAll(obj => explodedIds.Contains(obj.ObjectId));
+                GameState.SurfaceState.AiObjects.RemoveAll(obj => explodedIds.Contains(obj.ObjectId));
+                GameState.ShipState.BestCandidateStates.RemoveAll(state =>
+                    state?.BestEnemyCandidate?.EnemyObject != null &&
+                    explodedIds.Contains(state.BestEnemyCandidate.EnemyObject.ObjectId));
+            }
+        }
+
+        private static void CleanupWorldObjects(List<_3dObject> objects)
+        {
+            foreach (var obj in objects)
+            {
+                TryDisposeMovement(obj);
+
+                if (obj.Particles != null)
+                {
+                    obj.Particles.Particles.Clear();
+                    obj.Particles = null;
+                }
+
+                if (obj.WeaponSystems != null)
+                {
+                    obj.WeaponSystems.ActiveWeapons.Clear();
+                    obj.WeaponSystems = null;
+                }
+
+                obj.CrashBoxes?.Clear();
+                obj.ObjectParts?.Clear();
+                obj.CalculatedCrashOffset = null;
+                obj.WorldPosition = null;
+                obj.ObjectOffsets = null;
+                obj.ParentSurface = null;
+                obj.Movement = null;
+                obj.ImpactStatus = null;
+            }
+        }
+
+        private static void TryDisposeMovement(_3dObject obj)
+        {
+            if (obj?.Movement == null)
+            {
+                return;
+            }
+
+            try
+            {
+                obj.Movement.Dispose();
+            }
+            catch (NotImplementedException)
+            {
+            }
         }
 
         private Dictionary<int, _3dObject> InitializeAiOnScreenTracking()

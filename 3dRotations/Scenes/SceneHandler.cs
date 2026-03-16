@@ -46,7 +46,10 @@ namespace _3DWorld.Scene
             if (newScene != null)
             {
                 GameState.ScreenOverlayState.ShowVideoOverlay = false;
-                GameState.ScreenOverlayState.VideoClipPath = string.Empty; 
+                GameState.ScreenOverlayState.VideoClipPath = string.Empty;
+                GameState.GamePlayState.ResetForNewGame();
+                GameState.SurfaceState.GlobalMapBitmap = null;
+                GameState.SurfaceState.SurfaceViewportObject = null;
                 scenes[currentSceneIndex] = newScene;
                 GameState.ScreenOverlayState.HardHide();
                 newScene.SetupGameOverlay();

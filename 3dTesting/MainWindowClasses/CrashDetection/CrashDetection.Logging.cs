@@ -11,7 +11,7 @@ namespace _3dTesting.Helpers
     {
         private static List<string> LogFilter = ["KamikazeDrone", "Ship"];
 
-        public static bool LocalEnableLogging = true;
+        public static bool LocalEnableLogging = false;
         public static bool LogOnlyCollisions = false;
         public static bool LogCollisionDetails = true;
         public static bool SkipParticleLogging = true;

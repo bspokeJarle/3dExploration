@@ -71,7 +71,7 @@ namespace _3dRotations.World.Objects
         private static float finHeight = 10f;
         private static float finThickness = 2f;
         private static float finInset = 6f;
-        private const float CrashboxSize = 2f;
+        private const float CrashboxSize = 1.8f;
 
         // ----------------------------------------------------
         //  COLORS
