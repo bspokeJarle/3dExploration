@@ -84,6 +84,39 @@ namespace GameAiAndControls.Controls
             };
         }
 
+        private static _3dObject? GetAuthoritativeDrone(I3dObject obj)
+        {
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var aiObject = aiObjects[i];
+                if (aiObject.ObjectId == obj.ObjectId)
+                {
+                    return aiObject;
+                }
+            }
+
+            return null;
+        }
+
+        private static void SyncAuthoritativeDroneState(I3dObject source)
+        {
+            var authoritativeDrone = GetAuthoritativeDrone(source);
+            if (authoritativeDrone == null || ReferenceEquals(authoritativeDrone, source))
+            {
+                return;
+            }
+
+            authoritativeDrone.WorldPosition = ToVector3(source.WorldPosition);
+            authoritativeDrone.ObjectOffsets = ToVector3(source.ObjectOffsets);
+            authoritativeDrone.Rotation = ToVector3(source.Rotation);
+        }
+
         private static Vector3 Normalize(Vector3 v)
         {
             float lenSq = v.x * v.x + v.y * v.y + v.z * v.z;
@@ -335,6 +368,7 @@ namespace GameAiAndControls.Controls
 
                 _storedWorldPosition = ToVector3(theObject.WorldPosition);
                 _storedWorldPositionInitialized = theObject.WorldPosition != null;
+                SyncAuthoritativeDroneState(theObject);
                 LastMovementDateTime = DateTime.Now;
                 return theObject;
             }
@@ -485,6 +519,7 @@ namespace GameAiAndControls.Controls
 
             _storedWorldPosition = ToVector3(theObject.WorldPosition);
             _storedWorldPositionInitialized = theObject.WorldPosition != null;
+            SyncAuthoritativeDroneState(theObject);
             LastMovementDateTime = now;
 
             return theObject;
