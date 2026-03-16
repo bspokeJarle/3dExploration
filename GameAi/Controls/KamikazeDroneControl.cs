@@ -1,4 +1,5 @@
 ﻿using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using Gma.System.MouseKeyHook;
 using System;
@@ -16,11 +17,11 @@ namespace GameAiAndControls.Controls
     public class KamikazeDroneControls : IObjectMovement
     {
         private static readonly CommonUtilities._3DHelpers._3dRotationCommon Rotate3d = new();
-        private const bool enableLogging = true;
+        private const bool enableLogging = false;
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
-        public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public IPhysics Physics { get; set; } = new Physics.Physics();
 
         //Initial rotation angles for the drone, pointing towards the camera. Adjust as needed based on the drone model's default orientation.
         private float Yrotation = 0;
@@ -30,7 +31,7 @@ namespace GameAiAndControls.Controls
         private float TargetXrotation = 70;
         private float TargetZrotation = 90;
 
-        const int DroneSpeedScreenPrSecond = 6; //How many seconds it should take for the drone to cross the entire screen at its current speed. Adjust as needed.
+        const int DroneSpeedScreenPrSecond = 3; //How many seconds it should take for the drone to cross the entire screen at its current speed. Adjust as needed.
         private const float RotationDegreesPerSecond = 180f;
         private const float DirectionUpdateIntervalSeconds = 1f;
         private const int LogEveryNthFrame = 10;
@@ -44,6 +45,13 @@ namespace GameAiAndControls.Controls
         private int _trackedObjectId = -1;
         private bool _storedWorldPositionInitialized = false;
         private Vector3 _storedWorldPosition = new Vector3();
+        private bool _audioConfigured = false;
+        private bool _isExploding = false;
+        private DateTime _explosionDeltaTime = DateTime.Now;
+        private Vector3? _explosionWorldPosition;
+        private Vector3? _explosionObjectOffsets;
+        private IAudioPlayer? _audio;
+        private SoundDefinition? _explosionSound;
 
         private static void SafeLog(string message)
         {
@@ -241,8 +249,48 @@ namespace GameAiAndControls.Controls
             theObject.ObjectOffsets = CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY);
         }
 
+        private void HandleCrash(I3dObject theObject)
+        {
+            if (theObject.ImpactStatus == null)
+            {
+                return;
+            }
+
+            int currentHealth = theObject.ImpactStatus.ObjectHealth ?? EnemySetup.KamikazeDroneHealth;
+            int damage = theObject.ImpactStatus.ObjectName switch
+            {
+                "Ship" => EnemySetup.KamikazeDroneHealth,
+                string objectName when WeaponSetup.IsWeaponTypeValid(objectName) => WeaponSetup.GetWeaponDamage(objectName),
+                _ => currentHealth
+            };
+
+            theObject.ImpactStatus.ObjectHealth = currentHealth - damage;
+
+            if (theObject.ImpactStatus.ObjectHealth > 0)
+            {
+                theObject.ImpactStatus.HasCrashed = false;
+                return;
+            }
+
+            if (_audio != null && _explosionSound != null)
+            {
+                _audio.Play(_explosionSound, AudioPlayMode.OneShot);
+            }
+
+            _isExploding = true;
+            _explosionDeltaTime = DateTime.Now;
+            _explosionWorldPosition = theObject.WorldPosition as Vector3 ?? ToVector3(theObject.WorldPosition);
+            _explosionObjectOffsets = theObject.ObjectOffsets as Vector3 ?? ToVector3(theObject.ObjectOffsets);
+
+            Physics.ExplodeObject(theObject, 200f);
+            theObject.CrashBoxes = new List<List<IVector3>>();
+            theObject.ImpactStatus.HasCrashed = false;
+        }
+
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            ConfigureAudio(audioPlayer, soundRegistry);
+
             if (_trackedObjectId != theObject.ObjectId)
             {
                 _trackedObjectId = theObject.ObjectId;
@@ -261,6 +309,35 @@ namespace GameAiAndControls.Controls
 
             ParentObject = theObject;
             SyncMovement(theObject);
+
+            if (theObject.ImpactStatus?.HasCrashed == true && !_isExploding)
+            {
+                HandleCrash(theObject);
+            }
+
+            if (_isExploding)
+            {
+                if (_explosionWorldPosition != null)
+                {
+                    theObject.WorldPosition = _explosionWorldPosition;
+                }
+
+                if (_explosionObjectOffsets != null)
+                {
+                    theObject.ObjectOffsets = _explosionObjectOffsets;
+                }
+
+                Physics.UpdateExplosion(theObject, _explosionDeltaTime);
+                if (theObject.ImpactStatus?.HasExploded == true)
+                {
+                    theObject.ObjectParts = new List<I3dObjectPart>();
+                }
+
+                _storedWorldPosition = ToVector3(theObject.WorldPosition);
+                _storedWorldPositionInitialized = theObject.WorldPosition != null;
+                LastMovementDateTime = DateTime.Now;
+                return theObject;
+            }
 
             var now = DateTime.Now;
 
@@ -341,21 +418,6 @@ namespace GameAiAndControls.Controls
 
             if (theObject.WorldPosition is IVector3 objectWorldPosition)
             {
-                if (currentDronePosition is Vector3 anchoredDronePosition)
-                {
-                    var anchoredRotatedLocalCrashCenter = GetRotatedLocalCrashCenter(theObject);
-                    var objectOffsets = theObject.ObjectOffsets;
-
-                    theObject.WorldPosition = new Vector3
-                    {
-                        x = anchoredDronePosition.x - (objectOffsets?.x ?? 0f) - anchoredRotatedLocalCrashCenter.x,
-                        y = anchoredDronePosition.y - (objectOffsets?.y ?? 0f) - anchoredRotatedLocalCrashCenter.y,
-                        z = anchoredDronePosition.z - (objectOffsets?.z ?? 0f) - anchoredRotatedLocalCrashCenter.z
-                    };
-
-                    objectWorldPosition = theObject.WorldPosition;
-                }
-
                 currentDronePosition = GetDroneCrashCenterWorldPosition(theObject);
 
                 if (currentDronePosition is Vector3 dronePosition && currentTargetPosition is Vector3 targetPosition)
@@ -376,20 +438,12 @@ namespace GameAiAndControls.Controls
                         var moveDirection = Normalize(liveDirectionToTarget);
                         float moveDistance = MathF.Min(speedPerSecond * (float)deltaSeconds, currentDistance);
                         moveDistanceApplied = moveDistance;
-                        var nextDroneCenterWorldPosition = new Vector3
-                        {
-                            x = dronePosition.x + (moveDirection.x * moveDistance),
-                            y = dronePosition.y + (moveDirection.y * moveDistance),
-                            z = dronePosition.z + (moveDirection.z * moveDistance)
-                        };
-                        var movementRotatedLocalCrashCenter = GetRotatedLocalCrashCenter(theObject);
-                        var objectOffsets = theObject.ObjectOffsets;
 
                         theObject.WorldPosition = new Vector3
                         {
-                            x = nextDroneCenterWorldPosition.x - (objectOffsets?.x ?? 0f) - movementRotatedLocalCrashCenter.x,
-                            y = nextDroneCenterWorldPosition.y - (objectOffsets?.y ?? 0f) - movementRotatedLocalCrashCenter.y,
-                            z = nextDroneCenterWorldPosition.z - (objectOffsets?.z ?? 0f) - movementRotatedLocalCrashCenter.z
+                            x = objectWorldPosition.x + (moveDirection.x * moveDistance),
+                            y = objectWorldPosition.y + (moveDirection.y * moveDistance),
+                            z = objectWorldPosition.z + (moveDirection.z * moveDistance)
                         };
                     }
                     else
@@ -452,7 +506,19 @@ namespace GameAiAndControls.Controls
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
-            throw new NotImplementedException();
+            if (_audioConfigured)
+            {
+                return;
+            }
+
+            if (audioPlayer == null || soundRegistry == null)
+            {
+                return;
+            }
+
+            _audio = audioPlayer;
+            _explosionSound = soundRegistry.Get("explosion_main");
+            _audioConfigured = true;
         }
 
         public void ReleaseParticles(I3dObject theObject)

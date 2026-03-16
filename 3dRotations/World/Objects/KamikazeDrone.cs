@@ -71,6 +71,7 @@ namespace _3dRotations.World.Objects
         private static float finHeight = 10f;
         private static float finThickness = 2f;
         private static float finInset = 6f;
+        private const float CrashboxSize = 2f;
 
         // ----------------------------------------------------
         //  COLORS
@@ -125,8 +126,6 @@ namespace _3dRotations.World.Objects
 
             drone.Movement = new KamikazeDroneControls();
             drone.Particles = new ParticlesAI();
-
-            drone.ObjectOffsets = new Vector3 { x = 0, y = 0, z = 0 };
             drone.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
 
             if (crashBoxes != null)
@@ -536,17 +535,20 @@ namespace _3dRotations.World.Objects
         {
             var boxes = new List<List<IVector3>>();
 
-            boxes.Add(_3dObjectHelpers.GenerateCrashBoxCorners(
+            var noseBounds = ScaleCrashBoxBounds(
                 new Vector3 { x = noseBaseX, y = -noseRadiusY, z = -noseRadiusZ },
-                new Vector3 { x = noseBaseX + noseLength, y = noseRadiusY, z = noseRadiusZ }));
+                new Vector3 { x = noseBaseX + noseLength, y = noseRadiusY, z = noseRadiusZ });
+            boxes.Add(_3dObjectHelpers.GenerateCrashBoxCorners(noseBounds.min, noseBounds.max));
 
-            boxes.Add(_3dObjectHelpers.GenerateCrashBoxCorners(
+            var bodyBounds = ScaleCrashBoxBounds(
                 new Vector3 { x = bodyMidX, y = -bodyHalfWidthMid, z = bodyBottomMid - 1.0f },
-                new Vector3 { x = bodyFrontX + 3f, y = bodyHalfWidthMid, z = bodyTopMid + spineLiftMid + canopyLiftMid + canopyHeightMid }));
+                new Vector3 { x = bodyFrontX + 3f, y = bodyHalfWidthMid, z = bodyTopMid + spineLiftMid + canopyLiftMid + canopyHeightMid });
+            boxes.Add(_3dObjectHelpers.GenerateCrashBoxCorners(bodyBounds.min, bodyBounds.max));
 
-            boxes.Add(_3dObjectHelpers.GenerateCrashBoxCorners(
+            var engineBounds = ScaleCrashBoxBounds(
                 new Vector3 { x = engineBackX, y = -bodyHalfWidthBack, z = bodyBottomBack - 1.0f },
-                new Vector3 { x = bodyBackX + 4f, y = bodyHalfWidthBack, z = bodyTopBack + finHeight }));
+                new Vector3 { x = bodyBackX + 4f, y = bodyHalfWidthBack, z = bodyTopBack + finHeight });
+            boxes.Add(_3dObjectHelpers.GenerateCrashBoxCorners(engineBounds.min, engineBounds.max));
 
             return boxes;
         }
@@ -565,6 +567,38 @@ namespace _3dRotations.World.Objects
                 Triangles = tris,
                 IsVisible = visible
             });
+        }
+
+        private static (Vector3 min, Vector3 max) ScaleCrashBoxBounds(Vector3 min, Vector3 max)
+        {
+            var center = new Vector3
+            {
+                x = (min.x + max.x) * 0.5f,
+                y = (min.y + max.y) * 0.5f,
+                z = (min.z + max.z) * 0.5f
+            };
+
+            var halfSize = new Vector3
+            {
+                x = (max.x - min.x) * 0.5f * CrashboxSize,
+                y = (max.y - min.y) * 0.5f * CrashboxSize,
+                z = (max.z - min.z) * 0.5f * CrashboxSize
+            };
+
+            return (
+                new Vector3
+                {
+                    x = center.x - halfSize.x,
+                    y = center.y - halfSize.y,
+                    z = center.z - halfSize.z
+                },
+                new Vector3
+                {
+                    x = center.x + halfSize.x,
+                    y = center.y + halfSize.y,
+                    z = center.z + halfSize.z
+                }
+            );
         }
 
         private static List<Vector3> GenerateEllipseRing(int segments, float x, float radiusY, float radiusZ)

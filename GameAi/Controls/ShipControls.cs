@@ -335,6 +335,11 @@ namespace GameAiAndControls.Controls
             {
                 float landingSpeed = CurrentSpeed;
 
+                if (theObject.ImpactStatus.ObjectName == "KamikazeDrone")
+                {
+                    theObject.ImpactStatus.ObjectHealth -= EnemySetup.KamikazeDroneCollisionDamage;
+                }
+
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
                 {
                     // Stop rocket-loop før eksplosjon
@@ -371,7 +376,7 @@ namespace GameAiAndControls.Controls
                     var explodedVersion = Physics.ExplodeObject(theObject, 200f);
                     ParentObject = explodedVersion;
                 }
-                else
+                else if (theObject.ImpactStatus.ObjectName != "KamikazeDrone")
                 {
                     if (theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
                         theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)

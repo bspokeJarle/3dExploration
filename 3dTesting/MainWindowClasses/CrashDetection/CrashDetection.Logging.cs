@@ -9,9 +9,9 @@ namespace _3dTesting.Helpers
 {
     public static partial class CrashDetection
     {
-        private static List<string> LogFilter = ["Lazer", "Surface"];
+        private static List<string> LogFilter = ["KamikazeDrone", "Ship"];
 
-        public static bool LocalEnableLogging = false;
+        public static bool LocalEnableLogging = true;
         public static bool LogOnlyCollisions = false;
         public static bool LogCollisionDetails = true;
         public static bool SkipParticleLogging = true;
@@ -118,10 +118,10 @@ namespace _3dTesting.Helpers
             if (GameState.SurfaceState.GlobalMapPosition != null)
                 Logger.Log($"[SNAPSHOT] GlobalMapPosition: (x={GameState.SurfaceState.GlobalMapPosition.x:0.##}, z={GameState.SurfaceState.GlobalMapPosition.z:0.##})");
 
-            var calculated = obj.CalculatedWorldOffset ?? new Vector3(0, 0, 0);
-            Logger.Log($"[SNAPSHOT] CalculatedWorldOffset: (x={calculated.x:0.##}, y={calculated.y:0.##}, z={calculated.z:0.##})");
+            var calculated = obj.CalculatedCrashOffset ?? new Vector3(0, 0, 0);
+            Logger.Log($"[SNAPSHOT] CalculatedCrashOffset: (x={calculated.x:0.##}, y={calculated.y:0.##}, z={calculated.z:0.##})");
 
-            var effectiveOffset = obj.GetCrashWorldOffset();
+            var effectiveOffset = obj.GetEffectiveCrashOffset();
             Logger.Log($"[SNAPSHOT] EffectiveCrashOffset: (x={effectiveOffset.x:0.##}, y={effectiveOffset.y:0.##}, z={effectiveOffset.z:0.##})");
 
             var crashBoxes = obj.CrashBoxes;
