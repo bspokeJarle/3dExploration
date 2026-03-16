@@ -6,14 +6,14 @@ using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting.Helpers
 {
-    public static class CrashBoxWorldExtensions
+    public static class CrashBoxOffsetExtensions
     {
         public static Vector3 ToLocalPoint(this Vector3 worldPoint, _3dObject obj)
         {
             if (obj == null)
                 return worldPoint;
 
-            var offset = obj.GetCrashWorldOffset();
+            var offset = obj.GetEffectiveCrashOffset();
              
              return new Vector3
             {
@@ -28,7 +28,7 @@ namespace _3dTesting.Helpers
             if (obj == null)
                 return localPoint;
 
-            var offset = obj.GetCrashWorldOffset();
+            var offset = obj.GetEffectiveCrashOffset();
 
             return new Vector3
             {
@@ -38,19 +38,20 @@ namespace _3dTesting.Helpers
             };
         }
         // Keep this returning the SAME Vector3 type that crashboxes are made of.
-        public static Vector3 GetCrashWorldOffset(this _3dObject obj)
+        // This is the effective local offset used to keep crash boxes aligned with rendering.
+        public static Vector3 GetEffectiveCrashOffset(this _3dObject obj)
         {
             var local = obj?.ObjectOffsets ?? new Vector3(0, 0, 0);
-            var world = obj?.CalculatedWorldOffset ?? new Vector3(0, 0, 0);
+            var crashOffset = obj?.CalculatedCrashOffset ?? new Vector3(0, 0, 0);
 
             float surfaceYOffset = 0f;
             if (obj?.ObjectName == "Surface" && GameState.SurfaceState.GlobalMapPosition != null)
                 surfaceYOffset = GameState.SurfaceState.GlobalMapPosition.y;
 
             return new Vector3(
-                local.x + world.x,
-                local.y + world.y + surfaceYOffset,
-                local.z + world.z
+                local.x + crashOffset.x,
+                local.y + crashOffset.y + surfaceYOffset,
+                local.z + crashOffset.z
             );
         }
 
@@ -72,7 +73,7 @@ namespace _3dTesting.Helpers
         public static List<Vector3> GetAllCrashPointsWorld(this _3dObject obj)
         {
             if (obj == null) return new List<Vector3>();
-            return obj.GetAllCrashPointsWorld(obj.GetCrashWorldOffset());
+            return obj.GetAllCrashPointsWorld(obj.GetEffectiveCrashOffset());
         }
 
         public static List<Vector3> GetAllCrashPointsWorld(this _3dObject obj, Vector3 offset)

@@ -54,27 +54,6 @@ namespace GameAiAndControls.Helpers
             }
         }
 
-        internal static Vector3 SyncronizeSeederWithSurfacePosition(_3dObject seederObject)
-        {
-            // Both Seeder and Surface have ObjectOffsets that represent their local "center" point relative to their WorldPosition.
-            // To sync the Seeder to the Surface, we calculate the delta between their ObjectOffsets and apply that delta to the Seeder's WorldPosition.
-            // This ensures that the Seeder's "center" (as defined by its ObjectOffsets) will match the Surface's "center" in world space and the right tile will be infected
-            var seederOffset = seederObject.ObjectOffsets;
-            var surfaceOffset = GameState.SurfaceState.SurfaceViewportObject?.ObjectOffsets;
-
-            var deltaX = surfaceOffset?.x - seederOffset?.x ?? 0;
-            var deltaZ = surfaceOffset?.z - seederOffset?.z ?? 0;
-
-            var surfaceWorld = seederObject.WorldPosition ?? new Vector3();
-
-            return new Vector3
-            {
-                x = surfaceWorld.x - deltaX,
-                y = surfaceWorld.y,
-                z = surfaceWorld.z - deltaZ
-            };
-        }
-
         // ------------------------------------------------------------
         // WORLD -> TILE INDEX -> SCREEN INDEX
         // ------------------------------------------------------------
@@ -208,7 +187,7 @@ namespace GameAiAndControls.Helpers
 
             // Use synchronized world position to align seeder center with surface center (configurable)
             Vector3 alignedWorld = SyncToSurfaceForLocalPick
-                ? SyncronizeSeederWithSurfacePosition((_3dObject)obj)
+                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition((_3dObject)obj)
                 : (Vector3)obj.WorldPosition;
 
             GetScreenIndexFromWorldXZ(alignedWorld, out int screenY, out int screenX);

@@ -16,9 +16,9 @@ namespace _3DWorld.Scene
     {
         // List of the available scenes for the game
         private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2() };
-        private int currentSceneIndex = 0;
+        private int currentSceneIndex = 1;
         private const bool enableLogging = false;
-        private const int SceneAdvanceDelayFrames = 3;
+        private const int SceneAdvanceDelayFrames = 5;
         private bool _pendingSceneAdvance = false;
         private int _pendingSceneAdvanceFramesLeft = 0;
 
@@ -46,7 +46,10 @@ namespace _3DWorld.Scene
             if (newScene != null)
             {
                 GameState.ScreenOverlayState.ShowVideoOverlay = false;
-                GameState.ScreenOverlayState.VideoClipPath = string.Empty; 
+                GameState.ScreenOverlayState.VideoClipPath = string.Empty;
+                GameState.GamePlayState.ResetForNewGame();
+                GameState.SurfaceState.GlobalMapBitmap = null;
+                GameState.SurfaceState.SurfaceViewportObject = null;
                 scenes[currentSceneIndex] = newScene;
                 GameState.ScreenOverlayState.HardHide();
                 newScene.SetupGameOverlay();

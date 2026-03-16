@@ -248,6 +248,21 @@ namespace GameAiAndControls.Controls
             return newPos;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void UpdateShipWorldPosition(I3dObject theObject)
+        {
+            float shipOffsetY = theObject.ObjectOffsets?.y ?? shipY;
+
+            GameState.ShipState.ShipWorldPosition = CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetShipWorldPosition(shipOffsetY, zoom);
+            GameState.ShipState.ShipCrashCenterWorldPosition = CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(theObject);
+            GameState.ShipState.ShipObjectOffsets = new Vector3
+            {
+                x = theObject.ObjectOffsets?.x ?? 0f,
+                y = shipOffsetY,
+                z = theObject.ObjectOffsets?.z ?? zoom
+            };
+        }
+
         // Merk: du har endret signatur her – sørg for at IObjectMovement matcher!
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
@@ -320,6 +335,11 @@ namespace GameAiAndControls.Controls
             {
                 float landingSpeed = CurrentSpeed;
 
+                if (theObject.ImpactStatus.ObjectName == "KamikazeDrone")
+                {
+                    theObject.ImpactStatus.ObjectHealth -= EnemySetup.KamikazeDroneCollisionDamage;
+                }
+
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
                 {
                     // Stop rocket-loop før eksplosjon
@@ -356,7 +376,7 @@ namespace GameAiAndControls.Controls
                     var explodedVersion = Physics.ExplodeObject(theObject, 200f);
                     ParentObject = explodedVersion;
                 }
-                else
+                else if (theObject.ImpactStatus.ObjectName != "KamikazeDrone")
                 {
                     if (theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
                         theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
@@ -382,6 +402,8 @@ namespace GameAiAndControls.Controls
                     Logger.Log($"[MoveDiag] map=({mapPos.x:0.##},{mapPos.y:0.##},{mapPos.z:0.##}) offsets=({theObject.ObjectOffsets.x:0.##},{theObject.ObjectOffsets.y:0.##},{theObject.ObjectOffsets.z:0.##}) thrustOn={ThrustOn} thrust={Thrust:0.##}");
                 }
             }
+
+            UpdateShipWorldPosition(theObject);
 
             // The weapon needs to move as well 
             if (theObject.WeaponSystems != null)
