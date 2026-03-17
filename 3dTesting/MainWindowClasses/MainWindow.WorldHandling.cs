@@ -46,6 +46,12 @@ namespace _3dTesting.MainWindowClasses
             set => currentLoop.FadeInWorld = value;
         }
 
+        public bool SceneResetReady
+        {
+            get => currentLoop.SceneResetReady;
+            set => currentLoop.SceneResetReady = value;
+        }
+
         public I3dObject ShipCopy
         {
             get => currentLoop.ShipCopy;

@@ -40,6 +40,8 @@ namespace _3dTesting.MainWindowClasses.Loops
         private bool enableLocalLogging = false;
         public bool FadeOutWorld { get; set; } = false;
         public bool FadeInWorld { get; set; } = false;
+        public bool SceneResetReady { get; set; } = false;
+        private bool _deathSequenceStarted = false;
 
         private readonly object _lock = new object();
         public I3dObject ShipCopy { get; set; }
@@ -162,14 +164,14 @@ namespace _3dTesting.MainWindowClasses.Loops
             var activeScene = world.SceneHandler.GetActiveScene();
 
             var ship = activeWorld.FirstOrDefault(x => x.ObjectName == "Ship");
-            if (ship != null && ship.ImpactStatus.ObjectHealth <= 0 && !FadeOutWorld)
+            if (ship != null && ship.ImpactStatus.HasExploded && !_deathSequenceStarted)
             {
+                _deathSequenceStarted = true;
                 FadeOutWorld = true;
             }
-            if (ship != null && ship.ImpactStatus.HasExploded)
+
+            if (_deathSequenceStarted && SceneResetReady)
             {
-                FadeOutWorld = false;
-                FadeInWorld = true;
                 CleanupWorldObjects(world.WorldInhabitants.OfType<_3dObject>().ToList());
                 world.WorldInhabitants.Clear();
                 GameState.SurfaceState.AiObjects.Clear();
@@ -178,6 +180,9 @@ namespace _3dTesting.MainWindowClasses.Loops
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
                 world.SceneHandler.ResetActiveScene(world);
+                _deathSequenceStarted = false;
+                SceneResetReady = false;
+                FadeInWorld = true;
                 TrackFrameTiming((int)FrameCounter);
                 return [];
             }
