@@ -35,11 +35,14 @@ namespace _3dTesting.MainWindowClasses.Loops
         private readonly ISoundRegistry soundRegistry = new JsonSoundRegistry("Soundeffects\\sounds.json");
         private static SoundDefinition MusicDef { get; set; } = null;
         private static bool MusicIsPlaying { get; set; } = false;
+        private static string CurrentSceneMusicId { get; set; } = string.Empty;
 
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
         public bool FadeOutWorld { get; set; } = false;
         public bool FadeInWorld { get; set; } = false;
+        public bool SceneResetReady { get; set; } = false;
+        private bool _deathSequenceStarted = false;
 
         private readonly object _lock = new object();
         public I3dObject ShipCopy { get; set; }
@@ -162,14 +165,14 @@ namespace _3dTesting.MainWindowClasses.Loops
             var activeScene = world.SceneHandler.GetActiveScene();
 
             var ship = activeWorld.FirstOrDefault(x => x.ObjectName == "Ship");
-            if (ship != null && ship.ImpactStatus.ObjectHealth <= 0 && !FadeOutWorld)
+            if (ship != null && ship.ImpactStatus.HasExploded && !_deathSequenceStarted)
             {
+                _deathSequenceStarted = true;
                 FadeOutWorld = true;
             }
-            if (ship != null && ship.ImpactStatus.HasExploded)
+
+            if (_deathSequenceStarted && SceneResetReady)
             {
-                FadeOutWorld = false;
-                FadeInWorld = true;
                 CleanupWorldObjects(world.WorldInhabitants.OfType<_3dObject>().ToList());
                 world.WorldInhabitants.Clear();
                 GameState.SurfaceState.AiObjects.Clear();
@@ -178,6 +181,9 @@ namespace _3dTesting.MainWindowClasses.Loops
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
                 world.SceneHandler.ResetActiveScene(world);
+                _deathSequenceStarted = false;
+                SceneResetReady = false;
+                FadeInWorld = true;
                 TrackFrameTiming((int)FrameCounter);
                 return [];
             }
@@ -308,11 +314,25 @@ namespace _3dTesting.MainWindowClasses.Loops
 
         public void HandleMusic(List<_3dObject> renderedObjects, string sceneMusic)
         {
-            if (MusicDef == null) MusicDef = soundRegistry.Get(sceneMusic);
-            if (!MusicIsPlaying)
+            if (string.IsNullOrWhiteSpace(sceneMusic))
             {
-                MusicIsPlaying = true;
+                return;
+            }
+
+            bool sceneMusicChanged = !string.Equals(CurrentSceneMusicId, sceneMusic, StringComparison.Ordinal);
+
+            if (sceneMusicChanged)
+            {
+                audioPlayer.StopMusic();
+                MusicDef = soundRegistry.Get(sceneMusic);
+                CurrentSceneMusicId = sceneMusic;
+                MusicIsPlaying = false;
+            }
+
+            if (!MusicIsPlaying && MusicDef != null)
+            {
                 audioPlayer.PlayMusic(MusicDef, 0.2f);
+                MusicIsPlaying = true;
             }
         }
 

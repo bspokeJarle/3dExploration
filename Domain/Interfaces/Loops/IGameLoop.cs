@@ -7,6 +7,7 @@ namespace Domain
         string DebugMessage { get; set; }
         bool FadeOutWorld { get; set; }
         bool FadeInWorld { get; set; }
+        bool SceneResetReady { get; set; }
         I3dObject ShipCopy { get; set; }
         I3dObject SurfaceCopy { get; set; }
 

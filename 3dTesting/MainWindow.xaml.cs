@@ -153,7 +153,7 @@ namespace _3dTesting
             if (e.Key == Key.LeftCtrl)
             {
                 isPaused = !isPaused;
-                world.IsPaused = !isPaused;
+                world.IsPaused = isPaused;
                 pauseFrameCount = 0;
             }
             //Send keys to Scenehandler to handle scene switches and overlay switches
@@ -255,28 +255,29 @@ namespace _3dTesting
             if (world.IsPaused)
                 pauseFrameCount++;
 
-            if (pauseFrameCount < limitFrameCount && gameWorldManager.FadeInWorld && isFading && world.WorldInhabitants.Count > 100)
+            if (pauseFrameCount < limitFrameCount && gameWorldManager.FadeInWorld)
             {
+                if (!isFading)
+                {
+                    // FadeOut was skipped (e.g., ship exploded before the fadeout delay elapsed)
+                    // Snap overlay to opaque before fading in
+                    FadeOverlay.Visibility = Visibility.Visible;
+                    FadeOverlay.Opacity = 1;
+                    isFading = true;
+                }
                 await FadeInAsync(1.5f);
                 gameWorldManager.FadeInWorld = false;
                 isFading = false;
+                fadeOutTrigged = DateTime.MinValue;
             }
 
             if (pauseFrameCount <= limitFrameCount && gameWorldManager.FadeOutWorld && !isFading)
             {
-                if (fadeOutTrigged == DateTime.MinValue)
-                {
-                    fadeOutTrigged = DateTime.Now;
-                    return;
-                }
-
-                if (DateTime.Now >= fadeOutTrigged.AddSeconds(1.2))
-                {
-                    isFading = true;
-                    await FadeOutAsync(1.0f);
-                    gameWorldManager.FadeOutWorld = false;
-                    fadeOutTrigged = DateTime.MinValue;
-                }
+                isFading = true;
+                await FadeOutAsync(1.0f);
+                gameWorldManager.FadeOutWorld = false;
+                gameWorldManager.SceneResetReady = true;
+                fadeOutTrigged = DateTime.MinValue;
             }
 
             // Overlay update + render (UI layer)
