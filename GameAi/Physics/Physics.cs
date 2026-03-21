@@ -264,7 +264,17 @@ namespace GameAiAndControls.Physics
             if (!_isExploding || _explodingTriangles.Count == 0)
                 return explodingObject;
 
-            float frameTime = 1f / 60f; // Fixed timestep
+            float simulatedElapsedTime = _explodingTriangles[0].ElapsedTime;
+            float realElapsedTime = (float)Math.Max(0d, (DateTime.Now - deltaTime).TotalSeconds);
+            float frameTime = realElapsedTime - simulatedElapsedTime;
+
+            if (frameTime < 0f)
+            {
+                frameTime = 0f;
+            }
+
+            frameTime = MathF.Min(frameTime, 0.1f);
+            bool allTrianglesFinished = true;
 
             foreach (var exploding in _explodingTriangles)
             { 
@@ -278,6 +288,8 @@ namespace GameAiAndControls.Physics
                 {
                     Logger.Log($"[EXPLOSION] TriangleIndex={exploding.TriangleIndex} " +
                                $"Elapsed={exploding.ElapsedTime:F2}, " +
+                               $"RealElapsed={realElapsedTime:F2}, " +
+                               $"FrameTime={frameTime:F4}, " +
                                $"Duration={exploding.Duration:F2}, " +
                                $"Progress={progress:F2}, " +
                                $"Color={exploding.Triangle.Color}");
@@ -286,13 +298,10 @@ namespace GameAiAndControls.Physics
                 // Skip movement if done, set Explosion to finished, reset Scene
                 if (exploding.ElapsedTime >= exploding.Duration)
                 {
-                    if (explodingObject.ImpactStatus != null) explodingObject.ImpactStatus.HasExploded = true;
-                    else
-                    {
-                        explodingObject.ImpactStatus = new ImpactStatus { HasExploded = true};
-                    }
                     continue;
                 }
+
+                allTrianglesFinished = false;
 
                 // Move and rotate
                 exploding.ElapsedTime += frameTime;
@@ -309,6 +318,20 @@ namespace GameAiAndControls.Physics
 
                 // Apply updated triangle
                 explodingObject.ObjectParts[exploding.PartIndex].Triangles[exploding.TriangleIndex] = exploding.Triangle;
+            }
+
+            if (allTrianglesFinished)
+            {
+                _isExploding = false;
+
+                if (explodingObject.ImpactStatus != null)
+                {
+                    explodingObject.ImpactStatus.HasExploded = true;
+                }
+                else
+                {
+                    explodingObject.ImpactStatus = new ImpactStatus { HasExploded = true };
+                }
             }
 
             return explodingObject;

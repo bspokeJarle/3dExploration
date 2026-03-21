@@ -1,4 +1,5 @@
-﻿using Domain;
+﻿using CommonUtilities.CommonSetup;
+using Domain;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -114,11 +115,13 @@ namespace _3dTesting.Helpers
             var minB = new Vector3(boxB.Min(p => p.x), boxB.Min(p => p.y), boxB.Min(p => p.z));
             var maxB = new Vector3(boxB.Max(p => p.x), boxB.Max(p => p.y), boxB.Max(p => p.z));
 
-            const float margin = 5f;
+            float marginX = -GameSetup.CollisionMarginX;
+            float marginY = GameSetup.CollisionMarginY;
+            float marginZ = GameSetup.CollisionMarginZ;
 
-            bool overlapX = (maxA.x + margin) >= (minB.x - margin) && (minA.x - margin) <= (maxB.x + margin);
-            bool overlapY = (maxA.y + margin) >= (minB.y - margin) && (minA.y - margin) <= (maxB.y + margin);
-            bool overlapZ = (maxA.z + margin) >= (minB.z - margin) && (minA.z - margin) <= (maxB.z + margin);
+            bool overlapX = (maxA.x + marginX) >= (minB.x - marginX) && (minA.x - marginX) <= (maxB.x + marginX);
+            bool overlapY = (maxA.y + marginY) >= (minB.y - marginY) && (minA.y - marginY) <= (maxB.y + marginY);
+            bool overlapZ = (maxA.z + marginZ) >= (minB.z - marginZ) && (minA.z - marginZ) <= (maxB.z + marginZ);
 
             if (_localLoggingEnabled && nameA != null && nameB != null)
             {

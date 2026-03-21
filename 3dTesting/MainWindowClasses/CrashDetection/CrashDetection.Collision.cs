@@ -1,4 +1,5 @@
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -119,7 +120,7 @@ namespace _3dTesting.Helpers
 
                     var safeBoxB = GetWorldBoxPointsCached(b, bi, boxB);
 
-                    if (ShouldLogAny && CheckLogFilter(a, b) && LogCollisionDetails)
+                    if (ShouldLogAny && !LogOnlyCollisions && CheckLogFilter(a, b) && LogCollisionDetails)
                     {
                         Logger.Log($"PTS {a.ObjectName}[{ai}] vs {b.ObjectName}[{bi}] A:{string.Join(";", safeBoxA.Select(p => $"({p.x:0.#},{p.y:0.#},{p.z:0.#})"))} | B:{string.Join(";", safeBoxB.Select(p => $"({p.x:0.#},{p.y:0.#},{p.z:0.#})"))}");
                     }
@@ -128,19 +129,33 @@ namespace _3dTesting.Helpers
 
                     if (_3dObjectHelpers.CheckCollisionBoxVsBox(safeBoxA, safeBoxB, a.ObjectName, b.ObjectName))
                     {
+                        var centerA = GetCenterOfBox(safeBoxA);
+                        var centerB = GetCenterOfBox(safeBoxB);
+                        var centerDistance = (float)_3dObjectHelpers.GetDistance(centerA, centerB);
+                        bool isKamikazeShipPair =
+                            (a.ObjectName == "KamikazeDrone" && b.ObjectName == "Ship") ||
+                            (a.ObjectName == "Ship" && b.ObjectName == "KamikazeDrone");
+
+                        if (isKamikazeShipPair && centerDistance > GameSetup.MaxKamikazeShipCenterCollisionDistance)
+                        {
+                            if (LogSkippedCollisions)
+                            {
+                                LogCollisionDetail(a, b,
+                                    $"[COLLISION SKIPPED] {a.ObjectName} <-> {b.ObjectName} | CenterDistance:{centerDistance:0.##} | Max:{GameSetup.MaxKamikazeShipCenterCollisionDistance:0.##}");
+                            }
+                            continue;
+                        }
+
                         a.ImpactStatus.HasCrashed = true;
                         b.ImpactStatus.HasCrashed = true;
                         a.ImpactStatus.ObjectName = b.ObjectName;
                         b.ImpactStatus.ObjectName = a.ObjectName;
 
-                        var centerA = GetCenterOfBox(safeBoxA);
-                        var centerB = GetCenterOfBox(safeBoxB);
-
                         a.ImpactStatus.ImpactDirection = EstimateDirection(centerA, centerB);
                         b.ImpactStatus.ImpactDirection = EstimateDirection(centerB, centerA);
 
                         LogCollision(a, b,
-                            $"[FRAME:{numFrame}] [GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName} | ABox:{ai} BBox:{bi}");
+                            $"[FRAME:{numFrame}] [GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName} | ABox:{ai} BBox:{bi} | CenterDistance:{centerDistance:0.##}");
 
                         if (LogCollisionDetails)
                         {
@@ -154,6 +169,9 @@ namespace _3dTesting.Helpers
                             LogCollisionDetail(a, b,
                                 $"[COLLISION CENTERS] A=({centerA.x:0.##},{centerA.y:0.##},{centerA.z:0.##}) " +
                                 $"B=({centerB.x:0.##},{centerB.y:0.##},{centerB.z:0.##})");
+
+                            LogCollisionDetail(a, b,
+                                $"[COLLISION DISTANCE] CenterToCenter={centerDistance:0.##}");
 
                             LogCollisionDetail(a, b,
                                 $"[COLLISION DIR] {a.ObjectName}->{b.ObjectName}:{a.ImpactStatus.ImpactDirection} | " +

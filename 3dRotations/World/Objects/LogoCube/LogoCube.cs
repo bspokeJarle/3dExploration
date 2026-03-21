@@ -103,6 +103,8 @@ namespace _3dRotations.World.Objects.LogoCube
 
             obj.ObjectOffsets = new Vector3 { x = 0, y = 0, z = 0 };
             obj.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
+            obj.ObjectName = "LogoCube";
+            obj.ImpactStatus = new ImpactStatus();
 
             obj.CrashBoxes = new List<List<IVector3>>
             {

@@ -52,6 +52,12 @@ namespace _3dTesting.Helpers
                     bool isBothParticles = isInhabitantParticle && isOtherParticle;
                     bool isShip = flagsA.IsShip || flagsB.IsShip;
                     bool isSurface = flagsA.IsSurface || flagsB.IsSurface;
+                    bool isKamikazeDroneSurfacePair =
+                        (flagsA.Name == "KamikazeDrone" && flagsB.IsSurface) ||
+                        (flagsB.Name == "KamikazeDrone" && flagsA.IsSurface);
+                    bool isSeederSurfacePair =
+                        (flagsA.Name == "Seeder" && flagsB.IsSurface) ||
+                        (flagsB.Name == "Seeder" && flagsA.IsSurface);
 
                     if (string.IsNullOrEmpty(flagsA.Name) || string.IsNullOrEmpty(flagsB.Name)) continue;
                     if (flagsA.Name == flagsB.Name) continue;
@@ -60,11 +66,13 @@ namespace _3dTesting.Helpers
                     if (isParticle && isShip) continue;
                     if (isBothParticles) continue;
                     if (isParticle && _skipParticles) continue;
+                    if (isKamikazeDroneSurfacePair) continue;
+                    if (isSeederSurfacePair) continue;
                     if (isLazer && isParticle || isLazer && isShip || isSeeder && isParticle) continue;
 
                     if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;
 
-                    if (isPaused)
+                    if (isPaused && !LogOnlyCollisions)
                     {
                         if (CheckLogFilter(inhabitant, otherInhabitant))
                         {
