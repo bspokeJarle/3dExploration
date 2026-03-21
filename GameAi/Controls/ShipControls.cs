@@ -3,6 +3,7 @@ using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Input;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
@@ -317,6 +318,11 @@ namespace GameAiAndControls.Controls
             if (isExploding)
             {
                 Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
+
+                if (theObject.ImpactStatus?.HasExploded == true)
+                {
+                    theObject.ObjectParts = new List<I3dObjectPart>();
+                }
 
                 if (theObject.Particles?.Particles.Count > 0)
                     theObject.Particles.MoveParticles();

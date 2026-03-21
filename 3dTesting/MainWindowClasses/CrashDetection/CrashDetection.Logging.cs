@@ -12,11 +12,12 @@ namespace _3dTesting.Helpers
         private static List<string> LogFilter = ["KamikazeDrone", "Ship"];
 
         public static bool LocalEnableLogging = false;
-        public static bool LogOnlyCollisions = false;
+        public static bool LogOnlyCollisions = true;
         public static bool LogCollisionDetails = true;
+        public static bool LogSkippedCollisions = false;
         public static bool SkipParticleLogging = true;
 
-        public static double MaxCrashDistance = 750.0;
+        public static double MaxCrashDistance = 625.0;
 
         private static bool ShouldLogAny => Logger.EnableFileLogging && LocalEnableLogging;
 

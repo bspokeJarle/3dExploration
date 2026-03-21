@@ -3,6 +3,7 @@ using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 
 using System.Collections.Concurrent;
+using System.Threading;
 
 /// <summary>
 /// NAudio-based implementation of IAudioPlayer.
@@ -10,6 +11,8 @@ using System.Collections.Concurrent;
 /// </summary>
 public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
 {
+    private const int MusicFadeOutDurationMs = 180;
+    private const int MusicFadeOutSteps = 6;
     private bool enableLogging = false;
     private readonly IWavePlayer _outputDevice;
     private readonly MixingSampleProvider _mixer;
@@ -142,8 +145,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
         if (_musicInstance != null)
         {
             if (enableLogging) Logger.Log("Audio: Stopping previous music instance before starting new.");
-            _musicInstance.Stop(playEndSegment: false); // ikke tail på musikkbytte
-            _musicInstance = null;
+            FadeOutAndStopMusicInstance(_musicInstance);
         }
 
         // Bestem volum
@@ -180,7 +182,34 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
         if (_musicInstance != null)
         {
             if (enableLogging) Logger.Log("Audio: Stopping music instance.");
-            _musicInstance.Stop(playEndSegment: false);
+            FadeOutAndStopMusicInstance(_musicInstance);
+        }
+    }
+
+    private void FadeOutAndStopMusicInstance(NAudioAudioInstance instance)
+    {
+        if (instance == null)
+        {
+            return;
+        }
+
+        float startVolume = _musicVolume;
+
+        if (MusicFadeOutDurationMs > 0 && MusicFadeOutSteps > 0 && startVolume > 0f)
+        {
+            int sleepPerStepMs = Math.Max(1, MusicFadeOutDurationMs / MusicFadeOutSteps);
+
+            for (int step = MusicFadeOutSteps - 1; step >= 0; step--)
+            {
+                instance.SetVolume(startVolume * step / MusicFadeOutSteps);
+                Thread.Sleep(sleepPerStepMs);
+            }
+        }
+
+        instance.Stop(playEndSegment: false);
+
+        if (_musicInstance == instance)
+        {
             _musicInstance = null;
         }
     }
@@ -241,8 +270,12 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
     internal void InternalStopInstance(NAudioAudioInstance instance)
     {
         _instances.TryRemove(instance.Id, out _);
-        // If you're on a NAudio version with RemoveMixerInput:
-        // _mixer.RemoveMixerInput(instance.Pipeline);
-        // Otherwise, pipeline will just output 0 after EOF – minimal overhead.
+
+        if (_musicInstance == instance)
+        {
+            _musicInstance = null;
+        }
+
+        _mixer.RemoveMixerInput(instance.Pipeline);
     }
 }
