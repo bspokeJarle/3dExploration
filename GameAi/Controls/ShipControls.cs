@@ -5,6 +5,7 @@ using GameAiAndControls.Input;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
@@ -117,6 +118,17 @@ namespace GameAiAndControls.Controls
             if (e.KeyCode == Keys.Up) tilt += RotationStep;
             if (e.KeyCode == Keys.Down) tilt -= RotationStep;
 
+            if (e.KeyCode == Keys.D1 || e.KeyCode == Keys.NumPad1)
+            {
+                GameState.GamePlayState.SelectedWeapon = WeaponType.Lazer;
+                GameState.GamePlayState.ActivePowerup = "LAZER";
+            }
+
+            if (e.KeyCode == Keys.D2 || e.KeyCode == Keys.NumPad2)
+            {
+                GameState.GamePlayState.ActivePowerup = "DECOY";
+            }
+
             if (e.KeyCode == Keys.Space)
             {
                 if (ThrustOn == false)
@@ -201,6 +213,12 @@ namespace GameAiAndControls.Controls
 
         private void FireWeapon()
         {
+            if (string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase))
+            {
+                DeployDecoy();
+                return;
+            }
+
             // Fire weapon from ship
             var rot = new Vector3
             {
@@ -216,6 +234,76 @@ namespace GameAiAndControls.Controls
                 WeaponType.Lazer,
                 ParentObject,
                 tilt);
+        }
+
+        private void DeployDecoy()
+        {
+            if (ParentObject?.ParentSurface == null)
+            {
+                return;
+            }
+
+            int activeDecoyCount = GameState.SurfaceState.AiObjects.Count(obj =>
+                obj.ObjectName == "DroneDecoy" &&
+                obj.ImpactStatus?.HasExploded != true &&
+                obj.ObjectParts?.Count > 0);
+
+            if (activeDecoyCount >= GameSetup.MaxActiveDecoys)
+            {
+                return;
+            }
+
+            var decoy = CreateDecoyBeaconObject(ParentObject.ParentSurface);
+            if (decoy == null)
+            {
+                return;
+            }
+
+            var mapPosition = GameState.SurfaceState.GlobalMapPosition;
+            var shipOffsets = ParentObject.ObjectOffsets ?? new Vector3();
+
+            decoy.WorldPosition = new Vector3
+            {
+                x = mapPosition.x + shipOffsets.x,
+                y = mapPosition.y,
+                z = mapPosition.z - shipOffsets.z
+            };
+            decoy.ObjectOffsets = new Vector3
+            {
+                x = 0f,
+                y = shipOffsets.y - (mapPosition.y * CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY),
+                z = 0f
+            };
+            decoy.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
+            decoy.ObjectName = "DroneDecoy";
+            decoy.ImpactStatus = new ImpactStatus();
+            decoy.CrashBoxDebugMode = false;
+            decoy.WeaponSystems = null;
+
+            GameState.SurfaceState.AiObjects.Add(decoy);
+            GameState.PendingWorldObjects.Add(decoy);
+        }
+
+        private static _3dObject? CreateDecoyBeaconObject(ISurface parentSurface)
+        {
+            const string decoyBeaconTypeName = "_3dRotations.World.Objects.DecoyBeacon";
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var decoyType = assembly.GetType(decoyBeaconTypeName, throwOnError: false, ignoreCase: false);
+                if (decoyType == null)
+                {
+                    continue;
+                }
+
+                var createMethod = decoyType.GetMethod("CreateDecoyBeacon", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (createMethod?.Invoke(null, new object[] { parentSurface }) is _3dObject decoy)
+                {
+                    return decoy;
+                }
+            }
+
+            return null;
         }
 
         private void IncreaseThrustAndRelease()

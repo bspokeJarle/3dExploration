@@ -1,14 +1,15 @@
-﻿using _3dRotations.World.Objects;
-using static Domain._3dSpecificsImplementations;
-using GameAiAndControls.Controls;
-using _3dRotations.Helpers;
-using Domain;
-using System.Collections.Generic;
+﻿using _3dRotations.Helpers;
+using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
+using Domain;
+using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.SeederControls;
 using System;
+using System.Collections.Generic;
+using System.Runtime.Intrinsics.Arm;
+using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.Scene.Scene1
 {
@@ -61,7 +62,7 @@ namespace _3dRotations.Scene.Scene1
                 var seeder = Seeder.CreateSeeder(Surface);
                 //Initialize the seeder rotation
                 seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-15000, 15000), y = 0, z = 92000 + rmd.Next(-15000, 15000)};
+                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-30000, 30000), y = 0, z = 92000 + rmd.Next(-30000, 30000)};
                 seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seeder.ObjectName = "Seeder";
                 seeder.Movement = new SeederControls();

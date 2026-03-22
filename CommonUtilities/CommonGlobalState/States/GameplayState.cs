@@ -70,6 +70,7 @@ namespace Domain
         // Weapons (simple, but practical)
         // -----------------------------
         public WeaponType SelectedWeapon { get; set; } = WeaponType.Lazer;
+        public string ActivePowerup { get; set; } = "LAZER";
 
         public int LaserAmmo { get; set; } = -1;   // -1 means infinite
         public int RocketAmmo { get; set; } = 10;
@@ -184,6 +185,7 @@ namespace Domain
             InfectionCriticalMass = 1.0f;
 
             SelectedWeapon = WeaponType.Lazer;
+            ActivePowerup = "LAZER";
             LaserAmmo = -1;
             RocketAmmo = 10;
 

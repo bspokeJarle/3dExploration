@@ -10,3 +10,6 @@
 - Check for and use existing helpers or extension methods before introducing new helper methods or extensions.
 - For movement in this project, some objects must store progress locally in their control class across frames; for kamikaze behavior, follow the same persistent-state pattern used by the seeder rather than assuming object world state alone persists.
 - For collision logging, include only actual collisions by default; log skipped collisions only when explicitly enabled.
+
+## Animation Guidelines
+- For the decoy, animate the wheel part by rotating it around its own center, using the tower part-rotation pattern as a reference.

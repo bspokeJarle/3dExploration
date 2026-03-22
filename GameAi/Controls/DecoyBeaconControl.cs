@@ -14,10 +14,14 @@ using static Domain._3dSpecificsImplementations;
 
 namespace GameAiAndControls.Controls
 {
-    public class KamikazeDroneControls : IObjectMovement
+    public class DecoyBeaconControls : IObjectMovement
     {
         private static readonly CommonUtilities._3DHelpers._3dRotationCommon Rotate3d = new();
+        private readonly CommonUtilities._3DHelpers._3dRotationCommon _rotate = new();
         private const bool enableLogging = false;
+        private const string WheelPartName = "DecoyFrontPulsePanel";
+        private const float WheelRotationDegreesPerSecond = 540f;
+        private const float DeployedDecoyLifetimeSeconds = 5f;
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
@@ -35,7 +39,6 @@ namespace GameAiAndControls.Controls
         private const float RotationDegreesPerSecond = 180f;
         private const float DirectionUpdateIntervalSeconds = 1f;
         private const int LogEveryNthFrame = 10;
-        private const int OvershootFrameCount = 5;
 
         private DateTime LastDirectionUpdateDateTime = DateTime.MinValue;
         private DateTime LastMovementDateTime = DateTime.MinValue;
@@ -49,12 +52,20 @@ namespace GameAiAndControls.Controls
         private bool _audioConfigured = false;
         private bool _isExploding = false;
         private DateTime _explosionDeltaTime = DateTime.Now;
+        private DateTime _pulseStartTime = DateTime.Now;
         private Vector3? _explosionWorldPosition;
         private Vector3? _explosionObjectOffsets;
         private IAudioPlayer? _audio;
         private SoundDefinition? _explosionSound;
-        private int _overshootFramesRemaining = 0;
-        private Vector3 _overshootDirection = new Vector3();
+        private bool _pulseInitialized = false;
+        private float _pulseBaseZ = 0f;
+        private float _wheelRotationDegrees = 0f;
+        private bool _isDeployedDecoy = false;
+        private DateTime _deployedAt = DateTime.MinValue;
+        private Vector3 _deployedWorldPosition = new Vector3();
+
+        private const float PulseAmplitudeZ = 150f;
+        private const float PulseCyclesPerSecond = 0.25f;
 
         private static void SafeLog(string message)
         {
@@ -105,105 +116,6 @@ namespace GameAiAndControls.Controls
             }
 
             return null;
-        }
-
-        private static _3dObject? GetClosestActiveDecoy(I3dObject currentDrone)
-        {
-            var aiObjects = GameState.SurfaceState?.AiObjects;
-            if (aiObjects == null || aiObjects.Count == 0)
-            {
-                return null;
-            }
-
-            var droneCenter = GetDroneCrashCenterWorldPosition(currentDrone);
-            _3dObject? closestDecoy = null;
-            double closestDistance = double.MaxValue;
-
-            for (int i = 0; i < aiObjects.Count; i++)
-            {
-                var candidate = aiObjects[i];
-                if (candidate == null || candidate.ObjectId == currentDrone.ObjectId)
-                {
-                    continue;
-                }
-
-                if (candidate.ObjectName != "DroneDecoy" || candidate.ObjectParts == null || candidate.ObjectParts.Count == 0)
-                {
-                    continue;
-                }
-
-                if (candidate.ImpactStatus?.HasExploded == true)
-                {
-                    continue;
-                }
-
-                var candidateCenter = GetDroneCrashCenterWorldPosition(candidate);
-                double distance = CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance(droneCenter, candidateCenter);
-                if (distance < closestDistance)
-                {
-                    closestDistance = distance;
-                    closestDecoy = candidate;
-                }
-            }
-
-            return closestDecoy;
-        }
-
-        private static Vector3? GetClosestDecoyCrashCenterWorldPosition(I3dObject currentDrone)
-        {
-            var closestDecoy = GetClosestActiveDecoy(currentDrone);
-            return closestDecoy == null ? null : GetDroneCrashCenterWorldPosition(closestDecoy);
-        }
-
-        private static float GetApproximateCrashRadius(I3dObject obj)
-        {
-            if (obj?.CrashBoxes == null || obj.CrashBoxes.Count == 0)
-            {
-                return 0f;
-            }
-
-            var localCenter = GetRotatedLocalCrashCenter(obj);
-            float maxDistance = 0f;
-
-            foreach (var box in obj.CrashBoxes)
-            {
-                foreach (var point in box)
-                {
-                    var rotatedPoint = RotateLocalPoint((Vector3)point, obj.Rotation);
-                    float dx = rotatedPoint.x - localCenter.x;
-                    float dy = rotatedPoint.y - localCenter.y;
-                    float dz = rotatedPoint.z - localCenter.z;
-                    float distance = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
-                    if (distance > maxDistance)
-                    {
-                        maxDistance = distance;
-                    }
-                }
-            }
-
-            return maxDistance;
-        }
-
-        private static void TriggerDecoyCollision(I3dObject droneObject, _3dObject decoyObject)
-        {
-            if (droneObject?.ImpactStatus != null)
-            {
-                droneObject.ImpactStatus.HasCrashed = true;
-                droneObject.ImpactStatus.ObjectName = decoyObject.ObjectName;
-            }
-
-            var authoritativeDrone = GetAuthoritativeDrone(droneObject);
-            if (authoritativeDrone?.ImpactStatus != null)
-            {
-                authoritativeDrone.ImpactStatus.HasCrashed = true;
-                authoritativeDrone.ImpactStatus.ObjectName = decoyObject.ObjectName;
-            }
-
-            if (decoyObject?.ImpactStatus != null)
-            {
-                decoyObject.ImpactStatus.HasCrashed = true;
-                decoyObject.ImpactStatus.ObjectName = droneObject.ObjectName;
-            }
         }
 
         private static void SyncAuthoritativeDroneState(I3dObject source)
@@ -263,6 +175,89 @@ namespace GameAiAndControls.Controls
             }
 
             return current + MathF.Sign(delta) * maxDelta;
+        }
+
+        private static Vector3 GetPartCenter(List<ITriangleMeshWithColor> triangles)
+        {
+            if (triangles == null || triangles.Count == 0)
+            {
+                return new Vector3();
+            }
+
+            float minX = float.MaxValue, minY = float.MaxValue, minZ = float.MaxValue;
+            float maxX = float.MinValue, maxY = float.MinValue, maxZ = float.MinValue;
+
+            foreach (var triangle in triangles)
+            {
+                var vertices = new[] { (Vector3)triangle.vert1, (Vector3)triangle.vert2, (Vector3)triangle.vert3 };
+                foreach (var vertex in vertices)
+                {
+                    if (vertex.x < minX) minX = vertex.x;
+                    if (vertex.y < minY) minY = vertex.y;
+                    if (vertex.z < minZ) minZ = vertex.z;
+                    if (vertex.x > maxX) maxX = vertex.x;
+                    if (vertex.y > maxY) maxY = vertex.y;
+                    if (vertex.z > maxZ) maxZ = vertex.z;
+                }
+            }
+
+            return new Vector3
+            {
+                x = (minX + maxX) * 0.5f,
+                y = (minY + maxY) * 0.5f,
+                z = (minZ + maxZ) * 0.5f
+            };
+        }
+
+        private static List<ITriangleMeshWithColor> TranslateMesh(List<ITriangleMeshWithColor> triangles, Vector3 offset)
+        {
+            var translated = new List<ITriangleMeshWithColor>(triangles.Count);
+
+            foreach (var triangle in triangles)
+            {
+                translated.Add(new TriangleMeshWithColor
+                {
+                    Color = triangle.Color,
+                    noHidden = triangle.noHidden,
+                    landBasedPosition = triangle.landBasedPosition,
+                    angle = triangle.angle,
+                    vert1 = new Vector3 { x = triangle.vert1.x + offset.x, y = triangle.vert1.y + offset.y, z = triangle.vert1.z + offset.z },
+                    vert2 = new Vector3 { x = triangle.vert2.x + offset.x, y = triangle.vert2.y + offset.y, z = triangle.vert2.z + offset.z },
+                    vert3 = new Vector3 { x = triangle.vert3.x + offset.x, y = triangle.vert3.y + offset.y, z = triangle.vert3.z + offset.z },
+                    normal1 = new Vector3 { x = triangle.normal1.x, y = triangle.normal1.y, z = triangle.normal1.z },
+                    normal2 = new Vector3 { x = triangle.normal2.x, y = triangle.normal2.y, z = triangle.normal2.z },
+                    normal3 = new Vector3 { x = triangle.normal3.x, y = triangle.normal3.y, z = triangle.normal3.z }
+                });
+            }
+
+            return translated;
+        }
+
+        private void RotateWheelAnimation(double deltaSeconds)
+        {
+            if (ParentObject == null)
+            {
+                return;
+            }
+
+            var wheel = ParentObject.ObjectParts.Find(part => part.PartName == WheelPartName);
+            if (wheel?.Triangles == null || wheel.Triangles.Count == 0)
+            {
+                return;
+            }
+
+            _wheelRotationDegrees = NormalizeAngle(_wheelRotationDegrees + (WheelRotationDegreesPerSecond * (float)deltaSeconds));
+
+            var wheelCenter = GetPartCenter(wheel.Triangles);
+            var translatedToOrigin = TranslateMesh(wheel.Triangles, new Vector3
+            {
+                x = -wheelCenter.x,
+                y = -wheelCenter.y,
+                z = -wheelCenter.z
+            });
+
+            var rotated = _rotate.RotateXMesh(translatedToOrigin, _wheelRotationDegrees);
+            wheel.Triangles = TranslateMesh(rotated, wheelCenter);
         }
 
         private static Vector3 GetLocalCrashCenter(I3dObject obj)
@@ -360,14 +355,6 @@ namespace GameAiAndControls.Controls
             TargetYrotation = 0f;
         }
 
-        private void AlignRotationToDirection(Vector3 movementDirection)
-        {
-            UpdateRotationTowardsTarget(movementDirection);
-            Xrotation = TargetXrotation;
-            Yrotation = TargetYrotation;
-            Zrotation = TargetZrotation;
-        }
-
         private void UpdateCurrentRotation(double deltaSeconds)
         {
             float maxDelta = RotationDegreesPerSecond * (float)deltaSeconds;
@@ -415,6 +402,17 @@ namespace GameAiAndControls.Controls
                 return;
             }
 
+            StartExplosion(theObject);
+            theObject.ImpactStatus.HasCrashed = false;
+        }
+
+        private void StartExplosion(I3dObject theObject)
+        {
+            if (_isExploding)
+            {
+                return;
+            }
+
             if (_audio != null && _explosionSound != null)
             {
                 _audio.Play(_explosionSound, AudioPlayMode.OneShot);
@@ -427,37 +425,49 @@ namespace GameAiAndControls.Controls
 
             Physics.ExplodeObject(theObject, 200f);
             theObject.CrashBoxes = new List<List<IVector3>>();
-            theObject.ImpactStatus.HasCrashed = false;
         }
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             ConfigureAudio(audioPlayer, soundRegistry);
 
-            if (_trackedObjectId != theObject.ObjectId)
+            ParentObject = theObject;
+
+            if (!_pulseInitialized)
             {
-                _trackedObjectId = theObject.ObjectId;
-                _storedWorldPosition = ToVector3(theObject.WorldPosition);
-                _storedWorldPositionInitialized = theObject.WorldPosition != null;
-                _overshootFramesRemaining = 0;
-                _overshootDirection = new Vector3();
-            }
-            else if (_storedWorldPositionInitialized)
-            {
-                theObject.WorldPosition = new Vector3
+                _pulseInitialized = true;
+                _pulseBaseZ = theObject.ObjectOffsets?.z ?? 0f;
+                _pulseStartTime = DateTime.Now;
+                _isDeployedDecoy = theObject.WorldPosition is Vector3 deployedWorldPosition &&
+                    (deployedWorldPosition.x != 0f || deployedWorldPosition.y != 0f || deployedWorldPosition.z != 0f);
+                if (_isDeployedDecoy)
                 {
-                    x = _storedWorldPosition.x,
-                    y = _storedWorldPosition.y,
-                    z = _storedWorldPosition.z
-                };
+                    _deployedAt = DateTime.Now;
+                    _deployedWorldPosition = ToVector3(theObject.WorldPosition);
+                }
             }
 
-            ParentObject = theObject;
-            SyncMovement(theObject);
+            if (_isDeployedDecoy)
+            {
+                theObject.WorldPosition = _deployedWorldPosition;
+                SyncMovement(theObject);
+            }
+            else
+            {
+                theObject.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                SyncMovement(theObject);
+            }
 
             if (theObject.ImpactStatus?.HasCrashed == true && !_isExploding)
             {
                 HandleCrash(theObject);
+            }
+
+            var now = DateTime.Now;
+
+            if (_isDeployedDecoy && !_isExploding && (now - _deployedAt).TotalSeconds >= DeployedDecoyLifetimeSeconds)
+            {
+                StartExplosion(theObject);
             }
 
             if (_isExploding)
@@ -478,14 +488,10 @@ namespace GameAiAndControls.Controls
                     theObject.ObjectParts = new List<I3dObjectPart>();
                 }
 
-                _storedWorldPosition = ToVector3(theObject.WorldPosition);
-                _storedWorldPositionInitialized = theObject.WorldPosition != null;
                 SyncAuthoritativeDroneState(theObject);
                 LastMovementDateTime = DateTime.Now;
                 return theObject;
             }
-
-            var now = DateTime.Now;
 
             if (LastMovementDateTime == DateTime.MinValue)
             {
@@ -493,172 +499,19 @@ namespace GameAiAndControls.Controls
             }
 
             var deltaSeconds = (now - LastMovementDateTime).TotalSeconds;
-            int logFrameNumber = ++_logFrameCounter;
-            bool shouldLogThisFrame = (logFrameNumber % LogEveryNthFrame) == 0;
+            float pulsePhase = (float)((now - _pulseStartTime).TotalSeconds * PulseCyclesPerSecond * 2d * Math.PI);
+            float pulseOffsetZ = MathF.Sin(pulsePhase) * PulseAmplitudeZ;
 
-            double distanceToTarget = -1;
-            IVector3? currentDronePosition = null;
-            IVector3? currentTargetPosition = null;
-            Vector3 rotatedLocalCrashCenter = new Vector3();
-            Vector3 currentWorldPosition = ToVector3(theObject.WorldPosition);
-            Vector3 currentObjectOffsets = ToVector3(theObject.ObjectOffsets);
-            Vector3 directionToTarget = new Vector3();
-            bool shouldRecalculateDirection = false;
-            bool isOvershooting = _overshootFramesRemaining > 0;
-            float speedPerSecond = 0f;
-            float moveDistanceApplied = 0f;
-            float distanceBeforeMove = -1f;
-            float distanceAfterMove = -1f;
-
-            var closestDecoy = GetClosestActiveDecoy(ParentObject);
-            Vector3? targetWorldPosition = closestDecoy != null
-                ? GetDroneCrashCenterWorldPosition(closestDecoy)
-                : GetShipCrashCenterWorldPosition();
-
-            if (ParentObject.WorldPosition is IVector3 && targetWorldPosition is Vector3 resolvedTargetWorldPosition)
+            theObject.ObjectOffsets = new Vector3
             {
-                rotatedLocalCrashCenter = GetRotatedLocalCrashCenter(ParentObject);
-                var parentWorldPosition = GetDroneCrashCenterWorldPosition(ParentObject);
-                currentDronePosition = parentWorldPosition;
-                currentTargetPosition = resolvedTargetWorldPosition;
+                x = theObject.ObjectOffsets?.x ?? 0f,
+                y = theObject.ObjectOffsets?.y ?? 0f,
+                z = _pulseBaseZ + pulseOffsetZ
+            };
 
-                directionToTarget = new Vector3
-                {
-                    x = resolvedTargetWorldPosition.x - parentWorldPosition.x,
-                    y = resolvedTargetWorldPosition.y - parentWorldPosition.y,
-                    z = resolvedTargetWorldPosition.z - parentWorldPosition.z
-                };
+            RotateWheelAnimation(deltaSeconds);
 
-                if (isOvershooting)
-                {
-                    directionToTarget = _overshootDirection;
-                }
-
-                UpdateRotationTowardsTarget(directionToTarget);
-
-                var distance = CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance(parentWorldPosition, resolvedTargetWorldPosition);
-
-                shouldRecalculateDirection = !isOvershooting &&
-                    (LastDirectionUpdateDateTime == DateTime.MinValue ||
-                    (now - LastDirectionUpdateDateTime).TotalSeconds >= DirectionUpdateIntervalSeconds ||
-                    Dot((Vector3)DirectionVelocity, directionToTarget) <= 0f);
-
-                if (shouldRecalculateDirection && distance > 0)
-                {
-                    var speed = CommonUtilities.CommonSetup.ScreenSetup.screenSizeX / (float)DroneSpeedScreenPrSecond;
-
-                    DirectionVelocity = new Vector3
-                    {
-                        x = directionToTarget.x / (float)distance * speed,
-                        y = directionToTarget.y / (float)distance * speed,
-                        z = directionToTarget.z / (float)distance * speed
-                    };
-                    LastDirectionUpdateDateTime = now;
-                }
-                else if (distance <= 0)
-                {
-                    DirectionVelocity = new Vector3 { x = 0, y = 0, z = 0 };
-                }
-
-                distanceToTarget = CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance(parentWorldPosition, (Vector3)targetWorldPosition);
-                distanceBeforeMove = (float)distanceToTarget;
-            }
-
-            if (theObject.WorldPosition is IVector3 objectWorldPosition)
-            {
-                currentDronePosition = GetDroneCrashCenterWorldPosition(theObject);
-
-                if (currentDronePosition is Vector3 dronePosition && currentTargetPosition is Vector3 targetPosition)
-                {
-                    var liveDirectionToTarget = new Vector3
-                    {
-                        x = targetPosition.x - dronePosition.x,
-                        y = targetPosition.y - dronePosition.y,
-                        z = targetPosition.z - dronePosition.z
-                    };
-
-                    float currentDistance = (float)CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance(dronePosition, targetPosition);
-                    speedPerSecond = Length((Vector3)DirectionVelocity);
-                    distanceBeforeMove = currentDistance;
-
-                    if (speedPerSecond > 0f)
-                    {
-                        Vector3 moveDirection;
-                        float moveDistance = speedPerSecond * (float)deltaSeconds;
-
-                        if (_overshootFramesRemaining > 0)
-                        {
-                            moveDirection = Normalize(_overshootDirection);
-                            _overshootFramesRemaining--;
-                        }
-                        else
-                        {
-                            moveDirection = Normalize(liveDirectionToTarget);
-
-                            if (currentDistance > 0f && moveDistance >= currentDistance)
-                            {
-                                _overshootDirection = moveDirection;
-                                _overshootFramesRemaining = OvershootFrameCount - 1;
-                            }
-                            else if (currentDistance <= 0f)
-                            {
-                                moveDistance = 0f;
-                            }
-                            else
-                            {
-                                moveDistance = MathF.Min(moveDistance, currentDistance);
-                            }
-                        }
-
-                        moveDistanceApplied = moveDistance;
-
-                        if (moveDistance > 0f)
-                        {
-                            AlignRotationToDirection(moveDirection);
-                        }
-
-                        theObject.WorldPosition = new Vector3
-                        {
-                            x = objectWorldPosition.x + (moveDirection.x * moveDistance),
-                            y = objectWorldPosition.y + (moveDirection.y * moveDistance),
-                            z = objectWorldPosition.z + (moveDirection.z * moveDistance)
-                        };
-                    }
-                    else
-                    {
-                        theObject.WorldPosition = new Vector3
-                        {
-                            x = objectWorldPosition.x,
-                            y = objectWorldPosition.y,
-                            z = objectWorldPosition.z
-                        };
-                    }
-                }
-
-                currentDronePosition = GetDroneCrashCenterWorldPosition(theObject);
-                currentWorldPosition = ToVector3(theObject.WorldPosition);
-                currentObjectOffsets = ToVector3(theObject.ObjectOffsets);
-                rotatedLocalCrashCenter = GetRotatedLocalCrashCenter(theObject);
-                if (currentTargetPosition is Vector3 latestTargetPosition)
-                {
-                    distanceToTarget = CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance((Vector3)currentDronePosition, latestTargetPosition);
-                    distanceAfterMove = (float)distanceToTarget;
-                }
-
-                if (closestDecoy != null && currentDronePosition is Vector3 dronePositionAfterMove)
-                {
-                    var decoyCenter = GetDroneCrashCenterWorldPosition(closestDecoy);
-                    float touchDistance = GetApproximateCrashRadius(theObject) + GetApproximateCrashRadius(closestDecoy);
-                    float currentDistanceToDecoy = (float)CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance(dronePositionAfterMove, decoyCenter);
-
-                    if (currentDistanceToDecoy <= touchDistance)
-                    {
-                        TriggerDecoyCollision(theObject, closestDecoy);
-                    }
-                }
-            }
-
-            UpdateCurrentRotation(deltaSeconds);
+            Zrotation = NormalizeAngle(Zrotation + (RotationDegreesPerSecond * 0.25f * (float)deltaSeconds));
 
             if (theObject.Rotation != null)
             {
@@ -668,23 +521,6 @@ namespace GameAiAndControls.Controls
                 rotation.z = Zrotation;
             }
 
-            if (shouldLogThisFrame && currentDronePosition != null && currentTargetPosition != null)
-            {
-                float distanceDelta = distanceBeforeMove >= 0f && distanceAfterMove >= 0f
-                    ? distanceBeforeMove - distanceAfterMove
-                    : 0f;
-
-                SafeLog(
-                    $"frame={logFrameNumber} objectId={theObject.ObjectId} " +
-                    $"world=({FormatVector(currentWorldPosition)}) offsets=({FormatVector(currentObjectOffsets)}) centerOffset=({FormatVector(rotatedLocalCrashCenter)}) " +
-                    $"drone=({FormatVector((Vector3)currentDronePosition)}) target=({FormatVector((Vector3)currentTargetPosition)}) dir=({FormatVector(directionToTarget)}) velocity=({FormatVector((Vector3)DirectionVelocity)}) " +
-                    $"recalc={(shouldRecalculateDirection ? 1 : 0)} dt={deltaSeconds.ToString("0.####", CultureInfo.InvariantCulture)} speed={speedPerSecond.ToString("0.##", CultureInfo.InvariantCulture)} step={moveDistanceApplied.ToString("0.##", CultureInfo.InvariantCulture)} " +
-                    $"distanceBefore={distanceBeforeMove.ToString("0.##", CultureInfo.InvariantCulture)} distanceAfter={distanceAfterMove.ToString("0.##", CultureInfo.InvariantCulture)} distanceDelta={distanceDelta.ToString("0.##", CultureInfo.InvariantCulture)}"
-                );
-            }
-
-            _storedWorldPosition = ToVector3(theObject.WorldPosition);
-            _storedWorldPositionInitialized = theObject.WorldPosition != null;
             SyncAuthoritativeDroneState(theObject);
             LastMovementDateTime = now;
 
@@ -704,10 +540,15 @@ namespace GameAiAndControls.Controls
             _trackedObjectId = -1;
             _storedWorldPositionInitialized = false;
             _storedWorldPosition = new Vector3();
-            _overshootFramesRemaining = 0;
-            _overshootDirection = new Vector3();
             _explosionWorldPosition = null;
             _explosionObjectOffsets = null;
+            _pulseInitialized = false;
+            _pulseBaseZ = 0f;
+            _pulseStartTime = DateTime.Now;
+            _wheelRotationDegrees = 0f;
+            _isDeployedDecoy = false;
+            _deployedAt = DateTime.MinValue;
+            _deployedWorldPosition = new Vector3();
             StartCoordinates = null;
             GuideCoordinates = null;
             DirectionVelocity = new Vector3 { x = 0, y = 0, z = 0 };

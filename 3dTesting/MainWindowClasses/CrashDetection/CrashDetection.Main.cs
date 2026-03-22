@@ -58,6 +58,12 @@ namespace _3dTesting.Helpers
                     bool isSeederSurfacePair =
                         (flagsA.Name == "Seeder" && flagsB.IsSurface) ||
                         (flagsB.Name == "Seeder" && flagsA.IsSurface);
+                    bool isDecoySurfacePair =
+                        (flagsA.Name == "DroneDecoy" && flagsB.IsSurface) ||
+                        (flagsB.Name == "DroneDecoy" && flagsA.IsSurface);
+                    bool isDecoyShipPair =
+                        (flagsA.Name == "DroneDecoy" && flagsB.IsShip) ||
+                        (flagsB.Name == "DroneDecoy" && flagsA.IsShip);
 
                     if (string.IsNullOrEmpty(flagsA.Name) || string.IsNullOrEmpty(flagsB.Name)) continue;
                     if (flagsA.Name == flagsB.Name) continue;
@@ -68,6 +74,8 @@ namespace _3dTesting.Helpers
                     if (isParticle && _skipParticles) continue;
                     if (isKamikazeDroneSurfacePair) continue;
                     if (isSeederSurfacePair) continue;
+                    if (isDecoySurfacePair) continue;
+                    if (isDecoyShipPair) continue;
                     if (isLazer && isParticle || isLazer && isShip || isSeeder && isParticle) continue;
 
                     if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;

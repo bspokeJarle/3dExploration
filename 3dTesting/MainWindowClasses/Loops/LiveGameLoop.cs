@@ -56,6 +56,12 @@ namespace _3dTesting.MainWindowClasses.Loops
             List<_3dObject> activeWorld;
             lock (_lock)
             {
+                if (GameState.PendingWorldObjects.Count > 0)
+                {
+                    world.WorldInhabitants.AddRange(GameState.PendingWorldObjects);
+                    GameState.PendingWorldObjects.Clear();
+                }
+
                 var inhabitants = world.WorldInhabitants;
                 activeWorld = new List<_3dObject>(inhabitants.Count);
 

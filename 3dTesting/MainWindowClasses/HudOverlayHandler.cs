@@ -45,6 +45,9 @@ namespace _3dTesting.MainWindowClasses
         // HUD ELEMENTS (SLOTS)
         // ----------------------------
         private readonly Image _minimap;
+        private readonly Image _activePowerupIcon;
+        private readonly Image _powerupLazerIcon;
+        private readonly Image _powerupDecoyIcon;
 
         // Center FPS line (numbers only; the "FPS | TRI | P" labels are in the PNG)
         private readonly TextBlock _fpsCenter;
@@ -76,6 +79,14 @@ namespace _3dTesting.MainWindowClasses
         // FPS line — adjusted from your earlier values to sit inside the top middle label slot
         private const double FpsX = 870;
         private const double FpsY = 28;
+        private const double ActivePowerupIconX = 1310;
+        private const double ActivePowerupIconY = 18;
+        private const double ActivePowerupIconSize = 48;
+
+        private const double PowerupLazerX = 850;
+        private const double PowerupDecoyX = 950;
+        private const double PowerupRowY = 75;
+        private const double PowerupIconSize = 48;
 
         // Right panel bar fills (positions adjusted down to align with “track” lines in PNG)
         private const double RightPanelX = 1665;
@@ -144,6 +155,13 @@ namespace _3dTesting.MainWindowClasses
             Canvas.SetLeft(_fpsCenter, FpsX);
             Canvas.SetTop(_fpsCenter, FpsY);
 
+            _activePowerupIcon = CreatePowerupIcon(ActivePowerupIconX, ActivePowerupIconY, ActivePowerupIconSize);
+            _powerupLazerIcon = CreatePowerupIcon(PowerupLazerX, PowerupRowY, PowerupIconSize);
+            _powerupDecoyIcon = CreatePowerupIcon(PowerupDecoyX, PowerupRowY, PowerupIconSize);
+
+            _powerupLazerIcon.Source = TryLoadBitmapImage("GameGraphics\\laser_icon_48.png");
+            _powerupDecoyIcon.Source = TryLoadBitmapImage("GameGraphics\\decoy_icon_48.png");
+
             // ----- Bars only -----
             _altBarFill = CreateBarFill(RightBarX, RightAltY);
             _thrBarFill = CreateBarFill(RightBarX, RightThrY);
@@ -155,6 +173,9 @@ namespace _3dTesting.MainWindowClasses
 
             _canvas.Children.Add(_minimap);
             _canvas.Children.Add(_fpsCenter);
+            _canvas.Children.Add(_activePowerupIcon);
+            _canvas.Children.Add(_powerupLazerIcon);
+            _canvas.Children.Add(_powerupDecoyIcon);
 
             _canvas.Children.Add(_altBarFill);
             _canvas.Children.Add(_thrBarFill);
@@ -223,7 +244,17 @@ namespace _3dTesting.MainWindowClasses
             _canvas.Height = DesignHudHeight;
 
             // Center line – numbers only (labels are in PNG)
+            var activePowerup = string.IsNullOrWhiteSpace(gameplay.ActivePowerup) ? "LAZER" : gameplay.ActivePowerup.ToUpperInvariant();
+
             _fpsCenter.Text = $"{fps}                       {triangles}";
+
+            _activePowerupIcon.Source = activePowerup == "DECOY"
+                ? _powerupDecoyIcon.Source
+                : _powerupLazerIcon.Source;
+
+            _powerupLazerIcon.Opacity = activePowerup == "LAZER" ? 1.0 : 0.45;
+            _powerupDecoyIcon.Opacity = activePowerup == "DECOY" ? 1.0 : 0.45;
+            _activePowerupIcon.Opacity = 1.0;
 
             SetBarFill(_altBarFill, gameplay.Alt);
 
@@ -234,6 +265,41 @@ namespace _3dTesting.MainWindowClasses
         }
 
         public void ReloadFrame() => TryLoadFrameImage();
+
+        private static Image CreatePowerupIcon(double x, double y, double size)
+        {
+            var image = new Image
+            {
+                Width = size,
+                Height = size,
+                Stretch = Stretch.Uniform,
+                Opacity = 1.0
+            };
+
+            Canvas.SetLeft(image, x);
+            Canvas.SetTop(image, y);
+
+            return image;
+        }
+
+        private static BitmapImage? TryLoadBitmapImage(string assetPath)
+        {
+            try
+            {
+                var uri = new Uri(assetPath, UriKind.RelativeOrAbsolute);
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.UriSource = uri;
+                image.CacheOption = BitmapCacheOption.OnLoad;
+                image.EndInit();
+                image.Freeze();
+                return image;
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
         private void TryLoadFrameImage()
         {

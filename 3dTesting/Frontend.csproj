@@ -15,6 +15,12 @@
     <None Update="GameGraphics\HudOverlay.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="GameGraphics\laser_icon_48.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="GameGraphics\decoy_icon_48.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="GameGraphics\IntroClip.mp4">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
