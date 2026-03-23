@@ -1,5 +1,6 @@
 ﻿using _3dRotations.Helpers;
 using _3dTesting.Helpers;
+using CommonUtilities._3DHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -16,6 +17,8 @@ namespace _3dRotations.World.Objects
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = 0, y = 0, z = 0 };
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
         public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();
+        private const float ShipShadowRadius = 105f;
+        private const float ShipShadowDarkenFactor = 0.5f;
 
         const bool debugSurfaceBasedObjects = false; // Set to true to debug surface based objects
 
@@ -27,39 +30,63 @@ namespace _3dRotations.World.Objects
 
         public I3dObject GetSurfaceViewPort()
         {
-            var newSurface = new List<ITriangleMeshWithColor>();
+            var globalMapPosition = GameState.SurfaceState.GlobalMapPosition;
+            var global2DMap = GameState.SurfaceState.Global2DMap!;
+            int tileSize = TileSize();
+            int viewPortSize = ViewPortSize();
+            int maxHeight = MaxHeight();
+            int rowLimit = (int)(viewPortSize / 1.5) + 2;
+            int tileCount = (rowLimit - 1) * (viewPortSize - 2);
+
+            var newSurface = new List<ITriangleMeshWithColor>(tileCount * 2);
             var surface = new _3dObject { ObjectId = GameState.ObjectIdCounter++ };
-            var viewPortCrashBoxes = new List<List<IVector3>>(); // Ny liste for ViewPort-crashboxes
+            var viewPortCrashBoxes = new List<List<IVector3>>(tileCount / 4); // Ny liste for ViewPort-crashboxes
 
-            var viewPort = SurfaceGeneration.Return2DViewPort(ViewPortSize(), (int)GameState.SurfaceState.GlobalMapPosition.x, (int)GameState.SurfaceState.GlobalMapPosition.z, GameState.SurfaceState.Global2DMap, TileSize());
-            var ZRemainer = GameState.SurfaceState.GlobalMapPosition.z % TileSize();
-            var XRemainer = GameState.SurfaceState.GlobalMapPosition.x % TileSize();
-            var YRemainer = GameState.SurfaceState.GlobalMapPosition.y;
-
-            var YPosition = -(TileSize() * ViewPortSize() / 2);
-            var worldPosition = new Vector3 { x = (GameState.SurfaceState.GlobalMapPosition.x - TileSize()), y = 0, z = (GameState.SurfaceState.GlobalMapPosition.z - TileSize()) };
-            for (int i = 1; i < (ViewPortSize() / 1.5) + 2; i++)
+            int mapSize = global2DMap.GetLength(0);
+            int mapZIndex = ((int)globalMapPosition.z / tileSize) % mapSize;
+            int mapXIndex = ((int)globalMapPosition.x / tileSize) % mapSize;
+            if (mapZIndex < 0)
             {
-                worldPosition.z += TileSize();
+                mapZIndex += mapSize;
+            }
+
+            if (mapXIndex < 0)
+            {
+                mapXIndex += mapSize;
+            }
+
+            var ZRemainer = globalMapPosition.z % tileSize;
+            var XRemainer = globalMapPosition.x % tileSize;
+            var YRemainer = globalMapPosition.y;
+            var shadowCasters = GetShadowCasters();
+            bool hasShadowCasters = shadowCasters.Count > 0;
+            float halfTileSize = tileSize * 0.5f;
+
+            var YPosition = -(tileSize * viewPortSize / 2);
+            for (int i = 1; i < rowLimit; i++)
+            {
+                int currentMapY = (mapZIndex + i) % mapSize;
+                int nextMapY = (currentMapY + 1) % mapSize;
                 YPosition += TileSize();
-                var XPosition = -(TileSize() * ViewPortSize() / 2);
+                var XPosition = -(tileSize * viewPortSize / 2);
 
-                for (int j = 1; j < ViewPortSize() - 1; j++)
+                for (int j = 1; j < viewPortSize - 1; j++)
                 {
-                    worldPosition.x += TileSize();
-                    XPosition += TileSize();
+                    int currentMapX = (mapXIndex + j) % mapSize;
+                    int nextMapX = (currentMapX + 1) % mapSize;
+                    XPosition += tileSize;
 
-                    var currentTile = viewPort[i, j];
+                    var currentTile = global2DMap[currentMapY, currentMapX];
                     var surfaceId = currentTile.mapId;
 
                     // --- Build terrain from map
                     var ZPostition1 = currentTile.mapDepth;
-                    var ZPostition2 = viewPort[i, j + 1].mapDepth;
-                    var ZPostition3 = viewPort[i + 1, j + 1].mapDepth;
-                    var ZPostition4 = viewPort[i + 1, j].mapDepth;
+                    var ZPostition2 = global2DMap[currentMapY, nextMapX].mapDepth;
+                    var ZPostition3 = global2DMap[nextMapY, nextMapX].mapDepth;
+                    var ZPostition4 = global2DMap[nextMapY, currentMapX].mapDepth;
 
-                    var color1 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, MaxHeight());
-                    var color2 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, MaxHeight());
+                    var color1 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, maxHeight);
+                    var color2 = color1;
                     if (currentTile.isInfected)
                     {
                         color1 = "FF0000"; // Red for infected tiles
@@ -71,7 +98,7 @@ namespace _3dRotations.World.Objects
                         //Just for debugging, tiles with trees or houses need a different color
                         color1 = "FF0000"; // Red for land-based tiles
                         color2 = "FF0000"; // Red for land-based tiles
-                    }                    
+                    }
 
                     // Create SurfaceCrashbox directly here if needed
                     if (currentTile.crashBox != null)
@@ -80,15 +107,15 @@ namespace _3dRotations.World.Objects
 
                         var min = new Vector3
                         {
-                            x = (XPosition - XRemainer) - TileSize(),
+                            x = (XPosition - XRemainer) - tileSize,
                             y = YPosition - ZRemainer,
                             z = 0 // Sealevel
                         };
 
                         var max = new Vector3
                         {
-                            x = XPosition + ((box.width * TileSize()) - XRemainer) - TileSize(),
-                            y = YPosition + (box.height * TileSize()) - ZRemainer,
+                            x = XPosition + ((box.width * tileSize) - XRemainer) - tileSize,
+                            y = YPosition + (box.height * tileSize) - ZRemainer,
                             z = 40 + currentTile.mapDepth // Max map depth
                         };
 
@@ -96,13 +123,26 @@ namespace _3dRotations.World.Objects
                         viewPortCrashBoxes.Add(crashBoxCorners);
                     }
 
+                    if (hasShadowCasters)
+                    {
+                        float tileCenterX = (XPosition + halfTileSize) - XRemainer;
+                        float tileCenterY = (YPosition + halfTileSize) - ZRemainer;
+                        float shadowFactor = GetShadowFactor(tileCenterX, tileCenterY, shadowCasters);
+                        if (shadowFactor > 0f)
+                        {
+                            float darkenFactor = 1f - ((1f - ShipShadowDarkenFactor) * shadowFactor);
+                            color1 = DarkenHexColor(color1, darkenFactor);
+                            color2 = color1;
+                        }
+                    }
+
                     var triangle1 = new TriangleMeshWithColor
                     {
                         Color = color1,
                         landBasedPosition = surfaceId,
                         vert1 = { x = XPosition - XRemainer, y = YPosition - ZRemainer, z = ZPostition1 - YRemainer },
-                        vert2 = { x = XPosition + TileSize() - XRemainer, y = YPosition - ZRemainer, z = ZPostition2 - YRemainer },
-                        vert3 = { x = XPosition + TileSize() - XRemainer, y = YPosition + TileSize() - ZRemainer, z = ZPostition3 - YRemainer }
+                        vert2 = { x = XPosition + tileSize - XRemainer, y = YPosition - ZRemainer, z = ZPostition2 - YRemainer },
+                        vert3 = { x = XPosition + tileSize - XRemainer, y = YPosition + tileSize - ZRemainer, z = ZPostition3 - YRemainer }
                     };
 
                     var triangle2 = new TriangleMeshWithColor
@@ -110,8 +150,8 @@ namespace _3dRotations.World.Objects
                         Color = color2,
                         landBasedPosition = surfaceId,
                         vert1 = { x = XPosition - XRemainer, y = YPosition - ZRemainer, z = ZPostition1 - YRemainer },
-                        vert2 = { x = XPosition + TileSize() - XRemainer, y = YPosition + TileSize() - ZRemainer, z = ZPostition3 - YRemainer },
-                        vert3 = { x = XPosition - XRemainer, y = YPosition + TileSize() - ZRemainer, z = ZPostition4 - YRemainer }
+                        vert2 = { x = XPosition + tileSize - XRemainer, y = YPosition + tileSize - ZRemainer, z = ZPostition3 - YRemainer },
+                        vert3 = { x = XPosition - XRemainer, y = YPosition + tileSize - ZRemainer, z = ZPostition4 - YRemainer }
                     };
 
                     newSurface.Add(triangle1);
@@ -267,5 +307,113 @@ namespace _3dRotations.World.Objects
                     if (map[i, j].mapDepth > m) m = map[i, j].mapDepth;
             return m;
         }
+
+        private static string DarkenHexColor(string color, float factor)
+        {
+            if (string.IsNullOrWhiteSpace(color) || color.Length < 6)
+            {
+                return color;
+            }
+
+            factor = Math.Clamp(factor, 0f, 1f);
+            color = color.TrimStart('#');
+
+            int red = Convert.ToInt32(color.Substring(0, 2), 16);
+            int green = Convert.ToInt32(color.Substring(2, 2), 16);
+            int blue = Convert.ToInt32(color.Substring(4, 2), 16);
+
+            red = (int)(red * factor);
+            green = (int)(green * factor);
+            blue = (int)(blue * factor);
+
+            return $"{Math.Clamp(red, 0, 255):X2}{Math.Clamp(green, 0, 255):X2}{Math.Clamp(blue, 0, 255):X2}";
+        }
+
+        private static List<(float x, float y)> GetShadowCasters()
+        {
+            var globalMapPosition = GameState.SurfaceState.GlobalMapPosition;
+            var surfaceOffsets = GameState.SurfaceState.SurfaceViewportObject?.ObjectOffsets;
+            var shipOffsets = GameState.ShipState?.ShipObjectOffsets;
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            var shadowCasters = new List<(float x, float y)>(1 + (aiObjects?.Count ?? 0));
+
+            if (shipOffsets != null && surfaceOffsets != null)
+            {
+                shadowCasters.Add((shipOffsets.x - surfaceOffsets.x, shipOffsets.z - surfaceOffsets.z));
+            }
+
+            if (aiObjects == null)
+            {
+                return shadowCasters;
+            }
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var aiObject = aiObjects[i];
+                if (aiObject == null || !aiObject.HasShadow || aiObject.ImpactStatus?.HasExploded == true)
+                {
+                    continue;
+                }
+
+                var alignedWorldPosition = SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(aiObject);
+                shadowCasters.Add((
+                    alignedWorldPosition.x - globalMapPosition.x,
+                    alignedWorldPosition.z - globalMapPosition.z));
+            }
+
+            return shadowCasters;
+        }
+
+        private static float GetShadowFactor(float tileCenterX, float tileCenterY, List<(float x, float y)> shadowCasters)
+        {
+            float strongestShadow = 0f;
+
+            for (int i = 0; i < shadowCasters.Count; i++)
+            {
+                var shadowCaster = shadowCasters[i];
+                float shadowFactor = GetTileShadowFactor(tileCenterX, tileCenterY, shadowCaster.x, shadowCaster.y, ShipShadowRadius);
+                if (shadowFactor > strongestShadow)
+                {
+                    strongestShadow = shadowFactor;
+                }
+            }
+
+            return strongestShadow;
+        }
+
+        private static float GetTileShadowFactor(float tileCenterX, float tileCenterY, float shadowCenterX, float shadowCenterY, float shadowRadius)
+        {
+            float dx = tileCenterX - shadowCenterX;
+            float dy = tileCenterY - shadowCenterY;
+            float distanceSquared = (dx * dx) + (dy * dy);
+            float shadowRadiusSquared = shadowRadius * shadowRadius;
+            if (distanceSquared >= shadowRadiusSquared)
+            {
+                return 0f;
+            }
+
+            float distance = MathF.Sqrt(distanceSquared);
+            float normalized = 1f - (distance / shadowRadius);
+            return Math.Clamp(normalized, 0f, 1f);
+        }
+
+        private static float GetDistanceSquared(Vector3 a, Vector3 b)
+        {
+            float dx = a.x - b.x;
+            float dy = a.y - b.y;
+            float dz = a.z - b.z;
+            return (dx * dx) + (dy * dy) + (dz * dz);
+        }
+
+        private static Vector3 Midpoint(Vector3 a, Vector3 b)
+        {
+            return new Vector3
+            {
+                x = (a.x + b.x) * 0.5f,
+                y = (a.y + b.y) * 0.5f,
+                z = (a.z + b.z) * 0.5f
+            };
+        }
+
     }
 }

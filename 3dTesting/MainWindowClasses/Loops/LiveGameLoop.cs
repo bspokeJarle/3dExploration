@@ -223,24 +223,56 @@ namespace _3dTesting.MainWindowClasses.Loops
         {
             lock (_lock)
             {
-                var explodedObjects = world.WorldInhabitants
-                    .OfType<_3dObject>()
-                    .Where(obj => obj.ObjectName != "Ship" && obj.ImpactStatus?.HasExploded == true)
-                    .ToList();
+                List<_3dObject>? explodedObjects = null;
+                HashSet<int>? explodedIds = null;
 
-                if (explodedObjects.Count == 0)
+                var inhabitants = world.WorldInhabitants;
+                for (int i = 0; i < inhabitants.Count; i++)
+                {
+                    if (inhabitants[i] is not _3dObject obj || obj.ObjectName == "Ship" || obj.ImpactStatus?.HasExploded != true)
+                    {
+                        continue;
+                    }
+
+                    explodedObjects ??= new List<_3dObject>();
+                    explodedIds ??= new HashSet<int>();
+                    explodedObjects.Add(obj);
+                    explodedIds.Add(obj.ObjectId);
+                }
+
+                if (explodedObjects == null || explodedIds == null)
                 {
                     return;
                 }
 
-                CleanupWorldObjects(explodedObjects);
+                for (int i = inhabitants.Count - 1; i >= 0; i--)
+                {
+                    if (explodedIds.Contains(inhabitants[i].ObjectId))
+                    {
+                        inhabitants.RemoveAt(i);
+                    }
+                }
 
-                var explodedIds = explodedObjects.Select(obj => obj.ObjectId).ToHashSet();
-                world.WorldInhabitants.RemoveAll(obj => explodedIds.Contains(obj.ObjectId));
-                GameState.SurfaceState.AiObjects.RemoveAll(obj => explodedIds.Contains(obj.ObjectId));
-                GameState.ShipState.BestCandidateStates.RemoveAll(state =>
-                    state?.BestEnemyCandidate?.EnemyObject != null &&
-                    explodedIds.Contains(state.BestEnemyCandidate.EnemyObject.ObjectId));
+                var aiObjects = GameState.SurfaceState.AiObjects;
+                for (int i = aiObjects.Count - 1; i >= 0; i--)
+                {
+                    if (explodedIds.Contains(aiObjects[i].ObjectId))
+                    {
+                        aiObjects.RemoveAt(i);
+                    }
+                }
+
+                var bestCandidateStates = GameState.ShipState.BestCandidateStates;
+                for (int i = bestCandidateStates.Count - 1; i >= 0; i--)
+                {
+                    var enemyObject = bestCandidateStates[i]?.BestEnemyCandidate?.EnemyObject;
+                    if (enemyObject != null && explodedIds.Contains(enemyObject.ObjectId))
+                    {
+                        bestCandidateStates.RemoveAt(i);
+                    }
+                }
+
+                CleanupWorldObjects(explodedObjects);
             }
         }
 
