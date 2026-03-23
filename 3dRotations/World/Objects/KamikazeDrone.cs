@@ -132,6 +132,7 @@ namespace _3dRotations.World.Objects
                 drone.CrashBoxes = crashBoxes;
 
             drone.ParentSurface = parentSurface;
+            drone.HasShadow = true;
             return drone;
         }
 

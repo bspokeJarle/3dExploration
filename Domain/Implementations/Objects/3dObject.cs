@@ -27,6 +27,7 @@ namespace Domain
             public IWeapon? WeaponSystems { get; set; }
             public IVector3? CalculatedCrashOffset { get; set; }
             public bool IsOnScreen { get; set; } = false;
+            public bool HasShadow { get; set; } = false;
         }
     }
 }

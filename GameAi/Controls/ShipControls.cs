@@ -350,6 +350,7 @@ namespace GameAiAndControls.Controls
                 y = shipOffsetY,
                 z = theObject.ObjectOffsets?.z ?? zoom
             };
+            GameState.ShipState.ShipHasShadow = theObject.HasShadow;
         }
 
         // Merk: du har endret signatur her – sørg for at IObjectMovement matcher!

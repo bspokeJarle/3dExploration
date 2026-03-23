@@ -58,6 +58,7 @@ namespace _3dRotations.World.Objects
             ship.Particles = new ParticlesAI();
             ship.ParentSurface = parentSurface;
             ship.CrashBoxes = crashBoxes;
+            ship.HasShadow = true;
 
             _3dObjectHelpers.ApplyScaleToObject(ship, ZoomRatio);
 

@@ -163,6 +163,7 @@ namespace _3dRotations.World.Objects
                 seeder.CrashBoxes = seederCrashBox;
 
             seeder.ParentSurface = parentSurface;
+            seeder.HasShadow = true;
             return seeder;
         }
 

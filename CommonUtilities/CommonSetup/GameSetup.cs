@@ -7,5 +7,6 @@ namespace CommonUtilities.CommonSetup
         public static float CollisionMarginZ { get; set; } = 20f;
         public static float MaxKamikazeShipCenterCollisionDistance { get; set; } = 150f;
         public static int MaxActiveDecoys { get; set; } = 3;
+        public static int ShipShadowSubdivisionLevels { get; set; } = 2;
     }
 }

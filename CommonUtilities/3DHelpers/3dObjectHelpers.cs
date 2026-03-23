@@ -271,7 +271,8 @@ namespace CommonUtilities._3DHelpers
                 WeaponSystems = original.WeaponSystems,
                 CrashBoxes = original.CrashBoxes,
                 CrashBoxesFollowRotation = original.CrashBoxesFollowRotation,
-                CalculatedCrashOffset = original.CalculatedCrashOffset
+                CalculatedCrashOffset = original.CalculatedCrashOffset,
+                HasShadow = original.HasShadow
             };
 
             return copy;
