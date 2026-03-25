@@ -21,7 +21,7 @@ namespace GameAiAndControls.Controls
         private static readonly int maxY = 1200;
         private static readonly int minY = -1200;
 
-        // Audio setup (gjøres lazy via ConfigureAudio)
+        // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
         private SoundDefinition? _thudSound;
         private SoundDefinition? _lazerSound;
@@ -69,7 +69,14 @@ namespace GameAiAndControls.Controls
         {
             if (_audio != null && _lazerSound != null)
             {
-                _lazerInstance = _audio.Play(_lazerSound, AudioPlayMode.OneShot);
+                var audioPosition = ((_3dObject)parentShip).GetAudioPosition();
+                _lazerInstance = _audio.Play(
+                    _lazerSound,
+                    AudioPlayMode.OneShot,
+                    new AudioPlayOptions
+                    {
+                        WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                    });
             }
 
             ParentShipObject = (_3dObject)parentShip;
@@ -371,15 +378,22 @@ namespace GameAiAndControls.Controls
             }
         }
 
-        public void HandleHit(bool hasCrashed, string objectName)
+        public void HandleHit(I3dObject weaponObject, bool hasCrashed, string objectName)
         {
             if (enableLogging) Logger.Log($"Weapon HasCrashed:{hasCrashed} ImpactName:{objectName}");
             if (_audio != null && _thudSound != null)
             {
+                var audioPosition = ((_3dObject)weaponObject).GetAudioPosition();
                 //Stop Lazer, it owerpowers the thud
                 _lazerInstance?.Stop(playEndSegment: false);
                 // Implement thudding sound or effects here
-                _thudInstance = _audio.Play(_thudSound, AudioPlayMode.OneShot);
+                _thudInstance = _audio.Play(
+                    _thudSound,
+                    AudioPlayMode.OneShot,
+                    new AudioPlayOptions
+                    {
+                        WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                    });
             }
         }
 
@@ -394,7 +408,7 @@ namespace GameAiAndControls.Controls
                 ActiveWeapon w = ActiveWeapons[i] as ActiveWeapon;
 
                 //If weapon has crashed, handle hit effects
-                if (w.WeaponObject.ImpactStatus.HasCrashed) HandleHit(w.WeaponObject.ImpactStatus.HasCrashed, w.WeaponObject.ImpactStatus.ObjectName);
+                if (w.WeaponObject.ImpactStatus.HasCrashed) HandleHit(w.WeaponObject, w.WeaponObject.ImpactStatus.HasCrashed, w.WeaponObject.ImpactStatus.ObjectName);
 
                 if (w == null || Expired(w) || OutOfBounds(w.WeaponObject.ObjectOffsets) || w.WeaponObject.ImpactStatus.HasCrashed)
                     continue;

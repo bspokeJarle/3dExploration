@@ -1,4 +1,5 @@
-﻿using CommonUtilities.CommonGlobalState;
+﻿using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
 using Gma.System.MouseKeyHook;
@@ -36,7 +37,6 @@ namespace GameAiAndControls.Controls
         private const float DirectionUpdateIntervalSeconds = 1f;
         private const int LogEveryNthFrame = 10;
         private const int OvershootFrameCount = 5;
-
         private DateTime LastDirectionUpdateDateTime = DateTime.MinValue;
         private DateTime LastMovementDateTime = DateTime.MinValue;
         private IVector3 DirectionVelocity = new Vector3 { x = 0, y = 0, z = 0 }; // Initially standing still until the first direction is calculated
@@ -425,7 +425,14 @@ namespace GameAiAndControls.Controls
 
             if (_audio != null && _explosionSound != null)
             {
-                _audio.Play(_explosionSound, AudioPlayMode.OneShot);
+                var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+                _audio.Play(
+                    _explosionSound,
+                    AudioPlayMode.OneShot,
+                    new AudioPlayOptions
+                    {
+                        WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                    });
             }
 
             _isExploding = true;
@@ -472,10 +479,20 @@ namespace GameAiAndControls.Controls
             {
                 if (theObject.IsOnScreen)
                 {
+                    var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+
                     if (_droneFlyingInstance == null || !_droneFlyingInstance.IsPlaying)
                     {
-                        _droneFlyingInstance = _audio.Play(_droneFlyingSound, AudioPlayMode.SegmentedLoop);
+                        _droneFlyingInstance = _audio.Play(
+                            _droneFlyingSound,
+                            AudioPlayMode.SegmentedLoop,
+                            new AudioPlayOptions
+                            {
+                                WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                            });
                     }
+
+                    _droneFlyingInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
                 }
                 else if (_droneFlyingInstance != null)
                 {

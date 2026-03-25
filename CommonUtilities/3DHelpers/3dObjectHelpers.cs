@@ -42,6 +42,24 @@ namespace CommonUtilities._3DHelpers
             };
             return localWorldPosition;
         }
+
+        public static Vector3 GetAudioPosition(this _3dObject inhabitant)
+        {
+            var objectOffsets = CopyVector(inhabitant?.ObjectOffsets) ?? new Vector3();
+            var localWorldPosition = inhabitant?.GetLocalWorldPosition();
+
+            if (localWorldPosition == null)
+            {
+                return objectOffsets;
+            }
+
+            return new Vector3
+            {
+                x = -localWorldPosition.x + objectOffsets.x,
+                y = -localWorldPosition.y + objectOffsets.y,
+                z = localWorldPosition.z + objectOffsets.z
+            };
+        }
         public static bool CheckInhabitantVisibility(this _3dObject inhabitant)
         {
             // 1. Land-based check

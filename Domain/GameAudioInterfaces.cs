@@ -40,7 +40,7 @@ namespace Domain
     }
 
     /// <summary>
-    /// Optional parameters when starting a sound.
+    /// Optional parameters used when a sound instance is created.
     /// </summary>
     public sealed class AudioPlayOptions
     {
@@ -55,18 +55,19 @@ namespace Domain
         public float? SpeedOverride { get; set; }
 
         /// <summary>
-        /// For panning / 3D later if you want to hook it up.
+        /// Explicit stereo pan override in the range [-1, 1].
+        /// When omitted, the implementation can derive pan from spatial position instead.
         /// </summary>
         public float? Pan { get; set; }
 
         /// <summary>
-        /// World position, if you want to derive pan/volume from this elsewhere.
-        /// Completely optional.
+        /// Initial spatial position for the emitter.
         /// </summary>
         public Vector3? WorldPosition { get; set; }
 
         /// <summary>
-        /// Arbitrary tag you can attach (e.g. ship id, enemy id).
+        /// Arbitrary tag attached to the sound instance.
+        /// Typical usage includes ship ids, enemy ids, or gameplay ownership metadata.
         /// </summary>
         public object? Tag { get; set; }
     }
@@ -140,7 +141,7 @@ namespace Domain
 
         /// <summary>
         /// Optionally called every frame if the implementation needs
-        /// to advance segment state (e.g. transition from start to loop).
+        /// to advance segment state or other audio state.
         /// </summary>
         void Update(double deltaTimeSeconds);
     }

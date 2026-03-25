@@ -1,4 +1,5 @@
-﻿using CommonUtilities.CommonGlobalState;
+﻿using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Input;
@@ -41,7 +42,7 @@ namespace GameAiAndControls.Controls
         public float MinHeight { get; set; } = -100f;
         public float MaxScreenDrop { get; set; } = 450f;
 
-        // Audio setup (gjøres lazy via ConfigureAudio)
+        // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
         private SoundDefinition? _rocketSound;
         private SoundDefinition? _explosionSound;
@@ -94,7 +95,7 @@ namespace GameAiAndControls.Controls
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
-            // allerede konfigurert? gjør ingenting
+            // Already configured, so nothing else is required.
             if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null)
                 return;
 
@@ -132,7 +133,14 @@ namespace GameAiAndControls.Controls
 
                 if (weaponChanged && _audio != null && _changeWeaponSound != null)
                 {
-                    _audio.Play(_changeWeaponSound, AudioPlayMode.OneShot);
+                    var audioPosition = ((_3dObject)ParentObject).GetAudioPosition();
+                    _audio.Play(
+                        _changeWeaponSound,
+                        AudioPlayMode.OneShot,
+                        new AudioPlayOptions
+                        {
+                            WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                        });
                 }
             }
 
@@ -144,7 +152,14 @@ namespace GameAiAndControls.Controls
 
                 if (weaponChanged && _audio != null && _changeWeaponSound != null)
                 {
-                    _audio.Play(_changeWeaponSound, AudioPlayMode.OneShot);
+                    var audioPosition = ((_3dObject)ParentObject).GetAudioPosition();
+                    _audio.Play(
+                        _changeWeaponSound,
+                        AudioPlayMode.OneShot,
+                        new AudioPlayOptions
+                        {
+                            WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                        });
                 }
             }
 
@@ -152,20 +167,25 @@ namespace GameAiAndControls.Controls
             {
                 if (ThrustOn == false)
                 {
-                    // Hvis en gammel instans fortsatt henger igjen (tail spiller):
+                    // If an older rocket instance is still finishing its tail, stop it before starting a new one.
                     if (_rocketInstance != null)
                     {
                         if (logging) Logger.Log("Audio: Force-stopping previous rocket instance before starting new.");
-                        _rocketInstance.Stop(playEndSegment: false); // hard cut på gammel tail
+                        _rocketInstance.Stop(playEndSegment: false); // Hard cut the previous tail.
                         _rocketInstance = null;
                     }
 
                     if (_audio != null && _rocketSound != null)
                     {
+                        var audioPosition = ((_3dObject)ParentObject).GetAudioPosition();
                         if (logging) Logger.Log("Audio: Starting new rocket segmented loop.");
                         _rocketInstance = _audio.Play(
                                        _rocketSound,
-                            AudioPlayMode.SegmentedLoop);
+                            AudioPlayMode.SegmentedLoop,
+                            new AudioPlayOptions
+                            {
+                                WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                            });
                     }
                 }
                 ThrustOn = true;
@@ -187,7 +207,7 @@ namespace GameAiAndControls.Controls
                 thrustEffect = 0f;
                 verticalLiftFactor = 0f;
 
-                // Stopp rocket-loop hvis den spiller
+                // Stop the rocket loop if it is still playing.
                 if (_rocketInstance != null)
                 {
                     _rocketInstance.Stop(playEndSegment: true);
@@ -304,7 +324,14 @@ namespace GameAiAndControls.Controls
 
             if (_audio != null && _releaseDecoySound != null)
             {
-                _audio.Play(_releaseDecoySound, AudioPlayMode.OneShot);
+                var audioPosition = ((_3dObject)ParentObject).GetAudioPosition();
+                _audio.Play(
+                    _releaseDecoySound,
+                    AudioPlayMode.OneShot,
+                    new AudioPlayOptions
+                    {
+                        WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                    });
             }
         }
 
@@ -383,7 +410,7 @@ namespace GameAiAndControls.Controls
             //Update gamestate with thrust
             GameState.GamePlayState.Thrust = Thrust;
 
-            // Lazy audio-konfig – gjøres første gang MoveObject kalles
+            // Lazily initialize audio the first time MoveObject runs.
             ConfigureAudio(audioPlayer, soundRegistry);
 
             ParentObject ??= theObject;
@@ -420,6 +447,12 @@ namespace GameAiAndControls.Controls
             {
                 theObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y));
                 theObject.ObjectOffsets.z = zoom;
+            }
+
+            if (_rocketInstance != null)
+            {
+                var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+                _rocketInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
             }
 
             GameState.GamePlayState.UpdateAltitude(
@@ -461,21 +494,23 @@ namespace GameAiAndControls.Controls
 
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
                 {
-                    // Stop rocket-loop før eksplosjon
+                    // Stop the rocket loop before the explosion starts.
                     if (_rocketInstance != null)
                     {
                         _rocketInstance.Stop(playEndSegment: true);
                         _rocketInstance = null;
                     }
 
-                    // 🔊 Spill eksplosjon hvis audio er konfigurert
+                    // Play the ship explosion if audio is configured.
                     if (_audio != null && _explosionSound != null)
                     {
+                        var audioPosition = ((_3dObject)theObject).GetAudioPosition();
                         _audio.PlayOneShot(
                             _explosionSound,
                             new AudioPlayOptions
                             {
-                                VolumeOverride = 1.0f
+                                VolumeOverride = 1.0f,
+                                WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
                             });
                     }
 
@@ -536,7 +571,7 @@ namespace GameAiAndControls.Controls
             get
             {
                 float horizontalSpeed = MathF.Sqrt(inertiaX * inertiaX + inertiaZ * inertiaZ);
-                float verticalSpeed = landed ? 0f : MathF.Abs(fallVelocity); // 0 hvis vi har landet
+            float verticalSpeed = landed ? 0f : MathF.Abs(fallVelocity); // Zero once the ship has landed.
                 return horizontalSpeed + verticalSpeed;
             }
         }

@@ -2,15 +2,16 @@
 using NAudio.Wave;
 
 /// <summary>
-/// Simple SegmentedLoopSampleProvider stub.
-/// NOTE: This is a simplified version that doesn't yet do real segment looping –
-/// it just reads from the source. You can extend with true loop logic later.
+/// Plays a sound that has three conceptual sections: intro, loop, and end tail.
+/// The provider starts at <see cref="SoundSegments.Start"/>, loops between
+/// <see cref="SoundSegments.LoopStart"/> and <see cref="SoundSegments.LoopEnd"/>,
+/// and can optionally jump into the end segment when playback is stopped.
 /// </summary>
 internal sealed class SegmentedLoopSampleProvider : ISampleProvider
 {
     private bool enableLogging = false;
-    private readonly ISampleProvider _source;     // Normalized audio (matches mixer format)
-    private readonly AudioFileReader _file;       // Underlying file for time/seek
+    private readonly ISampleProvider _source;
+    private readonly AudioFileReader _file;
     private readonly WaveFormat _format;
     private readonly SoundSegments _segments;
 
@@ -36,7 +37,7 @@ internal sealed class SegmentedLoopSampleProvider : ISampleProvider
         _loopEndTs = TimeSpan.FromSeconds(_segments.LoopEnd);
         _endTs = TimeSpan.FromSeconds(_segments.End);
 
-        // Start på "start"-segmentet
+        // Start playback at the configured intro position.
         _file.CurrentTime = TimeSpan.FromSeconds(_segments.Start);
     }
 
@@ -53,8 +54,8 @@ internal sealed class SegmentedLoopSampleProvider : ISampleProvider
 
         var now = _file.CurrentTime;
 
-        // Hvis vi fortsatt er i start/loop-området når vi stopper,
-        // hopper vi rett til loopEnd slik at tailen blir kort og konsistent.
+        // If playback is still inside the intro/loop section when stop is requested,
+        // jump directly to the loop end so the end tail stays short and predictable.
         if (now < _loopEndTs)
         {
             if (enableLogging) Logger.Log(
@@ -78,12 +79,23 @@ internal sealed class SegmentedLoopSampleProvider : ISampleProvider
         int read = _source.Read(buffer, offset, count);
         if (read == 0)
         {
+            if (!_stopRequested)
+            {
+                _file.CurrentTime = _loopStartTs;
+                read = _source.Read(buffer, offset, count);
+            }
+
+            if (read > 0)
+            {
+                return read;
+            }
+
             if (enableLogging) Logger.Log("Audio: SegmentedLoop - source returned 0, marking as finished.");
             _finished = true;
             return 0;
         }
 
-        // Debug: hvor i fila er vi nå?
+        // Capture the playback position once so logging and transition checks are consistent.
         var t = _file.CurrentTime.TotalSeconds;
 
         if (!_stopRequested)

@@ -193,7 +193,7 @@
       "segments": {
         "start": 0.0,
         "loopStart": 0.0,
-        "loopEnd": 2.0,
+        "loopEnd": 1.95,
         "end": 2.0
       },
 
@@ -219,7 +219,7 @@
       "segments": {
         "start": 0.0,
         "loopStart": 0.0,
-        "loopEnd": 2.0,
+        "loopEnd": 1.90,
         "end": 2.0
       },
 
@@ -245,7 +245,7 @@
       "segments": {
         "start": 0.0,
         "loopStart": 0.0,
-        "loopEnd": 2.0,
+        "loopEnd": 1.95,
         "end": 2.0
       },
 
