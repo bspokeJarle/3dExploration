@@ -45,6 +45,8 @@ namespace GameAiAndControls.Controls
         private IAudioPlayer? _audio;
         private SoundDefinition? _rocketSound;
         private SoundDefinition? _explosionSound;
+        private SoundDefinition? _releaseDecoySound;
+        private SoundDefinition? _changeWeaponSound;
         private IAudioInstance? _rocketInstance;
 
         private float fallVelocity = 0f;
@@ -93,7 +95,7 @@ namespace GameAiAndControls.Controls
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             // allerede konfigurert? gjør ingenting
-            if (_audio != null || _rocketSound != null || _explosionSound != null)
+            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null)
                 return;
 
             if (audioPlayer == null || soundRegistry == null)
@@ -102,6 +104,8 @@ namespace GameAiAndControls.Controls
             _audio = audioPlayer;
             _rocketSound = soundRegistry.Get("rocket_main");
             _explosionSound = soundRegistry.Get("explosion_main");
+            _releaseDecoySound = soundRegistry.Get("release_decoy");
+            _changeWeaponSound = soundRegistry.Get("change_weapon");
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
@@ -120,13 +124,28 @@ namespace GameAiAndControls.Controls
 
             if (e.KeyCode == Keys.D1 || e.KeyCode == Keys.NumPad1)
             {
+                bool weaponChanged = GameState.GamePlayState.SelectedWeapon != WeaponType.Lazer ||
+                    !string.Equals(GameState.GamePlayState.ActivePowerup, "LAZER", StringComparison.OrdinalIgnoreCase);
+
                 GameState.GamePlayState.SelectedWeapon = WeaponType.Lazer;
                 GameState.GamePlayState.ActivePowerup = "LAZER";
+
+                if (weaponChanged && _audio != null && _changeWeaponSound != null)
+                {
+                    _audio.Play(_changeWeaponSound, AudioPlayMode.OneShot);
+                }
             }
 
             if (e.KeyCode == Keys.D2 || e.KeyCode == Keys.NumPad2)
             {
+                bool weaponChanged = !string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase);
+
                 GameState.GamePlayState.ActivePowerup = "DECOY";
+
+                if (weaponChanged && _audio != null && _changeWeaponSound != null)
+                {
+                    _audio.Play(_changeWeaponSound, AudioPlayMode.OneShot);
+                }
             }
 
             if (e.KeyCode == Keys.Space)
@@ -282,6 +301,11 @@ namespace GameAiAndControls.Controls
 
             GameState.SurfaceState.AiObjects.Add(decoy);
             GameState.PendingWorldObjects.Add(decoy);
+
+            if (_audio != null && _releaseDecoySound != null)
+            {
+                _audio.Play(_releaseDecoySound, AudioPlayMode.OneShot);
+            }
         }
 
         private static _3dObject? CreateDecoyBeaconObject(ISurface parentSurface)
