@@ -51,6 +51,12 @@ namespace Domain
         public int WaveNumber { get; set; } = 1;
 
         // -----------------------------
+        // Enemy tracking (alive counts for HUD)
+        // -----------------------------
+        public int DronesRemaining { get; set; } = 0;
+        public int SeedersRemaining { get; set; } = 0;
+
+        // -----------------------------
         // Infection / lose condition (core to Omega Strain)
         // -----------------------------
         /// <summary>

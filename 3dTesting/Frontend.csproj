@@ -12,6 +12,9 @@
     <ProjectReference Include="..\GameAudio\GameAudio.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="GameGraphics\drone_icon_48.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="GameGraphics\HudOverlay.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -22,6 +25,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="GameGraphics\IntroClip.mp4">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="GameGraphics\seeder_icon_48.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="GameObjects\seeder_ball.stl">

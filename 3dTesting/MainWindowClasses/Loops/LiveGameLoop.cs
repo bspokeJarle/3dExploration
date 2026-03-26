@@ -211,6 +211,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             CleanupExplodedObjects(world);
+            UpdateEnemyCounts();
             if (activeScene != null)
             {
                 HandleMusic(renderedList, activeScene.SceneMusic);
@@ -320,6 +321,32 @@ namespace _3dTesting.MainWindowClasses.Loops
             catch (NotImplementedException)
             {
             }
+        }
+
+        /// <summary>
+        /// Counts surviving drones and seeders from AiObjects and writes the totals
+        /// into GamePlayState so the HUD can display icon rows.
+        /// </summary>
+        private static void UpdateEnemyCounts()
+        {
+            var aiObjects = GameState.SurfaceState.AiObjects;
+            int drones = 0;
+            int seeders = 0;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var obj = aiObjects[i];
+                if (obj.ImpactStatus?.HasExploded == true)
+                    continue;
+
+                if (obj.ObjectName == "KamikazeDrone")
+                    drones++;
+                else if (obj.ObjectName == "Seeder")
+                    seeders++;
+            }
+
+            GameState.GamePlayState.DronesRemaining = drones;
+            GameState.GamePlayState.SeedersRemaining = seeders;
         }
 
         private Dictionary<int, _3dObject> InitializeAiOnScreenTracking()
