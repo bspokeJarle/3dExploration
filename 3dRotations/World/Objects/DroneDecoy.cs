@@ -81,6 +81,7 @@ namespace _3dRotations.World.Objects
                 decoy.CrashBoxes = crashBoxes;
 
             decoy.ParentSurface = parentSurface;
+            decoy.HasShadow = true;
             return decoy;
         }
 

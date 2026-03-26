@@ -202,7 +202,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 {
                     if (aiObject.IsOnScreen == false)
                     {
-                        aiObject.Movement.MoveObject(aiObject, null, null);
+                        aiObject.Movement.MoveObject(aiObject, audioPlayer, soundRegistry);
                         aiObject.IsOnScreen = false;
                     }
                 }

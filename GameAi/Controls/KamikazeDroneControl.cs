@@ -475,7 +475,7 @@ namespace GameAiAndControls.Controls
                 HandleCrash(theObject);
             }
 
-            if (_audio != null && _droneFlyingSound != null)
+            if (_audio != null && _droneFlyingSound != null && !_isExploding)
             {
                 if (theObject.IsOnScreen)
                 {
@@ -492,12 +492,53 @@ namespace GameAiAndControls.Controls
                             });
                     }
 
+                    _droneFlyingInstance.SetVolume(_droneFlyingSound.Settings.Volume);
                     _droneFlyingInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
                 }
-                else if (_droneFlyingInstance != null)
+                else
                 {
-                    _droneFlyingInstance.Stop(playEndSegment: false);
-                    _droneFlyingInstance = null;
+                    var globalPos = GameState.SurfaceState?.GlobalMapPosition;
+                    var droneWorldPos = theObject.WorldPosition;
+
+                    if (globalPos != null && droneWorldPos != null)
+                    {
+                        float distSq = Common3dObjectHelpers.GetDistanceSquared(globalPos, droneWorldPos);
+                        float maxDist = AudioSetup.OffscreenAiAudioMaxDistance;
+                        float maxDistSq = maxDist * maxDist;
+
+                        if (distSq <= maxDistSq)
+                        {
+                            float distance = MathF.Sqrt(distSq);
+                            float normalized = distance / maxDist;
+                            float volume = _droneFlyingSound.Settings.Volume *
+                                MathF.Pow(1f - normalized, AudioSetup.OffscreenAiAudioCurveExponent);
+
+                            if (_droneFlyingInstance == null || !_droneFlyingInstance.IsPlaying)
+                            {
+                                _droneFlyingInstance = _audio.Play(
+                                    _droneFlyingSound,
+                                    AudioPlayMode.SegmentedLoop,
+                                    new AudioPlayOptions
+                                    {
+                                        WorldPosition = System.Numerics.Vector3.Zero
+                                    });
+                            }
+
+                            float dx = droneWorldPos.x - globalPos.x;
+                            _droneFlyingInstance.SetWorldPosition(new System.Numerics.Vector3(dx, 0, 0));
+                            _droneFlyingInstance.SetVolume(volume);
+                        }
+                        else if (_droneFlyingInstance != null)
+                        {
+                            _droneFlyingInstance.Stop(playEndSegment: false);
+                            _droneFlyingInstance = null;
+                        }
+                    }
+                    else if (_droneFlyingInstance != null)
+                    {
+                        _droneFlyingInstance.Stop(playEndSegment: false);
+                        _droneFlyingInstance = null;
+                    }
                 }
             }
 
