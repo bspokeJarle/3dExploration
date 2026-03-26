@@ -325,7 +325,8 @@ namespace _3dTesting.MainWindowClasses.Loops
 
         /// <summary>
         /// Counts surviving drones and seeders from AiObjects and writes the totals
-        /// into GamePlayState so the HUD can display icon rows.
+        /// into GamePlayState so the HUD can display percentage bars.
+        /// On first call the current counts are captured as the initial totals.
         /// </summary>
         private static void UpdateEnemyCounts()
         {
@@ -345,8 +346,16 @@ namespace _3dTesting.MainWindowClasses.Loops
                     seeders++;
             }
 
-            GameState.GamePlayState.DronesRemaining = drones;
-            GameState.GamePlayState.SeedersRemaining = seeders;
+            var gps = GameState.GamePlayState;
+
+            // Capture initial totals once (first frame where enemies exist)
+            if (gps.InitialDrones == 0 && drones > 0)
+                gps.InitialDrones = drones;
+            if (gps.InitialSeeders == 0 && seeders > 0)
+                gps.InitialSeeders = seeders;
+
+            gps.DronesRemaining = drones;
+            gps.SeedersRemaining = seeders;
         }
 
         private Dictionary<int, _3dObject> InitializeAiOnScreenTracking()

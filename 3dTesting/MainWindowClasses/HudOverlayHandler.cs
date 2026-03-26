@@ -50,13 +50,11 @@ namespace _3dTesting.MainWindowClasses
         private readonly Image _powerupLazerIcon;
         private readonly Image _powerupDecoyIcon;
 
-        // Enemy remaining icon rows
-        private readonly BitmapImage? _droneIconSource;
-        private readonly BitmapImage? _seederIconSource;
-        private readonly List<Image> _droneIcons = new();
-        private readonly List<Image> _seederIcons = new();
-        private int _lastDroneCount = -1;
-        private int _lastSeederCount = -1;
+        // Enemy remaining: icon + percentage bar (same style as alt/thr/bio)
+        private readonly Image _droneIcon;
+        private readonly Rectangle _droneBarFill;
+        private readonly Image _seederIcon;
+        private readonly Rectangle _seederBarFill;
 
         // Center FPS line (numbers only; the "FPS | TRI | P" labels are in the PNG)
         private readonly TextBlock _fpsCenter;
@@ -97,13 +95,17 @@ namespace _3dTesting.MainWindowClasses
         private const double PowerupRowY = 75;
         private const double PowerupIconSize = 48;
 
-        // Enemy icon rows (below the powerup row)
-        private const double EnemyIconSize = 24;
-        private const double EnemyIconSpacing = 2;
+        // Enemy bars (icon on left, bar on right — below the powerup row)
+        // Icon size and bar height match the existing HUD elements (48px icons, 16px bars).
+        // Bar width fills from after the icon to the right edge of the center indentation.
+        private const double EnemyIconSize = 48;
+        private const double EnemyBarOffsetX = EnemyIconSize + 8; // bar starts just right of the icon
+        private const double EnemyBarW = (RightPanelX - DroneRowX - EnemyBarOffsetX) * 0.60;
+        private const double EnemyBarH = BarH;
         private const double DroneRowX = 850;
-        private const double DroneRowY = 130;
+        private const double DroneRowY = 135;
         private const double SeederRowX = 850;
-        private const double SeederRowY = 158;
+        private const double SeederRowY = DroneRowY + EnemyIconSize + 8;
 
         // Right panel bar fills (positions adjusted down to align with "track" lines in PNG)
         private const double RightPanelX = 1665;
@@ -179,9 +181,14 @@ namespace _3dTesting.MainWindowClasses
             _powerupLazerIcon.Source = TryLoadBitmapImage("GameGraphics\\laser_icon_48.png");
             _powerupDecoyIcon.Source = TryLoadBitmapImage("GameGraphics\\decoy_icon_48.png");
 
-            // ----- Enemy icon sources -----
-            _droneIconSource = TryLoadBitmapImage("GameGraphics\\drone_icon_48.png");
-            _seederIconSource = TryLoadBitmapImage("GameGraphics\\seeder_icon_48.png");
+            // ----- Enemy icon + bar -----
+            _droneIcon = CreatePowerupIcon(DroneRowX, DroneRowY, EnemyIconSize);
+            _droneIcon.Source = TryLoadBitmapImage("GameGraphics\\drone_icon_48.png");
+            _droneBarFill = CreateBarFill(DroneRowX + EnemyBarOffsetX, DroneRowY + (EnemyIconSize - EnemyBarH) / 2, EnemyBarW, EnemyBarH);
+
+            _seederIcon = CreatePowerupIcon(SeederRowX, SeederRowY, EnemyIconSize);
+            _seederIcon.Source = TryLoadBitmapImage("GameGraphics\\seeder_icon_48.png");
+            _seederBarFill = CreateBarFill(SeederRowX + EnemyBarOffsetX, SeederRowY + (EnemyIconSize - EnemyBarH) / 2, EnemyBarW, EnemyBarH);
 
             // ----- Bars only -----
             _altBarFill = CreateBarFill(RightBarX, RightAltY);
@@ -201,6 +208,11 @@ namespace _3dTesting.MainWindowClasses
             _canvas.Children.Add(_altBarFill);
             _canvas.Children.Add(_thrBarFill);
             _canvas.Children.Add(_bioBarFill);
+
+            _canvas.Children.Add(_droneIcon);
+            _canvas.Children.Add(_droneBarFill);
+            _canvas.Children.Add(_seederIcon);
+            _canvas.Children.Add(_seederBarFill);
 
             _root.Children.Add(_hudRoot);
 
@@ -284,76 +296,18 @@ namespace _3dTesting.MainWindowClasses
             //TODO: Temporary fix
             SetBarFill(_bioBarFill, gameplay.InfectionLevel/10);
 
-            // Enemy remaining icon rows
-            RebuildIconRowIfChanged(ref _lastDroneCount, gameplay.DronesRemaining, _droneIcons, _droneIconSource, DroneRowX, DroneRowY, pairedMode: false);
-            RebuildIconRowIfChanged(ref _lastSeederCount, gameplay.SeedersRemaining, _seederIcons, _seederIconSource, SeederRowX, SeederRowY, pairedMode: true);
+            // Enemy remaining bars (percentage of initial count)
+            float dronePct = gameplay.InitialDrones > 0
+                ? (float)gameplay.DronesRemaining / gameplay.InitialDrones
+                : 0f;
+            float seederPct = gameplay.InitialSeeders > 0
+                ? (float)gameplay.SeedersRemaining / gameplay.InitialSeeders
+                : 0f;
+            SetBarFill(_droneBarFill, dronePct, EnemyBarW);
+            SetBarFill(_seederBarFill, seederPct, EnemyBarW);
         }
 
         public void ReloadFrame() => TryLoadFrameImage();
-
-        /// <summary>
-        /// Rebuilds a horizontal row of small icons on the canvas whenever <paramref name="currentCount"/>
-        /// differs from the last known count.
-        /// When <paramref name="pairedMode"/> is true each icon represents two units and the last icon
-        /// is clipped to its left half when the count is odd (e.g. 39 seeders → 19 full + 1 half icon).
-        /// </summary>
-        private void RebuildIconRowIfChanged(
-            ref int lastCount,
-            int currentCount,
-            List<Image> icons,
-            BitmapImage? source,
-            double startX,
-            double startY,
-            bool pairedMode)
-        {
-            if (currentCount == lastCount)
-                return;
-
-            lastCount = currentCount;
-
-            // Remove old icons from the canvas
-            foreach (var icon in icons)
-                _canvas.Children.Remove(icon);
-            icons.Clear();
-
-            if (source == null || currentCount <= 0)
-                return;
-
-            int fullIcons = pairedMode ? currentCount / 2 : currentCount;
-            bool halfTrailing = pairedMode && currentCount % 2 == 1;
-
-            for (int i = 0; i < fullIcons; i++)
-            {
-                var img = CreateEnemyIcon(source, startX + i * (EnemyIconSize + EnemyIconSpacing), startY);
-                icons.Add(img);
-                _canvas.Children.Add(img);
-            }
-
-            if (halfTrailing)
-            {
-                double x = startX + fullIcons * (EnemyIconSize + EnemyIconSpacing);
-                var img = CreateEnemyIcon(source, x, startY);
-                // Clip to left half so only half the icon is visible
-                img.Clip = new RectangleGeometry(new Rect(0, 0, EnemyIconSize / 2, EnemyIconSize));
-                icons.Add(img);
-                _canvas.Children.Add(img);
-            }
-        }
-
-        private static Image CreateEnemyIcon(BitmapImage source, double x, double y)
-        {
-            var img = new Image
-            {
-                Width = EnemyIconSize,
-                Height = EnemyIconSize,
-                Stretch = Stretch.Uniform,
-                Source = source,
-                Opacity = 0.9
-            };
-            Canvas.SetLeft(img, x);
-            Canvas.SetTop(img, y);
-            return img;
-        }
 
         private static Image CreatePowerupIcon(double x, double y, double size)
         {
@@ -418,12 +372,12 @@ namespace _3dTesting.MainWindowClasses
             }
         }
 
-        private static Rectangle CreateBarFill(double x, double y)
+        private static Rectangle CreateBarFill(double x, double y, double maxWidth = BarW, double height = BarH)
         {
             var fill = new Rectangle
             {
                 Width = 0,
-                Height = BarH,
+                Height = height,
                 Fill = BarFillBrush,
                 Opacity = 0.85
             };
@@ -437,6 +391,11 @@ namespace _3dTesting.MainWindowClasses
         private static void SetBarFill(Rectangle rect, float value01)
         {
             rect.Width = BarW * Clamp01(value01);
+        }
+
+        private static void SetBarFill(Rectangle rect, float value01, double maxWidth)
+        {
+            rect.Width = maxWidth * Clamp01(value01);
         }
 
         private static float Clamp01(float v)
