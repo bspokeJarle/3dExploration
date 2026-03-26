@@ -1,4 +1,5 @@
-﻿using Domain;
+﻿using CommonUtilities.CommonSetup;
+using Domain;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 
@@ -7,12 +8,11 @@ using System.Threading;
 
 /// <summary>
 /// NAudio-based implementation of IAudioPlayer.
-/// Uses a MixingSampleProvider to mix all active sounds.
+/// Each sound is turned into a small processing chain and then routed into a shared mixer:
+/// file reader -> optional segmented loop -> normalization -> volume -> stereo pan -> mixer.
 /// </summary>
 public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
 {
-    private const int MusicFadeOutDurationMs = 180;
-    private const int MusicFadeOutSteps = 6;
     private bool enableLogging = false;
     private readonly IWavePlayer _outputDevice;
     private readonly MixingSampleProvider _mixer;
@@ -29,7 +29,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
     {
         _audioBasePath = audioBasePath;
 
-        // Mixer format: 44100 Hz, stereo, float.
+        // The mixer runs in one fixed format so every sound can be combined safely.
         var waveFormat = WaveFormat.CreateIeeeFloatWaveFormat(44100, 2);
         _mixer = new MixingSampleProvider(waveFormat)
         {
@@ -53,14 +53,31 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
         if (!System.IO.File.Exists(fullPath))
             throw new System.IO.FileNotFoundException($"Audio file not found: {fullPath}");
 
-        // LES FIL – AudioFileReader er både WaveStream og ISampleProvider
+        // AudioFileReader acts as both a decoded stream and an ISampleProvider.
         var fileReader = new AudioFileReader(fullPath);
 
-        // Normaliser til mixer-format (44100 Hz, 2 kanaler)
+        // For segmented-loop sounds the loop provider must wrap the file reader
+        // directly so that loop-back seeks are not blocked by intermediate
+        // resampler / channel-converter buffers.
+        SegmentedLoopSampleProvider? loopProvider = null;
         ISampleProvider source = fileReader;
+
+        if (mode == AudioPlayMode.SegmentedLoop)
+        {
+            loopProvider = new SegmentedLoopSampleProvider(
+                fileReader,
+                fileReader,
+                definition.Segments,
+                fileReader.WaveFormat);
+
+            source = loopProvider;
+            if (enableLogging) Logger.Log(@"Audio: Playing segmented loop.");
+        }
+
+        // Normalize the source into the shared mixer format.
         ISampleProvider sample = NormalizeToMixerFormat(source);
 
-        // Volume
+        // Apply the requested base volume before any spatial attenuation.
         float baseVolume = definition.Settings.Volume;
         if (options?.VolumeOverride is { } volOverride)
             baseVolume = volOverride;
@@ -70,38 +87,27 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
             Volume = baseVolume
         };
 
-        // Speed (logisk, brukes senere hvis du vil styre pitch)
+        // Playback speed is stored for future pitch/varispeed support.
         float speed;
         if (options?.SpeedOverride is { } speedOverride)
             speed = speedOverride;
         else
             speed = definition.Speed.GetRandomizedSpeed(_rng);
 
-        // Segment-handling
-        SegmentedLoopSampleProvider? loopProvider = null;
-        ISampleProvider pipeline = volumeProvider;
-
-        if (mode == AudioPlayMode.SegmentedLoop)
-        {
-            loopProvider = new SegmentedLoopSampleProvider(
-                volumeProvider,      // det som faktisk går til mixeren
-                fileReader,          // selve fila – for CurrentTime / seeking
-                definition.Segments,
-                _mixer.WaveFormat);
-
-            pipeline = loopProvider;
-            if (enableLogging) Logger.Log(@"Audio: Playing segmented loop.");
-        }
+        var panProvider = new SpatialPanSampleProvider(volumeProvider);
+        ISampleProvider pipeline = panProvider;
 
         var instance = new NAudioAudioInstance(
             this,
             definition,
             volumeProvider,
+            panProvider,
             pipeline,
             loopProvider,
             mode,
             baseVolume,
-            speed);
+            speed,
+            options);
 
         _instances[instance.Id] = instance;
         _mixer.AddMixerInput(pipeline);
@@ -141,14 +147,14 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
     /// </summary>
     public void PlayMusic(SoundDefinition definition, float? volumeOverride = null)
     {
-        // Stopp eventuell gammel musikk først
+        // Stop the previous music instance before starting a new one.
         if (_musicInstance != null)
         {
             if (enableLogging) Logger.Log("Audio: Stopping previous music instance before starting new.");
             FadeOutAndStopMusicInstance(_musicInstance);
         }
 
-        // Bestem volum
+        // Clamp the requested music volume to a safe range.
         float vol = volumeOverride ?? definition.Settings.Volume;
         if (vol < 0f) vol = 0f;
         if (vol > 1f) vol = 1f;
@@ -160,17 +166,17 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
             $"loopStart={definition.Segments.LoopStart:F2}, " +
             $"loopEnd={definition.Segments.LoopEnd:F2}, end={definition.Segments.End:F2}");
 
-        // Viktig: Segmentert loop – da brukes segments.start/loopStart/loopEnd
+        // Music uses segmented looping so intro / loop / outro boundaries can be respected.
         var instance = Play(
             definition,
             AudioPlayMode.SegmentedLoop,
             new AudioPlayOptions
             {
                 VolumeOverride = vol
-                // SpeedOverride kan være null → bruker definition.Speed/base
+                // SpeedOverride is optional, so the sound definition controls playback speed.
             });
 
-        // Vi vet at Play() i vår implem faktisk returnerer NAudioAudioInstance
+        // The current implementation always returns NAudioAudioInstance.
         _musicInstance = instance as NAudioAudioInstance;
     }
 
@@ -195,13 +201,13 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
 
         float startVolume = _musicVolume;
 
-        if (MusicFadeOutDurationMs > 0 && MusicFadeOutSteps > 0 && startVolume > 0f)
+        if (AudioSetup.MusicFadeOutDurationMs > 0 && AudioSetup.MusicFadeOutSteps > 0 && startVolume > 0f)
         {
-            int sleepPerStepMs = Math.Max(1, MusicFadeOutDurationMs / MusicFadeOutSteps);
+            int sleepPerStepMs = Math.Max(1, AudioSetup.MusicFadeOutDurationMs / AudioSetup.MusicFadeOutSteps);
 
-            for (int step = MusicFadeOutSteps - 1; step >= 0; step--)
+            for (int step = AudioSetup.MusicFadeOutSteps - 1; step >= 0; step--)
             {
-                instance.SetVolume(startVolume * step / MusicFadeOutSteps);
+                instance.SetVolume(startVolume * step / AudioSetup.MusicFadeOutSteps);
                 Thread.Sleep(sleepPerStepMs);
             }
         }
@@ -232,17 +238,17 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
     {
         ISampleProvider sample = source;
 
-        // 1) Kanal-konvertering (mono ↔ stereo)
+        // 1) Convert channel count as needed so every input matches the stereo mixer.
         if (sample.WaveFormat.Channels != _mixer.WaveFormat.Channels)
         {
             if (sample.WaveFormat.Channels == 1 && _mixer.WaveFormat.Channels == 2)
             {
-                // Mono -> Stereo
+                // Mono -> stereo
                 sample = new MonoToStereoSampleProvider(sample);
             }
             else if (sample.WaveFormat.Channels == 2 && _mixer.WaveFormat.Channels == 1)
             {
-                // Stereo -> Mono
+                // Stereo -> mono
                 sample = new StereoToMonoSampleProvider(sample);
             }
             else
@@ -252,7 +258,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
             }
         }
 
-        // 2) Sample rate-konvertering
+        // 2) Resample when the source sample rate does not match the mixer sample rate.
         if (sample.WaveFormat.SampleRate != _mixer.WaveFormat.SampleRate)
         {
             sample = new WdlResamplingSampleProvider(sample, _mixer.WaveFormat.SampleRate);
@@ -263,8 +269,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
 
     public void Update(double deltaTimeSeconds)
     {
-        // If you later need per-frame bookkeeping, you can put it here.
-        // Current implementation does not require per-frame updates.
+        // No per-frame audio updates are currently required.
     }
 
     internal void InternalStopInstance(NAudioAudioInstance instance)

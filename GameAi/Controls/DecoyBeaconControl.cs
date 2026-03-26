@@ -1,4 +1,5 @@
-﻿using CommonUtilities.CommonGlobalState;
+﻿using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
 using Gma.System.MouseKeyHook;
@@ -415,7 +416,14 @@ namespace GameAiAndControls.Controls
 
             if (_audio != null && _explosionSound != null)
             {
-                _audio.Play(_explosionSound, AudioPlayMode.OneShot);
+                var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+                _audio.Play(
+                    _explosionSound,
+                    AudioPlayMode.OneShot,
+                    new AudioPlayOptions
+                    {
+                        WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                    });
             }
 
             _isExploding = true;

@@ -1,4 +1,5 @@
-﻿using CommonUtilities.CommonGlobalState;
+﻿using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Helpers;
@@ -34,7 +35,7 @@ namespace GameAiAndControls.Controls.SeederControls
         public I3dObject ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
-        // Audio setup (gjøres lazy via ConfigureAudio)
+        // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
         private SoundDefinition? _explosionSound;
 
@@ -65,7 +66,7 @@ namespace GameAiAndControls.Controls.SeederControls
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
-            // Lazy audio-konfig – gjøres første gang MoveObject kalles
+            // Lazily initialize audio the first time MoveObject runs.
             ConfigureAudio(audioPlayer, soundRegistry);
 
             // Update world position according to AI (skip while exploding to keep the explosion anchored)
@@ -131,8 +132,15 @@ namespace GameAiAndControls.Controls.SeederControls
             {
                 if (_audio != null && _explosionSound != null)
                 {
+                    var audioPosition = ((_3dObject)theObject).GetAudioPosition();
                     //Play the explosion sound
-                    _audio.Play(_explosionSound, AudioPlayMode.OneShot);
+                    _audio.Play(
+                        _explosionSound,
+                        AudioPlayMode.OneShot,
+                        new AudioPlayOptions
+                        {
+                            WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                        });
                 }
 
                 ExplosionDeltaTime = DateTime.Now;

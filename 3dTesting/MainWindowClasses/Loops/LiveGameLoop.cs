@@ -3,6 +3,7 @@ using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAudioInstances;
 using System;
@@ -31,8 +32,8 @@ namespace _3dTesting.MainWindowClasses.Loops
         private readonly WeaponsManager weaponsManager = new();
         private StarFieldHandler StarFieldHandler { get; set; }
 
-        private readonly IAudioPlayer audioPlayer = new NAudioAudioPlayer("Soundeffects");
-        private readonly ISoundRegistry soundRegistry = new JsonSoundRegistry("Soundeffects\\sounds.json");
+        private readonly IAudioPlayer audioPlayer = new NAudioAudioPlayer(AudioSetup.AudioBasePath);
+        private readonly ISoundRegistry soundRegistry = new JsonSoundRegistry(AudioSetup.SoundRegistryPath);
         private static SoundDefinition MusicDef { get; set; } = null;
         private static bool MusicIsPlaying { get; set; } = false;
         private static string CurrentSceneMusicId { get; set; } = string.Empty;
@@ -201,7 +202,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 {
                     if (aiObject.IsOnScreen == false)
                     {
-                        aiObject.Movement.MoveObject(aiObject, null, null);
+                        aiObject.Movement.MoveObject(aiObject, audioPlayer, soundRegistry);
                         aiObject.IsOnScreen = false;
                     }
                 }

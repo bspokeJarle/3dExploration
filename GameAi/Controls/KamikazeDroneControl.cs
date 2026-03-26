@@ -1,4 +1,5 @@
-﻿using CommonUtilities.CommonGlobalState;
+﻿using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
 using Gma.System.MouseKeyHook;
@@ -36,7 +37,6 @@ namespace GameAiAndControls.Controls
         private const float DirectionUpdateIntervalSeconds = 1f;
         private const int LogEveryNthFrame = 10;
         private const int OvershootFrameCount = 5;
-
         private DateTime LastDirectionUpdateDateTime = DateTime.MinValue;
         private DateTime LastMovementDateTime = DateTime.MinValue;
         private IVector3 DirectionVelocity = new Vector3 { x = 0, y = 0, z = 0 }; // Initially standing still until the first direction is calculated
@@ -53,6 +53,8 @@ namespace GameAiAndControls.Controls
         private Vector3? _explosionObjectOffsets;
         private IAudioPlayer? _audio;
         private SoundDefinition? _explosionSound;
+        private SoundDefinition? _droneFlyingSound;
+        private IAudioInstance? _droneFlyingInstance;
         private int _overshootFramesRemaining = 0;
         private Vector3 _overshootDirection = new Vector3();
 
@@ -394,6 +396,12 @@ namespace GameAiAndControls.Controls
 
         private void HandleCrash(I3dObject theObject)
         {
+            if (_droneFlyingInstance != null)
+            {
+                _droneFlyingInstance.Stop(playEndSegment: false);
+                _droneFlyingInstance = null;
+            }
+
             if (theObject.ImpactStatus == null)
             {
                 return;
@@ -417,7 +425,14 @@ namespace GameAiAndControls.Controls
 
             if (_audio != null && _explosionSound != null)
             {
-                _audio.Play(_explosionSound, AudioPlayMode.OneShot);
+                var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+                _audio.Play(
+                    _explosionSound,
+                    AudioPlayMode.OneShot,
+                    new AudioPlayOptions
+                    {
+                        WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                    });
             }
 
             _isExploding = true;
@@ -458,6 +473,73 @@ namespace GameAiAndControls.Controls
             if (theObject.ImpactStatus?.HasCrashed == true && !_isExploding)
             {
                 HandleCrash(theObject);
+            }
+
+            if (_audio != null && _droneFlyingSound != null && !_isExploding)
+            {
+                if (theObject.IsOnScreen)
+                {
+                    var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+
+                    if (_droneFlyingInstance == null || !_droneFlyingInstance.IsPlaying)
+                    {
+                        _droneFlyingInstance = _audio.Play(
+                            _droneFlyingSound,
+                            AudioPlayMode.SegmentedLoop,
+                            new AudioPlayOptions
+                            {
+                                WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                            });
+                    }
+
+                    _droneFlyingInstance.SetVolume(_droneFlyingSound.Settings.Volume);
+                    _droneFlyingInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
+                }
+                else
+                {
+                    var globalPos = GameState.SurfaceState?.GlobalMapPosition;
+                    var droneWorldPos = theObject.WorldPosition;
+
+                    if (globalPos != null && droneWorldPos != null)
+                    {
+                        float distSq = Common3dObjectHelpers.GetDistanceSquared(globalPos, droneWorldPos);
+                        float maxDist = AudioSetup.OffscreenAiAudioMaxDistance;
+                        float maxDistSq = maxDist * maxDist;
+
+                        if (distSq <= maxDistSq)
+                        {
+                            float distance = MathF.Sqrt(distSq);
+                            float normalized = distance / maxDist;
+                            float volume = _droneFlyingSound.Settings.Volume *
+                                MathF.Pow(1f - normalized, AudioSetup.OffscreenAiAudioCurveExponent);
+
+                            if (_droneFlyingInstance == null || !_droneFlyingInstance.IsPlaying)
+                            {
+                                _droneFlyingInstance = _audio.Play(
+                                    _droneFlyingSound,
+                                    AudioPlayMode.SegmentedLoop,
+                                    new AudioPlayOptions
+                                    {
+                                        WorldPosition = System.Numerics.Vector3.Zero
+                                    });
+                            }
+
+                            float dx = droneWorldPos.x - globalPos.x;
+                            _droneFlyingInstance.SetWorldPosition(new System.Numerics.Vector3(dx, 0, 0));
+                            _droneFlyingInstance.SetVolume(volume);
+                        }
+                        else if (_droneFlyingInstance != null)
+                        {
+                            _droneFlyingInstance.Stop(playEndSegment: false);
+                            _droneFlyingInstance = null;
+                        }
+                    }
+                    else if (_droneFlyingInstance != null)
+                    {
+                        _droneFlyingInstance.Stop(playEndSegment: false);
+                        _droneFlyingInstance = null;
+                    }
+                }
             }
 
             if (_isExploding)
@@ -697,6 +779,12 @@ namespace GameAiAndControls.Controls
 
         public void Dispose()
         {
+            if (_droneFlyingInstance != null)
+            {
+                _droneFlyingInstance.Stop(playEndSegment: false);
+                _droneFlyingInstance = null;
+            }
+
             _audioConfigured = false;
             _isExploding = false;
             _syncInitialized = false;
@@ -715,6 +803,7 @@ namespace GameAiAndControls.Controls
             LastMovementDateTime = DateTime.MinValue;
             _audio = null;
             _explosionSound = null;
+            _droneFlyingSound = null;
         }
 
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
@@ -736,6 +825,14 @@ namespace GameAiAndControls.Controls
 
             _audio = audioPlayer;
             _explosionSound = soundRegistry.Get("explosion_main");
+            if (soundRegistry.TryGet("drone_flying", out var droneFlyingSound))
+            {
+                _droneFlyingSound = droneFlyingSound;
+            }
+            else if (soundRegistry.TryGet("drone_coming", out var droneComingSound))
+            {
+                _droneFlyingSound = droneComingSound;
+            }
             _audioConfigured = true;
         }
 
