@@ -101,13 +101,13 @@ namespace _3dTesting.MainWindowClasses
         // Enemy bars (icon on left, bar on right — below the powerup row)
         // Icon size and bar height match the existing HUD elements (48px icons, 16px bars).
         // Bar width fills from after the icon to the right edge of the center indentation.
-        private const double EnemyIconSize = 48;
+        private const double EnemyIconSize = 75;
         private const double EnemyBarOffsetX = EnemyIconSize + 8; // bar starts just right of the icon
         private const double EnemyBarW = (RightPanelX - DroneRowX - EnemyBarOffsetX) * 0.60;
         private const double EnemyBarH = BarH;
-        private const double DroneRowX = 850;
+        private const double DroneRowX = 830;
         private const double DroneRowY = 135;
-        private const double SeederRowX = 850;
+        private const double SeederRowX = 830;
         private const double SeederRowY = DroneRowY + EnemyIconSize + 8;
 
         // Right panel bar fills (positions adjusted down to align with "track" lines in PNG)
