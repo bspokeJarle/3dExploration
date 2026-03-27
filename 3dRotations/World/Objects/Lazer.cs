@@ -1,6 +1,7 @@
 ﻿using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Ai;
 using System.Collections.Generic;
@@ -37,12 +38,21 @@ namespace _3dRotations.World.Objects
             return beam;
         }
 
-        // AABB covering all three segments (local coords)
+        // AABB covering all three segments (local coords, configurable via WeaponSetup)
         public static List<List<IVector3>>? LazerCrashBoxes()
         {
-            // Beam runs along -Y from y=-45 to about y=-200 at z=28 (± a small X/Z margin).
-            var min = new Vector3 { x = -50f, y = -275f, z = 20f };
-            var max = new Vector3 { x = 50f, y = -50f, z = 70f };
+            var min = new Vector3
+            {
+                x = WeaponSetup.LazerCrashBoxMinX,
+                y = WeaponSetup.LazerCrashBoxMinY,
+                z = WeaponSetup.LazerCrashBoxMinZ
+            };
+            var max = new Vector3
+            {
+                x = WeaponSetup.LazerCrashBoxMaxX,
+                y = WeaponSetup.LazerCrashBoxMaxY,
+                z = WeaponSetup.LazerCrashBoxMaxZ
+            };
 
             return new List<List<IVector3>>
             {

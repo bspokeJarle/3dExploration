@@ -15,6 +15,16 @@ namespace CommonUtilities.CommonSetup
             ("Bullet", 10),
             ("Rocket", 31)
         };
+
+        // Lazer crashbox extents (local coords, adjustable per axis)
+        // X = lateral (left/right), Y = longitudinal (beam direction), Z = vertical (up/down)
+        public const float LazerCrashBoxMinX = -50f;
+        public const float LazerCrashBoxMaxX = 50f;
+        public const float LazerCrashBoxMinY = -500f;  // extended forward along beam
+        public const float LazerCrashBoxMaxY = -30f;   // slightly closer to muzzle
+        public const float LazerCrashBoxMinZ = 0f;
+        public const float LazerCrashBoxMaxZ = 90f;
+
         public static bool IsWeaponTypeValid(string weaponName)
         {
             return WeaponTypes.Any(w => w.Item1 == weaponName);

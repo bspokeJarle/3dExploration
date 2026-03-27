@@ -211,7 +211,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             CleanupExplodedObjects(world);
-            UpdateEnemyCounts();
+            UpdateHudState(world);
             if (activeScene != null)
             {
                 HandleMusic(renderedList, activeScene.SceneMusic);
@@ -324,12 +324,26 @@ namespace _3dTesting.MainWindowClasses.Loops
         }
 
         /// <summary>
-        /// Counts surviving drones and seeders from AiObjects and writes the totals
-        /// into GamePlayState so the HUD can display percentage bars.
-        /// On first call the current counts are captured as the initial totals.
+        /// Syncs per-frame game state into GamePlayState for the HUD:
+        /// ship health from ImpactStatus, and surviving enemy counts.
         /// </summary>
-        private static void UpdateEnemyCounts()
+        private static void UpdateHudState(I3dWorld world)
         {
+            var gps = GameState.GamePlayState;
+
+            // Sync ship health from the actual object into GamePlayState
+            var inhabitants = world.WorldInhabitants;
+            for (int i = 0; i < inhabitants.Count; i++)
+            {
+                if (inhabitants[i].ObjectName == "Ship")
+                {
+                    int hp = inhabitants[i].ImpactStatus?.ObjectHealth ?? 0;
+                    gps.Health = hp;
+                    break;
+                }
+            }
+
+            // Count surviving enemies
             var aiObjects = GameState.SurfaceState.AiObjects;
             int drones = 0;
             int seeders = 0;
@@ -345,8 +359,6 @@ namespace _3dTesting.MainWindowClasses.Loops
                 else if (obj.ObjectName == "Seeder")
                     seeders++;
             }
-
-            var gps = GameState.GamePlayState;
 
             // Capture initial totals once (first frame where enemies exist)
             if (gps.InitialDrones == 0 && drones > 0)

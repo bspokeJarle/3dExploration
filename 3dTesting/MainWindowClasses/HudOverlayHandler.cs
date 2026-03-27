@@ -46,7 +46,8 @@ namespace _3dTesting.MainWindowClasses
         // HUD ELEMENTS (SLOTS)
         // ----------------------------
         private readonly Image _minimap;
-        private readonly Image _activePowerupIcon;
+        private readonly Rectangle _powerBarBackground;
+        private readonly Rectangle _powerBarFill;
         private readonly Image _powerupLazerIcon;
         private readonly Image _powerupDecoyIcon;
 
@@ -86,9 +87,11 @@ namespace _3dTesting.MainWindowClasses
         // FPS line — adjusted from your earlier values to sit inside the top middle label slot
         private const double FpsX = 870;
         private const double FpsY = 28;
-        private const double ActivePowerupIconX = 1310;
-        private const double ActivePowerupIconY = 18;
-        private const double ActivePowerupIconSize = 48;
+        // Ship power (health) vertical bar — replaces the old active-powerup icon slot
+        private const double PowerBarX = 1314;
+        private const double PowerBarY = 22;
+        private const double PowerBarW = 18;
+        private const double PowerBarH = 35;
 
         private const double PowerupLazerX = 850;
         private const double PowerupDecoyX = 950;
@@ -174,7 +177,27 @@ namespace _3dTesting.MainWindowClasses
             Canvas.SetLeft(_fpsCenter, FpsX);
             Canvas.SetTop(_fpsCenter, FpsY);
 
-            _activePowerupIcon = CreatePowerupIcon(ActivePowerupIconX, ActivePowerupIconY, ActivePowerupIconSize);
+            // ----- Ship power (health) vertical bar -----
+            _powerBarBackground = new Rectangle
+            {
+                Width = PowerBarW,
+                Height = PowerBarH,
+                Fill = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
+                Opacity = 0.5
+            };
+            Canvas.SetLeft(_powerBarBackground, PowerBarX);
+            Canvas.SetTop(_powerBarBackground, PowerBarY);
+
+            _powerBarFill = new Rectangle
+            {
+                Width = PowerBarW,
+                Height = PowerBarH,
+                Fill = Brushes.LimeGreen,
+                Opacity = 0.9
+            };
+            Canvas.SetLeft(_powerBarFill, PowerBarX);
+            Canvas.SetTop(_powerBarFill, PowerBarY);
+
             _powerupLazerIcon = CreatePowerupIcon(PowerupLazerX, PowerupRowY, PowerupIconSize);
             _powerupDecoyIcon = CreatePowerupIcon(PowerupDecoyX, PowerupRowY, PowerupIconSize);
 
@@ -201,7 +224,8 @@ namespace _3dTesting.MainWindowClasses
 
             _canvas.Children.Add(_minimap);
             _canvas.Children.Add(_fpsCenter);
-            _canvas.Children.Add(_activePowerupIcon);
+            _canvas.Children.Add(_powerBarBackground);
+            _canvas.Children.Add(_powerBarFill);
             _canvas.Children.Add(_powerupLazerIcon);
             _canvas.Children.Add(_powerupDecoyIcon);
 
@@ -281,13 +305,11 @@ namespace _3dTesting.MainWindowClasses
 
             _fpsCenter.Text = $"{fps}                       {triangles}";
 
-            _activePowerupIcon.Source = activePowerup == "DECOY"
-                ? _powerupDecoyIcon.Source
-                : _powerupLazerIcon.Source;
-
             _powerupLazerIcon.Opacity = activePowerup == "LAZER" ? 1.0 : 0.45;
             _powerupDecoyIcon.Opacity = activePowerup == "DECOY" ? 1.0 : 0.45;
-            _activePowerupIcon.Opacity = 1.0;
+
+            // Ship power (health) vertical bar: fills bottom-to-top, green→red
+            UpdatePowerBar(gameplay);
 
             SetBarFill(_altBarFill, gameplay.Alt);
 
@@ -308,6 +330,43 @@ namespace _3dTesting.MainWindowClasses
         }
 
         public void ReloadFrame() => TryLoadFrameImage();
+
+        /// <summary>
+        /// Updates the vertical ship power bar.
+        /// Height scales with health percentage (bottom-to-top fill).
+        /// Color interpolates: green (100%) → yellow (50%) → red (0%).
+        /// </summary>
+        private void UpdatePowerBar(GamePlayState gameplay)
+        {
+            float pct = gameplay.MaxHealth > 0f
+                ? Clamp01(gameplay.Health / gameplay.MaxHealth)
+                : 0f;
+
+            double fillH = PowerBarH * pct;
+
+            _powerBarFill.Height = fillH;
+            // Anchor to bottom: push the top down so the bar grows upward
+            Canvas.SetTop(_powerBarFill, PowerBarY + (PowerBarH - fillH));
+
+            // Color: green at 100%, blends to red by 0%, transition centered around 50%
+            byte r, g;
+            if (pct > 0.5f)
+            {
+                // 100%→50%: green to yellow (red ramps up 0→255)
+                float t = (1f - pct) * 2f; // 0 at 100%, 1 at 50%
+                r = (byte)(255 * t);
+                g = 255;
+            }
+            else
+            {
+                // 50%→0%: yellow to red (green ramps down 255→0)
+                float t = pct * 2f; // 1 at 50%, 0 at 0%
+                r = 255;
+                g = (byte)(255 * t);
+            }
+
+            _powerBarFill.Fill = new SolidColorBrush(Color.FromArgb(220, r, g, 0));
+        }
 
         private static Image CreatePowerupIcon(double x, double y, double size)
         {

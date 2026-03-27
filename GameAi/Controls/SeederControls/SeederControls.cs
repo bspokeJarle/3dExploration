@@ -69,8 +69,9 @@ namespace GameAiAndControls.Controls.SeederControls
             // Lazily initialize audio the first time MoveObject runs.
             ConfigureAudio(audioPlayer, soundRegistry);
 
-            // Update world position according to AI (skip while exploding to keep the explosion anchored)
-            if (!isExploding)
+            // Skip AI movement when a crash is pending or already exploding,
+            // so the explosion stays anchored at the position where the hit occurred.
+            if (!isExploding && theObject.ImpactStatus.HasCrashed != true)
             {
                 theObject.WorldPosition = SeederAi.MoveWorldPositionAccordingToAi(theObject.IsOnScreen, theObject);
             }
