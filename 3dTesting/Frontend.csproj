@@ -33,6 +33,9 @@
     <None Update="GameObjects\seeder_ball.stl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="SceneFiles\**\*.retro">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\Don%27tStop_Intro.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

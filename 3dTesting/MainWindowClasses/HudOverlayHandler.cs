@@ -93,9 +93,9 @@ namespace _3dTesting.MainWindowClasses
         private const double PowerBarW = 18;
         private const double PowerBarH = 35;
 
-        private const double PowerupLazerX = 850;
-        private const double PowerupDecoyX = 950;
-        private const double PowerupRowY = 75;
+        private const double PowerupLazerX = 845;
+        private const double PowerupDecoyX = 945;
+        private const double PowerupRowY = 85;
         private const double PowerupIconSize = 48;
 
         // Enemy bars (icon on left, bar on right — below the powerup row)
@@ -105,9 +105,9 @@ namespace _3dTesting.MainWindowClasses
         private const double EnemyBarOffsetX = EnemyIconSize + 8; // bar starts just right of the icon
         private const double EnemyBarW = (RightPanelX - DroneRowX - EnemyBarOffsetX) * 0.60;
         private const double EnemyBarH = BarH;
-        private const double DroneRowX = 830;
-        private const double DroneRowY = 135;
-        private const double SeederRowX = 830;
+        private const double DroneRowX = 825;
+        private const double DroneRowY = 145;
+        private const double SeederRowX = 825;
         private const double SeederRowY = DroneRowY + EnemyIconSize + 8;
 
         // Right panel bar fills (positions adjusted down to align with "track" lines in PNG)
