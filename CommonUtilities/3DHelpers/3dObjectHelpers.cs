@@ -17,6 +17,64 @@ namespace CommonUtilities._3DHelpers
             return new Vector3(vector.x, vector.y, vector.z);
         }
 
+        // -----------------------------------------------------------------
+        //  HEADING HELPERS
+        //  Shared heading logic for pointing objects toward a target.
+        //  Z rotation is applied first to geometry (+X forward).
+        //  After Z rotation by θ: tip at (cosθ, sinθ, 0).
+        //  After X=70 camera tilt: screenX ∝ cosθ, screenY ∝ sinθ.
+        //  Z=0→right, Z=90→down, Z=180→left, Z=270→up.
+        //  World-to-screen: screen right = world +X, screen down = world +Z.
+        //  Therefore heading Z = atan2(dz, dx).
+        // -----------------------------------------------------------------
+
+        /// <summary>
+        /// Computes the Z rotation (heading) that points an object's +X forward
+        /// along the given world-space XZ direction. Base X rotation = 70 (camera tilt).
+        /// Returns (Xrotation, Yrotation, Zrotation).
+        /// </summary>
+        public static (float X, float Y, float Z) GetHeadingFromDirection(float dx, float dz)
+        {
+            float len = MathF.Sqrt(dx * dx + dz * dz);
+            if (len < 1e-4f)
+                return (70f, 0f, 0f);
+
+            float headingDeg = MathF.Atan2(dz, dx) * (180f / MathF.PI);
+            return (70f, 0f, headingDeg);
+        }
+
+        /// <summary>
+        /// Computes the heading rotation to point from a source position toward
+        /// a target position in the world XZ plane.
+        /// Returns (Xrotation, Yrotation, Zrotation).
+        /// </summary>
+        public static (float X, float Y, float Z) GetHeadingToTarget(IVector3 source, IVector3 target)
+        {
+            return GetHeadingFromDirection(target.x - source.x, target.z - source.z);
+        }
+
+        /// <summary>
+        /// Normalizes an angle to the range (-180, 180].
+        /// </summary>
+        public static float NormalizeAngle(float angle)
+        {
+            angle %= 360f;
+            if (angle > 180f) angle -= 360f;
+            if (angle < -180f) angle += 360f;
+            return angle;
+        }
+
+        /// <summary>
+        /// Smoothly moves a current angle toward a target angle by at most maxDelta degrees.
+        /// </summary>
+        public static float MoveAngleTowards(float current, float target, float maxDelta)
+        {
+            float delta = NormalizeAngle(target - current);
+            if (MathF.Abs(delta) <= maxDelta)
+                return current + delta;
+            return current + MathF.Sign(delta) * maxDelta;
+        }
+
         public static float DotNormalized(IVector3 a, IVector3 b)
         {
             //Returns 1.0 if the vectors are perfectly aligned

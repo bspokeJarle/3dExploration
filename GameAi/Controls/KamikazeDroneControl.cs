@@ -248,24 +248,9 @@ namespace GameAiAndControls.Controls
             return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
         }
 
-        private static float NormalizeAngle(float angle)
-        {
-            angle %= 360f;
-            if (angle > 180f) angle -= 360f;
-            if (angle < -180f) angle += 360f;
-            return angle;
-        }
+        private static float NormalizeAngle(float angle) => Common3dObjectHelpers.NormalizeAngle(angle);
 
-        private static float MoveAngleTowards(float current, float target, float maxDelta)
-        {
-            float delta = NormalizeAngle(target - current);
-            if (MathF.Abs(delta) <= maxDelta)
-            {
-                return current + delta;
-            }
-
-            return current + MathF.Sign(delta) * maxDelta;
-        }
+        private static float MoveAngleTowards(float current, float target, float maxDelta) => Common3dObjectHelpers.MoveAngleTowards(current, target, maxDelta);
 
         private static Vector3 GetLocalCrashCenter(I3dObject obj)
         {
@@ -348,18 +333,10 @@ namespace GameAiAndControls.Controls
 
         private void UpdateRotationTowardsTarget(Vector3 directionToTarget)
         {
-            var normalizedDirection = Normalize(directionToTarget);
-            if (normalizedDirection.x == 0 && normalizedDirection.y == 0 && normalizedDirection.z == 0)
-            {
-                return;
-            }
-
-            float headingDegrees = MathF.Atan2(normalizedDirection.x, normalizedDirection.z) * 180f / MathF.PI;
-            float pitchDegrees = MathF.Atan2(-normalizedDirection.y, MathF.Sqrt(normalizedDirection.x * normalizedDirection.x + normalizedDirection.z * normalizedDirection.z)) * 180f / MathF.PI;
-
-            TargetZrotation = 270f + headingDegrees;
-            TargetXrotation = 70f + pitchDegrees;
-            TargetYrotation = 0f;
+            var heading = Common3dObjectHelpers.GetHeadingFromDirection(directionToTarget.x, directionToTarget.z);
+            TargetXrotation = heading.X;
+            TargetYrotation = heading.Y;
+            TargetZrotation = heading.Z;
         }
 
         private void AlignRotationToDirection(Vector3 movementDirection)
@@ -616,7 +593,17 @@ namespace GameAiAndControls.Controls
                     directionToTarget = _overshootDirection;
                 }
 
-                UpdateRotationTowardsTarget(directionToTarget);
+                // Use raw world positions for heading to avoid crash-center/zoom bias.
+                // Target is either the decoy's or the ship's approximate world position.
+                var headingDirection = isOvershooting
+                    ? directionToTarget
+                    : new Vector3
+                    {
+                        x = (closestDecoy != null ? closestDecoy.WorldPosition.x : GameState.SurfaceState.GlobalMapPosition.x) - theObject.WorldPosition.x,
+                        y = 0f,
+                        z = (closestDecoy != null ? closestDecoy.WorldPosition.z : GameState.SurfaceState.GlobalMapPosition.z) - theObject.WorldPosition.z
+                    };
+                UpdateRotationTowardsTarget(headingDirection);
 
                 var distance = CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance(parentWorldPosition, resolvedTargetWorldPosition);
 

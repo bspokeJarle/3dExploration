@@ -326,7 +326,11 @@ namespace _3dTesting
             {
                  if (GameState.SurfaceState.GlobalMapPosition != null)
                 {
+                    // Restore old markers → dirty tiles → draw new markers
+                    // This order prevents marker restore from overwriting infected pixels
+                    GameHelpers.RestoreMinimapMarkers(GameState.SurfaceState.GlobalMapBitmap);
                     GameHelpers.UpdateDirtyTilesInMap(GameState.SurfaceState.GlobalMapBitmap);
+                    GameHelpers.DrawMinimapMarkers(GameState.SurfaceState.GlobalMapBitmap);
 
                     GameHelpers.UpdateMapOverlay(
                         _hudHandler.GetMinimapImage(),

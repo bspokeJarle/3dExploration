@@ -130,6 +130,13 @@ namespace GameAiAndControls.Controls
             authoritativeDrone.WorldPosition = ToVector3(source.WorldPosition);
             authoritativeDrone.ObjectOffsets = ToVector3(source.ObjectOffsets);
             authoritativeDrone.Rotation = ToVector3(source.Rotation);
+
+            // Sync impact status so minimap markers and other systems see the death state
+            if (source.ImpactStatus != null && authoritativeDrone.ImpactStatus != null)
+            {
+                authoritativeDrone.ImpactStatus.HasExploded = source.ImpactStatus.HasExploded;
+                authoritativeDrone.ImpactStatus.HasCrashed = source.ImpactStatus.HasCrashed;
+            }
         }
 
         private static Vector3 Normalize(Vector3 v)

@@ -37,13 +37,23 @@ namespace _3dRotations.Scene.Scene1
             ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
 
+            // Guidance arrow — on-screen indicator pointing toward closest seeder
+            var guidanceArrow = SeederGuidanceArrow.CreateSeederGuidanceArrow(Surface);
+            guidanceArrow.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 200 };
+            guidanceArrow.Rotation = new Vector3 { x = 70, y = 0, z = 90 };
+            guidanceArrow.WorldPosition = new Vector3 { };
+            guidanceArrow.ObjectName = "SeederGuidanceArrow";
+            guidanceArrow.ImpactStatus = new ImpactStatus { };
+            guidanceArrow.CrashBoxDebugMode = false;
+            world.WorldInhabitants.Add(guidanceArrow);
+
             for (int i = 0; i < 10; i++)
             {
                 var rmd = new Random();
 
                 //Add ship as first inhabitant
                 var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
-                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-15000, 15000), y = 0, z = 92000 + rmd.Next(-15000, 15000) };
+                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-55000, 55000), y = 0, z = 92000 + rmd.Next(-55000, 55000) };
                 kamikaze.Rotation = new Vector3 { };
                 kamikaze.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
                 kamikaze.ObjectName = "KamikazeDrone";
