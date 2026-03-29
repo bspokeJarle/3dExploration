@@ -301,17 +301,24 @@ namespace GameAiAndControls.Controls
             var mapPosition = GameState.SurfaceState.GlobalMapPosition;
             var shipOffsets = ParentObject.ObjectOffsets ?? new Vector3();
 
+            // The viewport center offset converts map position (top-left) to the
+            // ship's actual world position (center of viewport) for correct minimap placement.
+            // ObjectOffsets compensate so the decoy renders at the ship's screen position.
+            // Screen formula: screenZ = (GlobalMapPos.z - WorldPos.z) + offsets.z
+            //                 screenX = -(GlobalMapPos.x - WorldPos.x) + offsets.x
+            int vc = (SurfaceSetup.viewPortSize * SurfaceSetup.tileSize) / 2;
+
             decoy.WorldPosition = new Vector3
             {
-                x = mapPosition.x + shipOffsets.x,
-                y = mapPosition.y,
-                z = mapPosition.z - shipOffsets.z
+                x = mapPosition.x + vc + shipOffsets.x,
+                y = mapPosition.y - 50f,
+                z = mapPosition.z + vc
             };
             decoy.ObjectOffsets = new Vector3
             {
-                x = 0f,
-                y = shipOffsets.y - (mapPosition.y * CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY),
-                z = 0f
+                x = -(vc + shipOffsets.x),
+                y = shipOffsets.y - (mapPosition.y * SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY),
+                z = shipOffsets.z + vc
             };
             decoy.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             decoy.ObjectName = "DroneDecoy";

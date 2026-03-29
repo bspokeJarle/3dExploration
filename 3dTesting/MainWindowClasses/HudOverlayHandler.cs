@@ -57,6 +57,9 @@ namespace _3dTesting.MainWindowClasses
         private readonly Image _seederIcon;
         private readonly Rectangle _seederBarFill;
 
+        // Viewport indicator overlaid on the minimap
+        private readonly Rectangle _viewportRect;
+
         // Center FPS line (numbers only; the "FPS | TRI | P" labels are in the PNG)
         private readonly TextBlock _fpsCenter;
 
@@ -165,6 +168,16 @@ namespace _3dTesting.MainWindowClasses
             Canvas.SetLeft(_minimap, MiniMapX);
             Canvas.SetTop(_minimap, MiniMapY);
 
+            // Viewport indicator — semi-transparent cyan outline on top of the minimap
+            _viewportRect = new Rectangle
+            {
+                Stroke = new SolidColorBrush(Color.FromArgb(160, 0, 255, 255)),
+                StrokeThickness = 1.5,
+                Fill = new SolidColorBrush(Color.FromArgb(30, 0, 255, 255)),
+                IsHitTestVisible = false
+            };
+            Panel.SetZIndex(_viewportRect, 1000);
+
             // ----- Center FPS / TRI / P -----
             _fpsCenter = new TextBlock
             {
@@ -223,6 +236,7 @@ namespace _3dTesting.MainWindowClasses
             _hudRoot.Children.Add(_canvas);
 
             _canvas.Children.Add(_minimap);
+            _canvas.Children.Add(_viewportRect);
             _canvas.Children.Add(_fpsCenter);
             _canvas.Children.Add(_powerBarBackground);
             _canvas.Children.Add(_powerBarFill);
@@ -327,9 +341,36 @@ namespace _3dTesting.MainWindowClasses
                 : 0f;
             SetBarFill(_droneBarFill, dronePct, EnemyBarW);
             SetBarFill(_seederBarFill, seederPct, EnemyBarW);
+
+            UpdateViewportRect();
         }
 
         public void ReloadFrame() => TryLoadFrameImage();
+
+        /// <summary>
+        /// Positions and sizes the viewport rectangle overlay on the minimap.
+        /// The minimap shows a cropped portion of the full bitmap.
+        /// The viewport (18×18 tiles) is centered on the ship (center of the crop).
+        /// </summary>
+        private void UpdateViewportRect()
+        {
+            int cropW = CommonUtilities.CommonSetup.MapSetup.bitmapSize * 2; // 144
+            int cropH = CommonUtilities.CommonSetup.MapSetup.bitmapSize;     // 72
+            int vpTiles = CommonUtilities.CommonSetup.SurfaceSetup.viewPortSize; // 18
+
+            // The viewport is centered in the crop (ship is at crop center)
+            double vpBitmapX = (cropW - vpTiles) / 2.0;
+            double vpBitmapZ = (cropH - vpTiles) / 2.0;
+
+            double scaleX = MiniMapW / cropW;
+            double scaleZ = MiniMapH / cropH;
+
+            _viewportRect.Width = vpTiles * scaleX;
+            _viewportRect.Height = vpTiles * scaleZ;
+
+            Canvas.SetLeft(_viewportRect, MiniMapX + vpBitmapX * scaleX);
+            Canvas.SetTop(_viewportRect, MiniMapY + vpBitmapZ * scaleZ);
+        }
 
         /// <summary>
         /// Updates the vertical ship power bar.

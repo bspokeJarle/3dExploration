@@ -65,6 +65,10 @@ namespace GameAiAndControls.Controls
         private DateTime _deployedAt = DateTime.MinValue;
         private Vector3 _deployedWorldPosition = new Vector3();
 
+        // Launch rise: decoy rises 50 units over 2 seconds after deployment
+        private const float LaunchRiseUnits = 50f;
+        private const float LaunchRiseDurationSeconds = 2f;
+
         private const float PulseAmplitudeZ = 150f;
         private const float PulseCyclesPerSecond = 0.25f;
 
@@ -464,7 +468,18 @@ namespace GameAiAndControls.Controls
 
             if (_isDeployedDecoy)
             {
-                theObject.WorldPosition = _deployedWorldPosition;
+                // Launch rise: smoothly move upward (−y) over the first 2 seconds
+                float elapsedSinceDeploy = (float)(DateTime.Now - _deployedAt).TotalSeconds;
+                float riseProgress = Math.Clamp(elapsedSinceDeploy / LaunchRiseDurationSeconds, 0f, 1f);
+                // Ease-out: fast at start, slows down
+                float easedRise = 1f - (1f - riseProgress) * (1f - riseProgress);
+
+                theObject.WorldPosition = new Vector3
+                {
+                    x = _deployedWorldPosition.x,
+                    y = _deployedWorldPosition.y - easedRise * LaunchRiseUnits,
+                    z = _deployedWorldPosition.z
+                };
                 SyncMovement(theObject);
             }
             else
