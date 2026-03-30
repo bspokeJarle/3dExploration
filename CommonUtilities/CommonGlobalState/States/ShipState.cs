@@ -16,6 +16,7 @@ namespace CommonUtilities.CommonGlobalState.States
         public IVector3? ShipObjectOffsets { get; set; } = null;
         public IVector3? ShipVelocity { get; set; } = null;
         public bool ShipHasShadow { get; set; } = false;
+        public IImpactStatus? ShipImpactStatus { get; set; } = null;
         public List<BestCandidateState> BestCandidateStates { get; set; } = [];
     }
     public class BestCandidateState

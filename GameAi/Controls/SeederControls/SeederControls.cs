@@ -50,6 +50,7 @@ namespace GameAiAndControls.Controls.SeederControls
         private DateTime ExplosionDeltaTime;
         private Vector3? explosionWorldPosition;
         private Vector3? explosionObjectOffsets;
+        private Vector3? _trackedWorldPosition;
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
@@ -73,7 +74,24 @@ namespace GameAiAndControls.Controls.SeederControls
             // so the explosion stays anchored at the position where the hit occurred.
             if (!isExploding && theObject.ImpactStatus.HasCrashed != true)
             {
-                theObject.WorldPosition = SeederAi.MoveWorldPositionAccordingToAi(theObject.IsOnScreen, theObject);
+                var aiPos = SeederAi.MoveWorldPositionAccordingToAi(theObject.IsOnScreen, theObject);
+                if (aiPos != null)
+                {
+                    _trackedWorldPosition = aiPos;
+                }
+            }
+
+            // Always apply the tracked position so the deep copy's stale
+            // WorldPosition (copied from the original) is replaced with the
+            // control-class's authoritative value.
+            if (_trackedWorldPosition != null)
+            {
+                theObject.WorldPosition = new Vector3
+                {
+                    x = _trackedWorldPosition.x,
+                    y = _trackedWorldPosition.y,
+                    z = _trackedWorldPosition.z
+                };
             }
       
             //Set parent object
@@ -90,14 +108,26 @@ namespace GameAiAndControls.Controls.SeederControls
 
             if (isExploding)
             {
+                // Anchor position with fresh copies each frame so UpdateExplosion
+                // cannot drift the saved coordinates via in-place field mutation.
                 if (explosionWorldPosition != null)
                 {
-                    theObject.WorldPosition = explosionWorldPosition;
+                    theObject.WorldPosition = new Vector3
+                    {
+                        x = explosionWorldPosition.x,
+                        y = explosionWorldPosition.y,
+                        z = explosionWorldPosition.z
+                    };
                 }
 
                 if (explosionObjectOffsets != null)
                 {
-                    theObject.ObjectOffsets = explosionObjectOffsets;
+                    theObject.ObjectOffsets = new Vector3
+                    {
+                        x = explosionObjectOffsets.x,
+                        y = explosionObjectOffsets.y,
+                        z = explosionObjectOffsets.z
+                    };
                 }
 
                 //Update explosion
@@ -117,11 +147,11 @@ namespace GameAiAndControls.Controls.SeederControls
             // Visual spin
             Zrotation += BaseZRotationIncrementPerFrame;
 
-            // Keep seeder offsets visually in sync with surface scrolling
-            if (!isExploding)
-            {
-                SyncMovement(theObject);
-            }
+            // Keep seeder offsets visually in sync with surface scrolling.
+            // Must run even during explosion so the explosion stays anchored
+            // to the terrain position as the surface scrolls (SyncMovement
+            // only adjusts ObjectOffsets.y; x/z stay frozen from the explosion anchor).
+            SyncMovement(theObject);
 
             return theObject;
         }
@@ -146,8 +176,11 @@ namespace GameAiAndControls.Controls.SeederControls
 
                 ExplosionDeltaTime = DateTime.Now;
                 isExploding = true;
-                explosionWorldPosition = theObject.WorldPosition as Vector3;
-                explosionObjectOffsets = theObject.ObjectOffsets as Vector3;
+                // Copy values — not references — so UpdateExplosion cannot drift the anchor.
+                var wp = theObject.WorldPosition;
+                explosionWorldPosition = new Vector3 { x = wp.x, y = wp.y, z = wp.z };
+                var oo = theObject.ObjectOffsets;
+                explosionObjectOffsets = new Vector3 { x = oo.x, y = oo.y, z = oo.z };
                 // Handle object destruction or other logic here
                 var explodedVersion = Physics.ExplodeObject(theObject, ExplosionForce);
                 //Remove Crash boxes to avoid further collisions

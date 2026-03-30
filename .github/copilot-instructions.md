@@ -11,12 +11,13 @@
 - For movement in this project, some objects must store progress locally in their control class across frames; for kamikaze behavior, follow the same persistent-state pattern used by the seeder rather than assuming object world state alone persists.
 - For collision logging, include only actual collisions by default; log skipped collisions only when explicitly enabled.
 - Implement audio spatialization consistently for all moving sound-emitting objects in the project, not just kamikaze drones.
+- Collision/crash detection logic must stay centralized in the `CrashDetection` class. Do not scatter collision triggers into individual object controls (like `KamikazeDroneControl`, `DecoyBeaconControl`, etc.). Keep detection in one place.
 
 ## Coordinate System and Rotation Conventions
 - The project uses a custom 3D engine with `Vector3` having x, y, z fields.
 - X axis: lateral (left/right on screen)
 - Y axis: depth/forward (into the screen, -Y is forward for weapons/projectiles)
-- Z axis: vertical (up/down on screen, +Z is up)
+- Z axis: vertical (up/down on screen, +Z is up; note that for ObjectOffsets.y and WorldPosition.y, + is down (lower on screen), - is up (higher on screen / higher altitude))
 - Base rotation for objects facing the camera: X=70 (camera tilt), Y=0, Z=90
 - Rotation around Z axis controls yaw/heading in the screen plane (turning left/right)
 - Rotation around X axis controls pitch (tilting forward/back relative to camera)

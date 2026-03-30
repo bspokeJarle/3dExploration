@@ -5,7 +5,6 @@ using Domain;
 using Gma.System.MouseKeyHook;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,11 +17,11 @@ namespace GameAiAndControls.Controls
     public class KamikazeDroneControls : IObjectMovement
     {
         private static readonly CommonUtilities._3DHelpers._3dRotationCommon Rotate3d = new();
-        private const bool enableLogging = false;
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
+        public DateTime? StartHuntDateTime { get; set; }
 
         //Initial rotation angles for the drone, pointing towards the camera. Adjust as needed based on the drone model's default orientation.
         private float Yrotation = 0;
@@ -35,14 +34,12 @@ namespace GameAiAndControls.Controls
         const int DroneSpeedScreenPrSecond = 3; //How many seconds it should take for the drone to cross the entire screen at its current speed. Adjust as needed.
         private const float RotationDegreesPerSecond = 180f;
         private const float DirectionUpdateIntervalSeconds = 1f;
-        private const int LogEveryNthFrame = 10;
         private const int OvershootFrameCount = 5;
         private DateTime LastDirectionUpdateDateTime = DateTime.MinValue;
         private DateTime LastMovementDateTime = DateTime.MinValue;
         private IVector3 DirectionVelocity = new Vector3 { x = 0, y = 0, z = 0 }; // Initially standing still until the first direction is calculated
         private bool _syncInitialized = false;
         private float _syncY = 0;
-        private int _logFrameCounter = 0;
         private int _trackedObjectId = -1;
         private bool _storedWorldPositionInitialized = false;
         private Vector3 _storedWorldPosition = new Vector3();
@@ -58,20 +55,13 @@ namespace GameAiAndControls.Controls
         private int _overshootFramesRemaining = 0;
         private Vector3 _overshootDirection = new Vector3();
 
-        private static void SafeLog(string message)
+        public KamikazeDroneControls()
         {
-            try
-            {
-                if (enableLogging && Logger.EnableFileLogging) Logger.Log(message, "KamikazeDrone");
-            }
-            catch
-            {
-            }
-        }
-
-        private static string FormatVector(Vector3 v)
-        {
-            return string.Create(CultureInfo.InvariantCulture, $"x={v.x:0.##};y={v.y:0.##};z={v.z:0.##}");
+            var rd = new Random();
+            var TimeDelay = GameSetup.KamikazeDroneMinHuntDelay +
+                rd.Next(0, GameSetup.KamikazeDroneMaxHuntDelay - GameSetup.KamikazeDroneMinHuntDelay);
+            // Delay the start of the hunt to give the player some time to react before the drone starts moving, and to help desync multiple drones if they spawn at similar times.
+            StartHuntDateTime = DateTime.Now.AddSeconds(TimeDelay);
         }
 
         private static Vector3 ToVector3(IVector3? v)
@@ -424,6 +414,22 @@ namespace GameAiAndControls.Controls
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            // Skip hunt until the delay expires, unless the ship is already close
+            if (DateTime.Now < StartHuntDateTime)
+            {
+                var shipPos = GameState.ShipState?.ShipCrashCenterWorldPosition;
+                if (shipPos != null && theObject.WorldPosition != null)
+                {
+                    float distToShip = (float)Common3dObjectHelpers.GetDistance(
+                        ToVector3(theObject.WorldPosition), ToVector3(shipPos));
+                    if (distToShip > 10_000f)
+                        return theObject;
+                }
+                else
+                {
+                    return theObject;
+                }
+            }
             ConfigureAudio(audioPlayer, soundRegistry);
 
             if (_trackedObjectId != theObject.ObjectId)
@@ -552,22 +558,13 @@ namespace GameAiAndControls.Controls
             }
 
             var deltaSeconds = (now - LastMovementDateTime).TotalSeconds;
-            int logFrameNumber = ++_logFrameCounter;
-            bool shouldLogThisFrame = (logFrameNumber % LogEveryNthFrame) == 0;
 
-            double distanceToTarget = -1;
             IVector3? currentDronePosition = null;
             IVector3? currentTargetPosition = null;
-            Vector3 rotatedLocalCrashCenter = new Vector3();
-            Vector3 currentWorldPosition = ToVector3(theObject.WorldPosition);
-            Vector3 currentObjectOffsets = ToVector3(theObject.ObjectOffsets);
             Vector3 directionToTarget = new Vector3();
             bool shouldRecalculateDirection = false;
             bool isOvershooting = _overshootFramesRemaining > 0;
             float speedPerSecond = 0f;
-            float moveDistanceApplied = 0f;
-            float distanceBeforeMove = -1f;
-            float distanceAfterMove = -1f;
 
             var closestDecoy = GetClosestActiveDecoy(ParentObject);
             Vector3? targetWorldPosition = closestDecoy != null
@@ -576,7 +573,6 @@ namespace GameAiAndControls.Controls
 
             if (ParentObject.WorldPosition is IVector3 && targetWorldPosition is Vector3 resolvedTargetWorldPosition)
             {
-                rotatedLocalCrashCenter = GetRotatedLocalCrashCenter(ParentObject);
                 var parentWorldPosition = GetDroneCrashCenterWorldPosition(ParentObject);
                 currentDronePosition = parentWorldPosition;
                 currentTargetPosition = resolvedTargetWorldPosition;
@@ -628,9 +624,6 @@ namespace GameAiAndControls.Controls
                 {
                     DirectionVelocity = new Vector3 { x = 0, y = 0, z = 0 };
                 }
-
-                distanceToTarget = CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance(parentWorldPosition, (Vector3)targetWorldPosition);
-                distanceBeforeMove = (float)distanceToTarget;
             }
 
             if (theObject.WorldPosition is IVector3 objectWorldPosition)
@@ -648,7 +641,6 @@ namespace GameAiAndControls.Controls
 
                     float currentDistance = (float)CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance(dronePosition, targetPosition);
                     speedPerSecond = Length((Vector3)DirectionVelocity);
-                    distanceBeforeMove = currentDistance;
 
                     if (speedPerSecond > 0f)
                     {
@@ -679,8 +671,6 @@ namespace GameAiAndControls.Controls
                             }
                         }
 
-                        moveDistanceApplied = moveDistance;
-
                         if (moveDistance > 0f)
                         {
                             AlignRotationToDirection(moveDirection);
@@ -705,14 +695,6 @@ namespace GameAiAndControls.Controls
                 }
 
                 currentDronePosition = GetDroneCrashCenterWorldPosition(theObject);
-                currentWorldPosition = ToVector3(theObject.WorldPosition);
-                currentObjectOffsets = ToVector3(theObject.ObjectOffsets);
-                rotatedLocalCrashCenter = GetRotatedLocalCrashCenter(theObject);
-                if (currentTargetPosition is Vector3 latestTargetPosition)
-                {
-                    distanceToTarget = CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance((Vector3)currentDronePosition, latestTargetPosition);
-                    distanceAfterMove = (float)distanceToTarget;
-                }
 
                 if (closestDecoy != null && currentDronePosition is Vector3 dronePositionAfterMove)
                 {
@@ -735,21 +717,6 @@ namespace GameAiAndControls.Controls
                 rotation.y = Yrotation;
                 rotation.x = Xrotation;
                 rotation.z = Zrotation;
-            }
-
-            if (shouldLogThisFrame && currentDronePosition != null && currentTargetPosition != null)
-            {
-                float distanceDelta = distanceBeforeMove >= 0f && distanceAfterMove >= 0f
-                    ? distanceBeforeMove - distanceAfterMove
-                    : 0f;
-
-                SafeLog(
-                    $"frame={logFrameNumber} objectId={theObject.ObjectId} " +
-                    $"world=({FormatVector(currentWorldPosition)}) offsets=({FormatVector(currentObjectOffsets)}) centerOffset=({FormatVector(rotatedLocalCrashCenter)}) " +
-                    $"drone=({FormatVector((Vector3)currentDronePosition)}) target=({FormatVector((Vector3)currentTargetPosition)}) dir=({FormatVector(directionToTarget)}) velocity=({FormatVector((Vector3)DirectionVelocity)}) " +
-                    $"recalc={(shouldRecalculateDirection ? 1 : 0)} dt={deltaSeconds.ToString("0.####", CultureInfo.InvariantCulture)} speed={speedPerSecond.ToString("0.##", CultureInfo.InvariantCulture)} step={moveDistanceApplied.ToString("0.##", CultureInfo.InvariantCulture)} " +
-                    $"distanceBefore={distanceBeforeMove.ToString("0.##", CultureInfo.InvariantCulture)} distanceAfter={distanceAfterMove.ToString("0.##", CultureInfo.InvariantCulture)} distanceDelta={distanceDelta.ToString("0.##", CultureInfo.InvariantCulture)}"
-                );
             }
 
             _storedWorldPosition = ToVector3(theObject.WorldPosition);

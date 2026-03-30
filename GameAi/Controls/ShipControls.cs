@@ -400,8 +400,9 @@ namespace GameAiAndControls.Controls
         {
             float shipOffsetY = theObject.ObjectOffsets?.y ?? shipY;
 
-            GameState.ShipState.ShipWorldPosition = CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetShipWorldPosition(shipOffsetY, zoom);
-            GameState.ShipState.ShipCrashCenterWorldPosition = CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(theObject);
+            GameState.ShipState.ShipWorldPosition = SurfacePositionSyncHelpers.GetShipWorldPosition(shipOffsetY, zoom);
+            GameState.ShipState.ShipCrashCenterWorldPosition = SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(theObject);
+            GameState.ShipState.ShipImpactStatus = theObject.ImpactStatus;
             GameState.ShipState.ShipObjectOffsets = new Vector3
             {
                 x = theObject.ObjectOffsets?.x ?? 0f,
@@ -493,10 +494,36 @@ namespace GameAiAndControls.Controls
             if (theObject.ImpactStatus.HasCrashed == true && isExploding == false)
             {
                 float landingSpeed = CurrentSpeed;
+                string crashedWith = theObject.ImpactStatus.ObjectName;
 
-                if (theObject.ImpactStatus.ObjectName == "KamikazeDrone")
+                Logger.Log($"[ShipCrash] HasCrashed=true, ObjectName='{crashedWith}', Health={theObject.ImpactStatus.ObjectHealth}, Direction={theObject.ImpactStatus.ImpactDirection}");
+
+                // Apply damage from any enemy or weapon collision
+                if (EnemySetup.IsEnemyTypeValid(crashedWith))
                 {
                     theObject.ImpactStatus.ObjectHealth -= EnemySetup.KamikazeDroneCollisionDamage;
+                    Logger.Log($"[ShipCrash] Enemy hit! Damage={EnemySetup.KamikazeDroneCollisionDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                }
+                else if (WeaponSetup.IsWeaponTypeValid(crashedWith))
+                {
+                    int weaponDamage = WeaponSetup.GetWeaponDamage(crashedWith);
+                    theObject.ImpactStatus.ObjectHealth -= weaponDamage;
+                    Logger.Log($"[ShipCrash] Weapon hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                }
+                else if (theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
+                         theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
+                {
+                    // Surface/terrain landing — damage only at high speed
+                    landed = true;
+                    if (landingSpeed > 5f)
+                    {
+                        theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
+                    }
+                    Logger.Log($"[ShipCrash] Landing. Speed={landingSpeed:F1}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                }
+                else
+                {
+                    Logger.Log($"[ShipCrash] NO DAMAGE APPLIED! crashedWith='{crashedWith}' did not match any category.");
                 }
 
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
@@ -536,19 +563,6 @@ namespace GameAiAndControls.Controls
 
                     var explodedVersion = Physics.ExplodeObject(theObject, 200f);
                     ParentObject = explodedVersion;
-                }
-                else if (theObject.ImpactStatus.ObjectName != "KamikazeDrone")
-                {
-                    if (theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
-                        theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
-                    {
-                        landed = true;
-
-                        if (landingSpeed > 5f)
-                        {
-                            theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
-                        }
-                    }
                 }
 
                 theObject.ImpactStatus.HasCrashed = false;
