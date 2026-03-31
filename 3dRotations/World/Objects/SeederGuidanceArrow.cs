@@ -116,29 +116,90 @@ namespace _3dRotations.World.Objects
             float headBaseX = shaftFrontX - 2f;
             float tipX = shaftFrontX + headLength;
 
-            // Base ring of the head
-            var topLeft = new Vector3 { x = headBaseX, y = -headHalfWidth, z = headHalfHeight };
-            var topRight = new Vector3 { x = headBaseX, y = headHalfWidth, z = headHalfHeight };
-            var bottomRight = new Vector3 { x = headBaseX, y = headHalfWidth, z = -headHalfHeight };
-            var bottomLeft = new Vector3 { x = headBaseX, y = -headHalfWidth, z = -headHalfHeight };
+            // Shaft front rectangle
+            var shaftTopLeft = new Vector3 { x = shaftFrontX, y = -shaftHalfWidth, z = shaftHalfHeight };
+            var shaftTopRight = new Vector3 { x = shaftFrontX, y = shaftHalfWidth, z = shaftHalfHeight };
+            var shaftBottomRight = new Vector3 { x = shaftFrontX, y = shaftHalfWidth, z = -shaftHalfHeight };
+            var shaftBottomLeft = new Vector3 { x = shaftFrontX, y = -shaftHalfWidth, z = -shaftHalfHeight };
+
+            // Head base rectangle
+            var headTopLeft = new Vector3 { x = headBaseX, y = -headHalfWidth, z = headHalfHeight };
+            var headTopRight = new Vector3 { x = headBaseX, y = headHalfWidth, z = headHalfHeight };
+            var headBottomRight = new Vector3 { x = headBaseX, y = headHalfWidth, z = -headHalfHeight };
+            var headBottomLeft = new Vector3 { x = headBaseX, y = -headHalfWidth, z = -headHalfHeight };
 
             // Tip
             var tip = new Vector3 { x = tipX, y = 0, z = 0 };
 
-            // Top face split
-            tris.Add(CreateTriangleOutward(topLeft, topRight, tip, BodyCenter, cyanLight));
+            // ----------------------------------------------------
+            // Close the transition between shaft and head base
+            // ----------------------------------------------------
 
-            // Bottom face split
-            tris.Add(CreateTriangleOutward(bottomRight, bottomLeft, tip, BodyCenter, cyanDeep));
+            // Top bridge
+            AddQuadOutward(
+                tris,
+                shaftTopLeft,
+                shaftTopRight,
+                headTopRight,
+                headTopLeft,
+                BodyCenter,
+                cyanLight);
 
-            // Left face split
-            tris.Add(CreateTriangleOutward(bottomLeft, topLeft, tip, BodyCenter, cyanDark));
+            // Bottom bridge
+            AddQuadOutward(
+                tris,
+                headBottomLeft,
+                headBottomRight,
+                shaftBottomRight,
+                shaftBottomLeft,
+                BodyCenter,
+                cyanDeep);
 
-            // Right face split
-            tris.Add(CreateTriangleOutward(topRight, bottomRight, tip, BodyCenter, cyanMid));
+            // Left bridge
+            AddQuadOutward(
+                tris,
+                shaftBottomLeft,
+                shaftTopLeft,
+                headTopLeft,
+                headBottomLeft,
+                BodyCenter,
+                cyanDark);
 
-            // Back face of head to close geometry
-            AddQuadOutward(tris, bottomLeft, bottomRight, topRight, topLeft, BodyCenter, cyanDark);
+            // Right bridge
+            AddQuadOutward(
+                tris,
+                shaftTopRight,
+                shaftBottomRight,
+                headBottomRight,
+                headTopRight,
+                BodyCenter,
+                cyanMid);
+
+            // ----------------------------------------------------
+            // Arrow head faces toward the tip
+            // ----------------------------------------------------
+
+            // Top
+            tris.Add(CreateTriangleOutward(headTopLeft, headTopRight, tip, BodyCenter, cyanLight));
+
+            // Bottom
+            tris.Add(CreateTriangleOutward(headBottomRight, headBottomLeft, tip, BodyCenter, cyanDeep));
+
+            // Left
+            tris.Add(CreateTriangleOutward(headBottomLeft, headTopLeft, tip, BodyCenter, cyanDark));
+
+            // Right
+            tris.Add(CreateTriangleOutward(headTopRight, headBottomRight, tip, BodyCenter, cyanMid));
+
+            // Back face of head base
+            AddQuadOutward(
+                tris,
+                headBottomLeft,
+                headBottomRight,
+                headTopRight,
+                headTopLeft,
+                BodyCenter,
+                cyanDark);
 
             return tris;
         }

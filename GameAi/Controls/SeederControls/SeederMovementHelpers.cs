@@ -29,10 +29,6 @@ namespace GameAiAndControls.Helpers
         private const int SmellScoreWeight = 1000;
         private const int DistancePenaltyWeight = 10;
 
-        // Synchronization policy:
-        // - SyncToSurfaceForLocalPick: whether to use synchronized world position for local bio target selection (should stay true).
-        private const bool SyncToSurfaceForLocalPick = true;
-
         // Logging:
         // - EnableLogging: toggles helper-level logging via global Logger.
         private const bool EnableLogging = false;
@@ -185,12 +181,12 @@ namespace GameAiAndControls.Helpers
             var ecoMap = surfaceState.ScreenEcoMetas;
             var map = surfaceState.Global2DMap;
 
-            // Use synchronized world position to align seeder center with surface center (configurable)
-            Vector3 alignedWorld = SyncToSurfaceForLocalPick
-                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition((_3dObject)obj)
-                : (Vector3)obj.WorldPosition;
+            // Screen indices use raw world coordinates to match the meta map.
+            // Do NOT use GetSurfaceAlignedWorldPosition — it applies visual offsets
+            // (surfaceOO − objectOO) that shift the tile lookup by several tiles.
+            var rawWorld = (Vector3)obj.WorldPosition;
 
-            GetScreenIndexFromWorldXZ(alignedWorld, out int screenY, out int screenX);
+            GetScreenIndexFromWorldXZ(rawWorld, out int screenY, out int screenX);
 
             if ((uint)screenY >= (uint)ecoMap.GetLength(0) || (uint)screenX >= (uint)ecoMap.GetLength(1))
                 return false;
@@ -243,7 +239,7 @@ namespace GameAiAndControls.Helpers
                 targetWorld = new Vector3
                 {
                     x = tile.X,
-                    y = alignedWorld.y, // keep Y from synchronized seeder world position
+                    y = rawWorld.y,
                     z = tile.Y
                 };
 

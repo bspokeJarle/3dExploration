@@ -149,6 +149,11 @@ namespace GameAiAndControls.Controls.SeederControls
 
             Vector3 current = s.AuthWorldPos;
 
+            // Sync the object's WorldPosition with the AI's tracked location so
+            // helpers like GetSurfaceAlignedWorldPosition use the current position
+            // rather than the stale value copied from the original at deep-copy time.
+            moveThisObject.WorldPosition = new Vector3 { x = current.x, y = current.y, z = current.z };
+
             if (!TryGetDt(s, out float dt))
                 return s.AuthWorldPos;
 
@@ -175,15 +180,16 @@ namespace GameAiAndControls.Controls.SeederControls
             var surfaceState = GameState.SurfaceState;
             if (surfaceState?.Global2DMap == null) return;
 
-            // Use synchronized position and fall back safely if object is not _3dObject
-            var obj3d = theObject as _3dObject;
-            var posAligned = obj3d != null
-                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
-                : (Vector3)theObject.WorldPosition;
+            // AuthWorldPos may have been updated by HandleMoveTowardTarget (arrival snap)
+            // since the top-of-AI sync, so refresh the object before visual helpers.
+            theObject.WorldPosition = s.AuthWorldPos;
 
-            // Convert world -> tile using same origin logic as viewport
-            int tileX = (int)posAligned.x / SurfaceSetup.tileSize;
-            int tileZ = (int)posAligned.z / SurfaceSetup.tileSize;
+            // Tile indices use raw world coordinates to match the meta map and
+            // Global2DMap (which are indexed by globalTile = worldCoord / tileSize).
+            // Do NOT use GetSurfaceAlignedWorldPosition here — it adds visual
+            // offsets (surfOO − seederOO) that shift the lookup by several tiles.
+            int tileX = (int)s.AuthWorldPos.x / SurfaceSetup.tileSize;
+            int tileZ = (int)s.AuthWorldPos.z / SurfaceSetup.tileSize;
             // Bounds
             if (tileZ < 0 || tileX < 0 ||
                 tileZ >= surfaceState.Global2DMap.GetLength(0) ||
@@ -202,7 +208,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 {
                     s.StallTileX = tileX;
                     s.StallTileZ = tileZ;
-                    SafeLog($"AI:STALL_TILE onScreen={isOnScreen} tile=({tileX},{tileZ}) pos={V2(posAligned)} ObjectId:{id}");
+                    SafeLog($"AI:STALL_TILE onScreen={isOnScreen} tile=({tileX},{tileZ}) pos={V2(s.AuthWorldPos)} ObjectId:{id}");
                 }
 
                 var tile = surfaceState.Global2DMap[tileZ, tileX];
@@ -271,8 +277,6 @@ namespace GameAiAndControls.Controls.SeederControls
             }
             if (isOnScreen)
             {
-                //Update the worldposition for the release of particles
-                theObject.WorldPosition = s.AuthWorldPos;
                 theObject.Movement.ReleaseParticles(theObject);
                 SafeLog($"AI:STALL_PARTICLES onScreen={isOnScreen} pos={V2(s.AuthWorldPos)} ObjectId:{id}");
             }
@@ -488,13 +492,8 @@ namespace GameAiAndControls.Controls.SeederControls
 
             s.NextGlobalDecisionTicks = nowTicks + (TimeSpan.TicksPerSecond / 2);
 
-            // Use synchronized position (safe cast fallback)
-            var obj3d = moveThisObject as _3dObject;
-            var alignedWorld = obj3d != null
-                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
-                : (Vector3)moveThisObject.WorldPosition;
-
-            SeederMovementHelpers.GetScreenIndexFromWorldXZ(alignedWorld, out int curSY, out int curSX);
+            // Screen indices use raw world coordinates to match the meta map.
+            SeederMovementHelpers.GetScreenIndexFromWorldXZ(current, out int curSY, out int curSX);
 
             if (nowTicks - s.LastDecisionLogTicks > (TimeSpan.TicksPerSecond / 2))
             {
@@ -515,7 +514,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 if (nextSY >= ecoMap.GetLength(0)) nextSY = ecoMap.GetLength(0) - 1;
                 if (nextSX >= ecoMap.GetLength(1)) nextSX = ecoMap.GetLength(1) - 1;
 
-                s.TargetWorld = SeederMovementHelpers.GetScreenCenterWorldXZ(nextSY, nextSX, alignedWorld.y);
+                s.TargetWorld = SeederMovementHelpers.GetScreenCenterWorldXZ(nextSY, nextSX, current.y);
                 s.HasMovementTarget = true;
                 s.TargetIsLocalBio = false;
                 s.TargetStartTicks = nowTicks;
@@ -580,13 +579,7 @@ namespace GameAiAndControls.Controls.SeederControls
             {
                 s.LocalPickCursor = cursor;
 
-                // Use synchronized Y to align vertical position with surface (safe cast fallback)
-                var obj3d = moveThisObject as _3dObject;
-                var alignedWorld = obj3d != null
-                    ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
-                    : (Vector3)moveThisObject.WorldPosition;
-
-                var candidate = new Vector3 { x = localTarget.x, y = alignedWorld.y, z = localTarget.z };
+                var candidate = new Vector3 { x = localTarget.x, y = current.y, z = localTarget.z };
 
                 float localStep60 = localSpeed / 60f;
                 float dist = DistanceXZ(current, candidate);

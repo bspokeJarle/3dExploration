@@ -153,6 +153,11 @@ namespace GameAiAndControls.Controls.SeederControls
             // only adjusts ObjectOffsets.y; x/z stay frozen from the explosion anchor).
             SyncMovement(theObject);
 
+            // Push the deep copy's authoritative positions back to the original
+            // object so shadow casting and other systems that read from AiObjects
+            // stay in sync with the AI-tracked location.
+            SyncToOriginal(theObject);
+
             return theObject;
         }
 
@@ -249,6 +254,35 @@ namespace GameAiAndControls.Controls.SeederControls
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
             //No implementation needed, Seeder have no weapons
+        }
+
+        private static void SyncToOriginal(I3dObject deepCopy)
+        {
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null) return;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                if (aiObjects[i].ObjectId == deepCopy.ObjectId)
+                {
+                    var original = aiObjects[i];
+                    if (ReferenceEquals(original, deepCopy)) return;
+
+                    original.WorldPosition = new Vector3
+                    {
+                        x = deepCopy.WorldPosition.x,
+                        y = deepCopy.WorldPosition.y,
+                        z = deepCopy.WorldPosition.z
+                    };
+                    original.ObjectOffsets = new Vector3
+                    {
+                        x = deepCopy.ObjectOffsets.x,
+                        y = deepCopy.ObjectOffsets.y,
+                        z = deepCopy.ObjectOffsets.z
+                    };
+                    return;
+                }
+            }
         }
     }
 }
