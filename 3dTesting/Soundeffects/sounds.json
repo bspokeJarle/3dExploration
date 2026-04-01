@@ -57,7 +57,7 @@
     {
       "id": "music_battle",
       "usage": "MusicBattle",
-      "file": "GeneralError_battle.wa",
+      "file": "GeneralError_battle.wav",
 
       "segments": {
         "start": 0,
@@ -261,6 +261,58 @@
         "random": [ -0.03, 0.03 ],
         "min": 0.9,
         "max": 1.3
+      }
+    },
+    {
+      "id": "seeder_seeding",
+      "usage": "SeederSeeding",
+      "file": "OmegaStrain_Seeder_Seeding.mp3",
+
+      "segments": {
+        "start": 289.0,
+        "loopStart": 291.0,
+        "loopEnd": 308.0,
+        "end": 308.4
+      },
+
+      "settings": {
+        "volume": 1.2,
+        "maxVoices": 10,
+        "is3D": true,
+        "priority": 95
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.04, 0.04 ],
+        "min": 0.92,
+        "max": 1.08
+      }
+    },
+    {
+      "id": "seeder_engine",
+      "usage": "SeederEngine",
+      "file": "OmegaStrain_SeederEngine.wav",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 2.0,
+        "loopEnd": 120.0,
+        "end": 124.9
+      },
+
+      "settings": {
+        "volume": 1.2,
+        "maxVoices": 10,
+        "is3D": true,
+        "priority": 90
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.06, 0.06 ],
+        "min": 0.88,
+        "max": 1.12
       }
     },
     {

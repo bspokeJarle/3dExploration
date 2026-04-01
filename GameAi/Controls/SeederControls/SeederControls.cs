@@ -38,6 +38,11 @@ namespace GameAiAndControls.Controls.SeederControls
         // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
         private SoundDefinition? _explosionSound;
+        private SoundDefinition? _seederEngineSound;
+        private IAudioInstance? _seederEngineInstance;
+        private SoundDefinition? _seederSeedingSound;
+        private IAudioInstance? _seederSeedingInstance;
+        private bool _audioConfigured = false;
 
         private float Yrotation = BaseYRotation;
         private float Xrotation = BaseXRotation;
@@ -54,8 +59,7 @@ namespace GameAiAndControls.Controls.SeederControls
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
-            //If configured already, skip
-            if (_audio != null || _explosionSound != null)
+            if (_audioConfigured)
                 return;
 
             if (audioPlayer == null || soundRegistry == null)
@@ -63,6 +67,15 @@ namespace GameAiAndControls.Controls.SeederControls
 
             _audio = audioPlayer;
             _explosionSound = soundRegistry.Get("explosion_main");
+            if (soundRegistry.TryGet("seeder_engine", out var engineSound))
+            {
+                _seederEngineSound = engineSound;
+            }
+            if (soundRegistry.TryGet("seeder_seeding", out var seedingSound))
+            {
+                _seederSeedingSound = seedingSound;
+            }
+            _audioConfigured = true;
         }
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -104,6 +117,104 @@ namespace GameAiAndControls.Controls.SeederControls
             if (theObject.ImpactStatus.HasCrashed == true && isExploding == false)
             {
                 HandleCrash(theObject);
+            }
+
+            // 3D engine sound: play when alive, position-track each frame
+            if (_audio != null && _seederEngineSound != null && !isExploding)
+            {
+                if (theObject.IsOnScreen)
+                {
+                    var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+
+                    if (_seederEngineInstance == null || !_seederEngineInstance.IsPlaying)
+                    {
+                        _seederEngineInstance = _audio.Play(
+                            _seederEngineSound,
+                            AudioPlayMode.SegmentedLoop,
+                            new AudioPlayOptions
+                            {
+                                WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                            });
+                    }
+
+                    _seederEngineInstance.SetVolume(_seederEngineSound.Settings.Volume);
+                    _seederEngineInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
+                }
+                else
+                {
+                    var globalPos = GameState.SurfaceState?.GlobalMapPosition;
+                    var seederWorldPos = theObject.WorldPosition;
+
+                    if (globalPos != null && seederWorldPos != null)
+                    {
+                        float distSq = Common3dObjectHelpers.GetDistanceSquared(globalPos, seederWorldPos);
+                        float maxDist = AudioSetup.OffscreenAiAudioMaxDistance;
+                        float maxDistSq = maxDist * maxDist;
+
+                        if (distSq <= maxDistSq)
+                        {
+                            float distance = MathF.Sqrt(distSq);
+                            float normalized = distance / maxDist;
+                            float volume = _seederEngineSound.Settings.Volume *
+                                MathF.Pow(1f - normalized, AudioSetup.OffscreenAiAudioCurveExponent);
+
+                            if (_seederEngineInstance == null || !_seederEngineInstance.IsPlaying)
+                            {
+                                _seederEngineInstance = _audio.Play(
+                                    _seederEngineSound,
+                                    AudioPlayMode.SegmentedLoop,
+                                    new AudioPlayOptions
+                                    {
+                                        WorldPosition = System.Numerics.Vector3.Zero
+                                    });
+                            }
+
+                            float dx = seederWorldPos.x - globalPos.x;
+                            _seederEngineInstance.SetWorldPosition(new System.Numerics.Vector3(dx, 0, 0));
+                            _seederEngineInstance.SetVolume(volume);
+                        }
+                        else if (_seederEngineInstance != null)
+                        {
+                            _seederEngineInstance.Stop(playEndSegment: false);
+                            _seederEngineInstance = null;
+                        }
+                    }
+                    else if (_seederEngineInstance != null)
+                    {
+                        _seederEngineInstance.Stop(playEndSegment: false);
+                        _seederEngineInstance = null;
+                    }
+                }
+            }
+
+            // Seeding sound: plays while particles are active (visual seeding effect)
+            if (_audio != null && _seederSeedingSound != null && !isExploding)
+            {
+                bool hasActiveParticles = ParentObject.Particles?.Particles.Count > 0;
+
+                if (hasActiveParticles && theObject.IsOnScreen)
+                {
+                    var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+
+                    if (_seederSeedingInstance == null || !_seederSeedingInstance.IsPlaying)
+                    {
+                        _seederSeedingInstance = _audio.Play(
+                            _seederSeedingSound,
+                            AudioPlayMode.SegmentedLoop,
+                            new AudioPlayOptions
+                            {
+                                WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                            });
+                    }
+
+                    _seederSeedingInstance.SetVolume(_seederSeedingSound.Settings.Volume);
+                    _seederSeedingInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
+                }
+                else if (_seederSeedingInstance != null)
+                {
+                    _seederSeedingInstance.Stop(playEndSegment: false);
+                    _seederSeedingInstance = null;
+                }
             }
 
             if (isExploding)
@@ -166,6 +277,16 @@ namespace GameAiAndControls.Controls.SeederControls
             theObject.ImpactStatus.ObjectHealth = theObject.ImpactStatus.ObjectHealth - WeaponSetup.GetWeaponDamage("Lazer");
             if (theObject.ImpactStatus.ObjectHealth <= 0)
             {
+                if (_seederEngineInstance != null)
+                {
+                    _seederEngineInstance.Stop(playEndSegment: false);
+                    _seederEngineInstance = null;
+                }
+                if (_seederSeedingInstance != null)
+                {
+                    _seederSeedingInstance.Stop(playEndSegment: false);
+                    _seederSeedingInstance = null;
+                }
                 if (_audio != null && _explosionSound != null)
                 {
                     var audioPosition = ((_3dObject)theObject).GetAudioPosition();
@@ -223,7 +344,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 StartCoordinates,
                 alignedWorld,
                 this,
-                1,
+                3,
                 null);
         }
 
@@ -235,6 +356,17 @@ namespace GameAiAndControls.Controls.SeederControls
 
         public void Dispose()
         {
+            if (_seederEngineInstance != null)
+            {
+                _seederEngineInstance.Stop(playEndSegment: false);
+                _seederEngineInstance = null;
+            }
+            if (_seederSeedingInstance != null)
+            {
+                _seederSeedingInstance.Stop(playEndSegment: false);
+                _seederSeedingInstance = null;
+            }
+
             if (ParentObject != null)
             {
                 SeederAi.RemoveAiState(ParentObject.ObjectId);
@@ -243,12 +375,15 @@ namespace GameAiAndControls.Controls.SeederControls
             isExploding = false;
             _syncInitialized = false;
             _syncY = 0;
+            _audioConfigured = false;
             explosionWorldPosition = null;
             explosionObjectOffsets = null;
             StartCoordinates = null;
             GuideCoordinates = null;
             _audio = null;
             _explosionSound = null;
+            _seederEngineSound = null;
+            _seederSeedingSound = null;
         }
 
         /// <summary>

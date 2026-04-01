@@ -31,6 +31,8 @@ public class ParticlesAI : IParticles
     public IObjectMovement? ParentShip { get; set; }
     public bool Visible { get; set; }
     public bool EnableParticleLogging { get; set; } = false;
+    public float LifeMultiplier { get; set; } = 1.0f;
+    public int MaxParticlesOverride { get; set; } = 0;
 
     private DateTime _lastUpdateTime = DateTime.UtcNow;
 
@@ -201,7 +203,8 @@ public class ParticlesAI : IParticles
             return;
         }
 
-        int dynamicMaxParticles = Math.Min(MaxDynamicParticles, thrust * 2 + MaxParticlesBase);
+        int effectiveMaxParticles = MaxParticlesOverride > 0 ? MaxParticlesOverride : MaxDynamicParticles;
+        int dynamicMaxParticles = Math.Min(effectiveMaxParticles, thrust * 2 + MaxParticlesBase);
         if (Particles.Count >= dynamicMaxParticles) return;
         if (startPosition == null || trajectory == null) return;
 
@@ -233,7 +236,7 @@ public class ParticlesAI : IParticles
 
         for (int i = 0; i < particleCount; i++)
         {
-            float life = (float)(random.NextDouble() * (MaxLife - MinLife) + MinLife);
+            float life = (float)(random.NextDouble() * (MaxLife - MinLife) + MinLife) * LifeMultiplier;
             float size = (float)(random.NextDouble() * (MaxSize - MinSize) + MinSize);
             float spread = SpreadIntensity * (float)(random.NextDouble() + 0.5);
             //When exploding have a much bigger spread

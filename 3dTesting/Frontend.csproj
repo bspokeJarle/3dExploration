@@ -103,6 +103,12 @@
     <None Update="Soundeffects\OmegaStrain_Rocket_Main.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Soundeffects\OmegaStrain_SeederEngine.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_Seeder_Seeding.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\OmegaStrain_Thud_Heavy.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

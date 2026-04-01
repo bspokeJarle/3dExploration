@@ -153,7 +153,11 @@ namespace _3dRotations.World.Objects
 
             // Movement and particles
             seeder.Movement = new SeederControls();
-            seeder.Particles = new ParticlesAI();
+            seeder.Particles = new ParticlesAI
+            {
+                LifeMultiplier = 3.0f,
+                MaxParticlesOverride = 60
+            };
 
             // Default offsets and rotation
             seeder.ObjectOffsets = new Vector3 { x = 0, y = 0, z = 0 };

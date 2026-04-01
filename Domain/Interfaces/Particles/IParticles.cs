@@ -7,6 +7,18 @@ namespace Domain
     {
         IObjectMovement ParentShip { get; set; }
         List<IParticle> Particles { get; set; }
+
+        /// <summary>
+        /// Multiplier applied to particle lifetime. Default 1.0 (no change).
+        /// </summary>
+        float LifeMultiplier { get; set; }
+
+        /// <summary>
+        /// When greater than 0, overrides the built-in max particle cap.
+        /// Default 0 means use the built-in constant.
+        /// </summary>
+        int MaxParticlesOverride { get; set; }
+
         void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion);
         void MoveParticles();
     }
