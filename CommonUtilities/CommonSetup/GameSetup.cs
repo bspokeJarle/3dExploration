@@ -15,7 +15,7 @@ namespace CommonUtilities.CommonSetup
         public static float KamikazeDroneProximityHuntDistance { get; set; } = 10_000f;
 
         // Decoy blast radius: exploding decoys damage nearby objects within this distance.
-        // Viewport diagonal is ~960 world units; 1000 covers the full visible screen.
-        public static float DecoyBlastRadius { get; set; } = 1000f;
+        // Viewport diagonal is ~960 world units; 850 covers most of the visible screen.
+        public static float DecoyBlastRadius { get; set; } = 850f;
     }
 }

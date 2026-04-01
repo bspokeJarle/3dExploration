@@ -21,6 +21,16 @@ namespace _3dRotations.Scene.Scene1
         public SceneTypes SceneType { get; } = SceneTypes.Game;
 
         public GameModes GameMode { get; } = GameModes.Playback;
+        //How much of the surface needs to be infected for the player to lose, as a percentage of total bio tiles
+        public float InfectionThresholdPercent { get; } = 12f;
+        //How many new tiles does each infected tile infect per second, on average? This is used to calculate the local spread delay and the infection progress bar fill rate
+        public int InfectionSpreadRate { get; } = 50;
+        //When seeders are offscreen, they will move at this speed factor (multiplier to normal speed) to catch up to the player faster. This is used to keep the gameplay engaging and prevent players from kiting seeders indefinitely by staying at the edge of the screen
+        public int SeederOffscreenSpeedFactor { get; } = 8;
+        //When a tile is infected, it will spread the infection to its neighbors after this delay (in seconds). The delay is calculated based on the InfectionSpreadRate, and determines how quickly the infection spreads across the surface. A lower value means faster spread, while a higher value means slower spread.
+        public float LocalInfectionSpreadDelaySec { get; } = 12.0f;
+        //Killing a seeder will stop the cascade of infections from spreading to its neighbors. If there is a seeder within this radius the infection will go on until it is killed
+        public float LocalInfectionSpreadRadius { get; } = 3500f;
 
         public void SetupScene(I3dWorld world)
         {          

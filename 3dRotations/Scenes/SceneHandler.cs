@@ -35,6 +35,11 @@ namespace _3DWorld.Scene
             GameState.ScreenOverlayState.ShowVideoOverlay = false;
             GameState.ScreenOverlayState.VideoClipPath = string.Empty;
             scene.SetupScene((_3dWorld)world);
+            GameState.GamePlayState.InfectionCriticalMass = scene.InfectionThresholdPercent;
+            GameState.GamePlayState.InfectionSpreadRate = scene.InfectionSpreadRate;
+            GameState.GamePlayState.SeederOffscreenSpeedFactor = scene.SeederOffscreenSpeedFactor;
+            GameState.GamePlayState.LocalInfectionSpreadDelaySec = scene.LocalInfectionSpreadDelaySec;
+            GameState.GamePlayState.LocalInfectionSpreadRadius = scene.LocalInfectionSpreadRadius;
         }
 
         public void ResetActiveScene(I3dWorld world)
@@ -53,8 +58,13 @@ namespace _3DWorld.Scene
                 scenes[currentSceneIndex] = newScene;
                 GameState.ScreenOverlayState.HardHide();
                 newScene.SetupGameOverlay();
-                
+
                 newScene.SetupScene((_3dWorld)world);
+                GameState.GamePlayState.InfectionCriticalMass = newScene.InfectionThresholdPercent;
+                GameState.GamePlayState.InfectionSpreadRate = newScene.InfectionSpreadRate;
+                GameState.GamePlayState.SeederOffscreenSpeedFactor = newScene.SeederOffscreenSpeedFactor;
+                GameState.GamePlayState.LocalInfectionSpreadDelaySec = newScene.LocalInfectionSpreadDelaySec;
+                GameState.GamePlayState.LocalInfectionSpreadRadius = newScene.LocalInfectionSpreadRadius;
             }
             else
             {

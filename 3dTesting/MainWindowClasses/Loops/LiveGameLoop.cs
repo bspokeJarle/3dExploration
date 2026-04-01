@@ -5,6 +5,7 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Controls.SeederControls;
 using GameAudioInstances;
 using System;
 using System.Diagnostics;
@@ -178,12 +179,19 @@ namespace _3dTesting.MainWindowClasses.Loops
                 FadeOutWorld = true;
             }
 
+            if (!_deathSequenceStarted && GameState.GamePlayState.IsInfectionCritical)
+            {
+                _deathSequenceStarted = true;
+                FadeOutWorld = true;
+            }
+
             if (_deathSequenceStarted && SceneResetReady)
             {
                 CleanupWorldObjects(world.WorldInhabitants.OfType<_3dObject>().ToList());
                 world.WorldInhabitants.Clear();
                 GameState.SurfaceState.AiObjects.Clear();
                 GameState.SurfaceState.DirtyTiles.Clear();
+                GameState.SurfaceState.PendingLocalInfectionSpread.Clear();
                 GameState.ShipState.BestCandidateStates.Clear();
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
@@ -207,6 +215,9 @@ namespace _3dTesting.MainWindowClasses.Loops
                     }
                 }
             }
+
+            // Process cascading local infection spread (seeder-infected tiles spread to neighbors after a delay)
+            SeederControls.ProcessLocalInfectionSpread(GameState.SurfaceState);
 
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);

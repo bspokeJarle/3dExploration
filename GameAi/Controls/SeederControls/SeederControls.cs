@@ -251,6 +251,14 @@ namespace GameAiAndControls.Controls.SeederControls
             _explosionSound = null;
         }
 
+        /// <summary>
+        /// Process delayed cascading infection spread. Call once per frame from the game loop.
+        /// </summary>
+        public static void ProcessLocalInfectionSpread(CommonUtilities.CommonGlobalState.States.SurfaceState surfaceState)
+        {
+            SeederMovementHelpers.ProcessLocalInfectionSpread(surfaceState);
+        }
+
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
             //No implementation needed, Seeder have no weapons

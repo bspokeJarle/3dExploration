@@ -329,8 +329,7 @@ namespace _3dTesting.MainWindowClasses
 
             SetBarFill(_thrBarFill, gameplay.Thrust/10);
 
-            //TODO: Temporary fix
-            SetBarFill(_bioBarFill, gameplay.InfectionLevel/10);
+            SetBarFill(_bioBarFill, gameplay.InfectionPercent / 100f);
 
             // Enemy remaining bars (percentage of initial count)
             float dronePct = gameplay.InitialDrones > 0

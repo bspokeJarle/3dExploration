@@ -4,6 +4,7 @@ using CommonUtilities._3DHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using static Domain._3dSpecificsImplementations;
 using CommonUtilities.CommonSetup;
@@ -309,6 +310,20 @@ namespace _3dRotations.World.Objects
                 GameState.SurfaceState.ScreenEcoMetas = SurfaceGeneration.GenerateEcoMap(
                     GameState.SurfaceState.Global2DMap);
             }
+
+            // Ensure TotalBioTiles is computed (Playback mode skips SurfaceGeneration which normally sets this)
+            if (GameState.GamePlayState.TotalBioTiles == 0)
+            {
+                int totalBio = 0;
+                var ecoMetas = GameState.SurfaceState.ScreenEcoMetas;
+                for (int sy = 0; sy < ecoMetas.GetLength(0); sy++)
+                    for (int sx = 0; sx < ecoMetas.GetLength(1); sx++)
+                        totalBio += ecoMetas[sy, sx].BioTileCount;
+                GameState.GamePlayState.TotalBioTiles = totalBio;
+                Debug.WriteLine($"[Surface] TotalBioTiles computed from EcoMap: {totalBio} (mode={gameMode})");
+            }
+
+            Debug.WriteLine($"[Surface] Create2DMap complete: mode={gameMode} TotalBioTiles={GameState.GamePlayState.TotalBioTiles} maxHeight={MapSetup.maxHeight} InfectionCriticalMass={GameState.GamePlayState.InfectionCriticalMass}");
 
             int mapSize = GameState.SurfaceState.Global2DMap.GetLength(0); // siden kartet er square
             SurfaceGeneration.GenerateTerrainBitmapSource(

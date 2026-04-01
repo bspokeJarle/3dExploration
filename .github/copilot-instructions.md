@@ -12,6 +12,7 @@
 - For collision logging, include only actual collisions by default; log skipped collisions only when explicitly enabled.
 - Implement audio spatialization consistently for all moving sound-emitting objects in the project, not just kamikaze drones.
 - Collision/crash detection logic must stay centralized in the `CrashDetection` class. Do not scatter collision triggers into individual object controls (like `KamikazeDroneControl`, `DecoyBeaconControl`, etc.). Keep detection in one place.
+- When the scene GameMode is Playback, do not run surface generation; load the surface from a recording file. During loading, calculate `TotalBioTiles` since `SurfaceGeneration.ReturnPseudoRandomMap` (which normally counts them) is not called.
 
 ## Coordinate System and Rotation Conventions
 - The project uses a custom 3D engine with `Vector3` having x, y, z fields.
