@@ -14,7 +14,7 @@ namespace GameAiAndControls.Controls.SeederControls
 {
     internal static class SeederAi
     {
-        internal static bool enableLogging = true;
+        internal static bool enableLogging = false;
 
         // ============================
         // AI CONFIGURATION PARAMETERS
