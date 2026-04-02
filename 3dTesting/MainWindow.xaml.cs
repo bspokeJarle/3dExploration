@@ -328,7 +328,9 @@ namespace _3dTesting
                 {
                     GameHelpers.UpdateDirtyTilesInMap(GameState.SurfaceState.GlobalMapBitmap);
 
-                    GameHelpers.UpdateMapOverlay(
+                    // Crop the source bitmap, draw markers on the copy, display it.
+                    // Markers never touch the source bitmap — no save/restore needed.
+                    GameHelpers.UpdateMapOverlayWithMarkers(
                         _hudHandler.GetMinimapImage(),
                         GameState.SurfaceState.GlobalMapBitmap,
                         Convert.ToInt32(GameState.SurfaceState.GlobalMapPosition.x),

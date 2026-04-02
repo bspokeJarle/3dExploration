@@ -6,12 +6,19 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>TheOmegaStrain</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationIcon>GameGraphics\OmegaStrain.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <Content Include="GameGraphics\OmegaStrain.ico" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\3dRotations\3dSpesifics.csproj" />
     <ProjectReference Include="..\GameAudio\GameAudio.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="GameGraphics\drone_icon_48.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="GameGraphics\HudOverlay.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -24,8 +31,32 @@
     <None Update="GameGraphics\IntroClip.mp4">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="GameGraphics\seeder_icon_48.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="GameObjects\seeder_ball.stl">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SceneFiles\**\*.retro">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
     <None Update="Soundeffects\Don%27tStop_Intro.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -70,6 +101,12 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Soundeffects\OmegaStrain_Rocket_Main.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_SeederEngine.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_Seeder_Seeding.mp3">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Soundeffects\OmegaStrain_Thud_Heavy.wav">

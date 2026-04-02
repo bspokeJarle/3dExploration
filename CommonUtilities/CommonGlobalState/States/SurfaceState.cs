@@ -21,5 +21,11 @@ namespace CommonUtilities.CommonGlobalState.States
         public ulong SurfaceHash { get; set; }
         public string? SurfaceFilePath { get; set; }
         public int RecordingFps { get; set; } = ScreenSetup.targetFps;
+
+        /// <summary>
+        /// Tiles infected by seeders that are pending local spread to their neighbors.
+        /// After a delay each tile spreads infection to adjacent bio tiles, then is removed.
+        /// </summary>
+        public List<(int tileX, int tileZ, long infectedTick)> PendingLocalInfectionSpread { get; set; } = new();
     }
 }

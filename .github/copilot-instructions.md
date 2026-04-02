@@ -11,6 +11,23 @@
 - For movement in this project, some objects must store progress locally in their control class across frames; for kamikaze behavior, follow the same persistent-state pattern used by the seeder rather than assuming object world state alone persists.
 - For collision logging, include only actual collisions by default; log skipped collisions only when explicitly enabled.
 - Implement audio spatialization consistently for all moving sound-emitting objects in the project, not just kamikaze drones.
+- Collision/crash detection logic must stay centralized in the `CrashDetection` class. Do not scatter collision triggers into individual object controls (like `KamikazeDroneControl`, `DecoyBeaconControl`, etc.). Keep detection in one place.
+- When the scene GameMode is Playback, do not run surface generation; load the surface from a recording file. During loading, calculate `TotalBioTiles` since `SurfaceGeneration.ReturnPseudoRandomMap` (which normally counts them) is not called.
+
+## Coordinate System and Rotation Conventions
+- The project uses a custom 3D engine with `Vector3` having x, y, z fields.
+- X axis: lateral (left/right on screen)
+- Y axis: depth/forward (into the screen, -Y is forward for weapons/projectiles)
+- Z axis: vertical (up/down on screen, +Z is up; note that for ObjectOffsets.y and WorldPosition.y, + is down (lower on screen), - is up (higher on screen / higher altitude))
+- Base rotation for objects facing the camera: X=70 (camera tilt), Y=0, Z=90
+- Rotation around Z axis controls yaw/heading in the screen plane (turning left/right)
+- Rotation around X axis controls pitch (tilting forward/back relative to camera)
+- The arrow geometry points in +X direction by default (right on screen)
+- On-screen objects (ship, guidance arrow) have `WorldPosition=(0,0,0)` and use `ObjectOffsets` for screen placement.
+- World objects (seeders, drones) have actual `WorldPosition` values in world space.
+- Surface-based objects use `SurfaceBasedId` and don't need a `WorldPosition`.
+- `ObjectOffsets` control the on-screen visual position of objects.
+- Investigate and correct the heading formula `atan2(dz, dx)` for direction = target - source in world coordinates, as it gives the correct heading for both on-screen and world objects. Use `TargetZrotation = headingDeg`, `TargetXrotation = 70f`, and `TargetYrotation = 0f`. Avoid using crash-center positions to prevent zoom/offset bias in the direction vector.
 
 ## Code Comments
 - Keep code comments in English only; remove non-English comments when touching code.

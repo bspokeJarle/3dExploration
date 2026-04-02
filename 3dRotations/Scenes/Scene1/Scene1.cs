@@ -21,6 +21,16 @@ namespace _3dRotations.Scene.Scene1
         public SceneTypes SceneType { get; } = SceneTypes.Game;
 
         public GameModes GameMode { get; } = GameModes.Playback;
+        //How much of the surface needs to be infected for the player to lose, as a percentage of total bio tiles
+        public float InfectionThresholdPercent { get; } = 12f;
+        //How many new tiles does each infected tile infect per second, on average? This is used to calculate the local spread delay and the infection progress bar fill rate
+        public int InfectionSpreadRate { get; } = 50;
+        //When seeders are offscreen, they will move at this speed factor (multiplier to normal speed) to catch up to the player faster. This is used to keep the gameplay engaging and prevent players from kiting seeders indefinitely by staying at the edge of the screen
+        public int SeederOffscreenSpeedFactor { get; } = 8;
+        //When a tile is infected, it will spread the infection to its neighbors after this delay (in seconds). The delay is calculated based on the InfectionSpreadRate, and determines how quickly the infection spreads across the surface. A lower value means faster spread, while a higher value means slower spread.
+        public float LocalInfectionSpreadDelaySec { get; } = 12.0f;
+        //Killing a seeder will stop the cascade of infections from spreading to its neighbors. If there is a seeder within this radius the infection will go on until it is killed
+        public float LocalInfectionSpreadRadius { get; } = 3500f;
 
         public void SetupScene(I3dWorld world)
         {          
@@ -37,13 +47,23 @@ namespace _3dRotations.Scene.Scene1
             ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
 
+            // Guidance arrow — on-screen indicator pointing toward closest seeder
+            var guidanceArrow = SeederGuidanceArrow.CreateSeederGuidanceArrow(Surface);
+            guidanceArrow.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 200 };
+            guidanceArrow.Rotation = new Vector3 { x = 70, y = 0, z = 90 };
+            guidanceArrow.WorldPosition = new Vector3 { };
+            guidanceArrow.ObjectName = "SeederGuidanceArrow";
+            guidanceArrow.ImpactStatus = new ImpactStatus { };
+            guidanceArrow.CrashBoxDebugMode = false;
+            world.WorldInhabitants.Add(guidanceArrow);
+
             for (int i = 0; i < 10; i++)
             {
                 var rmd = new Random();
 
                 //Add ship as first inhabitant
                 var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
-                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-15000, 15000), y = 0, z = 92000 + rmd.Next(-15000, 15000) };
+                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-55000, 55000), y = 0, z = 92000 + rmd.Next(-55000, 55000) };
                 kamikaze.Rotation = new Vector3 { };
                 kamikaze.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
                 kamikaze.ObjectName = "KamikazeDrone";

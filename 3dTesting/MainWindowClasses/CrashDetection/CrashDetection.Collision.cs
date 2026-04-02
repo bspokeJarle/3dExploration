@@ -65,14 +65,17 @@ namespace _3dTesting.Helpers
                         {
                             particle.ImpactStatus.SourceParticle.ImpactStatus.HasCrashed = true;
                             particle.ImpactStatus.SourceParticle.ImpactStatus.ImpactDirection = direction;
-                            particle.ImpactStatus.SourceParticle.ImpactStatus.ObjectName = a.ObjectName;
+                            // Tell the source what it hit (the other object's name)
+                            particle.ImpactStatus.SourceParticle.ImpactStatus.ObjectName = other.ObjectName;
                         }
 
                         if (other.ImpactStatus != null)
                         {
                             other.ImpactStatus.HasCrashed = true;
                             other.ImpactStatus.ImpactDirection = direction;
-                            other.ImpactStatus.ObjectName = b.ObjectName;
+                            // Tell the other object what hit it (the weapon name stored on the particle)
+                            other.ImpactStatus.ObjectName = particle.ImpactStatus?.ObjectName
+                                                            ?? particle.ObjectName;
                         }
 
                         if (!SkipParticleLogging)
@@ -187,6 +190,58 @@ namespace _3dTesting.Helpers
             }
 
             return false;
+        }
+
+        private static void HandleDecoyBlastDamage(List<_3dObject> activeWorld)
+        {
+            float blastRadius = CommonUtilities.CommonSetup.GameSetup.DecoyBlastRadius;
+            int count = activeWorld.Count;
+
+            for (int i = 0; i < count; i++)
+            {
+                var candidate = activeWorld[i];
+                if (candidate == null) continue;
+                if (candidate.ObjectName != "DroneDecoy") continue;
+                if (candidate.ImpactStatus?.HasExploded == true) continue;
+                if (candidate.CrashBoxes != null && candidate.CrashBoxes.Count > 0) continue;
+                if (candidate.ObjectParts == null || candidate.ObjectParts.Count == 0) continue;
+
+                if (!_processedDecoyBlasts.Add(candidate.ObjectId)) continue;
+
+                // Use WorldPosition for blast distance so objects with different
+                // ObjectOffsets are compared in the same coordinate space.
+                var blastCenter = candidate.WorldPosition as Vector3;
+                if (blastCenter == null) continue;
+
+                for (int j = 0; j < count; j++)
+                {
+                    if (j == i) continue;
+                    var target = activeWorld[j];
+                    if (target == null) continue;
+                    if (target.CrashBoxes == null || target.CrashBoxes.Count == 0) continue;
+                    if (target.ImpactStatus?.HasExploded == true) continue;
+                    if (target.ImpactStatus?.HasCrashed == true) continue;
+
+                    var flags = GetTypeFlagsCached(target);
+                    if (flags.IsShip || flags.IsSurface || flags.IsParticle || flags.IsLazer || flags.IsStatic) continue;
+
+                    var targetPos = target.WorldPosition as Vector3;
+                    if (targetPos == null) continue;
+                    float distance = (float)_3dObjectHelpers.GetDistance(blastCenter, targetPos);
+
+                    if (distance <= blastRadius)
+                    {
+                        if (target.ImpactStatus != null)
+                        {
+                            target.ImpactStatus.HasCrashed = true;
+                            target.ImpactStatus.ObjectName = "DroneDecoy";
+                        }
+
+                        LogCollision(candidate, target,
+                            $"[FRAME:{numFrame}] [DECOY BLAST] {candidate.ObjectName} -> {target.ObjectName} | Distance:{distance:0.##} | BlastRadius:{blastRadius:0.##}");
+                    }
+                }
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

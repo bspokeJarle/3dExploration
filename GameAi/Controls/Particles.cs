@@ -13,10 +13,10 @@ public class ParticlesAI : IParticles
     private readonly Random random = new();
     private readonly List<IParticle> _deadParticles = new();
 
-    // --- Konfigurasjon ---
+    // --- Configuration ---
     private const int MaxParticlesBase = 12;
     private const int MaxThrustMultiplier = 5;
-    private const int MaxDynamicParticles = 25;
+    private const int MaxDynamicParticles = 35;
     private const float MinLife = 2.5f;
     private const float MaxLife = 3.5f;
     private const float MinSize = 1f;
@@ -25,14 +25,21 @@ public class ParticlesAI : IParticles
     private const float AccelerationRandomFactor = 0.1f;
     private const float FadeFactor = 0.03f;
     private const float InitialThrottleFactor = 5f;
+    private const int MaxParticlesPerEmission = 3;
+    private const int SteadyStateRetirePerFrame = 1;
+    private const int BurstBuffer = 15;
+    private const float MinRetireAgeSeconds = 1.5f;
 
     public float ThrottleDurationFactor { get; set; } = 0.3f;
     public List<IParticle> Particles { get; set; } = new();
     public IObjectMovement? ParentShip { get; set; }
     public bool Visible { get; set; }
     public bool EnableParticleLogging { get; set; } = false;
+    public float LifeMultiplier { get; set; } = 1.0f;
+    public int MaxParticlesOverride { get; set; } = 0;
 
     private DateTime _lastUpdateTime = DateTime.UtcNow;
+    private bool _burstActive = true;
 
     public void MoveParticles()
     {
@@ -198,17 +205,68 @@ public class ParticlesAI : IParticles
         {
             Particles.Clear();
             Particles.TrimExcess();
+            _burstActive = true;
             return;
         }
 
-        int dynamicMaxParticles = Math.Min(MaxDynamicParticles, thrust * 2 + MaxParticlesBase);
-        if (Particles.Count >= dynamicMaxParticles) return;
+        // Prune expired particles before checking the cap. MoveParticles runs
+        // after ReleaseParticles, so without this dead particles inflate the
+        // count and block all new emissions until they are eventually cleaned up.
+        long pruneTicks = DateTime.UtcNow.Ticks;
+        Particles.RemoveAll(p =>
+        {
+            long life = (long)(p.Life * 10_000_000);
+            return p.BirthTime.Ticks + life + p.VariedStart <= pruneTicks;
+        });
+
+        int effectiveMaxParticles = MaxParticlesOverride > 0 ? MaxParticlesOverride : MaxDynamicParticles;
+        int dynamicMaxParticles = Math.Min(effectiveMaxParticles, thrust * 2 + MaxParticlesBase);
+
+        // During the initial burst the cap is raised so the jet ignition looks punchy.
+        // Once the normal steady-state cap has been reached, the burst ends and the
+        // extra particles die off naturally without being replaced.
+        int currentCap = _burstActive ? dynamicMaxParticles + BurstBuffer : dynamicMaxParticles;
+
+        // After the burst, retire 1 particle per frame so a fresh one can
+        // always be emitted — keeping the stream visually continuous.
+        // Prefer mature particles (past MinRetireAgeSeconds) so they get their
+        // full arc and bounce. If none are old enough, retire the oldest particle
+        // anyway (it has had the most time to bounce) to guarantee the slot.
+        if (!_burstActive && explosion != true && Particles.Count >= currentCap)
+        {
+            long nowRetire = DateTime.UtcNow.Ticks;
+            long minAgeTicks = (long)(MinRetireAgeSeconds * TimeSpan.TicksPerSecond);
+            bool retired = false;
+            for (int i = 0; i < Particles.Count; i++)
+            {
+                long age = nowRetire - Particles[i].BirthTime.Ticks - Particles[i].VariedStart;
+                if (age >= minAgeTicks)
+                {
+                    Particles.RemoveAt(i);
+                    retired = true;
+                    break;
+                }
+            }
+
+            // Fallback: no mature particle available — retire the oldest one
+            // (index 0, since particles are appended chronologically).
+            if (!retired && Particles.Count >= currentCap && Particles.Count > 0)
+            {
+                Particles.RemoveAt(0);
+            }
+        }
+
+        if (Particles.Count >= currentCap) return;
         if (startPosition == null || trajectory == null) return;
 
+        if (_burstActive && Particles.Count >= dynamicMaxParticles)
+            _burstActive = false;
+
         ParentShip = parentShip;
-        int particleCount = Math.Min(thrust * MaxThrustMultiplier, dynamicMaxParticles - Particles.Count);
+        int particleCount = Math.Min(thrust * MaxThrustMultiplier, currentCap - Particles.Count);
         //More particles when exploding
         if (explosion == true) particleCount *= 2;
+        else if (!_burstActive) particleCount = Math.Min(particleCount, MaxParticlesPerEmission);
 
 
         var startPos = new Vector3(
@@ -233,7 +291,7 @@ public class ParticlesAI : IParticles
 
         for (int i = 0; i < particleCount; i++)
         {
-            float life = (float)(random.NextDouble() * (MaxLife - MinLife) + MinLife);
+            float life = (float)(random.NextDouble() * (MaxLife - MinLife) + MinLife) * LifeMultiplier;
             float size = (float)(random.NextDouble() * (MaxSize - MinSize) + MinSize);
             float spread = SpreadIntensity * (float)(random.NextDouble() + 0.5);
             //When exploding have a much bigger spread

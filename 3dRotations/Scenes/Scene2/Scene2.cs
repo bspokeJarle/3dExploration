@@ -16,6 +16,8 @@ namespace _3dRotations.Scene.Scene1
         public string SceneMusic { get; } = "music_flight";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public GameModes GameMode { get; } = GameModes.Live;
+        public float InfectionThresholdPercent { get; } = 8f;
+        public int InfectionSpreadRate { get; } = 3;
 
         public void SetupScene(I3dWorld world)
         {            

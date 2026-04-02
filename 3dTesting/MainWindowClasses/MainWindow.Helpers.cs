@@ -3,6 +3,7 @@ using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Media.Imaging;
@@ -90,10 +91,13 @@ namespace _3dTesting.Helpers
                 // BGRA (pure red)
                 byte[] infectedPx = { 0, 0, 255, 255 };
 
-                // Snapshot + clear to avoid modifying collection while iterating,
-                // and to avoid repeated work if something adds more while we write.
-                var dirtySnapshot = state.DirtyTiles.ToList();
-                state.DirtyTiles.Clear();
+                // Thread-safe snapshot + clear to prevent corruption from background thread
+                List<IVector3> dirtySnapshot;
+                lock (state.DirtyTiles)
+                {
+                    dirtySnapshot = new List<IVector3>(state.DirtyTiles);
+                    state.DirtyTiles.Clear();
+                }
 
                 foreach (var dirty in dirtySnapshot)
                 {
@@ -114,6 +118,161 @@ namespace _3dTesting.Helpers
             {
                 if (enableLogging) Logger.Log("UpdateDirtyTilesInMap: Exception while updating dirty tiles  " + ex.Message, "Error");
                 return;
+            }
+        }
+
+        // -----------------------------------------------------------------
+        //  MINIMAP MARKERS  (overlay approach – never touches source bitmap)
+        // -----------------------------------------------------------------
+
+        private static int _markerFrame;
+
+        /// <summary>
+        /// Creates a cropped copy of the source bitmap, draws markers on the copy,
+        /// and sets it as the minimap image source. The source bitmap is never modified
+        /// by markers, eliminating all save/restore issues.
+        /// </summary>
+        public static void UpdateMapOverlayWithMarkers(
+            System.Windows.Controls.Image mapOverlay,
+            BitmapSource surfaceMapBitmap,
+            int mapX, int mapZ)
+        {
+            if (mapX == 0 || mapZ == 0) return;
+            if (surfaceMapBitmap == null || mapOverlay == null) return;
+
+            try
+            {
+                // 1. Compute crop rect (same as old UpdateMapOverlay)
+                int cropX = (mapX - MapSetup.bitmapMapCenterOffsetX) / MapSetup.tileSize;
+                int cropZ = (mapZ - MapSetup.bitmapMapCenterOffsetY) / MapSetup.tileSize;
+                int cropW = MapSetup.bitmapSize * 2;
+                int cropH = MapSetup.bitmapSize;
+
+                int srcW = surfaceMapBitmap.PixelWidth;
+                int srcH = surfaceMapBitmap.PixelHeight;
+
+                // Clamp crop to source bounds
+                if (cropX < 0) cropX = 0;
+                if (cropZ < 0) cropZ = 0;
+                if (cropX + cropW > srcW) cropW = srcW - cropX;
+                if (cropZ + cropH > srcH) cropH = srcH - cropZ;
+                if (cropW <= 0 || cropH <= 0) return;
+
+                // 2. Copy crop pixels into a writable bitmap
+                int stride = cropW * 4; // Bgra32 = 4 bytes per pixel
+                byte[] pixels = new byte[stride * cropH];
+                surfaceMapBitmap.CopyPixels(
+                    new Int32Rect(cropX, cropZ, cropW, cropH),
+                    pixels, stride, 0);
+
+                // 3. Draw markers onto the pixel buffer (positions relative to crop)
+                DrawMarkersOnBuffer(pixels, cropW, cropH, stride, cropX, cropZ);
+
+                // 4. Write into a WriteableBitmap and set as source
+                var wb = new WriteableBitmap(cropW, cropH, 96, 96,
+                    System.Windows.Media.PixelFormats.Bgra32, null);
+                wb.WritePixels(new Int32Rect(0, 0, cropW, cropH), pixels, stride, 0);
+                wb.Freeze(); // Allow cross-thread use and better perf
+                mapOverlay.Source = wb;
+            }
+            catch (Exception ex)
+            {
+                if (enableLogging) Logger.Log("UpdateMapOverlayWithMarkers: " + ex.Message, "Error");
+            }
+        }
+
+        /// <summary>
+        /// Draws marker pixels into a raw BGRA pixel buffer.
+        /// Positions are converted from full-bitmap coords to crop-relative coords.
+        /// </summary>
+        private static void DrawMarkersOnBuffer(
+            byte[] pixels, int cropW, int cropH, int stride,
+            int cropOriginX, int cropOriginZ)
+        {
+            int tileSize = MapSetup.tileSize;
+
+            _markerFrame++;
+            bool aiVisible = (_markerFrame % 30) < 15;
+
+            // BGRA format
+            byte[] greyPx   = { 180, 180, 180, 255 }; // Ship
+            byte[] blackPx  = { 0, 0, 0, 255 };       // Seeder
+            byte[] bluePx   = { 255, 80, 0, 255 };    // Drone
+            byte[] orangePx = { 0, 140, 255, 255 };   // Decoy
+
+            // Ship marker — always visible at viewport center
+            var mapPos = GameState.SurfaceState.GlobalMapPosition;
+            if (mapPos != null)
+            {
+                int viewportCenterOffset = (SurfaceSetup.viewPortSize * tileSize) / 2;
+                int shipBx = (int)((mapPos.x + viewportCenterOffset) / tileSize) - cropOriginX;
+                int shipBz = (int)((mapPos.z + viewportCenterOffset) / tileSize) - cropOriginZ;
+                StampMarker(pixels, cropW, cropH, stride, shipBx, shipBz, greyPx);
+            }
+
+            // AI objects — only during blink-on phase
+            if (aiVisible)
+            {
+                var aiObjects = GameState.SurfaceState?.AiObjects;
+                _3dObject[]? snapshot = null;
+                if (aiObjects != null)
+                {
+                    lock (aiObjects) { snapshot = [.. aiObjects]; }
+                }
+                if (snapshot != null)
+                {
+                    for (int i = 0; i < snapshot.Length; i++)
+                    {
+                        var obj = snapshot[i];
+                        if (obj == null) continue;
+                        if (obj.ImpactStatus?.HasExploded == true)
+                            continue;
+                        // Also skip objects whose parts have been cleared (fully dead)
+                        if (obj.ObjectParts == null || obj.ObjectParts.Count == 0)
+                            continue;
+                        if (obj.WorldPosition == null)
+                            continue;
+                        if (obj.WorldPosition.x == 0 && obj.WorldPosition.z == 0)
+                            continue;
+
+                        byte[]? color = obj.ObjectName switch
+                        {
+                            "Seeder" => blackPx,
+                            "KamikazeDrone" => bluePx,
+                            "DroneDecoy" => orangePx,
+                            _ => null
+                        };
+                        if (color == null) continue;
+
+                        int bx = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
+                        int bz = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                        StampMarker(pixels, cropW, cropH, stride, bx, bz, color);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stamps a 3x3 marker into a raw pixel buffer at the given crop-relative position.
+        /// </summary>
+        private static void StampMarker(byte[] pixels, int w, int h, int stride,
+            int cx, int cz, byte[] bgra)
+        {
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dz = -1; dz <= 1; dz++)
+                {
+                    int px = cx + dx;
+                    int pz = cz + dz;
+                    if (px >= 0 && pz >= 0 && px < w && pz < h)
+                    {
+                        int offset = pz * stride + px * 4;
+                        pixels[offset]     = bgra[0]; // B
+                        pixels[offset + 1] = bgra[1]; // G
+                        pixels[offset + 2] = bgra[2]; // R
+                        pixels[offset + 3] = bgra[3]; // A
+                    }
+                }
             }
         }
 

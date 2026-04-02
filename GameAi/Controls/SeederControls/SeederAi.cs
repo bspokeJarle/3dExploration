@@ -28,15 +28,19 @@ namespace GameAiAndControls.Controls.SeederControls
         private const float GlobalOffscreenSpeedFactor = 0.70f;
 
         // Step model modifiers:
-        // - OffscreenStepFactor: How many times larger the step is offscreen (higher = faster simulation offscreen).
+        // - OffscreenStepFactor: Per-scene multiplier for offscreen seeder speed (tunable in IScene).
         // - MaxLocalSteps: Upper bound on steps allowed to reach a local target (caps how far local hunts can go).
-        private const int OffscreenStepFactor = 6;
-        private const int MaxLocalSteps = 180;
+        private static int OffscreenStepFactor => GameState.GamePlayState.SeederOffscreenSpeedFactor;
+        private const int MaxLocalSteps = 300;
 
         // Targeting & infection cadence:
-        // - LocalRetargetSeconds: Cooldown between local target selections (lower = more frequent infections).
+        // - SeedingStallSeconds: How long the seeder visibly pauses after infecting a tile (player can shoot it).
+        // - ParticleBurstSeconds: Total duration of particle emission from stall start (covers stall + trail while moving).
+        // - LocalRetargetSeconds: Short cooldown for non-seeding transitions (moving between targets).
         // - StallInfectSeconds: Interval between successive infections while stalling over a tile.
-        private const float LocalRetargetSeconds = 3.0f;
+        private const float SeedingStallSeconds = 2.0f;
+        private const float ParticleBurstSeconds = 8.0f;
+        private const float LocalRetargetSeconds = 0.3f;
         private const double StallInfectSeconds = 0.20; // 5 infections per second when stalling
 
         // Global search heuristics:
@@ -77,10 +81,12 @@ namespace GameAiAndControls.Controls.SeederControls
             public long NextStallInfectTick = 0;
             public int StallTileX = int.MinValue;
             public int StallTileZ = int.MinValue;
+            public bool SeededAtCurrentStall = false;
 
             public bool IsStalling = false;
             public long StallUntilTicks = 0;
             public int StepsRemaining = 0;
+            public long ParticleEmitUntilTicks = 0;
         }
 
         private static readonly Dictionary<int, AiState> _aiStates = new();
@@ -149,6 +155,11 @@ namespace GameAiAndControls.Controls.SeederControls
 
             Vector3 current = s.AuthWorldPos;
 
+            // Sync the object's WorldPosition with the AI's tracked location so
+            // helpers like GetSurfaceAlignedWorldPosition use the current position
+            // rather than the stale value copied from the original at deep-copy time.
+            moveThisObject.WorldPosition = new Vector3 { x = current.x, y = current.y, z = current.z };
+
             if (!TryGetDt(s, out float dt))
                 return s.AuthWorldPos;
 
@@ -157,6 +168,9 @@ namespace GameAiAndControls.Controls.SeederControls
             ComputeStepModel(isOnScreen, s, out float localSpeed, out float speed, out float step60, out float stepOff, out float step);
 
             LogHeartbeatIfNeeded(isOnScreen, s, id, nowTicks, dt, step60, stepOff, OffscreenStepFactor, current);
+
+            if (isOnScreen && nowTicks < s.ParticleEmitUntilTicks)
+                moveThisObject.Movement.ReleaseParticles(moveThisObject);
 
             if (s.HasMovementTarget)
                 return HandleMoveTowardTarget(isOnScreen, moveThisObject, s, id, nowTicks, dt, step60, step, OffscreenStepFactor, current);
@@ -170,25 +184,26 @@ namespace GameAiAndControls.Controls.SeederControls
             return HandleFallback(isOnScreen, s, id, nowTicks, current);
         }
 
-        private static void HandleStallSeeding(int id, AiState s, float dt, bool isOnScreen, I3dObject theObject)
+        private static bool HandleStallSeeding(int id, AiState s, float dt, bool isOnScreen, I3dObject theObject)
         {
             var surfaceState = GameState.SurfaceState;
-            if (surfaceState?.Global2DMap == null) return;
+            if (surfaceState?.Global2DMap == null) return false;
 
-            // Use synchronized position and fall back safely if object is not _3dObject
-            var obj3d = theObject as _3dObject;
-            var posAligned = obj3d != null
-                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
-                : (Vector3)theObject.WorldPosition;
+            // AuthWorldPos may have been updated by HandleMoveTowardTarget (arrival snap)
+            // since the top-of-AI sync, so refresh the object before visual helpers.
+            theObject.WorldPosition = s.AuthWorldPos;
 
-            // Convert world -> tile using same origin logic as viewport
-            int tileX = (int)posAligned.x / SurfaceSetup.tileSize;
-            int tileZ = (int)posAligned.z / SurfaceSetup.tileSize;
+            // Tile indices use raw world coordinates to match the meta map and
+            // Global2DMap (which are indexed by globalTile = worldCoord / tileSize).
+            // Do NOT use GetSurfaceAlignedWorldPosition here — it adds visual
+            // offsets (surfOO − seederOO) that shift the lookup by several tiles.
+            int tileX = (int)s.AuthWorldPos.x / SurfaceSetup.tileSize;
+            int tileZ = (int)s.AuthWorldPos.z / SurfaceSetup.tileSize;
             // Bounds
             if (tileZ < 0 || tileX < 0 ||
                 tileZ >= surfaceState.Global2DMap.GetLength(0) ||
                 tileX >= surfaceState.Global2DMap.GetLength(1))
-                return;
+                return false;
 
             long now = DateTime.Now.Ticks;
 
@@ -202,66 +217,133 @@ namespace GameAiAndControls.Controls.SeederControls
                 {
                     s.StallTileX = tileX;
                     s.StallTileZ = tileZ;
-                    SafeLog($"AI:STALL_TILE onScreen={isOnScreen} tile=({tileX},{tileZ}) pos={V2(posAligned)} ObjectId:{id}");
+                    SafeLog($"AI:STALL_TILE onScreen={isOnScreen} tile=({tileX},{tileZ}) pos={V2(s.AuthWorldPos)} ObjectId:{id}");
                 }
 
-                var tile = surfaceState.Global2DMap[tileZ, tileX];
-                if (!tile.isInfected)
+                int mapWidth = surfaceState.Global2DMap.GetLength(1);
+                int mapHeight = surfaceState.Global2DMap.GetLength(0);
+                int tilesPerScreen = SurfaceSetup.viewPortSize;
+                int tileSz = SurfaceSetup.tileSize;
+
+                // Shared helper: infect a single tile if valid, bio-capable, and not already infected.
+                // Also removes the tile from the BioTiles list so seeders move past it.
+                bool TryInfectTile(int tx, int tz, string label)
                 {
-                    var tileType = GamePlayHelpers.GetTerrainType(tile.mapDepth, MapSetup.maxHeight);
-                    if (tileType == TerrainType.Grassland || tileType == TerrainType.Highlands)
+                    if (tx < 0 || tz < 0 || tx >= mapWidth || tz >= mapHeight) return false;
+                    var t = surfaceState.Global2DMap[tz, tx];
+                    if (t.isInfected) return false;
+                    var tt = GamePlayHelpers.GetTerrainType(t.mapDepth, MapSetup.maxHeight);
+                    if (tt != TerrainType.Grassland && tt != TerrainType.Highlands) return false;
+
+                    GameState.GamePlayState.InfectionLevel += 1;
+                    t.isInfected = true;
+                    surfaceState.Global2DMap[tz, tx] = t;
+                    surfaceState.DirtyTiles.Add(new Vector3 { x = tx, y = 0, z = tz });
+                    var cnt = SeederMovementHelpers.DecrementBioCountForTile(surfaceState, tz, tx);
+
+                    // Remove from the screen's BioTiles list so seeders skip this tile
+                    int scrY = tz / tilesPerScreen;
+                    int scrX = tx / tilesPerScreen;
+                    var eco = surfaceState.ScreenEcoMetas;
+                    if ((uint)scrY < (uint)eco.GetLength(0) && (uint)scrX < (uint)eco.GetLength(1))
                     {
-                        GameState.GamePlayState.InfectionLevel += 1;
-                        tile.isInfected = true;
-                        surfaceState.Global2DMap[tileZ, tileX] = tile;
-                        surfaceState.DirtyTiles.Add(new Vector3 { x = tileX, y = 0, z = tileZ });
-                        var tileCount = SeederMovementHelpers.DecrementBioCountForTile(surfaceState, tileZ, tileX);
-                        SafeLog($"AI:INFECT tile=({tileX},{tileZ}) onScreen={isOnScreen} RemainingBioTileCount:{tileCount} ObjectId:{id}");
+                        var bioList = eco[scrY, scrX].BioTiles;
+                        int worldX = tx * tileSz;
+                        int worldZ = tz * tileSz;
+                        for (int bi = bioList.Count - 1; bi >= 0; bi--)
+                        {
+                            if (bioList[bi].X == worldX && bioList[bi].Y == worldZ)
+                            { bioList.RemoveAt(bi); break; }
+                        }
+                    }
+
+                    SafeLog($"AI:{label} tile=({tx},{tz}) onScreen={isOnScreen} RemainingBioTileCount:{cnt} ObjectId:{id}");
+
+                    // Queue for delayed local spread — cascading infection from this tile
+                    surfaceState.PendingLocalInfectionSpread.Add((tx, tz, DateTime.Now.Ticks));
+
+                    return true;
+                }
+
+                // Ring 1: immediate neighbors (8 tiles)
+                int[][] ring1Cardinals = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+                int[][] ring1Diagonals = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+                // Ring 2: distance-2 tiles (16 tiles)
+                int[][] ring2 = [
+                    [-2, -2], [-1, -2], [0, -2], [1, -2], [2, -2],
+                    [2, -1], [2, 0], [2, 1],
+                    [2, 2], [1, 2], [0, 2], [-1, 2], [-2, 2],
+                    [-2, 1], [-2, 0], [-2, -1]
+                ];
+                // Ring 3: distance-3 tiles (24 tiles)
+                int[][] ring3 = [
+                    [-3, -3], [-2, -3], [-1, -3], [0, -3], [1, -3], [2, -3], [3, -3],
+                    [3, -2], [3, -1], [3, 0], [3, 1], [3, 2],
+                    [3, 3], [2, 3], [1, 3], [0, 3], [-1, 3], [-2, 3], [-3, 3],
+                    [-3, 2], [-3, 1], [-3, 0], [-3, -1], [-3, -2]
+                ];
+
+                var tile = surfaceState.Global2DMap[tileZ, tileX];
+                if (tile.isInfected)
+                {
+                    SafeLog($"AI:STALL_ALREADY_INFECTED tile=({tileX},{tileZ}) onScreen={isOnScreen} ObjectId:{id}");
+                    return true;
+                }
+                {
+                    if (TryInfectTile(tileX, tileZ, "INFECT"))
+                    {
+                        s.SeededAtCurrentStall = true;
+                        // Spread to additional edge tiles based on InfectionSpreadRate
+                        int extraSpread = GameState.GamePlayState.InfectionSpreadRate - 1;
+                        if (extraSpread > 0)
+                        {
+                            int spread = 0;
+                            // Ring 1: cardinals then diagonals
+                            foreach (var d in ring1Cardinals)
+                            {
+                                if (spread >= extraSpread) break;
+                                if (TryInfectTile(tileX + d[0], tileZ + d[1], "INFECT_SPREAD"))
+                                    spread++;
+                            }
+                            foreach (var d in ring1Diagonals)
+                            {
+                                if (spread >= extraSpread) break;
+                                if (TryInfectTile(tileX + d[0], tileZ + d[1], "INFECT_SPREAD"))
+                                    spread++;
+                            }
+                            // Ring 2: distance-2 tiles for higher rates
+                            foreach (var d in ring2)
+                            {
+                                if (spread >= extraSpread) break;
+                                if (TryInfectTile(tileX + d[0], tileZ + d[1], "INFECT_SPREAD"))
+                                    spread++;
+                            }
+                            // Ring 3: distance-3 tiles for rates > 24
+                            foreach (var d in ring3)
+                            {
+                                if (spread >= extraSpread) break;
+                                if (TryInfectTile(tileX + d[0], tileZ + d[1], "INFECT_SPREAD"))
+                                    spread++;
+                            }
+                        }
                     }
                     else
                     {
-                        // Check surrounding tiles to see they are infectable, if so infect it
-                        // Try 4-neighborhood (N,E,S,W) then diagonals (optional) for infectable tiles
-                        int width = surfaceState.Global2DMap.GetLength(1);
-                        int height = surfaceState.Global2DMap.GetLength(0);
-
-                        // Helper to infect a given neighbor if valid and infectable
-                        bool TryInfectNeighbour(int nx, int nz)
+                        // Primary tile not bio-capable: try infecting a neighbor instead
+                        bool infectedAny = false;
+                        foreach (var d in ring1Cardinals)
                         {
-                            if (nx < 0 || nz < 0 || nx >= width || nz >= height) return false;
-                            var neighbor = surfaceState.Global2DMap[nz, nx];
-                            if (neighbor.isInfected) return false;
-
-                            var nType = GamePlayHelpers.GetTerrainType(neighbor.mapDepth, MapSetup.maxHeight);
-                            if (nType == TerrainType.Grassland || nType == TerrainType.Highlands)
-                            {
-                                neighbor.isInfected = true;
-                                surfaceState.Global2DMap[nz, nx] = neighbor;
-                                surfaceState.DirtyTiles.Add(new Vector3 { x = nx, y = 0, z = nz });
-                                var nCount = SeederMovementHelpers.DecrementBioCountForTile(surfaceState, nz, nx);
-                                SafeLog($"AI:INFECT_NEIGHBOR tile=({nx},{nz}) onScreen={isOnScreen} RemainingBioTileCount:{nCount} ObjectId:{id}");
-                                return true;
-                            }
-                            return false;
+                            if (TryInfectTile(tileX + d[0], tileZ + d[1], "INFECT_NEIGHBOR"))
+                            { infectedAny = true; break; }
                         }
-
-                        // First try cardinal neighbors
-                        bool infectedAny =
-                            TryInfectNeighbour(tileX,     tileZ - 1) | // N
-                            TryInfectNeighbour(tileX + 1, tileZ    ) | // E
-                            TryInfectNeighbour(tileX,     tileZ + 1) | // S
-                            TryInfectNeighbour(tileX - 1, tileZ    );  // W
-
-                        // If none of the cardinals were infectable, try diagonals
                         if (!infectedAny)
                         {
-                            infectedAny =
-                                TryInfectNeighbour(tileX - 1, tileZ - 1) | // NW
-                                TryInfectNeighbour(tileX + 1, tileZ - 1) | // NE
-                                TryInfectNeighbour(tileX + 1, tileZ + 1) | // SE
-                                TryInfectNeighbour(tileX - 1, tileZ + 1);  // SW
+                            foreach (var d in ring1Diagonals)
+                            {
+                                if (TryInfectTile(tileX + d[0], tileZ + d[1], "INFECT_NEIGHBOR"))
+                                { infectedAny = true; break; }
+                            }
                         }
-
                         if (!infectedAny)
                         {
                             SafeLog($"AI:INFECT_SURROUNDINGS_NONE onScreen={isOnScreen} center=({tileX},{tileZ}) ObjectId:{id}");
@@ -269,17 +351,7 @@ namespace GameAiAndControls.Controls.SeederControls
                     }
                 }
             }
-            if (isOnScreen)
-            {
-                //Update the worldposition for the release of particles
-                theObject.WorldPosition = s.AuthWorldPos;
-                theObject.Movement.ReleaseParticles(theObject);
-                SafeLog($"AI:STALL_PARTICLES onScreen={isOnScreen} pos={V2(s.AuthWorldPos)} ObjectId:{id}");
-            }
-            else
-            {
-                SafeLog($"AI:STALL_SKIP_PARTICLES offScreen pos={V2(s.AuthWorldPos)} ObjectId:{id}");
-            }
+            return false;
         }
         private static bool IsZeroWorldPos(I3dObject obj)
         {
@@ -420,14 +492,20 @@ namespace GameAiAndControls.Controls.SeederControls
                 );
             }
 
-            Vector3 next = SeederMovementHelpers.StepTowardTargetWorldXZ(current, s.TargetWorld, step);
+            // Frame-rate compensation: scale step and decrement by dt*60
+            // so the seeder covers the same distance per second at any FPS.
+            float dtScale = dt * 60f;
+            float actualStep = step * dtScale;
 
-            int dec = isOnScreen ? 1 : offscreenStepFactor;
+            Vector3 next = SeederMovementHelpers.StepTowardTargetWorldXZ(current, s.TargetWorld, actualStep);
+
+            int baseDec = isOnScreen ? 1 : offscreenStepFactor;
+            int dec = Math.Max(1, (int)Math.Round(baseDec * dtScale));
             s.StepsRemaining -= dec;
 
             SafeLog(
                 $"AI:MOVE({(isOnScreen ? "onscreen" : "offscreen")}) " +
-                $"localTarget={s.TargetIsLocalBio} step={step:0.00} dec={dec} stepsLeft={s.StepsRemaining} " +
+                $"localTarget={s.TargetIsLocalBio} step={actualStep:0.00} dec={dec} stepsLeft={s.StepsRemaining} " +
                 $"cur={V2(current)} next={V2(next)} target={V2(s.TargetWorld)} ObjectId:{id}"
             );
 
@@ -456,11 +534,13 @@ namespace GameAiAndControls.Controls.SeederControls
                 }
                 else
                 {
-                    s.NextLocalRetargetTicks = nowTicks + (long)(LocalRetargetSeconds * TimeSpan.TicksPerSecond);
-                    SafeLog($"AI:LOCAL_COOLDOWN set={LocalRetargetSeconds:0.00}s onScreen={isOnScreen} ObjectId:{id}");
+                    s.SeededAtCurrentStall = false;
+                    s.NextLocalRetargetTicks = nowTicks + (long)(SeedingStallSeconds * TimeSpan.TicksPerSecond);
+                    s.ParticleEmitUntilTicks = nowTicks + (long)(ParticleBurstSeconds * TimeSpan.TicksPerSecond);
+                    SafeLog($"AI:LOCAL_COOLDOWN set={SeedingStallSeconds:0.00}s particles={ParticleBurstSeconds:0.00}s onScreen={isOnScreen} ObjectId:{id}");
 
                     // Do a stall tick straight away (same as before)
-                    HandleStallSeeding(id, s, dt, isOnScreen, moveThisObject);
+                    _ = HandleStallSeeding(id, s, dt, isOnScreen, moveThisObject);
                 }
             }
 
@@ -488,13 +568,8 @@ namespace GameAiAndControls.Controls.SeederControls
 
             s.NextGlobalDecisionTicks = nowTicks + (TimeSpan.TicksPerSecond / 2);
 
-            // Use synchronized position (safe cast fallback)
-            var obj3d = moveThisObject as _3dObject;
-            var alignedWorld = obj3d != null
-                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
-                : (Vector3)moveThisObject.WorldPosition;
-
-            SeederMovementHelpers.GetScreenIndexFromWorldXZ(alignedWorld, out int curSY, out int curSX);
+            // Screen indices use raw world coordinates to match the meta map.
+            SeederMovementHelpers.GetScreenIndexFromWorldXZ(current, out int curSY, out int curSX);
 
             if (nowTicks - s.LastDecisionLogTicks > (TimeSpan.TicksPerSecond / 2))
             {
@@ -515,7 +590,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 if (nextSY >= ecoMap.GetLength(0)) nextSY = ecoMap.GetLength(0) - 1;
                 if (nextSX >= ecoMap.GetLength(1)) nextSX = ecoMap.GetLength(1) - 1;
 
-                s.TargetWorld = SeederMovementHelpers.GetScreenCenterWorldXZ(nextSY, nextSX, alignedWorld.y);
+                s.TargetWorld = SeederMovementHelpers.GetScreenCenterWorldXZ(nextSY, nextSX, current.y);
                 s.HasMovementTarget = true;
                 s.TargetIsLocalBio = false;
                 s.TargetStartTicks = nowTicks;
@@ -556,7 +631,14 @@ namespace GameAiAndControls.Controls.SeederControls
                 }
 
                 if (!s.HasMovementTarget && s.TargetIsLocalBio)
-                    HandleStallSeeding(id, s, 0f, isOnScreen, moveThisObject); // dt not used for stall logic (keeps behavior)
+                {
+                    bool alreadyInfected = HandleStallSeeding(id, s, 0f, isOnScreen, moveThisObject);
+                    if (alreadyInfected && !s.SeededAtCurrentStall)
+                    {
+                        s.NextLocalRetargetTicks = nowTicks;
+                        SafeLog($"AI:STALL_SKIP_COOLDOWN tile already infected, retargeting immediately ObjectId:{id}");
+                    }
+                }
 
                 return s.AuthWorldPos;
             }
@@ -580,17 +662,12 @@ namespace GameAiAndControls.Controls.SeederControls
             {
                 s.LocalPickCursor = cursor;
 
-                // Use synchronized Y to align vertical position with surface (safe cast fallback)
-                var obj3d = moveThisObject as _3dObject;
-                var alignedWorld = obj3d != null
-                    ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
-                    : (Vector3)moveThisObject.WorldPosition;
-
-                var candidate = new Vector3 { x = localTarget.x, y = alignedWorld.y, z = localTarget.z };
+                var candidate = new Vector3 { x = localTarget.x, y = current.y, z = localTarget.z };
 
                 float localStep60 = localSpeed / 60f;
+                float effectiveStep = isOnScreen ? localStep60 : localStep60 * OffscreenStepFactor;
                 float dist = DistanceXZ(current, candidate);
-                int stepsNeeded = (int)Math.Ceiling(dist / Math.Max(0.0001f, localStep60));
+                int stepsNeeded = (int)Math.Ceiling(dist / Math.Max(0.0001f, effectiveStep));
                 if (stepsNeeded < 1) stepsNeeded = 1;
 
                 if (stepsNeeded > maxLocalSteps)

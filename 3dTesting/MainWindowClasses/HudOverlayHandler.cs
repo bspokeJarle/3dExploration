@@ -1,6 +1,7 @@
 ﻿using CommonUtilities.CommonGlobalState;
 using Domain;
 using System;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -45,9 +46,19 @@ namespace _3dTesting.MainWindowClasses
         // HUD ELEMENTS (SLOTS)
         // ----------------------------
         private readonly Image _minimap;
-        private readonly Image _activePowerupIcon;
+        private readonly Rectangle _powerBarBackground;
+        private readonly Rectangle _powerBarFill;
         private readonly Image _powerupLazerIcon;
         private readonly Image _powerupDecoyIcon;
+
+        // Enemy remaining: icon + percentage bar (same style as alt/thr/bio)
+        private readonly Image _droneIcon;
+        private readonly Rectangle _droneBarFill;
+        private readonly Image _seederIcon;
+        private readonly Rectangle _seederBarFill;
+
+        // Viewport indicator overlaid on the minimap
+        private readonly Rectangle _viewportRect;
 
         // Center FPS line (numbers only; the "FPS | TRI | P" labels are in the PNG)
         private readonly TextBlock _fpsCenter;
@@ -79,16 +90,30 @@ namespace _3dTesting.MainWindowClasses
         // FPS line — adjusted from your earlier values to sit inside the top middle label slot
         private const double FpsX = 870;
         private const double FpsY = 28;
-        private const double ActivePowerupIconX = 1310;
-        private const double ActivePowerupIconY = 18;
-        private const double ActivePowerupIconSize = 48;
+        // Ship power (health) vertical bar — replaces the old active-powerup icon slot
+        private const double PowerBarX = 1314;
+        private const double PowerBarY = 22;
+        private const double PowerBarW = 18;
+        private const double PowerBarH = 35;
 
-        private const double PowerupLazerX = 850;
-        private const double PowerupDecoyX = 950;
-        private const double PowerupRowY = 75;
+        private const double PowerupLazerX = 845;
+        private const double PowerupDecoyX = 945;
+        private const double PowerupRowY = 85;
         private const double PowerupIconSize = 48;
 
-        // Right panel bar fills (positions adjusted down to align with “track” lines in PNG)
+        // Enemy bars (icon on left, bar on right — below the powerup row)
+        // Icon size and bar height match the existing HUD elements (48px icons, 16px bars).
+        // Bar width fills from after the icon to the right edge of the center indentation.
+        private const double EnemyIconSize = 75;
+        private const double EnemyBarOffsetX = EnemyIconSize + 8; // bar starts just right of the icon
+        private const double EnemyBarW = (RightPanelX - DroneRowX - EnemyBarOffsetX) * 0.60;
+        private const double EnemyBarH = BarH;
+        private const double DroneRowX = 825;
+        private const double DroneRowY = 145;
+        private const double SeederRowX = 825;
+        private const double SeederRowY = DroneRowY + EnemyIconSize + 8;
+
+        // Right panel bar fills (positions adjusted down to align with "track" lines in PNG)
         private const double RightPanelX = 1665;
 
         private const double RightAltY = 127;
@@ -143,6 +168,16 @@ namespace _3dTesting.MainWindowClasses
             Canvas.SetLeft(_minimap, MiniMapX);
             Canvas.SetTop(_minimap, MiniMapY);
 
+            // Viewport indicator — semi-transparent cyan outline on top of the minimap
+            _viewportRect = new Rectangle
+            {
+                Stroke = new SolidColorBrush(Color.FromArgb(160, 0, 255, 255)),
+                StrokeThickness = 1.5,
+                Fill = new SolidColorBrush(Color.FromArgb(30, 0, 255, 255)),
+                IsHitTestVisible = false
+            };
+            Panel.SetZIndex(_viewportRect, 1000);
+
             // ----- Center FPS / TRI / P -----
             _fpsCenter = new TextBlock
             {
@@ -155,12 +190,41 @@ namespace _3dTesting.MainWindowClasses
             Canvas.SetLeft(_fpsCenter, FpsX);
             Canvas.SetTop(_fpsCenter, FpsY);
 
-            _activePowerupIcon = CreatePowerupIcon(ActivePowerupIconX, ActivePowerupIconY, ActivePowerupIconSize);
+            // ----- Ship power (health) vertical bar -----
+            _powerBarBackground = new Rectangle
+            {
+                Width = PowerBarW,
+                Height = PowerBarH,
+                Fill = new SolidColorBrush(Color.FromArgb(80, 255, 255, 255)),
+                Opacity = 0.5
+            };
+            Canvas.SetLeft(_powerBarBackground, PowerBarX);
+            Canvas.SetTop(_powerBarBackground, PowerBarY);
+
+            _powerBarFill = new Rectangle
+            {
+                Width = PowerBarW,
+                Height = PowerBarH,
+                Fill = Brushes.LimeGreen,
+                Opacity = 0.9
+            };
+            Canvas.SetLeft(_powerBarFill, PowerBarX);
+            Canvas.SetTop(_powerBarFill, PowerBarY);
+
             _powerupLazerIcon = CreatePowerupIcon(PowerupLazerX, PowerupRowY, PowerupIconSize);
             _powerupDecoyIcon = CreatePowerupIcon(PowerupDecoyX, PowerupRowY, PowerupIconSize);
 
             _powerupLazerIcon.Source = TryLoadBitmapImage("GameGraphics\\laser_icon_48.png");
             _powerupDecoyIcon.Source = TryLoadBitmapImage("GameGraphics\\decoy_icon_48.png");
+
+            // ----- Enemy icon + bar -----
+            _droneIcon = CreatePowerupIcon(DroneRowX, DroneRowY, EnemyIconSize);
+            _droneIcon.Source = TryLoadBitmapImage("GameGraphics\\drone_icon_48.png");
+            _droneBarFill = CreateBarFill(DroneRowX + EnemyBarOffsetX, DroneRowY + (EnemyIconSize - EnemyBarH) / 2, EnemyBarW, EnemyBarH);
+
+            _seederIcon = CreatePowerupIcon(SeederRowX, SeederRowY, EnemyIconSize);
+            _seederIcon.Source = TryLoadBitmapImage("GameGraphics\\seeder_icon_48.png");
+            _seederBarFill = CreateBarFill(SeederRowX + EnemyBarOffsetX, SeederRowY + (EnemyIconSize - EnemyBarH) / 2, EnemyBarW, EnemyBarH);
 
             // ----- Bars only -----
             _altBarFill = CreateBarFill(RightBarX, RightAltY);
@@ -172,14 +236,21 @@ namespace _3dTesting.MainWindowClasses
             _hudRoot.Children.Add(_canvas);
 
             _canvas.Children.Add(_minimap);
+            _canvas.Children.Add(_viewportRect);
             _canvas.Children.Add(_fpsCenter);
-            _canvas.Children.Add(_activePowerupIcon);
+            _canvas.Children.Add(_powerBarBackground);
+            _canvas.Children.Add(_powerBarFill);
             _canvas.Children.Add(_powerupLazerIcon);
             _canvas.Children.Add(_powerupDecoyIcon);
 
             _canvas.Children.Add(_altBarFill);
             _canvas.Children.Add(_thrBarFill);
             _canvas.Children.Add(_bioBarFill);
+
+            _canvas.Children.Add(_droneIcon);
+            _canvas.Children.Add(_droneBarFill);
+            _canvas.Children.Add(_seederIcon);
+            _canvas.Children.Add(_seederBarFill);
 
             _root.Children.Add(_hudRoot);
 
@@ -248,23 +319,94 @@ namespace _3dTesting.MainWindowClasses
 
             _fpsCenter.Text = $"{fps}                       {triangles}";
 
-            _activePowerupIcon.Source = activePowerup == "DECOY"
-                ? _powerupDecoyIcon.Source
-                : _powerupLazerIcon.Source;
-
             _powerupLazerIcon.Opacity = activePowerup == "LAZER" ? 1.0 : 0.45;
             _powerupDecoyIcon.Opacity = activePowerup == "DECOY" ? 1.0 : 0.45;
-            _activePowerupIcon.Opacity = 1.0;
+
+            // Ship power (health) vertical bar: fills bottom-to-top, green→red
+            UpdatePowerBar(gameplay);
 
             SetBarFill(_altBarFill, gameplay.Alt);
 
             SetBarFill(_thrBarFill, gameplay.Thrust/10);
-           
-            //TODO: Temporary fix
-            SetBarFill(_bioBarFill, gameplay.InfectionLevel/10);
+
+            SetBarFill(_bioBarFill, gameplay.InfectionPercent / 100f);
+
+            // Enemy remaining bars (percentage of initial count)
+            float dronePct = gameplay.InitialDrones > 0
+                ? (float)gameplay.DronesRemaining / gameplay.InitialDrones
+                : 0f;
+            float seederPct = gameplay.InitialSeeders > 0
+                ? (float)gameplay.SeedersRemaining / gameplay.InitialSeeders
+                : 0f;
+            SetBarFill(_droneBarFill, dronePct, EnemyBarW);
+            SetBarFill(_seederBarFill, seederPct, EnemyBarW);
+
+            UpdateViewportRect();
         }
 
         public void ReloadFrame() => TryLoadFrameImage();
+
+        /// <summary>
+        /// Positions and sizes the viewport rectangle overlay on the minimap.
+        /// The minimap shows a cropped portion of the full bitmap.
+        /// The viewport (18×18 tiles) is centered on the ship (center of the crop).
+        /// </summary>
+        private void UpdateViewportRect()
+        {
+            int cropW = CommonUtilities.CommonSetup.MapSetup.bitmapSize * 2; // 144
+            int cropH = CommonUtilities.CommonSetup.MapSetup.bitmapSize;     // 72
+            int vpTiles = CommonUtilities.CommonSetup.SurfaceSetup.viewPortSize; // 18
+
+            // The viewport is centered in the crop (ship is at crop center)
+            double vpBitmapX = (cropW - vpTiles) / 2.0;
+            double vpBitmapZ = (cropH - vpTiles) / 2.0;
+
+            double scaleX = MiniMapW / cropW;
+            double scaleZ = MiniMapH / cropH;
+
+            _viewportRect.Width = vpTiles * scaleX;
+            _viewportRect.Height = vpTiles * scaleZ;
+
+            Canvas.SetLeft(_viewportRect, MiniMapX + vpBitmapX * scaleX);
+            Canvas.SetTop(_viewportRect, MiniMapY + vpBitmapZ * scaleZ);
+        }
+
+        /// <summary>
+        /// Updates the vertical ship power bar.
+        /// Height scales with health percentage (bottom-to-top fill).
+        /// Color interpolates: green (100%) → yellow (50%) → red (0%).
+        /// </summary>
+        private void UpdatePowerBar(GamePlayState gameplay)
+        {
+            float pct = gameplay.MaxHealth > 0f
+                ? Clamp01(gameplay.Health / gameplay.MaxHealth)
+                : 0f;
+
+            double fillH = PowerBarH * pct;
+
+            _powerBarFill.Height = fillH;
+            // Anchor to bottom: push the top down so the bar grows upward
+            Canvas.SetTop(_powerBarFill, PowerBarY + (PowerBarH - fillH));
+
+            // Color: green at 100%, blends to red by 0%, transition centered around 50%
+            byte r, g;
+            if (pct > 0.5f)
+            {
+                // 100%→50%: green to yellow (red ramps up 0→255)
+                float t = (1f - pct) * 2f; // 0 at 100%, 1 at 50%
+                r = (byte)(255 * t);
+                g = 255;
+            }
+            else
+            {
+                // 50%→0%: yellow to red (green ramps down 255→0)
+                float t = pct * 2f; // 1 at 50%, 0 at 0%
+                r = 255;
+                g = (byte)(255 * t);
+            }
+
+            _powerBarFill.Fill = new SolidColorBrush(Color.FromArgb(220, r, g, 0));
+        }
 
         private static Image CreatePowerupIcon(double x, double y, double size)
         {
@@ -329,12 +471,12 @@ namespace _3dTesting.MainWindowClasses
             }
         }
 
-        private static Rectangle CreateBarFill(double x, double y)
+        private static Rectangle CreateBarFill(double x, double y, double maxWidth = BarW, double height = BarH)
         {
             var fill = new Rectangle
             {
                 Width = 0,
-                Height = BarH,
+                Height = height,
                 Fill = BarFillBrush,
                 Opacity = 0.85
             };
@@ -348,6 +490,11 @@ namespace _3dTesting.MainWindowClasses
         private static void SetBarFill(Rectangle rect, float value01)
         {
             rect.Width = BarW * Clamp01(value01);
+        }
+
+        private static void SetBarFill(Rectangle rect, float value01, double maxWidth)
+        {
+            rect.Width = maxWidth * Clamp01(value01);
         }
 
         private static float Clamp01(float v)

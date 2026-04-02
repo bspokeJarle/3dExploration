@@ -58,6 +58,15 @@ namespace _3dRotations.Helpers
 
             // 8) Generate ecological meta-map for AI usage, stored in global state
             GameState.SurfaceState.ScreenEcoMetas = GenerateEcoMap(surfaceValues);
+
+            // Count total bio tiles for infection percentage calculation
+            int totalBio = 0;
+            var ecoMetas = GameState.SurfaceState.ScreenEcoMetas;
+            for (int sy = 0; sy < ecoMetas.GetLength(0); sy++)
+                for (int sx = 0; sx < ecoMetas.GetLength(1); sx++)
+                    totalBio += ecoMetas[sy, sx].BioTileCount;
+            GameState.GamePlayState.TotalBioTiles = totalBio;
+
             return surfaceValues;
         }
 

@@ -28,12 +28,14 @@ namespace _3dTesting.Helpers
             for (int i = 0; i < count; i++)
             {
                 var inhabitant = activeWorld[i];
-                if (inhabitant == null || inhabitant.CrashBoxes == null) continue;
+                if (inhabitant == null || inhabitant.CrashBoxes == null || inhabitant.CrashBoxes.Count == 0) continue;
+                if (inhabitant.ImpactStatus?.HasExploded == true) continue;
 
                 for (int j = i + 1; j < count; j++)
                 {
                     var otherInhabitant = activeWorld[j];
-                    if (otherInhabitant == null || otherInhabitant.CrashBoxes == null) continue;
+                    if (otherInhabitant == null || otherInhabitant.CrashBoxes == null || otherInhabitant.CrashBoxes.Count == 0) continue;
+                    if (otherInhabitant.ImpactStatus?.HasExploded == true) continue;
 
                     var flagsA = GetTypeFlagsCached(inhabitant);
                     var flagsB = GetTypeFlagsCached(otherInhabitant);
@@ -127,7 +129,11 @@ namespace _3dTesting.Helpers
                     }
 
                     var effectiveMaxCrashDistance = isLazer ? MaxCrashDistance * 2 : MaxCrashDistance;
-                    if (distance > effectiveMaxCrashDistance)
+                    // Ship is in screen-space; enemies are in world-offset space.
+                    // The center-distance check is meaningless for Ship↔Enemy pairs,
+                    // so skip the early-out and let box-vs-box handle it.
+                    bool isShipEnemyPair = isShip && !isSurface && !isParticle && !isLazer;
+                    if (!isShipEnemyPair && distance > effectiveMaxCrashDistance)
                     {
                         SkippedByDistance++;
                         continue;
@@ -145,6 +151,8 @@ namespace _3dTesting.Helpers
                     }
                 }
             }
+
+            HandleDecoyBlastDamage(activeWorld);
 
             if (ShouldLogAny && !LogOnlyCollisions)
             {

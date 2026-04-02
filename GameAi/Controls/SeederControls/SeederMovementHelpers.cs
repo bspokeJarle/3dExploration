@@ -29,13 +29,9 @@ namespace GameAiAndControls.Helpers
         private const int SmellScoreWeight = 1000;
         private const int DistancePenaltyWeight = 10;
 
-        // Synchronization policy:
-        // - SyncToSurfaceForLocalPick: whether to use synchronized world position for local bio target selection (should stay true).
-        private const bool SyncToSurfaceForLocalPick = true;
-
         // Logging:
         // - EnableLogging: toggles helper-level logging via global Logger.
-        private const bool EnableLogging = false;
+        private const bool EnableLogging = true;
 
         // World bounds derived from map setup:
         private static float MaxWorld => (MapSetup.globalMapSize - 1) * (float)TileSize;
@@ -185,12 +181,12 @@ namespace GameAiAndControls.Helpers
             var ecoMap = surfaceState.ScreenEcoMetas;
             var map = surfaceState.Global2DMap;
 
-            // Use synchronized world position to align seeder center with surface center (configurable)
-            Vector3 alignedWorld = SyncToSurfaceForLocalPick
-                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition((_3dObject)obj)
-                : (Vector3)obj.WorldPosition;
+            // Screen indices use raw world coordinates to match the meta map.
+            // Do NOT use GetSurfaceAlignedWorldPosition — it applies visual offsets
+            // (surfaceOO − objectOO) that shift the tile lookup by several tiles.
+            var rawWorld = (Vector3)obj.WorldPosition;
 
-            GetScreenIndexFromWorldXZ(alignedWorld, out int screenY, out int screenX);
+            GetScreenIndexFromWorldXZ(rawWorld, out int screenY, out int screenX);
 
             if ((uint)screenY >= (uint)ecoMap.GetLength(0) || (uint)screenX >= (uint)ecoMap.GetLength(1))
                 return false;
@@ -230,7 +226,13 @@ namespace GameAiAndControls.Helpers
 
                 if (validateAgainstMap && map != null)
                 {
-                    var terrain = getTerrainType(map[tileY, tileX]);
+                    var mapTile = map[tileY, tileX];
+                    if (mapTile.isInfected)
+                    {
+                        skippedNotBio++;
+                        continue;
+                    }
+                    var terrain = getTerrainType(mapTile);
                     bool stillBio = terrain == TerrainType.Grassland || terrain == TerrainType.Highlands;
                     if (!stillBio)
                     {
@@ -243,7 +245,7 @@ namespace GameAiAndControls.Helpers
                 targetWorld = new Vector3
                 {
                     x = tile.X,
-                    y = alignedWorld.y, // keep Y from synchronized seeder world position
+                    y = rawWorld.y,
                     z = tile.Y
                 };
 
@@ -299,6 +301,129 @@ namespace GameAiAndControls.Helpers
                 y = current.y,
                 z = current.z + nz * step
             };
+        }
+
+        // ------------------------------------------------------------
+        // LOCAL INFECTION SPREAD: process pending tiles whose delay has elapsed.
+        // Each tile spreads infection to its 8 immediate neighbors. Newly
+        // infected neighbors are added back to the pending list so infection
+        // cascades outward over time. Call once per frame from the game loop.
+        // ------------------------------------------------------------
+        private static readonly int[][] SpreadNeighbors =
+        [
+            [0, -1], [1, 0], [0, 1], [-1, 0],
+            [-1, -1], [1, -1], [1, 1], [-1, 1]
+        ];
+
+        internal static void ProcessLocalInfectionSpread(SurfaceState surfaceState)
+        {
+            float delaySec = GameState.GamePlayState.LocalInfectionSpreadDelaySec;
+            if (delaySec <= 0f) return; // disabled for this scene
+
+            var pending = surfaceState.PendingLocalInfectionSpread;
+            if (pending.Count == 0) return;
+
+            var map = surfaceState.Global2DMap;
+            if (map == null) return;
+
+            int mapHeight = map.GetLength(0);
+            int mapWidth = map.GetLength(1);
+            int maxHeight = MapSetup.maxHeight;
+            long now = DateTime.Now.Ticks;
+            long delayTicks = (long)(delaySec * TimeSpan.TicksPerSecond);
+
+            int tilesPerScreen = TilesPerScreen;
+            int tileSz = TileSize;
+            var eco = surfaceState.ScreenEcoMetas;
+
+            // Cache alive seeder positions once per call (cheap: ~40 objects max)
+            float spreadRadius = GameState.GamePlayState.LocalInfectionSpreadRadius;
+            bool checkRange = spreadRadius > 0f;
+            float radiusSq = spreadRadius * spreadRadius;
+            int seederCount = 0;
+            float[] seederXs = null;
+            float[] seederZs = null;
+
+            if (checkRange)
+            {
+                var aiObjects = surfaceState.AiObjects;
+                seederXs = new float[aiObjects.Count];
+                seederZs = new float[aiObjects.Count];
+                for (int s = 0; s < aiObjects.Count; s++)
+                {
+                    if (aiObjects[s].ObjectName == "Seeder")
+                    {
+                        seederXs[seederCount] = aiObjects[s].WorldPosition.x;
+                        seederZs[seederCount] = aiObjects[s].WorldPosition.z;
+                        seederCount++;
+                    }
+                }
+            }
+
+            // Process from end so removals are safe
+            for (int i = pending.Count - 1; i >= 0; i--)
+            {
+                var (tx, tz, infectedTick) = pending[i];
+                if (now - infectedTick < delayTicks) continue;
+
+                // Remove this tile from pending — it will not be checked again
+                pending[i] = pending[^1];
+                pending.RemoveAt(pending.Count - 1);
+
+                // Skip spread if no seeder is within range (killing seeders halts cascade)
+                if (checkRange)
+                {
+                    float worldX = tx * tileSz + tileSz * 0.5f;
+                    float worldZ = tz * tileSz + tileSz * 0.5f;
+                    bool seederNearby = false;
+                    for (int s = 0; s < seederCount; s++)
+                    {
+                        float dx = worldX - seederXs[s];
+                        float dz = worldZ - seederZs[s];
+                        if (dx * dx + dz * dz <= radiusSq) { seederNearby = true; break; }
+                    }
+                    if (!seederNearby) continue;
+                }
+
+                // Spread to 8 neighbors
+                foreach (var d in SpreadNeighbors)
+                {
+                    int nx = tx + d[0];
+                    int nz = tz + d[1];
+                    if (nx < 0 || nz < 0 || nx >= mapWidth || nz >= mapHeight) continue;
+
+                    var t = map[nz, nx];
+                    if (t.isInfected) continue;
+
+                    var tt = GetTerrainType(t.mapDepth, maxHeight);
+                    if (tt != TerrainType.Grassland && tt != TerrainType.Highlands) continue;
+
+                    // Infect the neighbor tile
+                    GameState.GamePlayState.InfectionLevel += 1;
+                    t.isInfected = true;
+                    map[nz, nx] = t;
+                    surfaceState.DirtyTiles.Add(new Vector3 { x = nx, y = 0, z = nz });
+                    DecrementBioCountForTile(surfaceState, nz, nx);
+
+                    // Remove from the screen's BioTiles list
+                    int scrY = nz / tilesPerScreen;
+                    int scrX = nx / tilesPerScreen;
+                    if ((uint)scrY < (uint)eco.GetLength(0) && (uint)scrX < (uint)eco.GetLength(1))
+                    {
+                        var bioList = eco[scrY, scrX].BioTiles;
+                        int worldX = nx * tileSz;
+                        int worldZ = nz * tileSz;
+                        for (int bi = bioList.Count - 1; bi >= 0; bi--)
+                        {
+                            if (bioList[bi].X == worldX && bioList[bi].Y == worldZ)
+                            { bioList.RemoveAt(bi); break; }
+                        }
+                    }
+
+                    // Add newly infected tile to pending so it cascades further
+                    pending.Add((nx, nz, now));
+                }
+            }
         }
     }
 }

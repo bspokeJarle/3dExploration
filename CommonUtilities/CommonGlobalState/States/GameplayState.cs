@@ -51,20 +51,63 @@ namespace Domain
         public int WaveNumber { get; set; } = 1;
 
         // -----------------------------
+        // Enemy tracking (alive counts for HUD)
+        // -----------------------------
+        public int DronesRemaining { get; set; } = 0;
+        public int SeedersRemaining { get; set; } = 0;
+        public int InitialDrones { get; set; } = 0;
+        public int InitialSeeders { get; set; } = 0;
+
+        // -----------------------------
         // Infection / lose condition (core to Omega Strain)
         // -----------------------------
         /// <summary>
-        /// 0..1. When reaching CriticalMass, the game is lost.
+        /// Raw count of infected tiles. Incremented by 1 per tile infected.
         /// </summary>
         public float InfectionLevel { get; set; } = 0f;
 
         /// <summary>
-        /// 0..1. Default 1.0 means "full infection = lose".
-        /// You can set e.g. 0.85f if you want earlier fail.
+        /// Total number of bio tiles on the map (Grassland + Highlands).
+        /// Set during scene loading after eco map generation.
+        /// </summary>
+        public int TotalBioTiles { get; set; } = 0;
+
+        /// <summary>
+        /// Current infection as a percentage (0..100).
+        /// </summary>
+        public float InfectionPercent => TotalBioTiles > 0 ? (InfectionLevel / TotalBioTiles) * 100f : 0f;
+
+        /// <summary>
+        /// Infection threshold percentage (0..100). When InfectionPercent
+        /// reaches this value, the planet is lost. Configurable per level.
         /// </summary>
         public float InfectionCriticalMass { get; set; } = 100f;
 
-        public bool IsInfectionCritical => InfectionLevel >= InfectionCriticalMass;
+        public bool IsInfectionCritical => TotalBioTiles > 0 && InfectionPercent >= InfectionCriticalMass;
+
+        /// <summary>
+        /// Number of tiles infected per infection event. 1 = primary tile only
+        /// (no extra spread). Higher values cause each infection to also spread
+        /// to neighboring edge tiles. Configurable per scene for difficulty.
+        /// </summary>
+        public int InfectionSpreadRate { get; set; } = 1;
+
+        /// <summary>
+        /// Offscreen seeder speed multiplier. Configured per scene.
+        /// </summary>
+        public int SeederOffscreenSpeedFactor { get; set; } = 6;
+
+        /// <summary>
+        /// Delay in seconds before a seeder-infected tile cascades infection
+        /// to its neighbors. Configured per scene. 0 or negative = disabled.
+        /// </summary>
+        public float LocalInfectionSpreadDelaySec { get; set; } = 1.0f;
+
+        /// <summary>
+        /// Maximum world-unit distance from an alive seeder for cascading
+        /// infection to continue. 0 or negative = unlimited range.
+        /// </summary>
+        public float LocalInfectionSpreadRadius { get; set; } = 10000f;
 
         // -----------------------------
         // Weapons (simple, but practical)
@@ -181,8 +224,18 @@ namespace Domain
             Score = 0;
             WaveNumber = 1;
 
+            DronesRemaining = 0;
+            SeedersRemaining = 0;
+            InitialDrones = 0;
+            InitialSeeders = 0;
+
             InfectionLevel = 0f;
-            InfectionCriticalMass = 1.0f;
+            TotalBioTiles = 0;
+            InfectionCriticalMass = 100f; // safe default; overridden by scene threshold
+            InfectionSpreadRate = 1;
+            SeederOffscreenSpeedFactor = 6;
+            LocalInfectionSpreadDelaySec = 1.0f;
+            LocalInfectionSpreadRadius = 10000f;
 
             SelectedWeapon = WeaponType.Lazer;
             ActivePowerup = "LAZER";

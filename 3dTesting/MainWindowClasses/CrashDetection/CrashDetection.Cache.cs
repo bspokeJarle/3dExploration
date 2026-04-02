@@ -20,6 +20,7 @@ namespace _3dTesting.Helpers
         private static int CacheMisses = 0;
         private static int SkippedByDistance = 0;
         private static int numFrame = 0;
+        private static readonly HashSet<int> _processedDecoyBlasts = new();
 
         private readonly struct ObjectTypeFlags
         {

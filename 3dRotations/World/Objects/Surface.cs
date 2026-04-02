@@ -4,6 +4,8 @@ using CommonUtilities._3DHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using static Domain._3dSpecificsImplementations;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.CommonGlobalState;
@@ -220,7 +222,13 @@ namespace _3dRotations.World.Objects
 
         public void Create2DMap(int? maxTrees, int? maxHouses, GameModes gameMode,string? surfaceFile)
         {
-            GameState.SurfaceState.SurfaceFilePath = surfaceFile;
+            // All scene files live under the SceneFiles folder
+            const string sceneFolder = "SceneFiles";
+            var sceneFilePath = !string.IsNullOrWhiteSpace(surfaceFile)
+                ? Path.Combine(sceneFolder, surfaceFile)
+                : null;
+
+            GameState.SurfaceState.SurfaceFilePath = sceneFilePath;
             // ------------------------------------------------------------
             // LIVE
             // ------------------------------------------------------------
@@ -242,7 +250,7 @@ namespace _3dRotations.World.Objects
             else if (gameMode == GameModes.Playback)
             {
                 if (GameplayHelpers.SurfaceIO.SurfaceIO.TryLoad(
-                        surfaceFile,
+                        sceneFilePath,
                         out var loadedMap,
                         out var hash))
                 {
@@ -265,7 +273,7 @@ namespace _3dRotations.World.Objects
             }
 
             // ------------------------------------------------------------
-            // RECORD
+            // RECORD — save with date_time stamp
             // ------------------------------------------------------------
             else if (gameMode == GameModes.Record)
             {
@@ -276,10 +284,21 @@ namespace _3dRotations.World.Objects
                         maxTrees,
                         maxHouses);
 
+                // Build timestamped filename: e.g. SceneFiles\Scene1SurfaceRecording_20250615_143022.retro
+                var baseName = Path.GetFileNameWithoutExtension(surfaceFile ?? "Recording");
+                var ext = Path.GetExtension(surfaceFile ?? ".retro");
+                if (string.IsNullOrEmpty(ext)) ext = ".retro";
+                var timestamped = $"{baseName}_{DateTime.Now:yyyyMMdd_HHmmss}{ext}";
+                var recordPath = Path.Combine(sceneFolder, timestamped);
+
+                // Ensure SceneFiles folder exists in output directory
+                Directory.CreateDirectory(sceneFolder);
+
                 var hash = GameplayHelpers.SurfaceIO.SurfaceIO.Save(
-                    surfaceFile,
+                    recordPath,
                     GameState.SurfaceState.Global2DMap);
 
+                GameState.SurfaceState.SurfaceFilePath = recordPath;
                 GameState.SurfaceState.SurfaceHash = hash;
             }
             // ------------------------------------------------------------
@@ -291,6 +310,20 @@ namespace _3dRotations.World.Objects
                 GameState.SurfaceState.ScreenEcoMetas = SurfaceGeneration.GenerateEcoMap(
                     GameState.SurfaceState.Global2DMap);
             }
+
+            // Ensure TotalBioTiles is computed (Playback mode skips SurfaceGeneration which normally sets this)
+            if (GameState.GamePlayState.TotalBioTiles == 0)
+            {
+                int totalBio = 0;
+                var ecoMetas = GameState.SurfaceState.ScreenEcoMetas;
+                for (int sy = 0; sy < ecoMetas.GetLength(0); sy++)
+                    for (int sx = 0; sx < ecoMetas.GetLength(1); sx++)
+                        totalBio += ecoMetas[sy, sx].BioTileCount;
+                GameState.GamePlayState.TotalBioTiles = totalBio;
+                Debug.WriteLine($"[Surface] TotalBioTiles computed from EcoMap: {totalBio} (mode={gameMode})");
+            }
+
+            Debug.WriteLine($"[Surface] Create2DMap complete: mode={gameMode} TotalBioTiles={GameState.GamePlayState.TotalBioTiles} maxHeight={MapSetup.maxHeight} InfectionCriticalMass={GameState.GamePlayState.InfectionCriticalMass}");
 
             int mapSize = GameState.SurfaceState.Global2DMap.GetLength(0); // siden kartet er square
             SurfaceGeneration.GenerateTerrainBitmapSource(

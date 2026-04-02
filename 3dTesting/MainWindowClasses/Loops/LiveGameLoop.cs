@@ -5,6 +5,7 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Controls.SeederControls;
 using GameAudioInstances;
 using System;
 using System.Diagnostics;
@@ -44,6 +45,9 @@ namespace _3dTesting.MainWindowClasses.Loops
         public bool FadeInWorld { get; set; } = false;
         public bool SceneResetReady { get; set; } = false;
         private bool _deathSequenceStarted = false;
+        private bool _victorySequenceStarted = false;
+        private long _victoryStartTicks = 0;
+        private const float VictoryDisplaySeconds = 3.0f;
 
         private readonly object _lock = new object();
         public I3dObject ShipCopy { get; set; }
@@ -175,20 +179,36 @@ namespace _3dTesting.MainWindowClasses.Loops
             if (ship != null && ship.ImpactStatus.HasExploded && !_deathSequenceStarted)
             {
                 _deathSequenceStarted = true;
+                _victorySequenceStarted = false;
                 FadeOutWorld = true;
             }
 
-            if (_deathSequenceStarted && SceneResetReady)
+            if (!_deathSequenceStarted && GameState.GamePlayState.IsInfectionCritical)
+            {
+                _deathSequenceStarted = true;
+                _victorySequenceStarted = false;
+                FadeOutWorld = true;
+            }
+
+            if ((_deathSequenceStarted || _victorySequenceStarted) && SceneResetReady)
             {
                 CleanupWorldObjects(world.WorldInhabitants.OfType<_3dObject>().ToList());
                 world.WorldInhabitants.Clear();
                 GameState.SurfaceState.AiObjects.Clear();
                 GameState.SurfaceState.DirtyTiles.Clear();
+                GameState.SurfaceState.PendingLocalInfectionSpread.Clear();
                 GameState.ShipState.BestCandidateStates.Clear();
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
-                world.SceneHandler.ResetActiveScene(world);
+
+                if (_victorySequenceStarted && !_deathSequenceStarted)
+                    world.SceneHandler.NextScene(world);
+                else
+                    world.SceneHandler.ResetActiveScene(world);
+
                 _deathSequenceStarted = false;
+                _victorySequenceStarted = false;
+                _victoryStartTicks = 0;
                 SceneResetReady = false;
                 FadeInWorld = true;
                 TrackFrameTiming((int)FrameCounter);
@@ -208,9 +228,52 @@ namespace _3dTesting.MainWindowClasses.Loops
                 }
             }
 
+            // Process cascading local infection spread (seeder-infected tiles spread to neighbors after a delay)
+            SeederControls.ProcessLocalInfectionSpread(GameState.SurfaceState);
+
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             CleanupExplodedObjects(world);
+            UpdateHudState(world);
+
+            // Victory detection: all enemies eliminated
+            if (!_deathSequenceStarted && !_victorySequenceStarted &&
+                activeScene != null && activeScene.SceneType == SceneTypes.Game)
+            {
+                var gps = GameState.GamePlayState;
+                if ((gps.InitialDrones > 0 || gps.InitialSeeders > 0) &&
+                    gps.DronesRemaining == 0 && gps.SeedersRemaining == 0)
+                {
+                    _victorySequenceStarted = true;
+                    _victoryStartTicks = Stopwatch.GetTimestamp();
+
+                    var o = GameState.ScreenOverlayState;
+                    o.ResetToDefaults();
+                    o.Type = ScreenOverlayType.Game;
+                    o.Anchor = ScreenOverlayAnchor.Center;
+                    o.Header = "PLANET SECURED";
+                    o.Title = "ALL THREATS ELIMINATED";
+                    o.Body = "Proceeding to next sector...";
+                    o.Footer = "";
+                    o.DimStrength = 0.50f;
+                    o.PanelWidthRatio = 0.60f;
+                    o.PanelHeightRatio = 0.22f;
+                    o.ShowOverlay = true;
+                    o.AutoHide = false;
+                    o.ShowDebugOverlay = false;
+                }
+            }
+
+            // Victory timer: show overlay briefly then trigger scene transition
+            if (_victorySequenceStarted && !_deathSequenceStarted && !FadeOutWorld)
+            {
+                float elapsed = (Stopwatch.GetTimestamp() - _victoryStartTicks) / (float)Stopwatch.Frequency;
+                if (elapsed >= VictoryDisplaySeconds)
+                {
+                    FadeOutWorld = true;
+                }
+            }
+
             if (activeScene != null)
             {
                 HandleMusic(renderedList, activeScene.SceneMusic);
@@ -320,6 +383,53 @@ namespace _3dTesting.MainWindowClasses.Loops
             catch (NotImplementedException)
             {
             }
+        }
+
+        /// <summary>
+        /// Syncs per-frame game state into GamePlayState for the HUD:
+        /// ship health from ImpactStatus, and surviving enemy counts.
+        /// </summary>
+        private static void UpdateHudState(I3dWorld world)
+        {
+            var gps = GameState.GamePlayState;
+
+            // Sync ship health from the actual object into GamePlayState
+            var inhabitants = world.WorldInhabitants;
+            for (int i = 0; i < inhabitants.Count; i++)
+            {
+                if (inhabitants[i].ObjectName == "Ship")
+                {
+                    int hp = inhabitants[i].ImpactStatus?.ObjectHealth ?? 0;
+                    gps.Health = hp;
+                    break;
+                }
+            }
+
+            // Count surviving enemies
+            var aiObjects = GameState.SurfaceState.AiObjects;
+            int drones = 0;
+            int seeders = 0;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var obj = aiObjects[i];
+                if (obj.ImpactStatus?.HasExploded == true)
+                    continue;
+
+                if (obj.ObjectName == "KamikazeDrone")
+                    drones++;
+                else if (obj.ObjectName == "Seeder")
+                    seeders++;
+            }
+
+            // Capture initial totals once (first frame where enemies exist)
+            if (gps.InitialDrones == 0 && drones > 0)
+                gps.InitialDrones = drones;
+            if (gps.InitialSeeders == 0 && seeders > 0)
+                gps.InitialSeeders = seeders;
+
+            gps.DronesRemaining = drones;
+            gps.SeedersRemaining = seeders;
         }
 
         private Dictionary<int, _3dObject> InitializeAiOnScreenTracking()
