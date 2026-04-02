@@ -35,9 +35,11 @@ namespace GameAiAndControls.Controls.SeederControls
 
         // Targeting & infection cadence:
         // - SeedingStallSeconds: How long the seeder visibly pauses after infecting a tile (player can shoot it).
+        // - ParticleBurstSeconds: Total duration of particle emission from stall start (covers stall + trail while moving).
         // - LocalRetargetSeconds: Short cooldown for non-seeding transitions (moving between targets).
         // - StallInfectSeconds: Interval between successive infections while stalling over a tile.
-        private const float SeedingStallSeconds = 1.5f;
+        private const float SeedingStallSeconds = 2.0f;
+        private const float ParticleBurstSeconds = 8.0f;
         private const float LocalRetargetSeconds = 0.3f;
         private const double StallInfectSeconds = 0.20; // 5 infections per second when stalling
 
@@ -84,6 +86,7 @@ namespace GameAiAndControls.Controls.SeederControls
             public bool IsStalling = false;
             public long StallUntilTicks = 0;
             public int StepsRemaining = 0;
+            public long ParticleEmitUntilTicks = 0;
         }
 
         private static readonly Dictionary<int, AiState> _aiStates = new();
@@ -165,6 +168,9 @@ namespace GameAiAndControls.Controls.SeederControls
             ComputeStepModel(isOnScreen, s, out float localSpeed, out float speed, out float step60, out float stepOff, out float step);
 
             LogHeartbeatIfNeeded(isOnScreen, s, id, nowTicks, dt, step60, stepOff, OffscreenStepFactor, current);
+
+            if (isOnScreen && nowTicks < s.ParticleEmitUntilTicks)
+                moveThisObject.Movement.ReleaseParticles(moveThisObject);
 
             if (s.HasMovementTarget)
                 return HandleMoveTowardTarget(isOnScreen, moveThisObject, s, id, nowTicks, dt, step60, step, OffscreenStepFactor, current);
@@ -344,15 +350,6 @@ namespace GameAiAndControls.Controls.SeederControls
                         }
                     }
                 }
-            }
-            if (isOnScreen)
-            {
-                theObject.Movement.ReleaseParticles(theObject);
-                SafeLog($"AI:STALL_PARTICLES onScreen={isOnScreen} pos={V2(s.AuthWorldPos)} ObjectId:{id}");
-            }
-            else
-            {
-                SafeLog($"AI:STALL_SKIP_PARTICLES offScreen pos={V2(s.AuthWorldPos)} ObjectId:{id}");
             }
             return false;
         }
@@ -539,7 +536,8 @@ namespace GameAiAndControls.Controls.SeederControls
                 {
                     s.SeededAtCurrentStall = false;
                     s.NextLocalRetargetTicks = nowTicks + (long)(SeedingStallSeconds * TimeSpan.TicksPerSecond);
-                    SafeLog($"AI:LOCAL_COOLDOWN set={SeedingStallSeconds:0.00}s onScreen={isOnScreen} ObjectId:{id}");
+                    s.ParticleEmitUntilTicks = nowTicks + (long)(ParticleBurstSeconds * TimeSpan.TicksPerSecond);
+                    SafeLog($"AI:LOCAL_COOLDOWN set={SeedingStallSeconds:0.00}s particles={ParticleBurstSeconds:0.00}s onScreen={isOnScreen} ObjectId:{id}");
 
                     // Do a stall tick straight away (same as before)
                     _ = HandleStallSeeding(id, s, dt, isOnScreen, moveThisObject);
