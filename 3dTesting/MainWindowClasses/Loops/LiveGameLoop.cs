@@ -45,6 +45,9 @@ namespace _3dTesting.MainWindowClasses.Loops
         public bool FadeInWorld { get; set; } = false;
         public bool SceneResetReady { get; set; } = false;
         private bool _deathSequenceStarted = false;
+        private bool _victorySequenceStarted = false;
+        private long _victoryStartTicks = 0;
+        private const float VictoryDisplaySeconds = 3.0f;
 
         private readonly object _lock = new object();
         public I3dObject ShipCopy { get; set; }
@@ -176,16 +179,18 @@ namespace _3dTesting.MainWindowClasses.Loops
             if (ship != null && ship.ImpactStatus.HasExploded && !_deathSequenceStarted)
             {
                 _deathSequenceStarted = true;
+                _victorySequenceStarted = false;
                 FadeOutWorld = true;
             }
 
             if (!_deathSequenceStarted && GameState.GamePlayState.IsInfectionCritical)
             {
                 _deathSequenceStarted = true;
+                _victorySequenceStarted = false;
                 FadeOutWorld = true;
             }
 
-            if (_deathSequenceStarted && SceneResetReady)
+            if ((_deathSequenceStarted || _victorySequenceStarted) && SceneResetReady)
             {
                 CleanupWorldObjects(world.WorldInhabitants.OfType<_3dObject>().ToList());
                 world.WorldInhabitants.Clear();
@@ -195,8 +200,15 @@ namespace _3dTesting.MainWindowClasses.Loops
                 GameState.ShipState.BestCandidateStates.Clear();
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
-                world.SceneHandler.ResetActiveScene(world);
+
+                if (_victorySequenceStarted && !_deathSequenceStarted)
+                    world.SceneHandler.NextScene(world);
+                else
+                    world.SceneHandler.ResetActiveScene(world);
+
                 _deathSequenceStarted = false;
+                _victorySequenceStarted = false;
+                _victoryStartTicks = 0;
                 SceneResetReady = false;
                 FadeInWorld = true;
                 TrackFrameTiming((int)FrameCounter);
@@ -223,6 +235,45 @@ namespace _3dTesting.MainWindowClasses.Loops
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             CleanupExplodedObjects(world);
             UpdateHudState(world);
+
+            // Victory detection: all enemies eliminated
+            if (!_deathSequenceStarted && !_victorySequenceStarted &&
+                activeScene != null && activeScene.SceneType == SceneTypes.Game)
+            {
+                var gps = GameState.GamePlayState;
+                if ((gps.InitialDrones > 0 || gps.InitialSeeders > 0) &&
+                    gps.DronesRemaining == 0 && gps.SeedersRemaining == 0)
+                {
+                    _victorySequenceStarted = true;
+                    _victoryStartTicks = Stopwatch.GetTimestamp();
+
+                    var o = GameState.ScreenOverlayState;
+                    o.ResetToDefaults();
+                    o.Type = ScreenOverlayType.Game;
+                    o.Anchor = ScreenOverlayAnchor.Center;
+                    o.Header = "PLANET SECURED";
+                    o.Title = "ALL THREATS ELIMINATED";
+                    o.Body = "Proceeding to next sector...";
+                    o.Footer = "";
+                    o.DimStrength = 0.50f;
+                    o.PanelWidthRatio = 0.60f;
+                    o.PanelHeightRatio = 0.22f;
+                    o.ShowOverlay = true;
+                    o.AutoHide = false;
+                    o.ShowDebugOverlay = false;
+                }
+            }
+
+            // Victory timer: show overlay briefly then trigger scene transition
+            if (_victorySequenceStarted && !_deathSequenceStarted && !FadeOutWorld)
+            {
+                float elapsed = (Stopwatch.GetTimestamp() - _victoryStartTicks) / (float)Stopwatch.Frequency;
+                if (elapsed >= VictoryDisplaySeconds)
+                {
+                    FadeOutWorld = true;
+                }
+            }
+
             if (activeScene != null)
             {
                 HandleMusic(renderedList, activeScene.SceneMusic);

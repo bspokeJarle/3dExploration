@@ -1,22 +1,20 @@
 ﻿using _3dRotations.Scene.Scene1;
 using _3dRotations.Scenes.Intro;
+using _3dRotations.Scenes.Outro;
 using _3dTesting._3dWorld;
 using CommonUtilities.CommonGlobalState;
 using Domain;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
-using System.Windows.Threading;
 
 namespace _3DWorld.Scene
 {
     public class SceneHandler : ISceneHandler
     {
         // List of the available scenes for the game
-        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2() };
-        private int currentSceneIndex = 1;
+        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Outro() };
+        private int currentSceneIndex = 0;
         private const bool enableLogging = false;
         private const int SceneAdvanceDelayFrames = 5;
         private bool _pendingSceneAdvance = false;
@@ -111,6 +109,9 @@ namespace _3DWorld.Scene
             currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
             GameState.ScreenOverlayState.ShowVideoOverlay = false;
             GameState.ScreenOverlayState.VideoClipPath = string.Empty;
+            GameState.GamePlayState.ResetForNewGame();
+            GameState.SurfaceState.GlobalMapBitmap = null;
+            GameState.SurfaceState.SurfaceViewportObject = null;
             SetupActiveScene(world);
         }
 

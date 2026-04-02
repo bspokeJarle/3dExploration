@@ -224,6 +224,11 @@ namespace Domain
             Score = 0;
             WaveNumber = 1;
 
+            DronesRemaining = 0;
+            SeedersRemaining = 0;
+            InitialDrones = 0;
+            InitialSeeders = 0;
+
             InfectionLevel = 0f;
             TotalBioTiles = 0;
             InfectionCriticalMass = 100f; // safe default; overridden by scene threshold
