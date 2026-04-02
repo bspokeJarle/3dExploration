@@ -67,7 +67,7 @@ namespace GameAiAndControls.Controls
             int tilt
         )
         {
-            if (_audio != null && _lazerSound != null)
+            if (weaponType == WeaponType.Lazer && _audio != null && _lazerSound != null)
             {
                 var audioPosition = ((_3dObject)parentShip).GetAudioPosition();
                 _lazerInstance = _audio.Play(
@@ -121,6 +121,61 @@ namespace GameAiAndControls.Controls
                     Trajectory = dir,
                     MaxRange = 6000f,
                     LifetimeSeconds = 3f,
+                    DistanceTraveled = 0f,
+                    LastUpdateUtc = default(DateTime)
+                };
+
+                ActiveWeapons.Add(weapon);
+
+                if (enableLogging) Logger.Log(
+                    $"[WeaponSystem] Fired {weaponType} from {startPosition} " +
+                    $"with dir={dir} globalmapposition={worldPosition} at {DateTime.UtcNow}"
+                );
+            }
+
+            if (weaponType == WeaponType.Bullet)
+            {
+                I3dObject? template = _weaponObjects.Find(w => w.ObjectName == "Bullet");
+                if (template == null)
+                    template = new _3dObject { ObjectName = "Bullet", ObjectId = GameState.ObjectIdCounter++ };
+
+                I3dObject instance = Common3dObjectHelpers.DeepCopySingleObject(template);
+                instance.ImpactStatus = new ImpactStatus
+                {
+                    HasExploded = false,
+                    HasCrashed = false,
+                    ObjectName = "",
+                    ImpactDirection = null,
+                    SourceParticle = default,
+                    ObjectHealth = 100
+                };
+
+                trajectory.z = -trajectory.z;
+                instance.Rotation = ParentShipObject.Rotation;
+
+                IVector3 dir = Normalize(trajectory);
+
+                var bulletStart = new Vector3
+                {
+                    x = startPosition.x,
+                    y = startPosition.y - 10f,
+                    z = startPosition.z - 3f
+                };
+                SetObjectOffsets(instance, bulletStart);
+                SetWorldPosition(instance, worldPosition);
+
+                InitializeWeaponGeometry(instance, instance.Rotation as Vector3, tilt);
+
+                ActiveWeapon weapon = new ActiveWeapon
+                {
+                    WeaponType = weaponType,
+                    WeaponObject = instance,
+                    FiredTime = DateTime.UtcNow,
+                    Velocity = 4500f,
+                    Acceleration = 0f,
+                    Trajectory = dir,
+                    MaxRange = 4000f,
+                    LifetimeSeconds = 2f,
                     DistanceTraveled = 0f,
                     LastUpdateUtc = default(DateTime)
                 };

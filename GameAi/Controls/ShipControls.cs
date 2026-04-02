@@ -25,7 +25,9 @@ namespace GameAiAndControls.Controls
         private const float MaxFallSpeed = 6.9f;
         private const float GravityMultiplier = 1.8f;
 
-        private const int RotationStep = 5;
+        private const float RotationAcceleration = 1000f;
+        private const float MaxRotationSpeed = 160f;
+        private const float RotationDrag = 0.90f;
         private const float DEG2RAD = MathF.PI / 180f;
         private const int ShipCenterY = 0;
 
@@ -48,13 +50,19 @@ namespace GameAiAndControls.Controls
         private SoundDefinition? _explosionSound;
         private SoundDefinition? _releaseDecoySound;
         private SoundDefinition? _changeWeaponSound;
+        private SoundDefinition? _bulletSound;
         private IAudioInstance? _rocketInstance;
+        private IAudioInstance? _bulletInstance;
 
         private float fallVelocity = 0f;
         private float inertiaX = 0f;
         private float inertiaZ = 0f;
         private float thrustEffect = 0f;
         private float verticalLiftFactor = 0f;
+        private float _yawVelocity = 0f;
+        private float _pitchVelocity = 0f;
+        private float _yawAccumulator = 0f;
+        private float _pitchAccumulator = 0f;
         private bool landed = false;
 
         private DateTime lastUpdateTime = DateTime.Now;
@@ -80,6 +88,11 @@ namespace GameAiAndControls.Controls
         public IPhysics Physics { get; set; } = new Physics.Physics();
         private bool hasInitialized = false;
         private bool isExploding = false;
+        private bool _fireKeyHeld = false;
+        private bool _leftHeld = false;
+        private bool _rightHeld = false;
+        private bool _upHeld = false;
+        private bool _downHeld = false;
         private DateTime ExplosionDeltaTime = DateTime.Now;
 
         public ShipControls()
@@ -96,7 +109,7 @@ namespace GameAiAndControls.Controls
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             // Already configured, so nothing else is required.
-            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null)
+            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null)
                 return;
 
             if (audioPlayer == null || soundRegistry == null)
@@ -107,6 +120,7 @@ namespace GameAiAndControls.Controls
             _explosionSound = soundRegistry.Get("explosion_main");
             _releaseDecoySound = soundRegistry.Get("release_decoy");
             _changeWeaponSound = soundRegistry.Get("change_weapon");
+            _bulletSound = soundRegistry.Get("bullet_main");
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
@@ -118,10 +132,10 @@ namespace GameAiAndControls.Controls
         private void GlobalHookKeyDown(object sender, KeyEventArgs e)
         {
             if (GameState.ScreenOverlayState.Type == ScreenOverlayType.Intro) return;
-            if (e.KeyCode == Keys.Left) rotationZ -= RotationStep;
-            if (e.KeyCode == Keys.Right) rotationZ += RotationStep;
-            if (e.KeyCode == Keys.Up) tilt += RotationStep;
-            if (e.KeyCode == Keys.Down) tilt -= RotationStep;
+            if (e.KeyCode == Keys.Left) _leftHeld = true;
+            if (e.KeyCode == Keys.Right) _rightHeld = true;
+            if (e.KeyCode == Keys.Up) _upHeld = true;
+            if (e.KeyCode == Keys.Down) _downHeld = true;
 
             if (e.KeyCode == Keys.D1 || e.KeyCode == Keys.NumPad1)
             {
@@ -149,6 +163,27 @@ namespace GameAiAndControls.Controls
                 bool weaponChanged = !string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase);
 
                 GameState.GamePlayState.ActivePowerup = "DECOY";
+
+                if (weaponChanged && _audio != null && _changeWeaponSound != null)
+                {
+                    var audioPosition = ((_3dObject)ParentObject).GetAudioPosition();
+                    _audio.Play(
+                        _changeWeaponSound,
+                        AudioPlayMode.OneShot,
+                        new AudioPlayOptions
+                        {
+                            WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                        });
+                }
+            }
+
+            if (e.KeyCode == Keys.D3 || e.KeyCode == Keys.NumPad3)
+            {
+                bool weaponChanged = GameState.GamePlayState.SelectedWeapon != WeaponType.Bullet ||
+                    !string.Equals(GameState.GamePlayState.ActivePowerup, "BULLET", StringComparison.OrdinalIgnoreCase);
+
+                GameState.GamePlayState.SelectedWeapon = WeaponType.Bullet;
+                GameState.GamePlayState.ActivePowerup = "BULLET";
 
                 if (weaponChanged && _audio != null && _changeWeaponSound != null)
                 {
@@ -191,7 +226,26 @@ namespace GameAiAndControls.Controls
                 ThrustOn = true;
             }
 
-            if (e.KeyCode == Keys.RShiftKey) FireWeapon();
+            if (e.KeyCode == Keys.RShiftKey)
+            {
+                _fireKeyHeld = true;
+
+                if (GameState.GamePlayState.SelectedWeapon == WeaponType.Bullet
+                    && _bulletInstance == null
+                    && _audio != null && _bulletSound != null)
+                {
+                    var audioPosition = ((_3dObject)ParentObject).GetAudioPosition();
+                    _bulletInstance = _audio.Play(
+                        _bulletSound,
+                        AudioPlayMode.SegmentedLoop,
+                        new AudioPlayOptions
+                        {
+                            WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                        });
+                }
+
+                FireWeapon();
+            }
             //Prevent further processing of this key event
             //#if DEBUG
             //    e.SuppressKeyPress = true;
@@ -200,6 +254,22 @@ namespace GameAiAndControls.Controls
 
         private void GlobalHookKeyUp(object sender, KeyEventArgs e)
         {
+            if (e.KeyCode == Keys.RShiftKey)
+            {
+                _fireKeyHeld = false;
+
+                if (_bulletInstance != null)
+                {
+                    _bulletInstance.Stop(playEndSegment: true);
+                    _bulletInstance = null;
+                }
+            }
+
+            if (e.KeyCode == Keys.Left) _leftHeld = false;
+            if (e.KeyCode == Keys.Right) _rightHeld = false;
+            if (e.KeyCode == Keys.Up) _upHeld = false;
+            if (e.KeyCode == Keys.Down) _downHeld = false;
+
             if (e.KeyCode == Keys.Space)
             {
                 ThrustOn = false;
@@ -258,6 +328,9 @@ namespace GameAiAndControls.Controls
                 return;
             }
 
+            if (!GameState.GamePlayState.TryFireSelectedWeapon())
+                return;
+
             // Fire weapon from ship
             var rot = new Vector3
             {
@@ -270,7 +343,7 @@ namespace GameAiAndControls.Controls
                 WeaponGuideCoordinates?.vert1,
                 WeaponStartCoordinates?.vert1,
                 GameState.SurfaceState.GlobalMapPosition,
-                WeaponType.Lazer,
+                GameState.GamePlayState.SelectedWeapon,
                 ParentObject,
                 tilt);
         }
@@ -438,6 +511,27 @@ namespace GameAiAndControls.Controls
             float deltaTime = (float)(now - lastUpdateTime).TotalSeconds;
             lastUpdateTime = now;
 
+            GameState.GamePlayState.Update(deltaTime);
+
+            if (_leftHeld) _yawVelocity -= RotationAcceleration * deltaTime;
+            if (_rightHeld) _yawVelocity += RotationAcceleration * deltaTime;
+            if (_upHeld) _pitchVelocity += RotationAcceleration * deltaTime;
+            if (_downHeld) _pitchVelocity -= RotationAcceleration * deltaTime;
+
+            _yawVelocity = MathF.Max(-MaxRotationSpeed, MathF.Min(MaxRotationSpeed, _yawVelocity)) * RotationDrag;
+            _pitchVelocity = MathF.Max(-MaxRotationSpeed, MathF.Min(MaxRotationSpeed, _pitchVelocity)) * RotationDrag;
+
+            _yawAccumulator += _yawVelocity * deltaTime;
+            _pitchAccumulator += _pitchVelocity * deltaTime;
+
+            int yawStep = (int)_yawAccumulator;
+            int pitchStep = (int)_pitchAccumulator;
+            if (yawStep != 0) { rotationZ += yawStep; _yawAccumulator -= yawStep; }
+            if (pitchStep != 0) { tilt += pitchStep; _pitchAccumulator -= pitchStep; }
+
+            if (_fireKeyHeld && !isExploding)
+                FireWeapon();
+
             if (ThrustOn)
             {
                 landed = false;
@@ -461,6 +555,12 @@ namespace GameAiAndControls.Controls
             {
                 var audioPosition = ((_3dObject)theObject).GetAudioPosition();
                 _rocketInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
+            }
+
+            if (_bulletInstance != null)
+            {
+                var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+                _bulletInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
             }
 
             GameState.GamePlayState.UpdateAltitude(

@@ -16,6 +16,9 @@
     <ProjectReference Include="..\GameAudio\GameAudio.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="GameGraphics\bullet_icon_48.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="GameGraphics\drone_icon_48.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -68,6 +71,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Soundeffects\Kanpai!_Battle.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_Bullet.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Soundeffects\OmegaStrain_Change_Weapon.wav">
