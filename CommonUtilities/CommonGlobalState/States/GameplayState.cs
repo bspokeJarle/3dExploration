@@ -117,16 +117,20 @@ namespace Domain
 
         public int LaserAmmo { get; set; } = -1;   // -1 means infinite
         public int RocketAmmo { get; set; } = 10;
+        public int BulletAmmo { get; set; } = -1;  // -1 means infinite
 
         // Cooldowns (seconds)
         public float LaserCooldownLeft { get; set; } = 0f;
         public float RocketCooldownLeft { get; set; } = 0f;
+        public float BulletCooldownLeft { get; set; } = 0f;
 
-        public float LaserCooldownSeconds { get; set; } = 0.08f;
+        public float LaserCooldownSeconds { get; set; } = 0.333f;
         public float RocketCooldownSeconds { get; set; } = 0.65f;
+        public float BulletCooldownSeconds { get; set; } = 0.15f;
 
         public bool CanFireLaser => !IsPaused && LaserCooldownLeft <= 0f && (LaserAmmo != 0);
         public bool CanFireRocket => !IsPaused && RocketCooldownLeft <= 0f && RocketAmmo > 0;
+        public bool CanFireBullet => !IsPaused && BulletCooldownLeft <= 0f && (BulletAmmo != 0);
 
         // -----------------------------
         // Convenience / deterministic update
@@ -151,6 +155,12 @@ namespace Domain
             {
                 RocketCooldownLeft -= dtSeconds;
                 if (RocketCooldownLeft < 0f) RocketCooldownLeft = 0f;
+            }
+
+            if (BulletCooldownLeft > 0f)
+            {
+                BulletCooldownLeft -= dtSeconds;
+                if (BulletCooldownLeft < 0f) BulletCooldownLeft = 0f;
             }
 
             // If you want infection to tick automatically during play:
@@ -209,6 +219,13 @@ namespace Domain
                 return true;
             }
 
+            if (SelectedWeapon == WeaponType.Bullet && CanFireBullet)
+            {
+                BulletCooldownLeft = BulletCooldownSeconds;
+                if (BulletAmmo > 0) BulletAmmo--;
+                return true;
+            }
+
             return false;
         }
 
@@ -241,9 +258,11 @@ namespace Domain
             ActivePowerup = "LAZER";
             LaserAmmo = -1;
             RocketAmmo = 10;
+            BulletAmmo = -1;
 
             LaserCooldownLeft = 0f;
             RocketCooldownLeft = 0f;
+            BulletCooldownLeft = 0f;
         }
 
         public void UpdateAltitude(float height, float minHeight, float maxHeight)

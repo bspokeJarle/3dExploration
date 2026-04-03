@@ -31,7 +31,7 @@ namespace GameAiAndControls.Helpers
 
         // Logging:
         // - EnableLogging: toggles helper-level logging via global Logger.
-        private const bool EnableLogging = true;
+        private const bool EnableLogging = false;
 
         // World bounds derived from map setup:
         private static float MaxWorld => (MapSetup.globalMapSize - 1) * (float)TileSize;

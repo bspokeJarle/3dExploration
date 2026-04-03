@@ -50,6 +50,7 @@ namespace _3dTesting.MainWindowClasses
         private readonly Rectangle _powerBarFill;
         private readonly Image _powerupLazerIcon;
         private readonly Image _powerupDecoyIcon;
+        private readonly Image _powerupBulletIcon;
 
         // Enemy remaining: icon + percentage bar (same style as alt/thr/bio)
         private readonly Image _droneIcon;
@@ -98,6 +99,7 @@ namespace _3dTesting.MainWindowClasses
 
         private const double PowerupLazerX = 845;
         private const double PowerupDecoyX = 945;
+        private const double PowerupBulletX = 1045;
         private const double PowerupRowY = 85;
         private const double PowerupIconSize = 48;
 
@@ -213,9 +215,11 @@ namespace _3dTesting.MainWindowClasses
 
             _powerupLazerIcon = CreatePowerupIcon(PowerupLazerX, PowerupRowY, PowerupIconSize);
             _powerupDecoyIcon = CreatePowerupIcon(PowerupDecoyX, PowerupRowY, PowerupIconSize);
+            _powerupBulletIcon = CreatePowerupIcon(PowerupBulletX, PowerupRowY, PowerupIconSize);
 
             _powerupLazerIcon.Source = TryLoadBitmapImage("GameGraphics\\laser_icon_48.png");
             _powerupDecoyIcon.Source = TryLoadBitmapImage("GameGraphics\\decoy_icon_48.png");
+            _powerupBulletIcon.Source = TryLoadBitmapImage("GameGraphics\\bullet_icon_48.png");
 
             // ----- Enemy icon + bar -----
             _droneIcon = CreatePowerupIcon(DroneRowX, DroneRowY, EnemyIconSize);
@@ -242,6 +246,7 @@ namespace _3dTesting.MainWindowClasses
             _canvas.Children.Add(_powerBarFill);
             _canvas.Children.Add(_powerupLazerIcon);
             _canvas.Children.Add(_powerupDecoyIcon);
+            _canvas.Children.Add(_powerupBulletIcon);
 
             _canvas.Children.Add(_altBarFill);
             _canvas.Children.Add(_thrBarFill);
@@ -321,6 +326,7 @@ namespace _3dTesting.MainWindowClasses
 
             _powerupLazerIcon.Opacity = activePowerup == "LAZER" ? 1.0 : 0.45;
             _powerupDecoyIcon.Opacity = activePowerup == "DECOY" ? 1.0 : 0.45;
+            _powerupBulletIcon.Opacity = activePowerup == "BULLET" ? 1.0 : 0.45;
 
             // Ship power (health) vertical bar: fills bottom-to-top, green→red
             UpdatePowerBar(gameplay);

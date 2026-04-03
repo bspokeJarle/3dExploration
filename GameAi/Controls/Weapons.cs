@@ -67,7 +67,7 @@ namespace GameAiAndControls.Controls
             int tilt
         )
         {
-            if (_audio != null && _lazerSound != null)
+            if (weaponType == WeaponType.Lazer && _audio != null && _lazerSound != null)
             {
                 var audioPosition = ((_3dObject)parentShip).GetAudioPosition();
                 _lazerInstance = _audio.Play(
@@ -80,6 +80,7 @@ namespace GameAiAndControls.Controls
             }
 
             ParentShipObject = (_3dObject)parentShip;
+            var shipOffsets = ParentShipObject.ObjectOffsets ?? new Vector3(0, 0, 0);
 
             if (weaponType == WeaponType.Lazer)
             {
@@ -99,17 +100,27 @@ namespace GameAiAndControls.Controls
                 };
 
                 trajectory.z = -trajectory.z; // Invert Z to match WORLD coord system   
-                instance.Rotation = ParentShipObject.Rotation;
 
-                IVector3 dir = Normalize(trajectory);
+                IVector3 origDir = Normalize(trajectory);
+                IVector3 dir = ApplyAimAssist(origDir, startPosition, weaponType);
 
-                //Startposition in local coords
-                SetObjectOffsets(instance, startPosition);
+                var (weaponRotation, weaponTilt) = AdjustWeaponRotation(
+                    origDir, dir, ParentShipObject.Rotation, tilt);
+                instance.Rotation = weaponRotation;
+
+                // Exit point: 25% of the distance from start toward guide, offset by ship screen position
+                var lazerStart = new Vector3
+                {
+                    x = startPosition.x + (trajectory.x - startPosition.x) * 0.25f + WeaponSetup.LazerExitOffsetX + shipOffsets.x,
+                    y = startPosition.y + (trajectory.y - startPosition.y) * 0.25f + WeaponSetup.LazerExitOffsetY + shipOffsets.y,
+                    z = startPosition.z + (trajectory.z - startPosition.z) * 0.25f + WeaponSetup.LazerExitOffsetZ + shipOffsets.z
+                };
+                SetObjectOffsets(instance, lazerStart);
                 //Set world position for reference
                 SetWorldPosition(instance, worldPosition);
 
-                //Get ship rotation and apply to weapon geometry (now uses updated instance.Rotation)
-                InitializeWeaponGeometry(instance, instance.Rotation as Vector3, tilt);
+                //Get ship rotation and apply to weapon geometry
+                InitializeWeaponGeometry(instance, weaponRotation, weaponTilt);
 
                 ActiveWeapon weapon = new ActiveWeapon
                 {
@@ -133,160 +144,161 @@ namespace GameAiAndControls.Controls
                 );
             }
 
+            if (weaponType == WeaponType.Bullet)
+            {
+                I3dObject? template = _weaponObjects.Find(w => w.ObjectName == "Bullet");
+                if (template == null)
+                    template = new _3dObject { ObjectName = "Bullet", ObjectId = GameState.ObjectIdCounter++ };
+
+                I3dObject instance = Common3dObjectHelpers.DeepCopySingleObject(template);
+                instance.ImpactStatus = new ImpactStatus
+                {
+                    HasExploded = false,
+                    HasCrashed = false,
+                    ObjectName = "",
+                    ImpactDirection = null,
+                    SourceParticle = default,
+                    ObjectHealth = 100
+                };
+
+                trajectory.z = -trajectory.z;
+
+                IVector3 origDir = Normalize(trajectory);
+                IVector3 dir = ApplyAimAssist(origDir, startPosition, weaponType);
+
+                var (weaponRotation, weaponTilt) = AdjustWeaponRotation(
+                    origDir, dir, ParentShipObject.Rotation, tilt);
+                instance.Rotation = weaponRotation;
+
+                // Exit point: halfway between weapon start and guide, offset by ship screen position
+                var bulletStart = new Vector3
+                {
+                    x = (startPosition.x + trajectory.x) * 0.5f + WeaponSetup.BulletExitOffsetX + shipOffsets.x,
+                    y = (startPosition.y + trajectory.y) * 0.5f + WeaponSetup.BulletExitOffsetY + shipOffsets.y,
+                    z = (startPosition.z + trajectory.z) * 0.5f + WeaponSetup.BulletExitOffsetZ + shipOffsets.z
+                };
+                SetObjectOffsets(instance, bulletStart);
+                SetWorldPosition(instance, worldPosition);
+
+                InitializeWeaponGeometry(instance, weaponRotation, weaponTilt);
+
+                ActiveWeapon weapon = new ActiveWeapon
+                {
+                    WeaponType = weaponType,
+                    WeaponObject = instance,
+                    FiredTime = DateTime.UtcNow,
+                    Velocity = 3000f,
+                    Acceleration = 0f,
+                    Trajectory = dir,
+                    MaxRange = 4000f,
+                    LifetimeSeconds = 2f,
+                    DistanceTraveled = 0f,
+                    LastUpdateUtc = default(DateTime)
+                };
+
+                ActiveWeapons.Add(weapon);
+
+                if (enableLogging) Logger.Log(
+                    $"[WeaponSystem] Fired {weaponType} from {startPosition} " +
+                    $"with dir={dir} globalmapposition={worldPosition} at {DateTime.UtcNow}"
+                );
+            }
+
             return this;
         }
 
-        /* Saving this code for now
-         * The code tries to helt guide the lazer toward the best enemy target
-         * 
-        public static IVector3? FindPossibleBestEnemyTarget(_3dObject parentShip, IVector3 trajectoryLocal)
+        private IVector3 ApplyAimAssist(IVector3 firingDir, IVector3 weaponStart, WeaponType weaponType)
         {
-            try
+            float coneDot, strength, maxRange;
+            switch (weaponType)
             {
-                var enemies = CommonUtilities.CommonGlobalState.GameState.ShipState.BestCandidateStates;
-                if (enemies == null || enemies.Count == 0)
-                {
-                    Logger.Log("[AIM] no enemies");
-                    return null;
-                }
-
-                // --- INPUTS ---
-                var origTrajLocal = (Vector3)trajectoryLocal;
-
-                var shipCenterWorld = (Vector3)Common3dObjectHelpers.GetCenterOfBox(parentShip.GetAllCrashPointsWorld());
-
-                // Cannon tip / guide in WORLD (translation-only)
-                var cannonGuideWorld = origTrajLocal.ToWorldPoint(parentShip);
-
-                // Aim direction in WORLD (ship center -> cannon tip)
-                var aimDirWorld = cannonGuideWorld - shipCenterWorld;
-
-                const float minDotToAccept = 0.80f;
-                const float maxShipDist = 775f;
-
-                // Optional: how strong the aim assist is (1.0 = full snap, 0.2 = mild)
-                const float assistStrength = 1.0f;
-
-                // Logging control
-                const bool logCandidates = true;
-
-                Logger.Log(
-                    $"[AIM] start enemies={enemies.Count} minDot={minDotToAccept:F2} maxDist={maxShipDist:F0} assist={assistStrength:F2} | " +
-                    $"shipC=({shipCenterWorld.x:F0},{shipCenterWorld.y:F0},{shipCenterWorld.z:F0}) " +
-                    $"cannonG=({cannonGuideWorld.x:F0},{cannonGuideWorld.y:F0},{cannonGuideWorld.z:F0}) " +
-                    $"trajL=({origTrajLocal.x:F0},{origTrajLocal.y:F0},{origTrajLocal.z:F0})"
-                );
-
-                bool found = false;
-                float bestDot = float.MinValue;
-                float bestShipDist = float.MaxValue;
-
-                Vector3 bestEnemyCenterWorld = default;
-                string bestName = "";
-
-                // --- FIND BEST ENEMY ---
-                foreach (var st in enemies)
-                {
-                    var cand = st?.BestEnemyCandidate;
-                    if (cand?.EnemyCenterPosition == null || cand.EnemyObject == null)
-                        continue;
-
-                    var enemyCenterWorld = (Vector3)cand.EnemyCenterPosition;
-
-                    // Use shipCenter basis for dot (matches your "direction" concept cleanly)
-                    var shipToEnemyWorld = enemyCenterWorld - shipCenterWorld;
-
-                    float dot = Common3dObjectHelpers.DotNormalized(aimDirWorld, shipToEnemyWorld);
-
-                    float shipDist = (float)Common3dObjectHelpers.GetDistance(cannonGuideWorld, enemyCenterWorld);
-                    cand.DistanceToShip = shipDist;
-
-                    bool okDot = dot >= minDotToAccept;
-                    bool okDist = shipDist <= maxShipDist;
-
-                    if (logCandidates)
-                    {
-                        Logger.Log(
-                            $"[AIM] cand {cand.EnemyObject.ObjectName,-10} dot={dot,7:F4} dist={shipDist,7:F1} ok={(okDot && okDist ? 1 : 0)}"
-                        );
-                    }
-
-                    if (!okDot || !okDist)
-                        continue;
-
-                    // Best = highest dot, tie-break by nearest
-                    if (!found || dot > bestDot || (MathF.Abs(dot - bestDot) < 0.0001f && shipDist < bestShipDist))
-                    {
-                        found = true;
-                        bestDot = dot;
-                        bestShipDist = shipDist;
-                        bestEnemyCenterWorld = enemyCenterWorld;
-                        bestName = cand.EnemyObject.ObjectName;
-                    }
-                }
-
-                if (!found)
-                {
-                    Logger.Log("[AIM] result no valid candidates");
-                    return null;
-                }
-
-                // --- PRODUCE OUTPUT TRAJECTORY POINT (LOCAL) ---
-                // We want to adjust the *trajectory point* (cannon tip point), not return a direction vector.
-                // Move cannonGuideWorld toward enemyCenterWorld, then apply same delta to local point.
-                var deltaWorld = bestEnemyCenterWorld - cannonGuideWorld;
-
-                // optional strength (blend)
-                var deltaApplied = new Vector3(
-                    deltaWorld.x * assistStrength,
-                    deltaWorld.y * assistStrength,
-                    deltaWorld.z * assistStrength
-                );
-
-                var outTrajLocal = origTrajLocal + deltaApplied;
-
-                // Sanity: compare direction change (orig vs new) as directions from shipCenter
-                var origDirWorld = cannonGuideWorld - shipCenterWorld;
-                var newCannonGuideWorld = outTrajLocal.ToWorldPoint(parentShip); // for logging only
-                var newDirWorld = newCannonGuideWorld - shipCenterWorld;
-                float dotOrigNew = Common3dObjectHelpers.DotNormalized(origDirWorld, newDirWorld);
-
-                Logger.Log(
-                    $"[AIM] result best={bestName} dot={bestDot:F4} dist={bestShipDist:F1} | " +
-                    $"enemyC=({bestEnemyCenterWorld.x:F0},{bestEnemyCenterWorld.y:F0},{bestEnemyCenterWorld.z:F0}) " +
-                    $"deltaW=({deltaWorld.x:F0},{deltaWorld.y:F0},{deltaWorld.z:F0}) " +
-                    $"outTrajL=({outTrajLocal.x:F0},{outTrajLocal.y:F0},{outTrajLocal.z:F0}) " +
-                    $"dot(origDir,newDir)={dotOrigNew:F4}"
-                );
-
-                return outTrajLocal;
+                case WeaponType.Bullet:
+                    coneDot  = WeaponSetup.BulletAimAssistConeDot;
+                    strength = WeaponSetup.BulletAimAssistStrength;
+                    maxRange = WeaponSetup.BulletAimAssistMaxRange;
+                    break;
+                case WeaponType.Rocket:
+                    coneDot  = WeaponSetup.RocketAimAssistConeDot;
+                    strength = WeaponSetup.RocketAimAssistStrength;
+                    maxRange = WeaponSetup.RocketAimAssistMaxRange;
+                    break;
+                default: // Lazer and others
+                    coneDot  = WeaponSetup.LazerAimAssistConeDot;
+                    strength = WeaponSetup.LazerAimAssistStrength;
+                    maxRange = WeaponSetup.LazerAimAssistMaxRange;
+                    break;
             }
-            catch (Exception ex)
+
+            if (strength <= 0f)
+                return firingDir;
+
+            var aiObjects = GameState.SurfaceState.AiObjects;
+            if (aiObjects == null || aiObjects.Count == 0)
+                return firingDir;
+
+            float bestDot = coneDot;
+            IVector3? bestEnemyDir = null;
+
+            for (int i = 0; i < aiObjects.Count; i++)
             {
-                Logger.Log($"[AIM] ERROR {ex}");
-                return null;
-            }
-        }*/
+                var obj = aiObjects[i] as _3dObject;
+                if (obj == null) continue;
+                if (!EnemySetup.IsEnemyTypeValid(obj.ObjectName)) continue;
+                if (obj.ImpactStatus?.HasExploded == true) continue;
+                if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) continue;
 
-        /* Used for aiming calculations - kept for reference
-         * 
-         * private static Vector3 RotationFromDirectionWorld(Vector3 dirWorld)
+                var worldPoints = obj.GetAllCrashPointsWorld();
+                if (worldPoints.Count == 0) continue;
+
+                var center = Common3dObjectHelpers.GetCenterOfBox(worldPoints);
+                var toEnemy = new Vector3(
+                    center.x - weaponStart.x,
+                    center.y - weaponStart.y,
+                    center.z - weaponStart.z
+                );
+
+                // Enemy must be ahead of the ship (negative Y = forward on screen)
+                if (toEnemy.y >= 0f) continue;
+
+                float dist = Magnitude(toEnemy);
+                if (dist < 1f || dist > maxRange) continue;
+
+                IVector3 toEnemyDir = Normalize(toEnemy);
+                float dot = firingDir.x * toEnemyDir.x + firingDir.y * toEnemyDir.y + firingDir.z * toEnemyDir.z;
+
+                if (dot > bestDot)
+                {
+                    bestDot = dot;
+                    bestEnemyDir = toEnemyDir;
+                }
+            }
+
+            if (bestEnemyDir == null)
+                return firingDir;
+
+            float keep = 1f - strength;
+            return Normalize(new Vector3(
+                firingDir.x * keep + bestEnemyDir.x * strength,
+                firingDir.y * keep + bestEnemyDir.y * strength,
+                firingDir.z * keep + bestEnemyDir.z * strength
+            ));
+        }
+
+        private static (Vector3 rotation, int tilt) AdjustWeaponRotation(
+            IVector3 origDir, IVector3 assistedDir, IVector3 shipRotation, int baseTilt)
         {
-            // dirWorld should be normalized-ish
-            float x = dirWorld.x;
-            float y = dirWorld.y;
-            float z = dirWorld.z;
+            // Weapon geometry points along -Y. The projection maps v.x→screen x, v.y→screen y.
+            // After RotateZ(θ) + RotateX(cameraTilt), the beam tip direction on screen is:
+            //   Δx = L·sin(θ),  Δy = -L·cos(θ)·cos(cameraTilt)
+            // To match the travel direction (dir.x, dir.y):
+            //   θ = atan2(dir.x, -dir.y / cos(cameraTilt))
+            float cameraTiltRad = shipRotation.x * (MathF.PI / 180f);
+            float cosTilt = MathF.Cos(cameraTiltRad);
+            float zRot = MathF.Atan2(assistedDir.x, -assistedDir.y / cosTilt) * (180f / MathF.PI);
 
-            float yawRad = (float)Math.Atan2(x, z);
-            float pitchRad = (float)Math.Atan2(-y, Math.Sqrt(x * x + z * z));
-
-            float yawDeg = yawRad * 180f / (float)Math.PI;
-            float pitchDeg = pitchRad * 180f / (float)Math.PI;
-
-            // Rotation = (X=pitch, Y=yaw, Z=roll)
-            return new Vector3(pitchDeg, yawDeg, 0f);
-        }*/
-
+            var rotation = new Vector3(shipRotation.x, shipRotation.y, zRot);
+            return (rotation, baseTilt);
+        }
 
         //Rotates the weapon geometry according to ship rotation + tilt
         private void InitializeWeaponGeometry(I3dObject weaponObj, Vector3 rotation, int tilt)
