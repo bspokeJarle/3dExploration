@@ -602,19 +602,19 @@ namespace GameAiAndControls.Controls
                 float landingSpeed = CurrentSpeed;
                 string crashedWith = theObject.ImpactStatus.ObjectName;
 
-                Logger.Log($"[ShipCrash] HasCrashed=true, ObjectName='{crashedWith}', Health={theObject.ImpactStatus.ObjectHealth}, Direction={theObject.ImpactStatus.ImpactDirection}");
+                if (logging) Logger.Log($"[ShipCrash] HasCrashed=true, ObjectName='{crashedWith}', Health={theObject.ImpactStatus.ObjectHealth}, Direction={theObject.ImpactStatus.ImpactDirection}");
 
                 // Apply damage from any enemy or weapon collision
                 if (EnemySetup.IsEnemyTypeValid(crashedWith))
                 {
                     theObject.ImpactStatus.ObjectHealth -= EnemySetup.KamikazeDroneCollisionDamage;
-                    Logger.Log($"[ShipCrash] Enemy hit! Damage={EnemySetup.KamikazeDroneCollisionDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                    if (logging) Logger.Log($"[ShipCrash] Enemy hit! Damage={EnemySetup.KamikazeDroneCollisionDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else if (WeaponSetup.IsWeaponTypeValid(crashedWith))
                 {
                     int weaponDamage = WeaponSetup.GetWeaponDamage(crashedWith);
                     theObject.ImpactStatus.ObjectHealth -= weaponDamage;
-                    Logger.Log($"[ShipCrash] Weapon hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                    if (logging) Logger.Log($"[ShipCrash] Weapon hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else if (theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
@@ -625,11 +625,11 @@ namespace GameAiAndControls.Controls
                     {
                         theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
                     }
-                    Logger.Log($"[ShipCrash] Landing. Speed={landingSpeed:F1}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                    if (logging) Logger.Log($"[ShipCrash] Landing. Speed={landingSpeed:F1}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else
                 {
-                    Logger.Log($"[ShipCrash] NO DAMAGE APPLIED! crashedWith='{crashedWith}' did not match any category.");
+                    if (logging) Logger.Log($"[ShipCrash] NO DAMAGE APPLIED! crashedWith='{crashedWith}' did not match any category.");
                 }
 
                 if (theObject.ImpactStatus.ObjectHealth <= 0)

@@ -27,12 +27,13 @@ namespace CommonUtilities.CommonSetup
 
         // Bullet crashbox extents (local coords, adjustable per axis)
         // X = lateral (left/right), Y = longitudinal (bullet direction), Z = vertical (up/down)
-        public const float BulletCrashBoxMinX = -8f;
-        public const float BulletCrashBoxMaxX = 8f;
-        public const float BulletCrashBoxMinY = -40f;   // forward along bullet
+        // Y extent must exceed per-frame travel (~50 units at 3000u/s @ 60fps) to avoid frame-skipping
+        public const float BulletCrashBoxMinX = -18f;
+        public const float BulletCrashBoxMaxX = 18f;
+        public const float BulletCrashBoxMinY = -110f;  // forward along bullet
         public const float BulletCrashBoxMaxY = -4f;    // rear end near muzzle
-        public const float BulletCrashBoxMinZ = 20f;
-        public const float BulletCrashBoxMaxZ = 36f;
+        public const float BulletCrashBoxMinZ = 12f;
+        public const float BulletCrashBoxMaxZ = 44f;
 
         // Lazer exit point fine-tuning (applied on top of the midpoint between start and guide)
         // X = lateral shift (left/right on screen)
@@ -61,9 +62,9 @@ namespace CommonUtilities.CommonSetup
         public static float LazerAimAssistStrength = 0.6f;
         public static float LazerAimAssistMaxRange = 2000f;
 
-        public static float BulletAimAssistConeDot  = 0.85f;  // ~21° half-angle
-        public static float BulletAimAssistStrength = 0.7f;
-        public static float BulletAimAssistMaxRange = 2000f;
+        public static float BulletAimAssistConeDot  = 0.70f;  // ~45° half-angle
+        public static float BulletAimAssistStrength = 0.9f;
+        public static float BulletAimAssistMaxRange = 3000f;
 
         public static float RocketAimAssistConeDot  = 0.85f;  // ~32° half-angle
         public static float RocketAimAssistStrength = 0.8f;
