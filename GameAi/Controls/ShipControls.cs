@@ -231,6 +231,7 @@ namespace GameAiAndControls.Controls
                 _fireKeyHeld = true;
 
                 if (GameState.GamePlayState.SelectedWeapon == WeaponType.Bullet
+                    && !string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase)
                     && _bulletInstance == null
                     && _audio != null && _bulletSound != null)
                 {
@@ -324,6 +325,11 @@ namespace GameAiAndControls.Controls
         {
             if (string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase))
             {
+                if (_bulletInstance != null)
+                {
+                    _bulletInstance.Stop(playEndSegment: true);
+                    _bulletInstance = null;
+                }
                 DeployDecoy();
                 return;
             }

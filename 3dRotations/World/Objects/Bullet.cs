@@ -1,6 +1,7 @@
 ﻿using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Ai;
 using System.Collections.Generic;
@@ -50,20 +51,18 @@ namespace _3dRotations.World.Objects
 
         public static List<List<IVector3>>? BulletCrashBoxes()
         {
-            // Compact crashbox around the bullet.
-            // Adjust later after testing.
             var min = new Vector3
             {
-                x = -2.8f,
-                y = -26f,
-                z = 24.8f
+                x = WeaponSetup.BulletCrashBoxMinX,
+                y = WeaponSetup.BulletCrashBoxMinY,
+                z = WeaponSetup.BulletCrashBoxMinZ
             };
 
             var max = new Vector3
             {
-                x = 2.8f,
-                y = -4f,
-                z = 31.2f
+                x = WeaponSetup.BulletCrashBoxMaxX,
+                y = WeaponSetup.BulletCrashBoxMaxY,
+                z = WeaponSetup.BulletCrashBoxMaxZ
             };
 
             return new List<List<IVector3>>
