@@ -257,6 +257,9 @@ namespace _3dTesting
 
             if (pauseFrameCount < limitFrameCount && gameWorldManager.FadeInWorld)
             {
+                // Clear immediately so concurrent async Handle3dWorld calls
+                // from the same render tick don't start overlapping FadeInAsync animations
+                gameWorldManager.FadeInWorld = false;
                 if (!isFading)
                 {
                     // FadeOut was skipped (e.g., ship exploded before the fadeout delay elapsed)
@@ -266,7 +269,6 @@ namespace _3dTesting
                     isFading = true;
                 }
                 await FadeInAsync(1.5f);
-                gameWorldManager.FadeInWorld = false;
                 isFading = false;
                 fadeOutTrigged = DateTime.MinValue;
             }
@@ -281,15 +283,10 @@ namespace _3dTesting
             }
 
             // Overlay update + render (UI layer)
+            // FadeOverlay (Z=MaxValue) covers everything during fade,
+            // so overlay state progresses naturally — no need to suppress ShowOverlay
             if (GameState.ScreenOverlayState != null)
             {
-                // FadeOverlay wins – avoid double-dim
-                if (isFading || FadeOverlay.Visibility == Visibility.Visible)
-                {
-                    // keep existing behavior
-                    GameState.ScreenOverlayState.ShowOverlay = false;
-                }
-
                 GameState.ScreenOverlayState.Update(dt);
 
                 UpdateVideoOverlay();

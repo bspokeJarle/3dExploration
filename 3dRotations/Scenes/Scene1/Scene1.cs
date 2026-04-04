@@ -57,13 +57,13 @@ namespace _3dRotations.Scene.Scene1
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
 
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 1; i++)
             {
                 var rmd = new Random();
 
-                //Add ship as first inhabitant
+                //Add Kamikaze drones
                 var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
-                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-55000, 55000), y = 0, z = 92000 + rmd.Next(-55000, 55000) };
+                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-25000, 25000), y = 0, z = 92000 + rmd.Next(-25000, 25000) };
                 kamikaze.Rotation = new Vector3 { };
                 kamikaze.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
                 kamikaze.ObjectName = "KamikazeDrone";
@@ -75,14 +75,14 @@ namespace _3dRotations.Scene.Scene1
             }
 
 
-            for (int i = 0; i < 40; i++)
+            for (int i = 0; i < 1; i++)
             {
                 var rmd = new Random();
 
                 var seeder = Seeder.CreateSeeder(Surface);
                 //Initialize the seeder rotation
                 seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-30000, 30000), y = 0, z = 92000 + rmd.Next(-30000, 30000)};
+                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-10000, 10000), y = 0, z = 92000 + rmd.Next(-10000, 10000)};
                 seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seeder.ObjectName = "Seeder";
                 seeder.Movement = new SeederControls();

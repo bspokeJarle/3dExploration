@@ -76,7 +76,8 @@ namespace GameAiAndControls.Controls
 
         /// <summary>
         /// Finds the world position of the closest living seeder to the ship.
-        /// Returns null if no seeders are alive.
+        /// Falls back to the closest living drone if no seeders remain.
+        /// Returns null if no targets are alive.
         /// </summary>
         private static Vector3? FindClosestSeederWorldPosition()
         {
@@ -85,15 +86,20 @@ namespace GameAiAndControls.Controls
                 return null;
 
             var shipWorld = GetShipWorldPosition();
-            float bestDistSq = float.MaxValue;
-            Vector3? bestPos = null;
+            float bestSeederDistSq = float.MaxValue;
+            Vector3? bestSeederPos = null;
+            float bestDroneDistSq = float.MaxValue;
+            Vector3? bestDronePos = null;
 
             for (int i = 0; i < aiObjects.Count; i++)
             {
                 var obj = aiObjects[i];
-                if (obj.ObjectName != "Seeder")
-                    continue;
                 if (obj.ImpactStatus?.HasExploded == true)
+                    continue;
+
+                bool isSeeder = obj.ObjectName == "Seeder";
+                bool isDrone = obj.ObjectName == "KamikazeDrone";
+                if (!isSeeder && !isDrone)
                     continue;
 
                 var pos = obj.WorldPosition;
@@ -104,14 +110,20 @@ namespace GameAiAndControls.Controls
                 float dz = pos.z - shipWorld.z;
                 float distSq = dx * dx + dz * dz;
 
-                if (distSq < bestDistSq)
+                if (isSeeder && distSq < bestSeederDistSq)
                 {
-                    bestDistSq = distSq;
-                    bestPos = new Vector3 { x = pos.x, y = pos.y, z = pos.z };
+                    bestSeederDistSq = distSq;
+                    bestSeederPos = new Vector3 { x = pos.x, y = pos.y, z = pos.z };
+                }
+                else if (isDrone && distSq < bestDroneDistSq)
+                {
+                    bestDroneDistSq = distSq;
+                    bestDronePos = new Vector3 { x = pos.x, y = pos.y, z = pos.z };
                 }
             }
 
-            return bestPos;
+            // Seeders are the primary target; fall back to drones only when none remain
+            return bestSeederPos ?? bestDronePos;
         }
 
         private static Vector3 GetShipWorldPosition()
