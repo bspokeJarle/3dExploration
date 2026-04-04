@@ -69,6 +69,7 @@ namespace _3dTesting
         private bool _videoEntrancePlayed;
 
         private bool isFading = false;
+        private bool _isFadingIn = false;
         private int Fps = 0;
 
         private const int TargetFps = ScreenSetup.targetFps;
@@ -268,7 +269,9 @@ namespace _3dTesting
                     FadeOverlay.Opacity = 1;
                     isFading = true;
                 }
+                _isFadingIn = true;
                 await FadeInAsync(1.5f);
+                _isFadingIn = false;
                 isFading = false;
                 fadeOutTrigged = DateTime.MinValue;
             }
@@ -358,7 +361,7 @@ namespace _3dTesting
                         Logger.Log($"[UpdateWorld] ms={elapsedMs:0.###}");
                     }
 
-                    if (!isFading)
+                    if (!isFading || _isFadingIn)
                         Dispatcher.BeginInvoke(() => worldRenderer.RenderTriangles(screenCoordinates));
                 }
                 finally

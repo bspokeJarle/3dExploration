@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Diagnostics;
 using System.Linq;
 using CommonUtilities._3DHelpers;
 using Domain;
@@ -14,41 +13,52 @@ namespace GameAiAndControls.Physics
     public class Physics : IPhysics
     {
         private bool LocalEnableLogging = false;
+        private const float DEG2RAD = MathF.PI / 180f;
 
+        // ── General physics ──────────────────────────────────────────
         public float Mass { get; set; } = 1.0f;
-        public IVector3 Velocity { get; set; } = new Vector3(0, -90f, 0); // Initial downward velocity for bouncing
+        public IVector3 Velocity { get; set; } = new Vector3(0, -90f, 0);
         public float Thrust { get; set; }
-        public float Friction { get; set; } = 0.0f; // No air resistance for the test
+        public float Friction { get; set; } = 0.0f;
         public float MaxSpeed { get; set; } = 10.0f;
         public float MaxThrust { get; set; } = 20.0f;
-        public float GravityStrength { get; set; } = 1f; // Strong gravity for faster falling
-        public IVector3 GravitySource { get; set; } = new Vector3 { x = 0, y = -10f, z = 0 };
         public IVector3 Acceleration { get; set; } = new Vector3(0, 0, 0);
-        public float BounceHeightMultiplier { get; set; } = 0.8f; // Affects bounce height
-        public float EnergyLossFactor { get; set; } = 0.2f; // Bounce energy retention factor
+
+        // ── Gravity & bounce (used by particle/object physics) ───────
+        public float GravityStrength { get; set; } = 1f;
+        public IVector3 GravitySource { get; set; } = new Vector3 { x = 0, y = -10f, z = 0 };
+        public float BounceHeightMultiplier { get; set; } = 0.8f;
+        public float EnergyLossFactor { get; set; } = 0.2f;
         public int BounceCooldownFrames { get; set; } = 0;
 
+        // ── Flight inertia state (reset between thrust activations) ──
         public float FallVelocity { get; set; } = 0f;
         public float InertiaX { get; set; } = 0f;
+        public float InertiaY { get; set; } = 0f;
         public float InertiaZ { get; set; } = 0f;
         public float ThrustEffect { get; set; } = 0f;
         public float VerticalLiftFactor { get; set; } = 0f;
 
-        public float GravityAcceleration { get; set; } = 0.75f;
-        public float TerminalFallSpeed { get; set; } = 6.9f;
-        public float GravityPullMultiplier { get; set; } = 1.8f;
+        // ── Flight tuning constants ──────────────────────────────────
+        public float GravityAcceleration { get; set; } = 2.8f;
+        public float TerminalFallSpeed { get; set; } = 35f;
+        public float GravityPullMultiplier { get; set; } = 9.0f;
         public float ThrustSpeedMultiplier { get; set; } = 9.6f;
-        public float ThrustHeightMultiplier { get; set; } = 2.0f;
+        public float ThrustHeightMultiplier { get; set; } = 10.0f;
         public float ThrustRampRate { get; set; } = 30.0f;
         public float InertiaDrag { get; set; } = 0.92f;
-        public float MaxInertia { get; set; } = 9.0f;
+        public float MaxInertia { get; set; } = 45.0f;
         public float VerticalThrustSmoothing { get; set; } = 0.6f;
-        public float VerticalLiftRate { get; set; } = 0.15f;
+        public float VerticalLiftRate { get; set; } = 3.0f;
+
+        // ── Height limits ────────────────────────────────────────────
         public float CeilingHeight { get; set; } = 1000f;
         public float FloorHeight { get; set; } = -100f;
         public float MaxScreenDrop { get; set; } = 450f;
 
-        private const float DEG2RAD = MathF.PI / 180f;
+        // Applies drag and clamps inertia to [-MaxInertia, MaxInertia]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float ApplyDragAndClamp(float inertia) => Math.Clamp(inertia * InertiaDrag, -MaxInertia, MaxInertia);
 
         // Applies drag to the current velocity and returns the updated position
         public IVector3 ApplyDragForce(IVector3 currentPosition, float deltaTime)
@@ -176,25 +186,23 @@ namespace GameAiAndControls.Physics
         }
 
 
-        public IVector3 ApplyRotationDragForce(IVector3 rotationVector)
-        {
-            return null; // Not implemented yet
-        }
+        // Not yet implemented — retained for IPhysics contract
+        public IVector3 ApplyRotationDragForce(IVector3 rotationVector) => null;
+        public void TiltStabilization(ref IVector3 tiltState) { }
 
-        public void TiltStabilization(ref IVector3 tiltState)
-        {
-            // Not implemented yet
-        }
-
+        // Applies gravity when falling (no thrust). Returns updated InertiaY.
         public float ApplyFallGravity(float rotationDegrees, float deltaTime)
         {
             float rotationRad = (rotationDegrees % 180) * DEG2RAD;
-            float gravityModifier = MathF.Min(MathF.Max(MathF.Sin(rotationRad), 0.3f), 1.0f);
-            float adjustedGravity = GravityAcceleration * gravityModifier * GravityPullMultiplier * deltaTime;
-            FallVelocity = Math.Min(FallVelocity + adjustedGravity, TerminalFallSpeed);
-            return FallVelocity;
+            float gravityModifier = Math.Clamp(MathF.Sin(rotationRad), 0.3f, 1.0f);
+            float gravityPull = GravityAcceleration * gravityModifier * GravityPullMultiplier * deltaTime;
+
+            InertiaY = ApplyDragAndClamp(InertiaY - gravityPull);
+            FallVelocity = MathF.Max(-InertiaY, 0f);
+            return InertiaY;
         }
 
+        // Retained for IPhysics contract — no longer called by ship controls
         public void ReduceFallWithThrust(float thrust, float rotationDegrees, float deltaTime)
         {
             float upwardFactor = MathF.Cos(rotationDegrees * DEG2RAD);
@@ -202,6 +210,10 @@ namespace GameAiAndControls.Physics
             FallVelocity = Math.Max(FallVelocity - thrustLift, 0f);
         }
 
+        // Calculates thrust on all three axes with continuous gravity. Returns updated InertiaY.
+        // Tilt controls vertical/forward split; rotation controls heading.
+        // When inverted (tilt ~180°), upwardFactor goes negative — thrust pushes into the ground.
+        // Gravity scales in with VerticalLiftFactor to prevent an initial dip at thrust start.
         public float CalculateThrustForces(float thrust, float tiltDegrees, float rotationDegrees, float deltaTime)
         {
             ThrustEffect = MathF.Min(ThrustEffect + ThrustRampRate * deltaTime, 1f);
@@ -210,33 +222,35 @@ namespace GameAiAndControls.Physics
             float tiltRad = tiltDegrees * DEG2RAD;
             float rotationRad = rotationDegrees * DEG2RAD;
 
-            float upwardFactor = MathF.Cos(tiltRad);
+            float upwardFactor = MathF.Cos(tiltRad);   // +1 upright, 0 sideways, -1 inverted
             float forwardFactor = MathF.Sin(tiltRad);
             float dirX = MathF.Sin(rotationRad);
             float dirZ = MathF.Cos(rotationRad);
 
-            float xForce = thrust * ThrustEffect * ThrustSpeedMultiplier * forwardFactor * dirX * deltaTime;
-            float zForce = thrust * ThrustEffect * ThrustSpeedMultiplier * forwardFactor * dirZ * deltaTime;
-            float yDiff = thrust * VerticalLiftFactor * ThrustHeightMultiplier * upwardFactor * VerticalThrustSmoothing * deltaTime;
+            // Horizontal forces — projected onto world X/Z axes
+            float horizontalForce = thrust * ThrustEffect * ThrustSpeedMultiplier * forwardFactor * deltaTime;
+            InertiaX = ApplyDragAndClamp(InertiaX + horizontalForce * dirX);
+            InertiaZ = ApplyDragAndClamp(InertiaZ - horizontalForce * dirZ);
 
-            InertiaX += xForce;
-            InertiaZ += -zForce;
+            // Vertical thrust — angle-dependent (negative when inverted pushes into ground)
+            float verticalThrust = thrust * ThrustEffect * VerticalLiftFactor * ThrustHeightMultiplier
+                                 * upwardFactor * VerticalThrustSmoothing * deltaTime;
+            float gravityPull = GravityAcceleration * GravityPullMultiplier * VerticalLiftFactor * deltaTime;
 
-            InertiaX = MathF.Min(MathF.Max(InertiaX * InertiaDrag, -MaxInertia), MaxInertia);
-            InertiaZ = MathF.Min(MathF.Max(InertiaZ * InertiaDrag, -MaxInertia), MaxInertia);
-
-            return yDiff;
+            InertiaY = ApplyDragAndClamp(InertiaY + verticalThrust - gravityPull);
+            FallVelocity = MathF.Max(-InertiaY, 0f);
+            return InertiaY;
         }
 
         public float CalculateCurrentSpeed(bool isLanded)
         {
             float horizontalSpeed = MathF.Sqrt(InertiaX * InertiaX + InertiaZ * InertiaZ);
-            float verticalSpeed = isLanded ? 0f : MathF.Abs(FallVelocity);
+            float verticalSpeed = isLanded ? 0f : MathF.Abs(InertiaY);
             return horizontalSpeed + verticalSpeed;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public float ClampToHeightRange(float value) => MathF.Min(MathF.Max(value, FloorHeight), CeilingHeight);
+        public float ClampToHeightRange(float value) => Math.Clamp(value, FloorHeight, CeilingHeight);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float ClampToScreenDrop(float value) => MathF.Min(value, MaxScreenDrop);

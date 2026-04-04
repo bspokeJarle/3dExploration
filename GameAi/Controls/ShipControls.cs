@@ -26,7 +26,7 @@ namespace GameAiAndControls.Controls
         private const float MaxRotationSpeed = 160f;
         private const float RotationDrag = 0.90f;
         private const float DEG2RAD = MathF.PI / 180f;
-        private const int ShipCenterY = 0;
+        private const float ShipRestingScreenY = 200f;
 
         // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
@@ -469,7 +469,7 @@ namespace GameAiAndControls.Controls
                 ThrustOn = false;
                 landed = true;
                 ParentObject.ObjectOffsets.x = 0;
-                ParentObject.ObjectOffsets.y = 200;
+                ParentObject.ObjectOffsets.y = ShipRestingScreenY;
                 ParentObject.ObjectOffsets.z = zoom;
             }
 
@@ -579,8 +579,9 @@ namespace GameAiAndControls.Controls
                 else if (theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
                 {
-                    // Surface/terrain landing — damage only at high speed
+                    // Surface/terrain landing — stop falling, let ApplyGravity ease to resting position
                     landed = true;
+                    Physics.InertiaY = 0f;
                     if (landingSpeed > 5f)
                     {
                         theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
@@ -694,7 +695,7 @@ namespace GameAiAndControls.Controls
 
         public void HandleThrust(float deltaTime)
         {
-            float yDiff = Physics.CalculateThrustForces(Thrust, tilt, rotationZ, deltaTime);
+            float verticalInertia = Physics.CalculateThrustForces(Thrust, tilt, rotationZ, deltaTime);
 
             float maxX = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
                          (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
@@ -704,37 +705,38 @@ namespace GameAiAndControls.Controls
             GameState.SurfaceState.GlobalMapPosition.x = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.x, Physics.InertiaX, 75, maxX);
             GameState.SurfaceState.GlobalMapPosition.z = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.z, Physics.InertiaZ, 0, maxZ);
 
-            float delta = ShipCenterY - ParentObject.ObjectOffsets.y;
-
-            if (delta > 2f || delta < -2f)
-            {
-                float upwardFactor = MathF.Cos(tilt * DEG2RAD);
-                float liftAdjust = (upwardFactor > 0f) ? delta * 0.1f : 0f;
-                ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y + liftAdjust + yDiff * 0.1f));
-            }
-            else
-            {
-                GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y + 2.5f);
-            }
+            // Apply vertical inertia to screen position (positive InertiaY = up = ObjectOffsets.y decreases)
+            ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia));
+            // Apply vertical inertia to altitude (positive InertiaY = up = altitude increases)
+            GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia);
         }
 
         public void ApplyGravity(float deltaTime)
         {
-            if (landed && !ThrustOn) return;
-            if (!ThrustOn)
+            if (landed && !ThrustOn)
             {
-                float fallDist = Physics.ApplyFallGravity(rotationX, deltaTime);
-                ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y + fallDist));
+                // Smoothly settle screen position and altitude to resting values after landing
+                float screenDiff = ShipRestingScreenY - ParentObject.ObjectOffsets.y;
+                float altDiff = -GameState.SurfaceState.GlobalMapPosition.y;
+                float settleRate = 8f;
+                float t = MathF.Min(settleRate * deltaTime, 1f);
 
-                if (GameState.SurfaceState.GlobalMapPosition.y > Physics.FloorHeight)
-                {
-                    GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y - fallDist);
-                }
+                if (MathF.Abs(screenDiff) > 0.5f)
+                    ParentObject.ObjectOffsets.y += screenDiff * t;
+                else
+                    ParentObject.ObjectOffsets.y = ShipRestingScreenY;
+
+                if (MathF.Abs(altDiff) > 0.5f)
+                    GameState.SurfaceState.GlobalMapPosition.y += altDiff * t;
+                else
+                    GameState.SurfaceState.GlobalMapPosition.y = 0f;
+
+                return;
             }
-            else
-            {
-                Physics.ReduceFallWithThrust(Thrust, rotationX, deltaTime);
-            }
+
+            float verticalInertia = Physics.ApplyFallGravity(rotationX, deltaTime);
+            ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia));
+            GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia);
         }
 
         public void Dispose()

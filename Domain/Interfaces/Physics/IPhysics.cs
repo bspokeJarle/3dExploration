@@ -28,6 +28,7 @@ namespace Domain
 
         float FallVelocity { get; set; }
         float InertiaX { get; set; }
+        float InertiaY { get; set; }
         float InertiaZ { get; set; }
         float ThrustEffect { get; set; }
         float VerticalLiftFactor { get; set; }
