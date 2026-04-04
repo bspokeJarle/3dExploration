@@ -21,28 +21,12 @@ namespace GameAiAndControls.Controls
         private int movementLogCounter = 0;
         private const float MaxThrust = 10.0f;
         private const float ThrustIncreaseRate = 0.5f;
-        private const float GravityAcceleration = 0.75f;
-        private const float MaxFallSpeed = 6.9f;
-        private const float GravityMultiplier = 1.8f;
 
         private const float RotationAcceleration = 1000f;
         private const float MaxRotationSpeed = 160f;
         private const float RotationDrag = 0.90f;
         private const float DEG2RAD = MathF.PI / 180f;
         private const int ShipCenterY = 0;
-
-        private const float SpeedMultiplier = 9.6f;
-        private const float HeightMultiplier = 2.0f;
-        private const float ThrustAccelerationRate = 30.0f;
-        private const float InertiaDrag = 0.92f;
-        private const float MaxInertia = 9.0f;
-
-        private const float VerticalThrustSmoothing = 0.6f;
-        private const float VerticalLiftAcceleration = 0.15f;
-
-        public float MaxHeight { get; set; } = 1000f;
-        public float MinHeight { get; set; } = -100f;
-        public float MaxScreenDrop { get; set; } = 450f;
 
         // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
@@ -54,11 +38,6 @@ namespace GameAiAndControls.Controls
         private IAudioInstance? _rocketInstance;
         private IAudioInstance? _bulletInstance;
 
-        private float fallVelocity = 0f;
-        private float inertiaX = 0f;
-        private float inertiaZ = 0f;
-        private float thrustEffect = 0f;
-        private float verticalLiftFactor = 0f;
         private float _yawVelocity = 0f;
         private float _pitchVelocity = 0f;
         private float _yawAccumulator = 0f;
@@ -275,8 +254,8 @@ namespace GameAiAndControls.Controls
             {
                 ThrustOn = false;
                 Thrust = 0;
-                thrustEffect = 0f;
-                verticalLiftFactor = 0f;
+                Physics.ThrustEffect = 0f;
+                Physics.VerticalLiftFactor = 0f;
 
                 // Stop the rocket loop if it is still playing.
                 if (_rocketInstance != null)
@@ -311,8 +290,8 @@ namespace GameAiAndControls.Controls
         {
             ThrustOn = false;
             Thrust = 0;
-            thrustEffect = 0f;
-            verticalLiftFactor = 0f;
+            Physics.ThrustEffect = 0f;
+            Physics.VerticalLiftFactor = 0f;
 
             if (_rocketInstance != null)
             {
@@ -457,24 +436,6 @@ namespace GameAiAndControls.Controls
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private float Clamp(float value, float min, float max) => MathF.Min(MathF.Max(value, min), max);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private float ClampHeight(float value) => Clamp(value, MinHeight, MaxHeight);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private float ClampScreenHeight(float value) => MathF.Min(value, MaxScreenDrop);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float GetWrappedPosition(float position, float diff, float minValue, float maxValue)
-        {
-            float newPos = position + diff;
-            if (newPos >= maxValue) return minValue;
-            if (newPos <= minValue) return maxValue;
-            return newPos;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void UpdateShipWorldPosition(I3dObject theObject)
         {
             float shipOffsetY = theObject.ObjectOffsets?.y ?? shipY;
@@ -491,7 +452,6 @@ namespace GameAiAndControls.Controls
             GameState.ShipState.ShipHasShadow = theObject.HasShadow;
         }
 
-        // Merk: du har endret signatur her – sørg for at IObjectMovement matcher!
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             //Update gamestate with thrust
@@ -553,7 +513,7 @@ namespace GameAiAndControls.Controls
 
             if (theObject.ObjectOffsets != null)
             {
-                theObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y));
+                theObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y));
                 theObject.ObjectOffsets.z = zoom;
             }
 
@@ -571,8 +531,8 @@ namespace GameAiAndControls.Controls
 
             GameState.GamePlayState.UpdateAltitude(
                 GameState.SurfaceState.GlobalMapPosition.y,
-                MinHeight,
-                MaxHeight);
+                Physics.FloorHeight,
+                Physics.CeilingHeight);
 
             // Only update explosion if it has already started
             if (isExploding)
@@ -693,15 +653,7 @@ namespace GameAiAndControls.Controls
             return theObject;
         }
 
-        public float CurrentSpeed
-        {
-            get
-            {
-                float horizontalSpeed = MathF.Sqrt(inertiaX * inertiaX + inertiaZ * inertiaZ);
-            float verticalSpeed = landed ? 0f : MathF.Abs(fallVelocity); // Zero once the ship has landed.
-                return horizontalSpeed + verticalSpeed;
-            }
-        }
+        public float CurrentSpeed => Physics.CalculateCurrentSpeed(landed);
 
         public void ApplyLocalTiltToMesh(int tilt, I3dObject inhabitant)
         {
@@ -742,71 +694,46 @@ namespace GameAiAndControls.Controls
 
         public void HandleThrust(float deltaTime)
         {
-            thrustEffect = MathF.Min(thrustEffect + ThrustAccelerationRate * deltaTime, 1f);
-            verticalLiftFactor = MathF.Min(verticalLiftFactor + VerticalLiftAcceleration * deltaTime, 1f);
-
-            float tiltRad = tilt * DEG2RAD;
-            float rotationRad = rotationZ * DEG2RAD;
-
-            float upwardFactor = MathF.Cos(tiltRad);
-            float forwardFactor = MathF.Sin(tiltRad);
-            float dirX = MathF.Sin(rotationRad);
-            float dirZ = MathF.Cos(rotationRad);
-
-            float xForce = Thrust * thrustEffect * SpeedMultiplier * forwardFactor * dirX * deltaTime;
-            float zForce = Thrust * thrustEffect * SpeedMultiplier * forwardFactor * dirZ * deltaTime;
-            float yDiff = Thrust * verticalLiftFactor * HeightMultiplier * upwardFactor * VerticalThrustSmoothing * deltaTime;
-
-            inertiaX += xForce;
-            inertiaZ += -zForce;
-
-            inertiaX = Clamp(inertiaX * InertiaDrag, -MaxInertia, MaxInertia);
-            inertiaZ = Clamp(inertiaZ * InertiaDrag, -MaxInertia, MaxInertia);
+            float yDiff = Physics.CalculateThrustForces(Thrust, tilt, rotationZ, deltaTime);
 
             float maxX = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
                          (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
             float maxZ = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
                          (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
 
-            GameState.SurfaceState.GlobalMapPosition.x = GetWrappedPosition(GameState.SurfaceState.GlobalMapPosition.x, inertiaX, 75, maxX);
-            GameState.SurfaceState.GlobalMapPosition.z = GetWrappedPosition(GameState.SurfaceState.GlobalMapPosition.z, inertiaZ, 0, maxZ);
+            GameState.SurfaceState.GlobalMapPosition.x = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.x, Physics.InertiaX, 75, maxX);
+            GameState.SurfaceState.GlobalMapPosition.z = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.z, Physics.InertiaZ, 0, maxZ);
 
             float delta = ShipCenterY - ParentObject.ObjectOffsets.y;
 
             if (delta > 2f || delta < -2f)
             {
+                float upwardFactor = MathF.Cos(tilt * DEG2RAD);
                 float liftAdjust = (upwardFactor > 0f) ? delta * 0.1f : 0f;
-                ParentObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y + liftAdjust + yDiff * 0.1f));
+                ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y + liftAdjust + yDiff * 0.1f));
             }
             else
             {
-                GameState.SurfaceState.GlobalMapPosition.y = ClampHeight(GameState.SurfaceState.GlobalMapPosition.y + 2.5f);
+                GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y + 2.5f);
             }
         }
 
         public void ApplyGravity(float deltaTime)
         {
-            //If ship has landed and thrust is off, we need to stop the ship
             if (landed && !ThrustOn) return;
             if (!ThrustOn)
             {
-                float rotationXMod180Rad = (rotationX % 180) * DEG2RAD;
-                float gravityModifier = Clamp(MathF.Sin(rotationXMod180Rad), 0.3f, 1.0f);
-                float adjustedGravity = GravityAcceleration * gravityModifier * GravityMultiplier * deltaTime;
+                float fallDist = Physics.ApplyFallGravity(rotationX, deltaTime);
+                ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y + fallDist));
 
-                fallVelocity = Math.Min(fallVelocity + adjustedGravity, MaxFallSpeed);
-                ParentObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y + fallVelocity));
-
-                if (GameState.SurfaceState.GlobalMapPosition.y > MinHeight)
+                if (GameState.SurfaceState.GlobalMapPosition.y > Physics.FloorHeight)
                 {
-                    GameState.SurfaceState.GlobalMapPosition.y = ClampHeight(GameState.SurfaceState.GlobalMapPosition.y - fallVelocity);
+                    GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y - fallDist);
                 }
             }
             else
             {
-                float upwardFactor = MathF.Cos(rotationX * DEG2RAD);
-                float thrustLift = Thrust * upwardFactor * 0.75f * deltaTime;
-                fallVelocity = Math.Max(fallVelocity - thrustLift, 0f);
+                Physics.ReduceFallWithThrust(Thrust, rotationX, deltaTime);
             }
         }
 

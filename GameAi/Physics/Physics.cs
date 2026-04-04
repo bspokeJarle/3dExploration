@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Diagnostics;
 using System.Linq;
 using CommonUtilities._3DHelpers;
@@ -26,6 +27,28 @@ namespace GameAiAndControls.Physics
         public float BounceHeightMultiplier { get; set; } = 0.8f; // Affects bounce height
         public float EnergyLossFactor { get; set; } = 0.2f; // Bounce energy retention factor
         public int BounceCooldownFrames { get; set; } = 0;
+
+        public float FallVelocity { get; set; } = 0f;
+        public float InertiaX { get; set; } = 0f;
+        public float InertiaZ { get; set; } = 0f;
+        public float ThrustEffect { get; set; } = 0f;
+        public float VerticalLiftFactor { get; set; } = 0f;
+
+        public float GravityAcceleration { get; set; } = 0.75f;
+        public float TerminalFallSpeed { get; set; } = 6.9f;
+        public float GravityPullMultiplier { get; set; } = 1.8f;
+        public float ThrustSpeedMultiplier { get; set; } = 9.6f;
+        public float ThrustHeightMultiplier { get; set; } = 2.0f;
+        public float ThrustRampRate { get; set; } = 30.0f;
+        public float InertiaDrag { get; set; } = 0.92f;
+        public float MaxInertia { get; set; } = 9.0f;
+        public float VerticalThrustSmoothing { get; set; } = 0.6f;
+        public float VerticalLiftRate { get; set; } = 0.15f;
+        public float CeilingHeight { get; set; } = 1000f;
+        public float FloorHeight { get; set; } = -100f;
+        public float MaxScreenDrop { get; set; } = 450f;
+
+        private const float DEG2RAD = MathF.PI / 180f;
 
         // Applies drag to the current velocity and returns the updated position
         public IVector3 ApplyDragForce(IVector3 currentPosition, float deltaTime)
@@ -63,20 +86,20 @@ namespace GameAiAndControls.Physics
                 return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
             }
 
-            // 1. Legg til akselerasjon (hvis partikkelen har det)
+            // 1. Add acceleration (if the particle has it)
             Velocity.x += Acceleration.x;
             Velocity.y += Acceleration.y;
             Velocity.z += Acceleration.z;
 
-            // 2. Påfør gravity på Y-aksen (GravityStrength drar ned, altså minus siden -Y er opp)
+            // 2. Apply gravity on the Y axis (GravityStrength pulls down, minus since -Y is up)
             Velocity.y -= GravityStrength * deltaTime;
 
-            // 3. Påfør friksjon
+            // 3. Apply friction
             Velocity.x *= 0.95f;
             Velocity.y *= 0.95f;
             Velocity.z *= 0.95f;
 
-            // 4. Flytt posisjon motsatt av velocity
+            // 4. Move position opposite to velocity
             currentPosition.x -= Velocity.x;
             currentPosition.y -= Velocity.y;
             currentPosition.z -= Velocity.z;
@@ -131,19 +154,19 @@ namespace GameAiAndControls.Physics
                 };
             }
 
-            // Bounce på Y-akse (Top/Bottom)
+            // Bounce on Y axis (Top/Bottom)
             if (normal.y != 0)
             {
                 Velocity.y = -Velocity.y * EnergyLossFactor;
             }
 
-            // Bounce på X-akse (Left/Right)
+            // Bounce on X axis (Left/Right)
             if (normal.x != 0)
             {
                 Velocity.x = -Velocity.x * EnergyLossFactor;
             }
 
-            // Bounce på Z-akse (for front/back treff, hvis vi trenger det)
+            // Bounce on Z axis (for front/back hits, if needed)
             if (normal.z != 0)
             {
                 Velocity.z = -Velocity.z * EnergyLossFactor;
@@ -161,6 +184,70 @@ namespace GameAiAndControls.Physics
         public void TiltStabilization(ref IVector3 tiltState)
         {
             // Not implemented yet
+        }
+
+        public float ApplyFallGravity(float rotationDegrees, float deltaTime)
+        {
+            float rotationRad = (rotationDegrees % 180) * DEG2RAD;
+            float gravityModifier = MathF.Min(MathF.Max(MathF.Sin(rotationRad), 0.3f), 1.0f);
+            float adjustedGravity = GravityAcceleration * gravityModifier * GravityPullMultiplier * deltaTime;
+            FallVelocity = Math.Min(FallVelocity + adjustedGravity, TerminalFallSpeed);
+            return FallVelocity;
+        }
+
+        public void ReduceFallWithThrust(float thrust, float rotationDegrees, float deltaTime)
+        {
+            float upwardFactor = MathF.Cos(rotationDegrees * DEG2RAD);
+            float thrustLift = thrust * upwardFactor * 0.75f * deltaTime;
+            FallVelocity = Math.Max(FallVelocity - thrustLift, 0f);
+        }
+
+        public float CalculateThrustForces(float thrust, float tiltDegrees, float rotationDegrees, float deltaTime)
+        {
+            ThrustEffect = MathF.Min(ThrustEffect + ThrustRampRate * deltaTime, 1f);
+            VerticalLiftFactor = MathF.Min(VerticalLiftFactor + VerticalLiftRate * deltaTime, 1f);
+
+            float tiltRad = tiltDegrees * DEG2RAD;
+            float rotationRad = rotationDegrees * DEG2RAD;
+
+            float upwardFactor = MathF.Cos(tiltRad);
+            float forwardFactor = MathF.Sin(tiltRad);
+            float dirX = MathF.Sin(rotationRad);
+            float dirZ = MathF.Cos(rotationRad);
+
+            float xForce = thrust * ThrustEffect * ThrustSpeedMultiplier * forwardFactor * dirX * deltaTime;
+            float zForce = thrust * ThrustEffect * ThrustSpeedMultiplier * forwardFactor * dirZ * deltaTime;
+            float yDiff = thrust * VerticalLiftFactor * ThrustHeightMultiplier * upwardFactor * VerticalThrustSmoothing * deltaTime;
+
+            InertiaX += xForce;
+            InertiaZ += -zForce;
+
+            InertiaX = MathF.Min(MathF.Max(InertiaX * InertiaDrag, -MaxInertia), MaxInertia);
+            InertiaZ = MathF.Min(MathF.Max(InertiaZ * InertiaDrag, -MaxInertia), MaxInertia);
+
+            return yDiff;
+        }
+
+        public float CalculateCurrentSpeed(bool isLanded)
+        {
+            float horizontalSpeed = MathF.Sqrt(InertiaX * InertiaX + InertiaZ * InertiaZ);
+            float verticalSpeed = isLanded ? 0f : MathF.Abs(FallVelocity);
+            return horizontalSpeed + verticalSpeed;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float ClampToHeightRange(float value) => MathF.Min(MathF.Max(value, FloorHeight), CeilingHeight);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float ClampToScreenDrop(float value) => MathF.Min(value, MaxScreenDrop);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float WrapPosition(float position, float diff, float minValue, float maxValue)
+        {
+            float newPos = position + diff;
+            if (newPos >= maxValue) return minValue;
+            if (newPos <= minValue) return maxValue;
+            return newPos;
         }
 
         private class ExplodingTriangle
@@ -216,12 +303,12 @@ namespace GameAiAndControls.Physics
                     var rawDir = Subtract(triCenter, center);
                     var direction = Normalize(rawDir);
 
-                    // --- Her justeres retningen ---
-                    if (direction.y < 0) direction.y *= 0.25f; // Demp nedover
-                    if (direction.y < 0.05f) direction.y += 0.1f; // Løft litt
-                    direction.x *= 1.3f; // Mer sideveis
+                    // Adjust the explosion direction
+                    if (direction.y < 0) direction.y *= 0.25f; // Dampen downward
+                    if (direction.y < 0.05f) direction.y += 0.1f; // Lift slightly
+                    direction.x *= 1.3f; // More sideways spread
                     direction.z *= 1.3f;
-                    direction = Normalize(direction); // Re-normaliser
+                    direction = Normalize(direction); // Re-normalize
 
                     var rotationAxis = RandomUnitVector();
 
