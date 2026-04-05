@@ -21,30 +21,36 @@ namespace _3dRotations.World.Objects
             var upperTriangles = UpperTriangles();
             var lowerTriangles = LowerTriangles();
             var rearTriangles = RearTriangles();
+            var rearEngineTriangles = RearEngineTriangles();
             var jetMotorTriangle = JetMotorTriangle();
             var jetMotorDirectionGuide = JetMotorDirectionGuide();
             var cannon = TopCannonTriangles();
             var topCannonDirectionGuide = CannonDirectionGuide();
+            var winglets = WingletTriangles();
 
 
             // Add orb as an inhabitant
-            var ship = new _3dObject{ ObjectId = GameState.ObjectIdCounter++ };
+            var ship = new _3dObject { ObjectId = GameState.ObjectIdCounter++ };
             if (upperTriangles == null || lowerTriangles == null || rearTriangles == null) return ship;
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "UpperPart", Triangles = upperTriangles, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "LowerPart", Triangles = lowerTriangles, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "RearPart", Triangles = rearTriangles, IsVisible = true });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "RearEngine", Triangles = rearEngineTriangles!, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotor", Triangles = jetMotorTriangle!, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotorDirectionGuide", Triangles = jetMotorDirectionGuide!, IsVisible = false });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "TopCannon", Triangles = cannon!, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "WeaponDirectionGuide", Triangles = topCannonDirectionGuide!, IsVisible = false });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "WeaponStartGuide", Triangles = CannonStartGuide()!, IsVisible = false });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "Winglets", Triangles = winglets!, IsVisible = true });
 
             var crashBoxes = new List<List<IVector3>>();
             crashBoxes.Add(CreateCrashBoxFromTriangles(
                 upperTriangles
                     .Concat(lowerTriangles)
                     .Concat(rearTriangles)
-                    .Concat(jetMotorTriangle!),
+                    .Concat(rearEngineTriangles!)
+                    .Concat(jetMotorTriangle!)
+                    .Concat(winglets!),
                 ShipCrashBoxSizeMultiplier,
                 ShipCrashBoxPadding));
             crashBoxes.Add(CreateCrashBoxFromTriangles(
@@ -108,9 +114,9 @@ namespace _3dRotations.World.Objects
         {
             var tris = new List<ITriangleMeshWithColor>();
 
-            var back = new Vector3 { x = 0f, y = 20f, z = 28f }; // tykk ende
-            var mid = new Vector3 { x = 0f, y = -10f, z = 28f }; // mellomring
-            var front = new Vector3 { x = 0f, y = -45f, z = 28f }; // tynn ende
+            var back = new Vector3 { x = 0f, y = 20f, z = 28f };   // thick end
+            var mid = new Vector3 { x = 0f, y = -10f, z = 28f };   // mid ring
+            var front = new Vector3 { x = 0f, y = -45f, z = 28f }; // muzzle
 
             float rxB = 10f, ryB = 5f;
             float rxM = 6f, ryM = 3.5f;
@@ -164,39 +170,50 @@ namespace _3dRotations.World.Objects
                 };
             }
 
-            string[] backToMidColors = { "8A8A8A", "777777" }; // litt lys/mørk
+            var barrelCenter = new Vector3
+            {
+                x = (back.x + front.x) / 2f,
+                y = (back.y + front.y) / 2f,
+                z = (back.z + front.z) / 2f
+            };
+
+            string[] backToMidColors = { "8A8A8A", "777777" };
             string[] midToFrontColors = { "909090", "7A7A7A" };
             string frontCapColor = "B8B8B8";
-            string mountColor = "445A77";   // festebrakett: egen (stålblå) farge
+            string mountColor = "445A77";
 
+            // Back-to-mid barrel section (right-hand rule enforced)
             for (int i = 0; i < 8; i++)
             {
                 int j = (i + 1) % 8;
                 string col = backToMidColors[i % 2];
-                tris.Add(new TriangleMeshWithColor { Color = col, vert1 = B[i], vert2 = B[j], vert3 = M[j] });
-                tris.Add(new TriangleMeshWithColor { Color = col, vert1 = B[i], vert2 = M[j], vert3 = M[i] });
+                tris.Add(CreateTriangleOutward(B[i], B[j], M[j], barrelCenter, col));
+                tris.Add(CreateTriangleOutward(B[i], M[j], M[i], barrelCenter, col));
             }
 
+            // Mid-to-front barrel section (right-hand rule enforced)
             for (int i = 0; i < 8; i++)
             {
                 int j = (i + 1) % 8;
                 string col = midToFrontColors[i % 2];
-                tris.Add(new TriangleMeshWithColor { Color = col, vert1 = M[i], vert2 = M[j], vert3 = F[j] });
-                tris.Add(new TriangleMeshWithColor { Color = col, vert1 = M[i], vert2 = F[j], vert3 = F[i] });
+                tris.Add(CreateTriangleOutward(M[i], M[j], F[j], barrelCenter, col));
+                tris.Add(CreateTriangleOutward(M[i], F[j], F[i], barrelCenter, col));
             }
 
+            // Front cap (right-hand rule enforced)
             var Fc = new Vector3 { x = front.x + wx * 0.2f, y = front.y + wy * 0.2f, z = front.z + wz * 0.2f };
             int[] idx = { 0, 2, 4, 6 };
             for (int k = 0; k < 4; k++)
             {
                 int a = idx[k], b = idx[(k + 1) % 4];
-                tris.Add(new TriangleMeshWithColor { Color = frontCapColor, vert1 = F[a], vert2 = F[b], vert3 = Fc });
+                tris.Add(CreateTriangleOutward(F[a], F[b], Fc, barrelCenter, frontCapColor));
             }
 
-            float footHalfX = 6f;   // bredde/2 langs u
-            float footUp = 2f;   // opp mot kanon (langs -v)
-            float footDown = 4.5f; // ned mot skrog (langs +v)
-            float footAhead = 6f;   // litt mot front (langs w)
+            // Mount bracket
+            float footHalfX = 6f;
+            float footUp = 2f;
+            float footDown = 4.5f;
+            float footAhead = 6f;
 
             var T1 = new Vector3 { x = back.x + ux * (+footHalfX) + vx * (-footUp), y = back.y + uy * (+footHalfX) + vy * (-footUp), z = back.z + uz * (+footHalfX) + vz * (-footUp) };
             var T2 = new Vector3 { x = back.x + ux * (-footHalfX) + vx * (-footUp), y = back.y + uy * (-footHalfX) + vy * (-footUp), z = back.z + uz * (-footHalfX) + vz * (-footUp) };
@@ -206,44 +223,106 @@ namespace _3dRotations.World.Objects
             var B2p = new Vector3 { x = T2.x + vx * (footDown + footUp), y = T2.y + vy * (footDown + footUp), z = T2.z + vz * (footDown + footUp) };
             var B3p = new Vector3 { x = T3.x + vx * (footDown + footUp), y = T3.y + vy * (footDown + footUp), z = T3.z + vz * (footDown + footUp) };
 
-            // Tre sideflater (2 tri hver) + to ender (1 tri hver) = 8 tri
-            tris.Add(new TriangleMeshWithColor { Color = mountColor, vert1 = T1, vert2 = T2, vert3 = B2p });
-            tris.Add(new TriangleMeshWithColor { Color = mountColor, vert1 = T1, vert2 = B2p, vert3 = B1p });
+            var mountCenter = new Vector3
+            {
+                x = (T1.x + T2.x + T3.x + B1p.x + B2p.x + B3p.x) / 6f,
+                y = (T1.y + T2.y + T3.y + B1p.y + B2p.y + B3p.y) / 6f,
+                z = (T1.z + T2.z + T3.z + B1p.z + B2p.z + B3p.z) / 6f
+            };
 
-            tris.Add(new TriangleMeshWithColor { Color = mountColor, vert1 = T2, vert2 = T3, vert3 = B3p });
-            tris.Add(new TriangleMeshWithColor { Color = mountColor, vert1 = T2, vert2 = B3p, vert3 = B2p });
+            // Side faces (right-hand rule enforced)
+            tris.Add(CreateTriangleOutward(T1, T2, B2p, mountCenter, mountColor));
+            tris.Add(CreateTriangleOutward(T1, B2p, B1p, mountCenter, mountColor));
 
-            tris.Add(new TriangleMeshWithColor { Color = mountColor, vert1 = T3, vert2 = T1, vert3 = B1p });
-            tris.Add(new TriangleMeshWithColor { Color = mountColor, vert1 = T3, vert2 = B1p, vert3 = B3p });
+            tris.Add(CreateTriangleOutward(T2, T3, B3p, mountCenter, mountColor));
+            tris.Add(CreateTriangleOutward(T2, B3p, B2p, mountCenter, mountColor));
 
-            tris.Add(new TriangleMeshWithColor { Color = mountColor, vert1 = T1, vert2 = T3, vert3 = T2 });   // topp
-            tris.Add(new TriangleMeshWithColor { Color = mountColor, vert1 = B1p, vert2 = B2p, vert3 = B3p }); // bunn
+            tris.Add(CreateTriangleOutward(T3, T1, B1p, mountCenter, mountColor));
+            tris.Add(CreateTriangleOutward(T3, B1p, B3p, mountCenter, mountColor));
+
+            // Top and bottom caps
+            tris.Add(CreateTriangleOutward(T1, T3, T2, mountCenter, mountColor));
+            tris.Add(CreateTriangleOutward(B1p, B2p, B3p, mountCenter, mountColor));
 
             return tris;
         }
 
         public static List<ITriangleMeshWithColor>? UpperTriangles()
         {
+            var noseLeft = new Vector3 { x = -50, y = -50, z = 0 };
+            var noseRight = new Vector3 { x = 50, y = -50, z = 0 };
+            var peak = new Vector3 { x = 0, y = 50, z = 25 };
+            var wingTipLeft = new Vector3 { x = -65, y = 45, z = 0 };
+            var wingTipRight = new Vector3 { x = 65, y = 45, z = 0 };
+
+            // Edge midpoints pushed outward for rounding
+            var noseFront = new Vector3 { x = 0, y = -50, z = 0 };
+            var leftInner = new Vector3 { x = -27, y = 0, z = 16 };
+            var rightInner = new Vector3 { x = 27, y = 0, z = 16 };
+            var leftWingEdge = new Vector3 { x = -60, y = -3, z = 0 };
+            var rightWingEdge = new Vector3 { x = 60, y = -3, z = 0 };
+            var leftRearWing = new Vector3 { x = -35, y = 48, z = 15 };
+            var rightRearWing = new Vector3 { x = 35, y = 48, z = 15 };
+
             var upper = new List<ITriangleMeshWithColor>
             {
-                //Three upper triangles
-                new TriangleMeshWithColor { Color = "007700", vert1 = { x = -50, y = -50, z = 0 }, vert2 = { x = 0, y = 50, z = 25 }, vert3 = { x = -65, y = 45, z = 0 } },
-                new TriangleMeshWithColor { Color = "00ff00", vert1 = { x = 0, y = 50, z = 25 }, vert2 = { x = -50, y = -50, z = 0 }, vert3 = { x = 50, y = -50, z = 0 } },
-                new TriangleMeshWithColor { Color = "007700", vert1 = { x = 0, y = 50, z = 25 }, vert2 =  { x = 50, y = -50, z = 0 } , vert3 = { x = 65, y = 45, z = 0 } },
+                // Center panels
+                new TriangleMeshWithColor { Color = "00cc00", vert1 = noseLeft, vert2 = noseFront, vert3 = leftInner },
+                new TriangleMeshWithColor { Color = "00cc00", vert1 = noseFront, vert2 = noseRight, vert3 = rightInner },
+                new TriangleMeshWithColor { Color = "00dd00", vert1 = noseFront, vert2 = rightInner, vert3 = leftInner },
+                new TriangleMeshWithColor { Color = "00ee00", vert1 = leftInner, vert2 = rightInner, vert3 = peak },
+                // Left wing panels
+                new TriangleMeshWithColor { Color = "008800", vert1 = noseLeft, vert2 = leftInner, vert3 = leftWingEdge },
+                new TriangleMeshWithColor { Color = "008800", vert1 = leftInner, vert2 = peak, vert3 = leftRearWing },
+                new TriangleMeshWithColor { Color = "007700", vert1 = leftInner, vert2 = leftRearWing, vert3 = leftWingEdge },
+                new TriangleMeshWithColor { Color = "006600", vert1 = leftWingEdge, vert2 = leftRearWing, vert3 = wingTipLeft },
+                // Right wing panels
+                new TriangleMeshWithColor { Color = "008800", vert1 = noseRight, vert2 = rightWingEdge, vert3 = rightInner },
+                new TriangleMeshWithColor { Color = "006600", vert1 = rightWingEdge, vert2 = wingTipRight, vert3 = rightRearWing },
+                new TriangleMeshWithColor { Color = "007700", vert1 = rightWingEdge, vert2 = rightRearWing, vert3 = rightInner },
+                new TriangleMeshWithColor { Color = "008800", vert1 = rightInner, vert2 = rightRearWing, vert3 = peak },
             };
             return upper;
         }
         public static List<ITriangleMeshWithColor>? LowerTriangles()
         {
+            var noseLeft = new Vector3 { x = -50, y = -50, z = 0 };
+            var noseRight = new Vector3 { x = 50, y = -50, z = 0 };
+            var noseMid = new Vector3 { x = 0, y = -50, z = 0 };
+            var bottomPeak = new Vector3 { x = 0, y = 50, z = -25 };
+            var wingTipLeft = new Vector3 { x = -65, y = 45, z = 0 };
+            var wingTipRight = new Vector3 { x = 65, y = 45, z = 0 };
+            var keelLeft = new Vector3 { x = -25, y = 0, z = -12 };
+            var keelRight = new Vector3 { x = 25, y = 0, z = -12 };
+
+            // Edge midpoints pushed outward (downward) for rounding
+            var leftLowerWingEdge = new Vector3 { x = -60, y = -3, z = 0 };
+            var leftLowerInner = new Vector3 { x = -27, y = 0, z = -15 };
+            var leftLowerRear = new Vector3 { x = -35, y = 48, z = -15 };
+            var rightLowerWingEdge = new Vector3 { x = 60, y = -3, z = 0 };
+            var rightLowerInner = new Vector3 { x = 27, y = 0, z = -15 };
+            var rightLowerRear = new Vector3 { x = 35, y = 48, z = -15 };
+
             var lower = new List<ITriangleMeshWithColor>
             {
-                //Six bottom triangles
-                new TriangleMeshWithColor { Color = "007799", vert1 = { x = -65, y = 45, z = 0 } , vert2 = { x = 0, y = 50, z = -25 }, vert3 = { x = -50, y = -50, z = 0 } },
-                new TriangleMeshWithColor { Color = "007799", vert1 = { x = 50, y = -50, z = 0 }, vert2 = { x = 0, y = 50, z = -25 } , vert3 = { x = 65, y = 45, z = 0 } },
-
-                new TriangleMeshWithColor { Color = "00ff99", vert1 = { x = -50, y = -50, z = 0 } , vert2 = { x = -25, y = 0, z = -12 } , vert3 = { x = 0, y = -50, z = 0 } },
-                new TriangleMeshWithColor { Color = "00ff99", vert1 = { x = 0, y = -50, z = 0 } , vert2 = { x = 25, y = 0, z = -12 } , vert3 = { x = 50, y = -50, z = 0 } },
-                new TriangleMeshWithColor { Color = "00ff99", vert1 = { x = -25, y = 0, z = -12 } , vert2 = { x = 25, y = 0, z = -12 } , vert3 = { x = 0, y = -50, z = 0 }},
+                // Left lower wing panels
+                new TriangleMeshWithColor { Color = "006688", vert1 = wingTipLeft, vert2 = leftLowerRear, vert3 = leftLowerWingEdge },
+                new TriangleMeshWithColor { Color = "007799", vert1 = leftLowerRear, vert2 = bottomPeak, vert3 = leftLowerInner },
+                new TriangleMeshWithColor { Color = "006688", vert1 = leftLowerRear, vert2 = leftLowerInner, vert3 = leftLowerWingEdge },
+                new TriangleMeshWithColor { Color = "007799", vert1 = leftLowerWingEdge, vert2 = leftLowerInner, vert3 = noseLeft },
+                // Right lower wing panels
+                new TriangleMeshWithColor { Color = "007799", vert1 = noseRight, vert2 = rightLowerInner, vert3 = rightLowerWingEdge },
+                new TriangleMeshWithColor { Color = "007799", vert1 = rightLowerInner, vert2 = bottomPeak, vert3 = rightLowerRear },
+                new TriangleMeshWithColor { Color = "006688", vert1 = rightLowerInner, vert2 = rightLowerRear, vert3 = rightLowerWingEdge },
+                new TriangleMeshWithColor { Color = "006688", vert1 = rightLowerWingEdge, vert2 = rightLowerRear, vert3 = wingTipRight },
+                // Front bottom keel panels
+                new TriangleMeshWithColor { Color = "00ff99", vert1 = noseLeft, vert2 = keelLeft, vert3 = noseMid },
+                new TriangleMeshWithColor { Color = "00ff99", vert1 = noseMid, vert2 = keelRight, vert3 = noseRight },
+                new TriangleMeshWithColor { Color = "00dd88", vert1 = keelLeft, vert2 = keelRight, vert3 = noseMid },
+                // Belly panels connecting keel to wing undersurface
+                // (engine-adjacent belly panels moved to JetMotor part for thrust-based color control)
+                new TriangleMeshWithColor { Color = "00dd88", vert1 = noseLeft, vert2 = leftLowerInner, vert3 = keelLeft },
+                new TriangleMeshWithColor { Color = "00dd88", vert1 = noseRight, vert2 = keelRight, vert3 = rightLowerInner },
             };
             return lower;
         }
@@ -251,7 +330,12 @@ namespace _3dRotations.World.Objects
         {
             var jet = new List<ITriangleMeshWithColor>
             {
+                // Main engine triangle
                 new TriangleMeshWithColor { Color = "ffff00", vert1 = { x = 25, y = 0, z = -12 }, vert2 = { x = -25, y = 0, z = -12 }, vert3 = { x = 0, y = 50, z = -25 } },
+                // Left engine glow panel (keelLeft -> leftLowerInner -> bottomPeak)
+                new TriangleMeshWithColor { Color = "ffff00", vert1 = { x = -25, y = 0, z = -12 }, vert2 = { x = -27, y = 0, z = -15 }, vert3 = { x = 0, y = 50, z = -25 } },
+                // Right engine glow panel (keelRight -> bottomPeak -> rightLowerInner)
+                new TriangleMeshWithColor { Color = "ffff00", vert1 = { x = 25, y = 0, z = -12 }, vert2 = { x = 0, y = 50, z = -25 }, vert3 = { x = 27, y = 0, z = -15 } },
             };
             return jet;
         }
@@ -309,16 +393,138 @@ namespace _3dRotations.World.Objects
 
         public static List<ITriangleMeshWithColor>? RearTriangles()
         {
+            var bottomPeak = new Vector3 { x = 0, y = 50, z = -25 };
+            var topPeak = new Vector3 { x = 0, y = 50, z = 25 };
+            var wingTipLeft = new Vector3 { x = -65, y = 45, z = 0 };
+            var wingTipRight = new Vector3 { x = 65, y = 45, z = 0 };
+
+            // Edge midpoints pushed outward for rounding
+            var leftRearMid = new Vector3 { x = -38, y = 60, z = 0 };
+            var rightRearMid = new Vector3 { x = 38, y = 60, z = 0 };
+
+            // Boundary midpoints matching upper/lower hull for seamless edges
+            var leftRearWing = new Vector3 { x = -35, y = 48, z = 15 };
+            var rightRearWing = new Vector3 { x = 35, y = 48, z = 15 };
+            var leftLowerRear = new Vector3 { x = -35, y = 48, z = -15 };
+            var rightLowerRear = new Vector3 { x = 35, y = 48, z = -15 };
+
             var rear = new List<ITriangleMeshWithColor>
             {
-                //Four back triangles
-                new TriangleMeshWithColor { Color = "ff0000", vert1 = { x = 0, y = 50, z = -25 }, vert2 = { x = 0, y = 70, z = 0 }, vert3 =  { x = 65, y = 45, z = 0 } },
-                new TriangleMeshWithColor { Color = "ff0000", vert1 = { x = -65, y = 45, z = 0 } , vert2 = { x = 0, y = 70, z = 0 }, vert3 = { x = 0, y = 50, z = -25 } },
-
-                new TriangleMeshWithColor { Color = "ff0000", vert1 = { x = 0, y = 70, z = 0 }, vert2 = { x = 0, y = 50, z = 25 }, vert3 =  { x = 65, y = 45, z = 0 } },
-                new TriangleMeshWithColor { Color = "ff0000", vert1 = { x = -65, y = 45, z = 0 } , vert2 = { x = 0, y = 50, z = 25 }, vert3 = { x = 0, y = 70, z = 0 } },
+                // Lower-right rear (center engine triangles in separate RearEngine part)
+                new TriangleMeshWithColor { Color = "ff0000", vert1 = bottomPeak, vert2 = rightRearMid, vert3 = rightLowerRear },
+                new TriangleMeshWithColor { Color = "ff0000", vert1 = rightLowerRear, vert2 = rightRearMid, vert3 = wingTipRight },
+                // Lower-left rear
+                new TriangleMeshWithColor { Color = "ff0000", vert1 = wingTipLeft, vert2 = leftRearMid, vert3 = leftLowerRear },
+                new TriangleMeshWithColor { Color = "cc0000", vert1 = leftLowerRear, vert2 = leftRearMid, vert3 = bottomPeak },
+                // Upper-right rear (center engine triangles in separate RearEngine part)
+                new TriangleMeshWithColor { Color = "ee2200", vert1 = rightRearMid, vert2 = topPeak, vert3 = rightRearWing },
+                new TriangleMeshWithColor { Color = "ee2200", vert1 = rightRearMid, vert2 = rightRearWing, vert3 = wingTipRight },
+                // Upper-left rear
+                new TriangleMeshWithColor { Color = "ee2200", vert1 = wingTipLeft, vert2 = leftRearWing, vert3 = leftRearMid },
+                new TriangleMeshWithColor { Color = "ee2200", vert1 = leftRearWing, vert2 = topPeak, vert3 = leftRearMid },
             };
             return rear;
+        }
+
+        public static List<ITriangleMeshWithColor>? RearEngineTriangles()
+        {
+            var bottomPeak = new Vector3 { x = 0, y = 50, z = -25 };
+            var topPeak = new Vector3 { x = 0, y = 50, z = 25 };
+            var tail = new Vector3 { x = 0, y = 70, z = 0 };
+            var leftRearMid = new Vector3 { x = -38, y = 60, z = 0 };
+            var rightRearMid = new Vector3 { x = 38, y = 60, z = 0 };
+
+            return new List<ITriangleMeshWithColor>
+            {
+                // Lower rear engine
+                new TriangleMeshWithColor { Color = "ffff00", vert1 = bottomPeak, vert2 = tail, vert3 = rightRearMid },
+                new TriangleMeshWithColor { Color = "ffff00", vert1 = leftRearMid, vert2 = tail, vert3 = bottomPeak },
+                // Upper rear engine
+                new TriangleMeshWithColor { Color = "ffff00", vert1 = tail, vert2 = topPeak, vert3 = rightRearMid },
+                new TriangleMeshWithColor { Color = "ffff00", vert1 = leftRearMid, vert2 = topPeak, vert3 = tail },
+            };
+        }
+
+        public static List<ITriangleMeshWithColor>? WingletTriangles()
+        {
+            var lBase1 = new Vector3 { x = -58, y = 35, z = 0 };
+            var lBase2 = new Vector3 { x = -65, y = 45, z = 0 };
+            var lTop = new Vector3 { x = -62, y = 42, z = 15 };
+
+            var rBase1 = new Vector3 { x = 58, y = 35, z = 0 };
+            var rBase2 = new Vector3 { x = 65, y = 45, z = 0 };
+            var rTop = new Vector3 { x = 62, y = 42, z = 15 };
+
+            return new List<ITriangleMeshWithColor>
+            {
+                new TriangleMeshWithColor { Color = "005522", vert1 = lBase1, vert2 = lBase2, vert3 = lTop },
+                new TriangleMeshWithColor { Color = "007733", vert1 = lBase2, vert2 = lBase1, vert3 = lTop },
+                new TriangleMeshWithColor { Color = "005522", vert1 = rBase2, vert2 = rBase1, vert3 = rTop },
+                new TriangleMeshWithColor { Color = "007733", vert1 = rBase1, vert2 = rBase2, vert3 = rTop },
+            };
+        }
+
+        // Right-hand rule enforcement helpers
+        private static Vector3 Subtract(Vector3 a, Vector3 b)
+        {
+            return new Vector3 { x = a.x - b.x, y = a.y - b.y, z = a.z - b.z };
+        }
+
+        private static Vector3 Cross(Vector3 a, Vector3 b)
+        {
+            return new Vector3
+            {
+                x = a.y * b.z - a.z * b.y,
+                y = a.z * b.x - a.x * b.z,
+                z = a.x * b.y - a.y * b.x
+            };
+        }
+
+        private static float Dot(Vector3 a, Vector3 b)
+        {
+            return a.x * b.x + a.y * b.y + a.z * b.z;
+        }
+
+        private static Vector3 Normalize(Vector3 v)
+        {
+            float lenSq = v.x * v.x + v.y * v.y + v.z * v.z;
+            if (lenSq <= 1e-6f)
+                return new Vector3 { x = 0, y = 0, z = 0 };
+            float invLen = 1.0f / (float)System.Math.Sqrt(lenSq);
+            return new Vector3 { x = v.x * invLen, y = v.y * invLen, z = v.z * invLen };
+        }
+
+        private static TriangleMeshWithColor CreateTriangleOutward(
+            Vector3 v1, Vector3 v2, Vector3 v3, Vector3 center, string color)
+        {
+            var edge1 = Subtract(v2, v1);
+            var edge2 = Subtract(v3, v1);
+            var normal = Normalize(Cross(edge1, edge2));
+
+            var mid = new Vector3
+            {
+                x = (v1.x + v2.x + v3.x) / 3f,
+                y = (v1.y + v2.y + v3.y) / 3f,
+                z = (v1.z + v2.z + v3.z) / 3f
+            };
+
+            var desired = Normalize(Subtract(mid, center));
+            float dot = Dot(normal, desired);
+
+            if (dot < 0f)
+            {
+                var temp = v2;
+                v2 = v3;
+                v3 = temp;
+            }
+
+            return new TriangleMeshWithColor
+            {
+                Color = color,
+                vert1 = v1,
+                vert2 = v2,
+                vert3 = v3
+            };
         }
     }
 }

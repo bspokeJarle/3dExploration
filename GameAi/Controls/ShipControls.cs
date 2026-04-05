@@ -28,6 +28,12 @@ namespace GameAiAndControls.Controls
         private const float DEG2RAD = MathF.PI / 180f;
         private const float ShipRestingScreenY = 200f;
 
+        // Engine glow colors: idle (dark red) when no thrust, active (yellow) at full thrust.
+        private static readonly (int r, int g, int b) EngineActiveRgb = (0xFF, 0xFF, 0x00);
+        private static readonly (int r, int g, int b) EngineIdleRgb = (0x88, 0x11, 0x00);
+        private static readonly Random _flickerRng = new();
+        private const float EngineFlickerAmount = 0.10f;
+
         // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
         private SoundDefinition? _rocketSound;
@@ -501,6 +507,7 @@ namespace GameAiAndControls.Controls
             if (ThrustOn)
             {
                 landed = false;
+                Physics.ResetHover();
                 IncreaseThrustAndRelease();
                 HandleThrust(deltaTime);
             }
@@ -549,7 +556,10 @@ namespace GameAiAndControls.Controls
             }
 
             if (!isExploding)
+            {
                 ApplyLocalTiltToMesh(tilt, theObject);
+                UpdateEngineColors(theObject);
+            }
 
             if (theObject.Rotation != null)
             {
@@ -579,9 +589,17 @@ namespace GameAiAndControls.Controls
                 else if (theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
                 {
-                    // Surface/terrain landing — stop falling, let ApplyGravity ease to resting position
+                    // Surface/terrain landing — stop falling and restore the resting
+                    // ship-vs-surface layout.  During spaceflight ascent the screen
+                    // position (ObjectOffsets.y) clamps at -100 while the altitude
+                    // (GlobalMapPosition.y) can reach 1000, creating a large desync.
+                    // Snapping both back on landing prevents the surface from
+                    // appearing shifted after the ship returns from high altitude.
                     landed = true;
                     Physics.InertiaY = 0f;
+                    GameState.SurfaceState.GlobalMapPosition.y = 0f;
+                    ParentObject.ObjectOffsets.y = ShipRestingScreenY;
+
                     if (landingSpeed > 5f)
                     {
                         theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
@@ -715,10 +733,12 @@ namespace GameAiAndControls.Controls
         {
             if (landed && !ThrustOn)
             {
-                // Smoothly settle screen position and altitude to resting values after landing
+                // Smoothly settle screen position and altitude to resting values after landing.
+                // The landing handler already snaps both values for spaceflight returns;
+                // this settle handles gentle landings and any residual drift.
                 float screenDiff = ShipRestingScreenY - ParentObject.ObjectOffsets.y;
                 float altDiff = -GameState.SurfaceState.GlobalMapPosition.y;
-                float settleRate = 8f;
+                float settleRate = 12f;
                 float t = MathF.Min(settleRate * deltaTime, 1f);
 
                 if (MathF.Abs(screenDiff) > 0.5f)
@@ -737,6 +757,78 @@ namespace GameAiAndControls.Controls
             float verticalInertia = Physics.ApplyFallGravity(rotationX, deltaTime);
             ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia));
             GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia);
+
+            // Gently pull screen position and altitude back toward resting values
+            float airSettle = MathF.Min(Physics.AirborneSettleRate * deltaTime, 1f);
+            float airScreenDiff = ShipRestingScreenY - ParentObject.ObjectOffsets.y;
+            float airAltDiff = -GameState.SurfaceState.GlobalMapPosition.y;
+
+            if (MathF.Abs(airScreenDiff) > 0.5f)
+                ParentObject.ObjectOffsets.y += airScreenDiff * airSettle;
+
+            if (MathF.Abs(airAltDiff) > 0.5f)
+                GameState.SurfaceState.GlobalMapPosition.y += airAltDiff * airSettle;
+        }
+
+        /// <summary>
+        /// Decomposes current thrust into vertical (altitude) and forward components
+        /// based on the ship's tilt angle. Returns normalised fractions in [0, 1].
+        /// </summary>
+        private (float vertical, float forward) GetThrustComponents()
+        {
+            if (!ThrustOn || Thrust <= 0f)
+                return (0f, 0f);
+
+            float thrustNormalized = Thrust / MaxThrust;
+            float tiltRad = tilt * DEG2RAD;
+            float vertical = thrustNormalized * MathF.Abs(MathF.Cos(tiltRad));
+            float forward  = thrustNormalized * MathF.Abs(MathF.Sin(tiltRad));
+            return (vertical, forward);
+        }
+
+        /// <summary>
+        /// Sets the JetMotor (lower engine) and RearEngine colors based on
+        /// the current vertical and forward thrust fractions.
+        /// </summary>
+        private void UpdateEngineColors(I3dObject theObject)
+        {
+            var (verticalThrust, forwardThrust) = GetThrustComponents();
+            string lowerColor = InterpolateEngineColor(verticalThrust);
+            string rearColor  = InterpolateEngineColor(forwardThrust);
+            SetPartColor(theObject, "JetMotor", lowerColor);
+            SetPartColor(theObject, "RearEngine", rearColor);
+        }
+
+        /// <summary>
+        /// Linearly interpolates between the idle (dark red) and active (yellow)
+        /// engine colors. <paramref name="t"/> is clamped to [0, 1].
+        /// </summary>
+        private static string InterpolateEngineColor(float t)
+        {
+            t = MathF.Max(0f, MathF.Min(1f, t));
+            float flicker = (_flickerRng.NextSingle() - 0.5f) * 2f * EngineFlickerAmount;
+            t = MathF.Max(0f, MathF.Min(1f, t + flicker));
+            int r = (int)(EngineIdleRgb.r + (EngineActiveRgb.r - EngineIdleRgb.r) * t);
+            int g = (int)(EngineIdleRgb.g + (EngineActiveRgb.g - EngineIdleRgb.g) * t);
+            int b = (int)(EngineIdleRgb.b + (EngineActiveRgb.b - EngineIdleRgb.b) * t);
+            return $"{r:X2}{g:X2}{b:X2}";
+        }
+
+        private static void SetPartColor(I3dObject theObject, string partName, string color)
+        {
+            foreach (var part in theObject.ObjectParts)
+            {
+                if (part.PartName != partName)
+                    continue;
+
+                for (int i = 0; i < part.Triangles.Count; i++)
+                {
+                    var tri = part.Triangles[i];
+                    tri.Color = color;
+                    part.Triangles[i] = tri;
+                }
+                break;
+            }
         }
 
         public void Dispose()

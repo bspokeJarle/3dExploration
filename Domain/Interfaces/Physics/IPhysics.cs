@@ -47,6 +47,13 @@ namespace Domain
         float FloorHeight { get; set; }
         float MaxScreenDrop { get; set; }
 
+        float HoverElapsed { get; set; }
+        float HoverFloatDuration { get; set; }
+        float HoverRampDuration { get; set; }
+        float HoverMinGravityScale { get; set; }
+        float AirborneSettleRate { get; set; }
+        void ResetHover();
+
         float ApplyFallGravity(float rotationDegrees, float deltaTime);
         void ReduceFallWithThrust(float thrust, float rotationDegrees, float deltaTime);
         float CalculateThrustForces(float thrust, float tiltDegrees, float rotationDegrees, float deltaTime);

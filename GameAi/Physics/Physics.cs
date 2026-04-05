@@ -44,7 +44,7 @@ namespace GameAiAndControls.Physics
         public float TerminalFallSpeed { get; set; } = 35f;
         public float GravityPullMultiplier { get; set; } = 9.0f;
         public float ThrustSpeedMultiplier { get; set; } = 9.6f;
-        public float ThrustHeightMultiplier { get; set; } = 10.0f;
+        public float ThrustHeightMultiplier { get; set; } = 7.0f;
         public float ThrustRampRate { get; set; } = 30.0f;
         public float InertiaDrag { get; set; } = 0.92f;
         public float MaxInertia { get; set; } = 45.0f;
@@ -55,6 +55,20 @@ namespace GameAiAndControls.Physics
         public float CeilingHeight { get; set; } = 1000f;
         public float FloorHeight { get; set; } = -100f;
         public float MaxScreenDrop { get; set; } = 450f;
+
+        // ── Hover/float after thrust release ─────────────────────────
+        // When thrust stops, gravity stays at HoverMinGravityScale for
+        // HoverFloatDuration seconds, then ramps linearly to full over
+        // HoverRampDuration seconds.
+        public float HoverElapsed { get; set; } = 0f;
+        public float HoverFloatDuration { get; set; } = 0.4f;
+        public float HoverRampDuration { get; set; } = 0.75f;
+        public float HoverMinGravityScale { get; set; } = 0.05f;
+
+        // ── Airborne settle (return-to-rest while not thrusting) ─────
+        // Gentle spring rate that pulls the surface back toward its
+        // resting screen position and zero altitude when airborne.
+        public float AirborneSettleRate { get; set; } = 2.0f;
 
         // Applies drag and clamps inertia to [-MaxInertia, MaxInertia]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -191,16 +205,35 @@ namespace GameAiAndControls.Physics
         public void TiltStabilization(ref IVector3 tiltState) { }
 
         // Applies gravity when falling (no thrust). Returns updated InertiaY.
+        // Gravity is scaled by the hover ramp: near-zero during float, then gradually increasing.
         public float ApplyFallGravity(float rotationDegrees, float deltaTime)
         {
+            HoverElapsed += deltaTime;
+            float gravityScale = GetHoverGravityScale();
+
             float rotationRad = (rotationDegrees % 180) * DEG2RAD;
             float gravityModifier = Math.Clamp(MathF.Sin(rotationRad), 0.3f, 1.0f);
-            float gravityPull = GravityAcceleration * gravityModifier * GravityPullMultiplier * deltaTime;
+            float gravityPull = GravityAcceleration * gravityModifier * GravityPullMultiplier * gravityScale * deltaTime;
 
             InertiaY = ApplyDragAndClamp(InertiaY - gravityPull);
             FallVelocity = MathF.Max(-InertiaY, 0f);
             return InertiaY;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float GetHoverGravityScale()
+        {
+            if (HoverElapsed < HoverFloatDuration)
+                return HoverMinGravityScale;
+
+            float rampElapsed = HoverElapsed - HoverFloatDuration;
+            if (rampElapsed >= HoverRampDuration)
+                return 1f;
+
+            return HoverMinGravityScale + (1f - HoverMinGravityScale) * (rampElapsed / HoverRampDuration);
+        }
+
+        public void ResetHover() => HoverElapsed = 0f;
 
         // Retained for IPhysics contract — no longer called by ship controls
         public void ReduceFallWithThrust(float thrust, float rotationDegrees, float deltaTime)
