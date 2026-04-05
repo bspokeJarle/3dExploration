@@ -52,6 +52,7 @@ namespace GameAiAndControls.Controls
         {
             throw new NotImplementedException();
         }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
 
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {

@@ -32,7 +32,14 @@ namespace GameAiAndControls.Controls
         private static readonly (int r, int g, int b) EngineActiveRgb = (0xFF, 0xFF, 0x00);
         private static readonly (int r, int g, int b) EngineIdleRgb = (0x88, 0x11, 0x00);
         private static readonly Random _flickerRng = new();
+        private static readonly Random _emitterRng = new();
         private const float EngineFlickerAmount = 0.10f;
+
+        // Cannon recoil animation state
+        private float _cannonRecoilOffset = 0f;
+        private float _cannonRecoilReturnSpeed = 0f;
+        private const float CannonRecoilDistance = 20f;
+        private const float CannonRecoilReturnFraction = 0.6f;
 
         // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
@@ -67,6 +74,8 @@ namespace GameAiAndControls.Controls
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public ITriangleMeshWithColor? WeaponStartCoordinates { get; set; }
         public ITriangleMeshWithColor? WeaponGuideCoordinates { get; set; }
+        public ITriangleMeshWithColor? RearStartCoordinates { get; set; }
+        public ITriangleMeshWithColor? RearGuideCoordinates { get; set; }
 
         public float Thrust { get; set; } = 0;
         public bool ThrustOn { get; set; } = false;
@@ -112,6 +121,12 @@ namespace GameAiAndControls.Controls
         {
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
+        }
+
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        {
+            if (StartCoord != null) RearStartCoordinates = StartCoord;
+            if (GuideCoord != null) RearGuideCoordinates = GuideCoord;
         }
 
         private void GlobalHookKeyDown(object sender, KeyEventArgs e)
@@ -337,6 +352,17 @@ namespace GameAiAndControls.Controls
                 GameState.GamePlayState.SelectedWeapon,
                 ParentObject,
                 tilt);
+
+            // Trigger cannon recoil for lazer and bullet
+            if (GameState.GamePlayState.SelectedWeapon == WeaponType.Lazer ||
+                GameState.GamePlayState.SelectedWeapon == WeaponType.Bullet)
+            {
+                _cannonRecoilOffset = CannonRecoilDistance;
+                float cooldown = GameState.GamePlayState.SelectedWeapon == WeaponType.Bullet
+                    ? GameState.GamePlayState.BulletCooldownSeconds
+                    : GameState.GamePlayState.LaserCooldownSeconds;
+                _cannonRecoilReturnSpeed = CannonRecoilDistance / (cooldown * CannonRecoilReturnFraction);
+            }
         }
 
         private void DeployDecoy()
@@ -432,12 +458,45 @@ namespace GameAiAndControls.Controls
         {
             if (Thrust < MaxThrust) Thrust += ThrustIncreaseRate;
 
+            int totalThrust = (int)Thrust;
+
+            if (totalThrust == 0)
+            {
+                ParentObject?.Particles?.ReleaseParticles(
+                    GuideCoordinates,
+                    StartCoordinates,
+                    GameState.SurfaceState.GlobalMapPosition,
+                    this,
+                    0,
+                    false);
+                return;
+            }
+
+            var (vertical, forward) = GetThrustComponents();
+            bool hasRear = forward > 0.01f && RearStartCoordinates != null && RearGuideCoordinates != null;
+
+            // Each frame, pick which engine emits based on thrust component weights.
+            // Over time this distributes particles proportionally between engines
+            // while avoiding shared-pool contention from multiple calls.
+            ITriangleMeshWithColor? emitStart = StartCoordinates;
+            ITriangleMeshWithColor? emitGuide = GuideCoordinates;
+
+            if (hasRear)
+            {
+                float rearProbability = forward / (vertical + forward);
+                if (_emitterRng.NextDouble() < rearProbability)
+                {
+                    emitStart = RearStartCoordinates;
+                    emitGuide = RearGuideCoordinates;
+                }
+            }
+
             ParentObject?.Particles?.ReleaseParticles(
-                GuideCoordinates,
-                StartCoordinates,
+                emitGuide,
+                emitStart,
                 GameState.SurfaceState.GlobalMapPosition,
                 this,
-                (int)Thrust,
+                totalThrust,
                 false);
         }
 
@@ -501,6 +560,12 @@ namespace GameAiAndControls.Controls
             if (yawStep != 0) { rotationZ += yawStep; _yawAccumulator -= yawStep; }
             if (pitchStep != 0) { tilt += pitchStep; _pitchAccumulator -= pitchStep; }
 
+            if (_cannonRecoilOffset > 0f)
+            {
+                _cannonRecoilOffset -= _cannonRecoilReturnSpeed * deltaTime;
+                if (_cannonRecoilOffset < 0f) _cannonRecoilOffset = 0f;
+            }
+
             if (_fireKeyHeld && !isExploding)
                 FireWeapon();
 
@@ -558,6 +623,7 @@ namespace GameAiAndControls.Controls
             if (!isExploding)
             {
                 ApplyLocalTiltToMesh(tilt, theObject);
+                ApplyCannonRecoil(theObject);
                 UpdateEngineColors(theObject);
             }
 
@@ -589,16 +655,11 @@ namespace GameAiAndControls.Controls
                 else if (theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
                 {
-                    // Surface/terrain landing — stop falling and restore the resting
-                    // ship-vs-surface layout.  During spaceflight ascent the screen
-                    // position (ObjectOffsets.y) clamps at -100 while the altitude
-                    // (GlobalMapPosition.y) can reach 1000, creating a large desync.
-                    // Snapping both back on landing prevents the surface from
-                    // appearing shifted after the ship returns from high altitude.
-                    landed = true;
-                    Physics.InertiaY = 0f;
-                    GameState.SurfaceState.GlobalMapPosition.y = 0f;
-                    ParentObject.ObjectOffsets.y = ShipRestingScreenY;
+                    // Surface/terrain landing — stop falling and let the settle
+                        // logic in ApplyGravity smoothly return both the screen
+                        // position and altitude to their resting values.
+                        landed = true;
+                        Physics.InertiaY = 0f;
 
                     if (landingSpeed > 5f)
                     {
@@ -711,6 +772,29 @@ namespace GameAiAndControls.Controls
             return new Vector3(point.x, y, z);
         }
 
+        private void ApplyCannonRecoil(I3dObject theObject)
+        {
+            if (_cannonRecoilOffset <= 0f) return;
+
+            foreach (var part in theObject.ObjectParts)
+            {
+                if (part.PartName != "TopCannon") continue;
+
+                for (int i = 0; i < part.Triangles.Count; i++)
+                {
+                    var tri = part.Triangles[i];
+                    var v1 = (Vector3)tri.vert1;
+                    var v2 = (Vector3)tri.vert2;
+                    var v3 = (Vector3)tri.vert3;
+                    tri.vert1 = new Vector3 { x = v1.x, y = v1.y + _cannonRecoilOffset, z = v1.z };
+                    tri.vert2 = new Vector3 { x = v2.x, y = v2.y + _cannonRecoilOffset, z = v2.z };
+                    tri.vert3 = new Vector3 { x = v3.x, y = v3.y + _cannonRecoilOffset, z = v3.z };
+                    part.Triangles[i] = tri;
+                }
+                break;
+            }
+        }
+
         public void HandleThrust(float deltaTime)
         {
             float verticalInertia = Physics.CalculateThrustForces(Thrust, tilt, rotationZ, deltaTime);
@@ -734,20 +818,32 @@ namespace GameAiAndControls.Controls
             if (landed && !ThrustOn)
             {
                 // Smoothly settle screen position and altitude to resting values after landing.
-                // The landing handler already snaps both values for spaceflight returns;
-                // this settle handles gentle landings and any residual drift.
+                // Uses proportional easing capped at MaxSettleSpeed to prevent
+                // visually jarring jumps when returning from high altitude.
+                const float MaxSettleSpeed = 300f;
                 float screenDiff = ShipRestingScreenY - ParentObject.ObjectOffsets.y;
                 float altDiff = -GameState.SurfaceState.GlobalMapPosition.y;
                 float settleRate = 12f;
                 float t = MathF.Min(settleRate * deltaTime, 1f);
+                float maxStep = MaxSettleSpeed * deltaTime;
 
                 if (MathF.Abs(screenDiff) > 0.5f)
-                    ParentObject.ObjectOffsets.y += screenDiff * t;
+                {
+                    float screenStep = screenDiff * t;
+                    if (MathF.Abs(screenStep) > maxStep)
+                        screenStep = maxStep * MathF.Sign(screenDiff);
+                    ParentObject.ObjectOffsets.y += screenStep;
+                }
                 else
                     ParentObject.ObjectOffsets.y = ShipRestingScreenY;
 
                 if (MathF.Abs(altDiff) > 0.5f)
-                    GameState.SurfaceState.GlobalMapPosition.y += altDiff * t;
+                {
+                    float altStep = altDiff * t;
+                    if (MathF.Abs(altStep) > maxStep)
+                        altStep = maxStep * MathF.Sign(altDiff);
+                    GameState.SurfaceState.GlobalMapPosition.y += altStep;
+                }
                 else
                     GameState.SurfaceState.GlobalMapPosition.y = 0f;
 
@@ -759,15 +855,27 @@ namespace GameAiAndControls.Controls
             GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia);
 
             // Gently pull screen position and altitude back toward resting values
+            const float MaxAirSettleSpeed = 300f;
             float airSettle = MathF.Min(Physics.AirborneSettleRate * deltaTime, 1f);
             float airScreenDiff = ShipRestingScreenY - ParentObject.ObjectOffsets.y;
             float airAltDiff = -GameState.SurfaceState.GlobalMapPosition.y;
+            float airMaxStep = MaxAirSettleSpeed * deltaTime;
 
             if (MathF.Abs(airScreenDiff) > 0.5f)
-                ParentObject.ObjectOffsets.y += airScreenDiff * airSettle;
+            {
+                float airScreenStep = airScreenDiff * airSettle;
+                if (MathF.Abs(airScreenStep) > airMaxStep)
+                    airScreenStep = airMaxStep * MathF.Sign(airScreenDiff);
+                ParentObject.ObjectOffsets.y += airScreenStep;
+            }
 
             if (MathF.Abs(airAltDiff) > 0.5f)
-                GameState.SurfaceState.GlobalMapPosition.y += airAltDiff * airSettle;
+            {
+                float airAltStep = airAltDiff * airSettle;
+                if (MathF.Abs(airAltStep) > airMaxStep)
+                    airAltStep = airMaxStep * MathF.Sign(airAltDiff);
+                GameState.SurfaceState.GlobalMapPosition.y += airAltStep;
+            }
         }
 
         /// <summary>

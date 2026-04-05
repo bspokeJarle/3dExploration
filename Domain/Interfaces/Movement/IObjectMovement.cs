@@ -10,6 +10,7 @@ namespace Domain
         ITriangleMeshWithColor? GuideCoordinates { get; set; }
         void ReleaseParticles(I3dObject theObject);
         void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
+        void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
         void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord);
         IPhysics Physics { get; set; }
         void Dispose();

@@ -16,7 +16,7 @@ public class ParticlesAI : IParticles
     // --- Configuration ---
     private const int MaxParticlesBase = 12;
     private const int MaxThrustMultiplier = 5;
-    private const int MaxDynamicParticles = 35;
+    private const int MaxDynamicParticles = 50;
     private const float MinLife = 2.5f;
     private const float MaxLife = 3.5f;
     private const float MinSize = 1f;

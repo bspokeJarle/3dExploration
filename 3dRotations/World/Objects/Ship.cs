@@ -24,6 +24,7 @@ namespace _3dRotations.World.Objects
             var rearEngineTriangles = RearEngineTriangles();
             var jetMotorTriangle = JetMotorTriangle();
             var jetMotorDirectionGuide = JetMotorDirectionGuide();
+            var rearEngineDirectionGuide = RearEngineDirectionGuide();
             var cannon = TopCannonTriangles();
             var topCannonDirectionGuide = CannonDirectionGuide();
             var winglets = WingletTriangles();
@@ -38,6 +39,7 @@ namespace _3dRotations.World.Objects
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "RearEngine", Triangles = rearEngineTriangles!, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotor", Triangles = jetMotorTriangle!, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "JetMotorDirectionGuide", Triangles = jetMotorDirectionGuide!, IsVisible = false });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "RearEngineDirectionGuide", Triangles = rearEngineDirectionGuide!, IsVisible = false });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "TopCannon", Triangles = cannon!, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "WeaponDirectionGuide", Triangles = topCannonDirectionGuide!, IsVisible = false });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "WeaponStartGuide", Triangles = CannonStartGuide()!, IsVisible = false });
@@ -443,6 +445,15 @@ namespace _3dRotations.World.Objects
                 new TriangleMeshWithColor { Color = "ffff00", vert1 = tail, vert2 = topPeak, vert3 = rightRearMid },
                 new TriangleMeshWithColor { Color = "ffff00", vert1 = leftRearMid, vert2 = topPeak, vert3 = tail },
             };
+        }
+
+        public static List<ITriangleMeshWithColor>? RearEngineDirectionGuide()
+        {
+            var guide = new List<ITriangleMeshWithColor>
+            {
+                new TriangleMeshWithColor { Color = "ffffff", vert1 = { x = 12, y = 200, z = 0 }, vert2 = { x = -12, y = 200, z = 0 }, vert3 = { x = 0, y = 200, z = 25 } },
+            };
+            return guide;
         }
 
         public static List<ITriangleMeshWithColor>? WingletTriangles()
