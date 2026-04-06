@@ -557,6 +557,16 @@ namespace GameAiAndControls.Controls
                 LastMovementDateTime = now;
             }
 
+            // Drones stay idle until the player unlocks the Decoy powerup
+            if (!GameState.GamePlayState.IsDecoyUnlocked)
+            {
+                _storedWorldPosition = ToVector3(theObject.WorldPosition);
+                _storedWorldPositionInitialized = theObject.WorldPosition != null;
+                SyncAuthoritativeDroneState(theObject);
+                LastMovementDateTime = now;
+                return theObject;
+            }
+
             var deltaSeconds = (now - LastMovementDateTime).TotalSeconds;
 
             IVector3? currentDronePosition = null;

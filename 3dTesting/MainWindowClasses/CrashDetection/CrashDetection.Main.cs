@@ -51,6 +51,10 @@ namespace _3dTesting.Helpers
                     bool isSeeder = isInhabitantSeeder || isOtherSeeder;
                     bool isParticle = isInhabitantParticle || isOtherParticle;
                     bool isLazer = isInhabitantLazer || isOtherLazer;
+                    bool isWeapon = flagsA.IsWeapon || flagsB.IsWeapon;
+                    bool isWeaponShipPair =
+                        (flagsA.IsWeapon && flagsB.IsShip) ||
+                        (flagsB.IsWeapon && flagsA.IsShip);
                     bool isBothParticles = isInhabitantParticle && isOtherParticle;
                     bool isShip = flagsA.IsShip || flagsB.IsShip;
                     bool isSurface = flagsA.IsSurface || flagsB.IsSurface;
@@ -66,6 +70,10 @@ namespace _3dTesting.Helpers
                     bool isDecoyShipPair =
                         (flagsA.Name == "DroneDecoy" && flagsB.IsShip) ||
                         (flagsB.Name == "DroneDecoy" && flagsA.IsShip);
+                    bool isPowerUp = flagsA.Name == "PowerUp" || flagsB.Name == "PowerUp";
+                    bool isPowerUpShipPair =
+                        (flagsA.Name == "PowerUp" && flagsB.IsShip) ||
+                        (flagsB.Name == "PowerUp" && flagsA.IsShip);
 
                     if (string.IsNullOrEmpty(flagsA.Name) || string.IsNullOrEmpty(flagsB.Name)) continue;
                     if (flagsA.Name == flagsB.Name) continue;
@@ -78,7 +86,9 @@ namespace _3dTesting.Helpers
                     if (isSeederSurfacePair) continue;
                     if (isDecoySurfacePair) continue;
                     if (isDecoyShipPair) continue;
-                    if (isLazer && isParticle || isLazer && isShip || isSeeder && isParticle) continue;
+                    if (isPowerUp && !isPowerUpShipPair) continue;
+                    if (isWeaponShipPair) continue;
+                    if (isLazer && isParticle || isSeeder && isParticle) continue;
 
                     if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;
 

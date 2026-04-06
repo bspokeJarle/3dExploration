@@ -1,3 +1,4 @@
+using _3dRotations.World.Objects;
 using _3dTesting._3dRotation;
 using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
@@ -5,6 +6,7 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.SeederControls;
 using GameAudioInstances;
 using System;
@@ -307,6 +309,30 @@ namespace _3dTesting.MainWindowClasses.Loops
                 if (explodedObjects == null || explodedIds == null)
                 {
                     return;
+                }
+
+                // Spawn PowerUp objects at the location of exploded objects that have the flag
+                foreach (var obj in explodedObjects)
+                {
+                    if (obj.HasPowerUp && obj.WorldPosition != null)
+                    {
+                        var powerup = PowerUp.CreatePowerup(obj.ParentSurface);
+                        powerup.WorldPosition = new Vector3
+                        {
+                            x = obj.WorldPosition.x,
+                            y = obj.WorldPosition.y,
+                            z = obj.WorldPosition.z + 100
+                        };
+                        powerup.ObjectOffsets = new Vector3
+                        {
+                            x = obj.ObjectOffsets?.x ?? 0,
+                            y = obj.ObjectOffsets?.y ?? 0,
+                            z = 400
+                        };
+                        powerup.Movement = new PowerUpControls();
+                        inhabitants.Add(powerup);
+                        GameState.SurfaceState.AiObjects.Add(powerup);
+                    }
                 }
 
                 for (int i = inhabitants.Count - 1; i >= 0; i--)

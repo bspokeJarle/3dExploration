@@ -39,19 +39,30 @@ namespace _3dTesting.Helpers
         }
         // Keep this returning the SAME Vector3 type that crashboxes are made of.
         // This is the effective local offset used to keep crash boxes aligned with rendering.
+        // CalculatedCrashOffset (set in TryGetRenderPosition) already includes ObjectOffsets,
+        // so we use it directly for world objects. Screen objects (Ship) fall back to ObjectOffsets.
         public static Vector3 GetEffectiveCrashOffset(this _3dObject obj)
         {
             var local = obj?.ObjectOffsets ?? new Vector3(0, 0, 0);
-            var crashOffset = obj?.CalculatedCrashOffset ?? new Vector3(0, 0, 0);
+            var crashOffset = obj?.CalculatedCrashOffset;
 
             float surfaceYOffset = 0f;
             if (obj?.ObjectName == "Surface" && GameState.SurfaceState.GlobalMapPosition != null)
                 surfaceYOffset = GameState.SurfaceState.GlobalMapPosition.y;
 
+            if (crashOffset != null)
+            {
+                return new Vector3(
+                    crashOffset.x,
+                    crashOffset.y + surfaceYOffset,
+                    crashOffset.z
+                );
+            }
+
             return new Vector3(
-                local.x + crashOffset.x,
-                local.y + crashOffset.y + surfaceYOffset,
-                local.z + crashOffset.z
+                local.x,
+                local.y + surfaceYOffset,
+                local.z
             );
         }
 

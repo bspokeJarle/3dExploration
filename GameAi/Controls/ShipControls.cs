@@ -139,11 +139,11 @@ namespace GameAiAndControls.Controls
 
             if (e.KeyCode == Keys.D1 || e.KeyCode == Keys.NumPad1)
             {
-                bool weaponChanged = GameState.GamePlayState.SelectedWeapon != WeaponType.Lazer ||
-                    !string.Equals(GameState.GamePlayState.ActivePowerup, "LAZER", StringComparison.OrdinalIgnoreCase);
+                bool weaponChanged = GameState.GamePlayState.SelectedWeapon != WeaponType.Bullet ||
+                    !string.Equals(GameState.GamePlayState.ActivePowerup, "BULLET", StringComparison.OrdinalIgnoreCase);
 
-                GameState.GamePlayState.SelectedWeapon = WeaponType.Lazer;
-                GameState.GamePlayState.ActivePowerup = "LAZER";
+                GameState.GamePlayState.SelectedWeapon = WeaponType.Bullet;
+                GameState.GamePlayState.ActivePowerup = "BULLET";
 
                 if (weaponChanged && _audio != null && _changeWeaponSound != null)
                 {
@@ -160,6 +160,8 @@ namespace GameAiAndControls.Controls
 
             if (e.KeyCode == Keys.D2 || e.KeyCode == Keys.NumPad2)
             {
+                if (!GameState.GamePlayState.IsDecoyUnlocked)
+                    return;
                 bool weaponChanged = !string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase);
 
                 GameState.GamePlayState.ActivePowerup = "DECOY";
@@ -179,11 +181,14 @@ namespace GameAiAndControls.Controls
 
             if (e.KeyCode == Keys.D3 || e.KeyCode == Keys.NumPad3)
             {
-                bool weaponChanged = GameState.GamePlayState.SelectedWeapon != WeaponType.Bullet ||
-                    !string.Equals(GameState.GamePlayState.ActivePowerup, "BULLET", StringComparison.OrdinalIgnoreCase);
+                if (!GameState.GamePlayState.IsLazerUnlocked)
+                    return;
 
-                GameState.GamePlayState.SelectedWeapon = WeaponType.Bullet;
-                GameState.GamePlayState.ActivePowerup = "BULLET";
+                bool weaponChanged = GameState.GamePlayState.SelectedWeapon != WeaponType.Lazer ||
+                    !string.Equals(GameState.GamePlayState.ActivePowerup, "LAZER", StringComparison.OrdinalIgnoreCase);
+
+                GameState.GamePlayState.SelectedWeapon = WeaponType.Lazer;
+                GameState.GamePlayState.ActivePowerup = "LAZER";
 
                 if (weaponChanged && _audio != null && _changeWeaponSound != null)
                 {
@@ -331,6 +336,7 @@ namespace GameAiAndControls.Controls
                     _bulletInstance = null;
                 }
                 DeployDecoy();
+                _fireKeyHeld = false;
                 return;
             }
 
@@ -641,7 +647,13 @@ namespace GameAiAndControls.Controls
                 if (logging) Logger.Log($"[ShipCrash] HasCrashed=true, ObjectName='{crashedWith}', Health={theObject.ImpactStatus.ObjectHealth}, Direction={theObject.ImpactStatus.ImpactDirection}");
 
                 // Apply damage from any enemy or weapon collision
-                if (EnemySetup.IsEnemyTypeValid(crashedWith))
+                if (crashedWith == "PowerUp")
+                {
+                    // No damage — collect the powerup and mark it for removal
+                    CollectPowerUp(theObject);
+                    if (logging) Logger.Log($"[ShipCrash] PowerUp collected!");
+                }
+                else if (EnemySetup.IsEnemyTypeValid(crashedWith))
                 {
                     theObject.ImpactStatus.ObjectHealth -= EnemySetup.KamikazeDroneCollisionDamage;
                     if (logging) Logger.Log($"[ShipCrash] Enemy hit! Damage={EnemySetup.KamikazeDroneCollisionDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
@@ -969,6 +981,21 @@ namespace GameAiAndControls.Controls
         public void ReleaseParticles(I3dObject theObject)
         {
             throw new NotImplementedException();
+        }
+
+        private static void CollectPowerUp(I3dObject ship)
+        {
+            var aiObjects = GameState.SurfaceState.AiObjects;
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var obj = aiObjects[i];
+                if (obj.ObjectName == "PowerUp" && obj.ImpactStatus?.HasCrashed == true)
+                {
+                    obj.ImpactStatus.HasExploded = true;
+                    GameState.GamePlayState.PowerUpsCollected++;
+                    break;
+                }
+            }
         }
     }
 }

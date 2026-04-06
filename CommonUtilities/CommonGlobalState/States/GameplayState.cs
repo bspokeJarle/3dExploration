@@ -112,8 +112,13 @@ namespace Domain
         // -----------------------------
         // Weapons (simple, but practical)
         // -----------------------------
-        public WeaponType SelectedWeapon { get; set; } = WeaponType.Lazer;
-        public string ActivePowerup { get; set; } = "LAZER";
+        public WeaponType SelectedWeapon { get; set; } = WeaponType.Bullet;
+        public string ActivePowerup { get; set; } = "BULLET";
+
+        // PowerUp progression: each collected PowerUp unlocks the next weapon tier
+        public int PowerUpsCollected { get; set; } = 0;
+        public bool IsDecoyUnlocked => PowerUpsCollected >= 1;
+        public bool IsLazerUnlocked => PowerUpsCollected >= 2;
 
         public int LaserAmmo { get; set; } = -1;   // -1 means infinite
         public int RocketAmmo { get; set; } = 10;
@@ -254,8 +259,9 @@ namespace Domain
             LocalInfectionSpreadDelaySec = 1.0f;
             LocalInfectionSpreadRadius = 10000f;
 
-            SelectedWeapon = WeaponType.Lazer;
-            ActivePowerup = "LAZER";
+            SelectedWeapon = WeaponType.Bullet;
+            ActivePowerup = "BULLET";
+            PowerUpsCollected = 0;
             LaserAmmo = -1;
             RocketAmmo = 10;
             BulletAmmo = -1;

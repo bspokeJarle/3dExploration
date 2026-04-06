@@ -28,6 +28,7 @@ namespace Domain
             public IVector3? CalculatedCrashOffset { get; set; }
             public bool IsOnScreen { get; set; } = false;
             public bool HasShadow { get; set; } = false;
+            public bool HasPowerUp { get; set; } = false;
         }
     }
 }

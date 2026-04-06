@@ -70,12 +70,12 @@ namespace _3dRotations.Scene.Scene1
                 kamikaze.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.KamikazeDroneHealth };
                 kamikaze.CrashBoxDebugMode = false;
                 kamikaze.WeaponSystems = null;
+                kamikaze.HasPowerUp = false;
                 world.WorldInhabitants.Add(kamikaze);
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-
-            for (int i = 0; i < 8; i++)
+            for (int i = 0; i < 5; i++)
             {
                 var rmd = new Random();
 
@@ -88,9 +88,23 @@ namespace _3dRotations.Scene.Scene1
                 seeder.Movement = new SeederControls();
                 seeder.CrashBoxDebugMode = false;
                 seeder.ImpactStatus = new ImpactStatus { };
+                seeder.HasPowerUp = true;
                 world.WorldInhabitants.Add(seeder);
                 GameState.SurfaceState.AiObjects.Add(seeder);
             }
+
+            var seederPowerup = Seeder.CreateSeeder(Surface);
+            //Initialize the seeder rotation
+            seederPowerup.Rotation = new Vector3 { };
+            seederPowerup.WorldPosition = new Vector3 { x = 95700 + -30000, y = 0, z = 92000 + -30000 };
+            seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+            seederPowerup.ObjectName = "Seeder";
+            seederPowerup.Movement = new SeederControls();
+            seederPowerup.CrashBoxDebugMode = false;
+            seederPowerup.ImpactStatus = new ImpactStatus { };
+            seederPowerup.HasPowerUp = true;
+            world.WorldInhabitants.Add(seederPowerup);
+            GameState.SurfaceState.AiObjects.Add(seederPowerup);
 
             //Get the surface viewport based on the global Map Position
             //Important: In a Scene, Surface should be amongst the first objects added to the world

@@ -9,9 +9,9 @@ namespace _3dTesting.Helpers
 {
     public static partial class CrashDetection
     {
-        private static List<string> LogFilter = ["KamikazeDrone", "Ship"];
+        private static List<string> LogFilter = ["PowerUp", "Ship"];
 
-        public static bool LocalEnableLogging = false;
+        public static bool LocalEnableLogging = true;
         public static bool LogOnlyCollisions = true;
         public static bool LogCollisionDetails = true;
         public static bool LogSkippedCollisions = false;

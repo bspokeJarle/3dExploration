@@ -27,6 +27,7 @@ namespace _3dTesting.Helpers
             public readonly bool IsStatic;
             public readonly bool IsParticle;
             public readonly bool IsLazer;
+            public readonly bool IsWeapon;
             public readonly bool IsSeeder;
             public readonly bool IsShip;
             public readonly bool IsSurface;
@@ -38,6 +39,7 @@ namespace _3dTesting.Helpers
                 IsStatic = IsStaticName(name);
                 IsParticle = name == "Particle";
                 IsLazer = name == "Lazer";
+                IsWeapon = CommonUtilities.CommonSetup.WeaponSetup.IsWeaponTypeValid(name);
                 IsSeeder = name == "Seeder";
                 IsShip = name == "Ship";
                 IsSurface = name == "Surface";

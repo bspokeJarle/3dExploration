@@ -348,7 +348,8 @@ namespace CommonUtilities._3DHelpers
                 CrashBoxes = original.CrashBoxes,
                 CrashBoxesFollowRotation = original.CrashBoxesFollowRotation,
                 CalculatedCrashOffset = original.CalculatedCrashOffset,
-                HasShadow = original.HasShadow
+                HasShadow = original.HasShadow,
+                HasPowerUp = original.HasPowerUp
             };
 
             return copy;
