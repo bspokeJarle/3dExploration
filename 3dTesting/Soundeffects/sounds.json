@@ -366,6 +366,32 @@
         "min": 0.92,
         "max": 1.12
       }
+    },
+    {
+      "id": "powerup_collect",
+      "usage": "PowerUpCollect",
+      "file": "OmegaStrain_Powerup.wav",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 2.0,
+        "end": 2.0
+      },
+
+      "settings": {
+        "volume": 1.0,
+        "maxVoices": 3,
+        "is3D": false,
+        "priority": 200
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
     }
   ]
 }

@@ -11,6 +11,8 @@ namespace _3dRotations.World.Objects
 {
     public static class Bullet
     {
+        private const float ZoomRatio = 1f;
+
         public static _3dObject CreateBullet(ISurface parentSurface)
         {
             var body = BulletBody();
@@ -41,6 +43,8 @@ namespace _3dRotations.World.Objects
 
             if (crash != null)
                 bullet.CrashBoxes = crash;
+
+            _3dObjectHelpers.ApplyScaleToObject(bullet, ZoomRatio);
 
             return bullet;
         }

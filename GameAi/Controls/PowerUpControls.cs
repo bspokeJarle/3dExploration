@@ -26,6 +26,9 @@ namespace GameAiAndControls.Controls
         private const bool enableLogging = true;
         private const int LogEveryNthFrame = 60;
 
+        // Explosion:
+        private const float ExplosionForce = 100f;
+
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
@@ -38,6 +41,20 @@ namespace GameAiAndControls.Controls
         private bool _syncInitialized = false;
         private float _syncY = 0;
         private int _logFrameCounter = 0;
+
+        // Spawn zoom-in animation
+        private bool _spawnAnimating = true;
+        private int _spawnFrame = 0;
+        private const int SpawnAnimationFrames = 45;
+        private const float SpawnStartZExtra = 800f;
+        private float _spawnTargetZ;
+        private bool _spawnTargetCaptured = false;
+        private List<List<IVector3>>? _savedCrashBoxes;
+
+        private bool _isExploding = false;
+        private DateTime _explosionDeltaTime = DateTime.Now;
+        private Vector3? _explosionWorldPosition;
+        private Vector3? _explosionObjectOffsets;
 
         private static void SafeLog(string message)
         {
@@ -57,12 +74,34 @@ namespace GameAiAndControls.Controls
         {
             ParentObject = theObject;
 
-            // Handle collision: PowerUp is collected by Ship, just mark for removal
-            if (theObject.ImpactStatus.HasCrashed == true)
+            if (theObject.ImpactStatus?.HasExploded == true)
+                return theObject;
+
+            // Handle collision: start explosion animation (no explosion sound — powerup sound is played by ShipControls)
+            if (theObject.ImpactStatus.HasCrashed == true && !_isExploding)
             {
-                SafeLog($"[PowerUp] HasCrashed=true, ObjectName='{theObject.ImpactStatus.ObjectName}', setting HasExploded=true. Id={theObject.ObjectId}");
-                theObject.ImpactStatus.HasExploded = true;
+                SafeLog($"[PowerUp] HasCrashed=true, ObjectName='{theObject.ImpactStatus.ObjectName}', starting explosion. Id={theObject.ObjectId}");
+                _isExploding = true;
+                _explosionDeltaTime = DateTime.Now;
+                _explosionWorldPosition = theObject.WorldPosition as Vector3 ?? new Vector3 { x = theObject.WorldPosition.x, y = theObject.WorldPosition.y, z = theObject.WorldPosition.z };
+                _explosionObjectOffsets = theObject.ObjectOffsets as Vector3 ?? new Vector3 { x = theObject.ObjectOffsets.x, y = theObject.ObjectOffsets.y, z = theObject.ObjectOffsets.z };
+                Physics.ExplosionColorOverride = "4488FF";
+                Physics.ExplodeObject(theObject, ExplosionForce);
                 theObject.CrashBoxes = new List<List<IVector3>>();
+            }
+
+            if (_isExploding)
+            {
+                if (_explosionWorldPosition != null)
+                    theObject.WorldPosition = _explosionWorldPosition;
+                if (_explosionObjectOffsets != null)
+                    theObject.ObjectOffsets = _explosionObjectOffsets;
+
+                Physics.UpdateExplosion(theObject, _explosionDeltaTime);
+                if (theObject.ImpactStatus?.HasExploded == true)
+                    theObject.ObjectParts = new List<I3dObjectPart>();
+
+                SyncToOriginal(theObject);
                 return theObject;
             }
 
@@ -75,6 +114,30 @@ namespace GameAiAndControls.Controls
 
             // Keep offsets visually in sync with surface scrolling
             SyncMovement(theObject);
+
+            // Spawn zoom-in: start high and ease down to target Z
+            if (_spawnAnimating)
+            {
+                if (!_spawnTargetCaptured)
+                {
+                    _spawnTargetZ = theObject.ObjectOffsets.z;
+                    _savedCrashBoxes = theObject.CrashBoxes;
+                    theObject.CrashBoxes = new List<List<IVector3>>();
+                    _spawnTargetCaptured = true;
+                }
+
+                _spawnFrame++;
+                float t = Math.Min(1f, (float)_spawnFrame / SpawnAnimationFrames);
+                float eased = 1f - (1f - t) * (1f - t);
+                theObject.ObjectOffsets.z = _spawnTargetZ + SpawnStartZExtra * (1f - eased);
+
+                if (t >= 1f)
+                {
+                    _spawnAnimating = false;
+                    theObject.ObjectOffsets.z = _spawnTargetZ;
+                    theObject.CrashBoxes = _savedCrashBoxes;
+                }
+            }
 
             // Push positions back to original in AiObjects
             SyncToOriginal(theObject);
@@ -150,6 +213,13 @@ namespace GameAiAndControls.Controls
         {
             _syncInitialized = false;
             _syncY = 0;
+            _spawnAnimating = true;
+            _spawnFrame = 0;
+            _spawnTargetCaptured = false;
+            _savedCrashBoxes = null;
+            _isExploding = false;
+            _explosionWorldPosition = null;
+            _explosionObjectOffsets = null;
             StartCoordinates = null;
             GuideCoordinates = null;
         }

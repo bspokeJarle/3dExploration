@@ -34,9 +34,19 @@ namespace _3dTesting.Helpers
         {
             if (actualObject == null || actualObject.ObjectParts.Count == 0) return;
 
+            // Track already-scaled vertices to avoid scaling shared Vector3 instances multiple times
+            var scaled = new HashSet<IVector3>(ReferenceEqualityComparer.Instance);
+
             foreach (var part in actualObject.ObjectParts)
             {
-                ApplyScaleToTriangles(part.Triangles, scale);
+                if (part.Triangles == null || part.Triangles.Count == 0) continue;
+
+                foreach (var tri in part.Triangles)
+                {
+                    if (scaled.Add(tri.vert1)) { tri.vert1.x *= scale; tri.vert1.y *= scale; tri.vert1.z *= scale; }
+                    if (scaled.Add(tri.vert2)) { tri.vert2.x *= scale; tri.vert2.y *= scale; tri.vert2.z *= scale; }
+                    if (scaled.Add(tri.vert3)) { tri.vert3.x *= scale; tri.vert3.y *= scale; tri.vert3.z *= scale; }
+                }
             }
             foreach (var crashBox in actualObject.CrashBoxes)
             {

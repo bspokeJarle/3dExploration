@@ -195,10 +195,13 @@ namespace _3dTesting.Helpers
             bool aiVisible = (_markerFrame % 30) < 15;
 
             // BGRA format
-            byte[] greyPx   = { 180, 180, 180, 255 }; // Ship
-            byte[] blackPx  = { 0, 0, 0, 255 };       // Seeder
-            byte[] bluePx   = { 255, 80, 0, 255 };    // Drone
-            byte[] orangePx = { 0, 140, 255, 255 };   // Decoy
+            byte[] greyPx    = { 180, 180, 180, 255 }; // Ship
+            byte[] blackPx   = { 0, 0, 0, 255 };       // Seeder
+            byte[] bluePx    = { 255, 80, 0, 255 };    // Drone
+            byte[] orangePx  = { 0, 140, 255, 255 };   // Decoy
+            byte[] powerupPx = { 255, 140, 30, 255 };  // PowerUp (strong blue)
+
+            bool powerupVisible = (_markerFrame % 8) < 5;
 
             // Ship marker — always visible at viewport center
             var mapPos = GameState.SurfaceState.GlobalMapPosition;
@@ -235,6 +238,17 @@ namespace _3dTesting.Helpers
                         if (obj.WorldPosition.x == 0 && obj.WorldPosition.z == 0)
                             continue;
 
+                        bool isPowerUp = obj.ObjectName == "PowerUp";
+
+                        if (isPowerUp)
+                        {
+                            if (!powerupVisible) continue;
+                            int bx = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
+                            int bz = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                            StampMarkerLarge(pixels, cropW, cropH, stride, bx, bz, powerupPx);
+                            continue;
+                        }
+
                         byte[]? color = obj.ObjectName switch
                         {
                             "Seeder" => blackPx,
@@ -244,9 +258,9 @@ namespace _3dTesting.Helpers
                         };
                         if (color == null) continue;
 
-                        int bx = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
-                        int bz = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
-                        StampMarker(pixels, cropW, cropH, stride, bx, bz, color);
+                        int bx2 = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
+                        int bz2 = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                        StampMarker(pixels, cropW, cropH, stride, bx2, bz2, color);
                     }
                 }
             }
@@ -261,6 +275,27 @@ namespace _3dTesting.Helpers
             for (int dx = -1; dx <= 1; dx++)
             {
                 for (int dz = -1; dz <= 1; dz++)
+                {
+                    int px = cx + dx;
+                    int pz = cz + dz;
+                    if (px >= 0 && pz >= 0 && px < w && pz < h)
+                    {
+                        int offset = pz * stride + px * 4;
+                        pixels[offset]     = bgra[0]; // B
+                        pixels[offset + 1] = bgra[1]; // G
+                        pixels[offset + 2] = bgra[2]; // R
+                        pixels[offset + 3] = bgra[3]; // A
+                    }
+                }
+            }
+        }
+
+        private static void StampMarkerLarge(byte[] pixels, int w, int h, int stride,
+            int cx, int cz, byte[] bgra)
+        {
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                for (int dz = -2; dz <= 2; dz++)
                 {
                     int px = cx + dx;
                     int pz = cz + dz;

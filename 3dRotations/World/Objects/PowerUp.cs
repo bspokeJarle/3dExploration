@@ -11,6 +11,8 @@ namespace _3dRotations.World.Objects
 {
     public static class PowerUp
     {
+        private const float ZoomRatio = 1f;
+
         // Plus sign dimensions – roughly seeder-sized (~70 unit span)
         private const float ArmLength = 35f;
         private const float ArmWidth = 8f;
@@ -54,6 +56,8 @@ namespace _3dRotations.World.Objects
 
             if (crash != null)
                 powerup.CrashBoxes = crash;
+
+            _3dObjectHelpers.ApplyScaleToObject(powerup, ZoomRatio);
 
             return powerup;
         }

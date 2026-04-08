@@ -315,6 +315,8 @@ namespace GameAiAndControls.Physics
         private List<ExplodingTriangle> _explodingTriangles = new();
         private bool _isExploding = false;
 
+        public string? ExplosionColorOverride { get; set; }
+
         public I3dObject ExplodeObject(I3dObject originalObject, float explosionForce = 200f)
         {
             _explodingTriangles.Clear();
@@ -416,7 +418,7 @@ namespace GameAiAndControls.Physics
                 float progress = Clamp(exploding.ElapsedTime / exploding.Duration, 0f, 1f);
 
                 // Apply color transition based on progress
-                exploding.Triangle.Color = GetExplosionColor(progress, exploding.Triangle.Color);
+                exploding.Triangle.Color = GetExplosionColor(progress, exploding.OriginalColor);
 
                 if (Logger.EnableFileLogging && LocalEnableLogging)
                 {
@@ -471,8 +473,20 @@ namespace GameAiAndControls.Physics
             return explodingObject;
         }
 
-        private static string GetExplosionColor(float progress, string originalHex)
+        private string GetExplosionColor(float progress, string originalHex)
         {
+            if (ExplosionColorOverride != null)
+            {
+                if (progress < 0.10f)
+                    return LerpColorHex("AADDFF", ExplosionColorOverride, progress / 0.10f);
+                else if (progress < 0.35f)
+                    return LerpColorHex(ExplosionColorOverride, "1133AA", (progress - 0.10f) / 0.25f);
+                else if (progress < 0.7f)
+                    return LerpColorHex("1133AA", "001133", (progress - 0.35f) / 0.35f);
+                else
+                    return LerpColorHex("001133", "000000", (progress - 0.7f) / 0.3f);
+            }
+
             if (progress < 0.10f)
                 return LerpColorHex(originalHex, "ffff00", progress / 0.10f); // original → yellow
             else if (progress < 0.35f)

@@ -1,4 +1,5 @@
 ﻿using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using static Domain._3dSpecificsImplementations;
 
@@ -138,7 +139,7 @@ namespace CommonUtilities._3DHelpers
             var globalMapPosition = GameState.SurfaceState.GlobalMapPosition;
             var inhabitantPosition = inhabitant.WorldPosition;
 
-            const float maxDistance = 1400f;
+            const float maxDistance = ScreenSetup.ObjectVisibilityDistance;
             float maxDistanceSq = maxDistance * maxDistance;
             float distanceSq = GetDistanceSquared(globalMapPosition, inhabitantPosition);
 
@@ -346,6 +347,7 @@ namespace CommonUtilities._3DHelpers
                 CrashBoxDebugMode = original.CrashBoxDebugMode,
                 WeaponSystems = original.WeaponSystems,
                 CrashBoxes = original.CrashBoxes,
+                CrashBoxNames = original.CrashBoxNames,
                 CrashBoxesFollowRotation = original.CrashBoxesFollowRotation,
                 CalculatedCrashOffset = original.CalculatedCrashOffset,
                 HasShadow = original.HasShadow,

@@ -62,8 +62,8 @@ namespace CommonUtilities.CommonSetup
         public static float LazerAimAssistStrength = 0.6f;
         public static float LazerAimAssistMaxRange = 1400f;
 
-        public static float BulletAimAssistConeDot  = 0.70f;  // ~45° half-angle
-        public static float BulletAimAssistStrength = 0.9f;
+        public static float BulletAimAssistConeDot  = 0.60f;  // ~53° half-angle
+        public static float BulletAimAssistStrength = 0.95f;
         public static float BulletAimAssistMaxRange = 1500f;
 
         public static float RocketAimAssistConeDot  = 0.85f;  // ~32° half-angle

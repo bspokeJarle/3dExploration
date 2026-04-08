@@ -48,6 +48,7 @@ namespace GameAiAndControls.Controls
         private SoundDefinition? _releaseDecoySound;
         private SoundDefinition? _changeWeaponSound;
         private SoundDefinition? _bulletSound;
+        private SoundDefinition? _powerupSound;
         private IAudioInstance? _rocketInstance;
         private IAudioInstance? _bulletInstance;
 
@@ -103,7 +104,7 @@ namespace GameAiAndControls.Controls
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             // Already configured, so nothing else is required.
-            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null)
+            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null && _powerupSound != null)
                 return;
 
             if (audioPlayer == null || soundRegistry == null)
@@ -115,6 +116,7 @@ namespace GameAiAndControls.Controls
             _releaseDecoySound = soundRegistry.Get("release_decoy");
             _changeWeaponSound = soundRegistry.Get("change_weapon");
             _bulletSound = soundRegistry.Get("bullet_main");
+            _powerupSound = soundRegistry.Get("powerup_collect");
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
@@ -649,9 +651,17 @@ namespace GameAiAndControls.Controls
                 // Apply damage from any enemy or weapon collision
                 if (crashedWith == "PowerUp")
                 {
-                    // No damage — collect the powerup and mark it for removal
+                    // No damage — collect the powerup; skip health/explosion check
                     CollectPowerUp(theObject);
                     if (logging) Logger.Log($"[ShipCrash] PowerUp collected!");
+                    theObject.ImpactStatus.HasCrashed = false;
+                    return theObject;
+                }
+                else if (crashedWith == "MotherShipSmall")
+                {
+                    int currentHealth = theObject.ImpactStatus.ObjectHealth ?? 0;
+                    theObject.ImpactStatus.ObjectHealth = 0;
+                    if (logging) Logger.Log($"[ShipCrash] MotherShip hit! Damage={currentHealth}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else if (EnemySetup.IsEnemyTypeValid(crashedWith))
                 {
@@ -983,7 +993,7 @@ namespace GameAiAndControls.Controls
             throw new NotImplementedException();
         }
 
-        private static void CollectPowerUp(I3dObject ship)
+        private void CollectPowerUp(I3dObject ship)
         {
             var aiObjects = GameState.SurfaceState.AiObjects;
             for (int i = 0; i < aiObjects.Count; i++)
@@ -991,8 +1001,11 @@ namespace GameAiAndControls.Controls
                 var obj = aiObjects[i];
                 if (obj.ObjectName == "PowerUp" && obj.ImpactStatus?.HasCrashed == true)
                 {
-                    obj.ImpactStatus.HasExploded = true;
                     GameState.GamePlayState.PowerUpsCollected++;
+
+                    if (_audio != null && _powerupSound != null)
+                        _audio.Play(_powerupSound, AudioPlayMode.OneShot, new AudioPlayOptions());
+
                     break;
                 }
             }

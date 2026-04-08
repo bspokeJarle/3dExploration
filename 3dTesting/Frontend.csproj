@@ -103,6 +103,9 @@
     <None Update="Soundeffects\OmegaStrain_Music_Outro.flac">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Soundeffects\OmegaStrain_Powerup.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\OmegaStrain_Release_Decoy.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

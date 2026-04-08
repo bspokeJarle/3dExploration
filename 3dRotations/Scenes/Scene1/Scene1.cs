@@ -57,13 +57,14 @@ namespace _3dRotations.Scene.Scene1
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
 
+            //Add drones that will be waiting until the player has a Decoy powerup
             for (int i = 0; i < 5; i++)
             {
                 var rmd = new Random();
 
                 //Add Kamikaze drones
                 var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
-                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-25000, 25000), y = 0, z = 92000 + rmd.Next(-35000, 35000) };
+                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-25000, 25000), y = 0, z = 92000 + rmd.Next(-25000, 25000) };
                 kamikaze.Rotation = new Vector3 { };
                 kamikaze.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
                 kamikaze.ObjectName = "KamikazeDrone";
@@ -75,14 +76,60 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-            for (int i = 0; i < 5; i++)
+            //Add seeders close to the player, to make sure they are engaged from the start, and to demonstrate the infection mechanics early on. The rest of the seeders will be more spread out across the surface
+            for (int i = 0; i < 3; i++)
             {
                 var rmd = new Random();
 
                 var seeder = Seeder.CreateSeeder(Surface);
                 //Initialize the seeder rotation
                 seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-30000, 30000), y = 0, z = 92000 + rmd.Next(-30000, 30000)};
+                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-10000, 10000), y = 0, z = 92000 + rmd.Next(-10000, 10000)};
+                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                seeder.ObjectName = "Seeder";
+                seeder.Movement = new SeederControls();
+                seeder.CrashBoxDebugMode = false;
+                seeder.ImpactStatus = new ImpactStatus { };
+                seeder.HasPowerUp = false;
+                world.WorldInhabitants.Add(seeder);
+                GameState.SurfaceState.AiObjects.Add(seeder);
+            }
+
+            //Special Seeder that has a powerup hidden
+            var seederPowerup = Seeder.CreateSeeder(Surface);
+            seederPowerup.Rotation = new Vector3 { };
+            seederPowerup.WorldPosition = new Vector3 { x = 95700 + -15000, y = 0, z = 92000 + -15000 };
+            seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+            seederPowerup.ObjectName = "Seeder";
+            seederPowerup.Movement = new SeederControls();
+            seederPowerup.CrashBoxDebugMode = false;
+            seederPowerup.ImpactStatus = new ImpactStatus { };
+            seederPowerup.HasPowerUp = true;
+            world.WorldInhabitants.Add(seederPowerup);
+            GameState.SurfaceState.AiObjects.Add(seederPowerup);
+
+            //Mothership for this Scene
+            var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
+            motherShip.Rotation = new Vector3 { };
+            motherShip.WorldPosition = new Vector3 { x = 95100, y = 0, z = 94200 };
+            motherShip.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 400 };
+            motherShip.ObjectName = "MotherShipSmall";
+            motherShip.Movement = new MotherShipSmallControls();
+            motherShip.CrashBoxDebugMode = false;
+            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
+            motherShip.HasPowerUp = true;
+            world.WorldInhabitants.Add(motherShip);
+            GameState.SurfaceState.AiObjects.Add(motherShip);
+
+            //Add more seeders upper left side of the map
+            for (int i = 0; i < 3; i++)
+            {
+                var rmd = new Random();
+
+                var seeder = Seeder.CreateSeeder(Surface);
+                //Initialize the seeder rotation
+                seeder.Rotation = new Vector3 { };
+                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-20000, 5000), y = 0, z = 92000 + rmd.Next(-20000, 5000) };
                 seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seeder.ObjectName = "Seeder";
                 seeder.Movement = new SeederControls();
@@ -92,19 +139,6 @@ namespace _3dRotations.Scene.Scene1
                 world.WorldInhabitants.Add(seeder);
                 GameState.SurfaceState.AiObjects.Add(seeder);
             }
-
-            var seederPowerup = Seeder.CreateSeeder(Surface);
-            //Initialize the seeder rotation
-            seederPowerup.Rotation = new Vector3 { };
-            seederPowerup.WorldPosition = new Vector3 { x = 95700 + -30000, y = 0, z = 92000 + -30000 };
-            seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-            seederPowerup.ObjectName = "Seeder";
-            seederPowerup.Movement = new SeederControls();
-            seederPowerup.CrashBoxDebugMode = false;
-            seederPowerup.ImpactStatus = new ImpactStatus { };
-            seederPowerup.HasPowerUp = true;
-            world.WorldInhabitants.Add(seederPowerup);
-            GameState.SurfaceState.AiObjects.Add(seederPowerup);
 
             //Get the surface viewport based on the global Map Position
             //Important: In a Scene, Surface should be amongst the first objects added to the world

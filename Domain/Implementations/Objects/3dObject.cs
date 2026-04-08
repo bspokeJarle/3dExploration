@@ -17,6 +17,7 @@ namespace Domain
             public IObjectMovement? Movement { get; set; }
             public IParticles? Particles { get; set; }
             public List<List<IVector3>> CrashBoxes { get; set; }
+            public List<string?>? CrashBoxNames { get; set; }
             public bool CrashBoxesFollowRotation { get; set; } = true;
             public IImpactStatus? ImpactStatus { get; set; }
             public int? Mass { get; set; }

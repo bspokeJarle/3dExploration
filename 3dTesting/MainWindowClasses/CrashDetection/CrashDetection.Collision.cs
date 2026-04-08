@@ -76,6 +76,7 @@ namespace _3dTesting.Helpers
                             // Tell the other object what hit it (the weapon name stored on the particle)
                             other.ImpactStatus.ObjectName = particle.ImpactStatus?.ObjectName
                                                             ?? particle.ObjectName;
+                            other.ImpactStatus.CrashBoxName = other.CrashBoxNames != null && ob < other.CrashBoxNames.Count ? other.CrashBoxNames[ob] : null;
                         }
 
                         if (!SkipParticleLogging)
@@ -110,6 +111,9 @@ namespace _3dTesting.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool HandleGeneralCollision(_3dObject a, _3dObject b)
         {
+            bool aWasAlreadyCrashed = a.ImpactStatus?.HasCrashed == true;
+            bool bWasAlreadyCrashed = b.ImpactStatus?.HasCrashed == true;
+
             for (int ai = 0; ai < a.CrashBoxes.Count; ai++)
             {
                 var boxA = a.CrashBoxes[ai];
@@ -151,11 +155,20 @@ namespace _3dTesting.Helpers
 
                         a.ImpactStatus.HasCrashed = true;
                         b.ImpactStatus.HasCrashed = true;
-                        a.ImpactStatus.ObjectName = b.ObjectName;
-                        b.ImpactStatus.ObjectName = a.ObjectName;
 
-                        a.ImpactStatus.ImpactDirection = EstimateDirection(centerA, centerB);
-                        b.ImpactStatus.ImpactDirection = EstimateDirection(centerB, centerA);
+                        if (!aWasAlreadyCrashed)
+                        {
+                            a.ImpactStatus.ObjectName = b.ObjectName;
+                            a.ImpactStatus.ImpactDirection = EstimateDirection(centerA, centerB);
+                            a.ImpactStatus.CrashBoxName = a.CrashBoxNames != null && ai < a.CrashBoxNames.Count ? a.CrashBoxNames[ai] : null;
+                        }
+
+                        if (!bWasAlreadyCrashed)
+                        {
+                            b.ImpactStatus.ObjectName = a.ObjectName;
+                            b.ImpactStatus.ImpactDirection = EstimateDirection(centerB, centerA);
+                            b.ImpactStatus.CrashBoxName = b.CrashBoxNames != null && bi < b.CrashBoxNames.Count ? b.CrashBoxNames[bi] : null;
+                        }
 
                         LogCollision(a, b,
                             $"[FRAME:{numFrame}] [GENERAL COLLISION] {a.ObjectName} <-> {b.ObjectName} | ABox:{ai} BBox:{bi} | CenterDistance:{centerDistance:0.##}");

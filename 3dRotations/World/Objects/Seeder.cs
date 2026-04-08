@@ -12,8 +12,10 @@ namespace _3dRotations.World.Objects
 {
     public class Seeder
     {
+        private const float ZoomRatio = 1.1f;
+
         // --- Geometry parameters for the flying saucer ---
-        private static float seederRadius = 40f;   // Half diameter of the main disc
+        private static float seederRadius = 40f;
         private static float seederThickness = 6.0f;  // Half thickness of the middle belt (z = ±seederThickness)
         private static float topDomeHeight = 18f;   // Upper dome apex above center (z)
         private static float bottomDomeHeight = 12f;   // Lower dome bottom below center (z)
@@ -168,6 +170,9 @@ namespace _3dRotations.World.Objects
 
             seeder.ParentSurface = parentSurface;
             seeder.HasShadow = true;
+
+            _3dObjectHelpers.ApplyScaleToObject(seeder, ZoomRatio);
+
             return seeder;
         }
 

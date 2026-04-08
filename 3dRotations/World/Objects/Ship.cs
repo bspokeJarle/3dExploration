@@ -11,10 +11,10 @@ namespace _3dRotations.World.Objects
     public static class Ship
     {
         private const float ZoomRatio = 1f;
-        private const float ShipCrashBoxSizeMultiplier = 1.1f;
-        private static readonly Vector3 ShipCrashBoxPadding = new() { x = 0f, y = 8f, z = 10f };
-        private const float TopCannonCrashBoxSizeMultiplier = 0.7f;
-        private static readonly Vector3 TopCannonCrashBoxPadding = new() { x = 1f, y = 4f, z = 2f };
+        private const float ShipCrashBoxSizeMultiplier = 0.95f;
+        private static readonly Vector3 ShipCrashBoxPadding = new() { x = 0f, y = 8f, z = 0.5f };
+        private const float TopCannonCrashBoxSizeMultiplier = 0.35f;
+        private static readonly Vector3 TopCannonCrashBoxPadding = new() { x = 0.5f, y = 2f, z = 1f };
 
         public static _3dObject CreateShip(ISurface parentSurface)
         {

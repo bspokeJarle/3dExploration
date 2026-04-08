@@ -320,13 +320,18 @@ namespace _3dTesting.MainWindowClasses.Loops
                         powerup.WorldPosition = new Vector3
                         {
                             x = obj.WorldPosition.x,
-                            y = obj.WorldPosition.y,
-                            z = obj.WorldPosition.z + 100
+                            y = 0,
+                            z = obj.WorldPosition.z
                         };
+                        // Un-sync the parent's ObjectOffsets.y to recover the raw initial value.
+                        // SyncMovement formula: synced_y = globalMapY * 2.5 + rawY
+                        // PowerUpControls.SyncMovement will re-apply its own sync from this raw value.
+                        var globalMapY = GameState.SurfaceState?.GlobalMapPosition?.y ?? 0;
+                        var parentRawY = (obj.ObjectOffsets?.y ?? 0) - globalMapY * 2.5f;
                         powerup.ObjectOffsets = new Vector3
                         {
-                            x = obj.ObjectOffsets?.x ?? 0,
-                            y = obj.ObjectOffsets?.y ?? 0,
+                            x = 0,
+                            y = parentRawY - 50,
                             z = 400
                         };
                         powerup.Movement = new PowerUpControls();

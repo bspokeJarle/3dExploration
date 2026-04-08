@@ -1,4 +1,5 @@
 ﻿using _3dTesting._3dWorld;
+using _3dTesting.Helpers;
 using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Controls;
@@ -13,6 +14,8 @@ namespace _3dRotations.World.Objects
 {
     public class Bomber
     {
+        private const float ZoomRatio = 1f;
+
         public static _3dObject CreateBomber()
         {
             var upperTriangles = UpperTriangles();
@@ -31,6 +34,9 @@ namespace _3dRotations.World.Objects
             ship.Movement = new ShipControls();
             ship.Particles = new ParticlesAI();
             if (bomberCrashBox != null) ship.CrashBoxes = bomberCrashBox;
+
+            _3dObjectHelpers.ApplyScaleToObject(ship, ZoomRatio);
+
             return ship;
         }
 
