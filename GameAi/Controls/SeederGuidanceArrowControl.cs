@@ -90,16 +90,20 @@ namespace GameAiAndControls.Controls
             Vector3? bestSeederPos = null;
             float bestDroneDistSq = float.MaxValue;
             Vector3? bestDronePos = null;
+            float bestMotherShipDistSq = float.MaxValue;
+            Vector3? bestMotherShipPos = null;
 
             for (int i = 0; i < aiObjects.Count; i++)
             {
                 var obj = aiObjects[i];
+                if (!obj.IsActive) continue;
                 if (obj.ImpactStatus?.HasExploded == true)
                     continue;
 
                 bool isSeeder = obj.ObjectName == "Seeder";
                 bool isDrone = obj.ObjectName == "KamikazeDrone";
-                if (!isSeeder && !isDrone)
+                bool isMotherShip = obj.ObjectName == "MotherShipSmall";
+                if (!isSeeder && !isDrone && !isMotherShip)
                     continue;
 
                 var pos = obj.WorldPosition;
@@ -115,6 +119,11 @@ namespace GameAiAndControls.Controls
                     bestSeederDistSq = distSq;
                     bestSeederPos = new Vector3 { x = pos.x, y = pos.y, z = pos.z };
                 }
+                else if (isMotherShip && distSq < bestMotherShipDistSq)
+                {
+                    bestMotherShipDistSq = distSq;
+                    bestMotherShipPos = new Vector3 { x = pos.x, y = pos.y, z = pos.z };
+                }
                 else if (isDrone && distSq < bestDroneDistSq)
                 {
                     bestDroneDistSq = distSq;
@@ -122,8 +131,8 @@ namespace GameAiAndControls.Controls
                 }
             }
 
-            // Seeders are the primary target; fall back to drones only when none remain
-            return bestSeederPos ?? bestDronePos;
+            // Seeders first, then MotherShipSmall, then drones
+            return bestSeederPos ?? bestMotherShipPos ?? bestDronePos;
         }
 
         private static Vector3 GetShipWorldPosition()

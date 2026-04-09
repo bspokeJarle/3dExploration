@@ -30,6 +30,10 @@ namespace GameAiAndControls.Controls
         private const float WeakSpotCenterY = 0f;
         private const float WeakSpotCenterZ = 69.6f;
 
+        // Descent animation:
+        private const float DescentDurationSeconds = 4.0f;
+        private const float DescentTargetY = 150f;
+
         // Explosion:
         private const float FirstExplosionForce = 200f;
         private const float SecondExplosionForce = 400f;
@@ -77,6 +81,10 @@ namespace GameAiAndControls.Controls
         private bool _isFlashing = false;
         private List<List<string?>>? _originalColors;
 
+        private bool _isDescending = false;
+        private float _descentStartY = 0f;
+        private DateTime _descentStartTime = DateTime.MinValue;
+
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             ConfigureAudio(audioPlayer, soundRegistry);
@@ -121,6 +129,26 @@ namespace GameAiAndControls.Controls
                 _lastMovementTime = now;
 
             double deltaSeconds = (now - _lastMovementTime).TotalSeconds;
+
+            // Descent animation: lower from starting altitude to surface level over DescentDurationSeconds
+            if (!_isDescending && !_syncInitialized)
+            {
+                _isDescending = true;
+                _descentStartY = theObject.ObjectOffsets.y;
+                _descentStartTime = now;
+            }
+
+            if (_isDescending)
+            {
+                float elapsed = (float)(now - _descentStartTime).TotalSeconds;
+                float t = Math.Clamp(elapsed / DescentDurationSeconds, 0f, 1f);
+                // Smooth ease-out: decelerate as it approaches the target
+                float smoothT = 1f - (1f - t) * (1f - t);
+                theObject.ObjectOffsets.y = _descentStartY + (DescentTargetY - _descentStartY) * smoothT;
+
+                if (t >= 1f)
+                    _isDescending = false;
+            }
 
             UpdateFacingTowardsShip(theObject);
 
@@ -179,6 +207,9 @@ namespace GameAiAndControls.Controls
 
         private void SyncMovement(I3dObject theObject)
         {
+            // Don't sync to surface during descent animation
+            if (_isDescending) return;
+
             if (!_syncInitialized)
             {
                 _syncInitialized = true;

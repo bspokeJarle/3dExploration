@@ -228,6 +228,7 @@ namespace _3dTesting.Helpers
                     {
                         var obj = snapshot[i];
                         if (obj == null) continue;
+                        if (!obj.IsActive) continue;
                         if (obj.ImpactStatus?.HasExploded == true)
                             continue;
                         // Also skip objects whose parts have been cleared (fully dead)
@@ -254,6 +255,7 @@ namespace _3dTesting.Helpers
                             "Seeder" => blackPx,
                             "KamikazeDrone" => bluePx,
                             "DroneDecoy" => orangePx,
+                            "MotherShipSmall" => new byte[] { 0, 0, 255, 255 },
                             _ => null
                         };
                         if (color == null) continue;

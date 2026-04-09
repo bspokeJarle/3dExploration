@@ -28,5 +28,6 @@ namespace Domain
         bool IsOnScreen { get; set; }
         bool HasShadow { get; set; }
         bool HasPowerUp { get; set; }
+        bool IsActive { get; set; }
     }
 }

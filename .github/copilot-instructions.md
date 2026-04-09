@@ -13,7 +13,7 @@
 - Implement audio spatialization consistently for all moving sound-emitting objects in the project, not just kamikaze drones.
 - Collision/crash detection logic must stay centralized in the `CrashDetection` class. Do not scatter collision triggers into individual object controls (like `KamikazeDroneControl`, `DecoyBeaconControl`, etc.). Keep detection in one place.
 - When the scene GameMode is Playback, do not run surface generation; load the surface from a recording file. During loading, calculate `TotalBioTiles` since `SurfaceGeneration.ReturnPseudoRandomMap` (which normally counts them) is not called.
-- If an object has an unnatural crash, check the size of the object (geometry/scale), not the offset or anything else.
+- If an object has an unnatural crash, check the size of the object (geometry/scale), not the offset or anything else. The size of the actual object coordinates is very important to make a natural hit — if the object is too small in coordinates, the crash seems unnatural since it appears the object is far away.
 
 ## Control Class Pattern
 - Control classes implement `IObjectMovement` and are assigned to objects via the `Movement` property.

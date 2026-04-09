@@ -60,6 +60,7 @@ namespace _3dRotations.Scene.Scene1
                 kamikaze.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.KamikazeDroneHealth };
                 kamikaze.CrashBoxDebugMode = false;
                 kamikaze.WeaponSystems = null;
+                kamikaze.IsActive = false;
                 world.WorldInhabitants.Add(kamikaze);
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
@@ -79,6 +80,19 @@ namespace _3dRotations.Scene.Scene1
                 world.WorldInhabitants.Add(seeder);
                 GameState.SurfaceState.AiObjects.Add(seeder);
             }
+
+            // MotherShipSmall — spawns inactive, enters when all seeders are destroyed
+            var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
+            motherShip.Rotation = new Vector3 { };
+            motherShip.WorldPosition = new Vector3 { x = 95700, y = 0, z = 92000 };
+            motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
+            motherShip.ObjectName = "MotherShipSmall";
+            motherShip.Movement = new MotherShipSmallControls();
+            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
+            motherShip.CrashBoxDebugMode = false;
+            motherShip.IsActive = false;
+            world.WorldInhabitants.Add(motherShip);
+            GameState.SurfaceState.AiObjects.Add(motherShip);
 
             //Get the surface viewport based on the global Map Position
             //Important: In a Scene, Surface should be amongst the first objects added to the world

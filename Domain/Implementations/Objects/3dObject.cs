@@ -30,6 +30,7 @@ namespace Domain
             public bool IsOnScreen { get; set; } = false;
             public bool HasShadow { get; set; } = false;
             public bool HasPowerUp { get; set; } = false;
+            public bool IsActive { get; set; } = true;
         }
     }
 }

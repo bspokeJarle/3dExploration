@@ -75,6 +75,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 foreach (var inhabitant in inhabitants)
                 {
                     if (inhabitant.ObjectParts.Count == 0) continue;
+                    if (!inhabitant.IsActive) continue;
 
                     if (inhabitant is _3dObject concreteInhabitant && concreteInhabitant.CheckInhabitantVisibility())
                     {
@@ -222,6 +223,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 AiUpdateCounter = 0;
                 foreach (var aiObject in GameState.SurfaceState.AiObjects)
                 {
+                    if (!aiObject.IsActive) continue;
                     if (aiObject.IsOnScreen == false)
                     {
                         aiObject.Movement.MoveObject(aiObject, audioPlayer, soundRegistry);
@@ -238,13 +240,48 @@ namespace _3dTesting.MainWindowClasses.Loops
             CleanupExplodedObjects(world);
             UpdateHudState(world);
 
+            // Activate KamikazeDrones when Decoy weapon is unlocked (first PowerUp collected)
+            if (!_deathSequenceStarted && !_victorySequenceStarted &&
+                activeScene != null && activeScene.SceneType == SceneTypes.Game)
+            {
+                if (GameState.GamePlayState.IsDecoyUnlocked)
+                {
+                    var aiObjs = GameState.SurfaceState.AiObjects;
+                    for (int i = 0; i < aiObjs.Count; i++)
+                    {
+                        if (aiObjs[i].ObjectName == "KamikazeDrone" && !aiObjs[i].IsActive)
+                        {
+                            aiObjs[i].IsActive = true;
+                        }
+                    }
+                }
+            }
+
+            // Activate MotherShipSmall when all seeders are eliminated
+            if (!_deathSequenceStarted && !_victorySequenceStarted &&
+                activeScene != null && activeScene.SceneType == SceneTypes.Game)
+            {
+                var gps2 = GameState.GamePlayState;
+                if (gps2.InitialSeeders > 0 && gps2.SeedersRemaining == 0)
+                {
+                    var aiObjs = GameState.SurfaceState.AiObjects;
+                    for (int i = 0; i < aiObjs.Count; i++)
+                    {
+                        if (aiObjs[i].ObjectName == "MotherShipSmall" && !aiObjs[i].IsActive)
+                        {
+                            aiObjs[i].IsActive = true;
+                        }
+                    }
+                }
+            }
+
             // Victory detection: all enemies eliminated
             if (!_deathSequenceStarted && !_victorySequenceStarted &&
                 activeScene != null && activeScene.SceneType == SceneTypes.Game)
             {
                 var gps = GameState.GamePlayState;
                 if ((gps.InitialDrones > 0 || gps.InitialSeeders > 0) &&
-                    gps.DronesRemaining == 0 && gps.SeedersRemaining == 0)
+                    gps.DronesRemaining == 0 && gps.SeedersRemaining == 0 && gps.MotherShipsRemaining == 0)
                 {
                     _victorySequenceStarted = true;
                     _victoryStartTicks = Stopwatch.GetTimestamp();
@@ -440,6 +477,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             var aiObjects = GameState.SurfaceState.AiObjects;
             int drones = 0;
             int seeders = 0;
+            int motherShips = 0;
 
             for (int i = 0; i < aiObjects.Count; i++)
             {
@@ -447,10 +485,12 @@ namespace _3dTesting.MainWindowClasses.Loops
                 if (obj.ImpactStatus?.HasExploded == true)
                     continue;
 
-                if (obj.ObjectName == "KamikazeDrone")
+                if (obj.ObjectName == "KamikazeDrone" && obj.IsActive)
                     drones++;
                 else if (obj.ObjectName == "Seeder")
                     seeders++;
+                else if (obj.ObjectName == "MotherShipSmall" && obj.IsActive)
+                    motherShips++;
             }
 
             // Capture initial totals once (first frame where enemies exist)
@@ -458,9 +498,12 @@ namespace _3dTesting.MainWindowClasses.Loops
                 gps.InitialDrones = drones;
             if (gps.InitialSeeders == 0 && seeders > 0)
                 gps.InitialSeeders = seeders;
+            if (gps.InitialMotherShips == 0 && motherShips > 0)
+                gps.InitialMotherShips = motherShips;
 
             gps.DronesRemaining = drones;
             gps.SeedersRemaining = seeders;
+            gps.MotherShipsRemaining = motherShips;
         }
 
         private Dictionary<int, _3dObject> InitializeAiOnScreenTracking()

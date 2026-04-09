@@ -72,6 +72,7 @@ namespace _3dRotations.Scene.Scene1
                 kamikaze.CrashBoxDebugMode = false;
                 kamikaze.WeaponSystems = null;
                 kamikaze.HasPowerUp = false;
+                kamikaze.IsActive = false;
                 world.WorldInhabitants.Add(kamikaze);
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
@@ -98,7 +99,7 @@ namespace _3dRotations.Scene.Scene1
             //Special Seeder that has a powerup hidden
             var seederPowerup = Seeder.CreateSeeder(Surface);
             seederPowerup.Rotation = new Vector3 { };
-            seederPowerup.WorldPosition = new Vector3 { x = 95700 + -15000, y = 0, z = 92000 + -15000 };
+            seederPowerup.WorldPosition = new Vector3 { x = 95700 + -10000, y = 0, z = 92000 + -10000 };
             seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
             seederPowerup.ObjectName = "Seeder";
             seederPowerup.Movement = new SeederControls();
@@ -108,16 +109,17 @@ namespace _3dRotations.Scene.Scene1
             world.WorldInhabitants.Add(seederPowerup);
             GameState.SurfaceState.AiObjects.Add(seederPowerup);
 
-            //Mothership for this Scene
+            //Mothership for this Scene — spawns inactive, enters when all seeders are destroyed
             var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
             motherShip.Rotation = new Vector3 { };
             motherShip.WorldPosition = new Vector3 { x = 95100, y = 0, z = 94200 };
-            motherShip.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 400 };
+            motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
             motherShip.ObjectName = "MotherShipSmall";
             motherShip.Movement = new MotherShipSmallControls();
             motherShip.CrashBoxDebugMode = false;
             motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
             motherShip.HasPowerUp = true;
+            motherShip.IsActive = false;
             world.WorldInhabitants.Add(motherShip);
             GameState.SurfaceState.AiObjects.Add(motherShip);
 
@@ -135,7 +137,7 @@ namespace _3dRotations.Scene.Scene1
                 seeder.Movement = new SeederControls();
                 seeder.CrashBoxDebugMode = false;
                 seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = true;
+                seeder.HasPowerUp = false;
                 world.WorldInhabitants.Add(seeder);
                 GameState.SurfaceState.AiObjects.Add(seeder);
             }

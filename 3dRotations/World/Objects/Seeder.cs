@@ -12,7 +12,7 @@ namespace _3dRotations.World.Objects
 {
     public class Seeder
     {
-        private const float ZoomRatio = 1.1f;
+        private const float ZoomRatio = 1.2f;
 
         // --- Geometry parameters for the flying saucer ---
         private static float seederRadius = 40f;
