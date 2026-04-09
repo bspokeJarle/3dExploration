@@ -74,6 +74,8 @@ namespace _3dTesting.Helpers
                     bool isPowerUpShipPair =
                         (flagsA.Name == "PowerUp" && flagsB.IsShip) ||
                         (flagsB.Name == "PowerUp" && flagsA.IsShip);
+                    bool isEnemySurfacePair = (flagsA.IsEnemy && flagsB.IsSurface) || (flagsB.IsEnemy && flagsA.IsSurface);
+                    bool isBothEnemies = flagsA.IsEnemy && flagsB.IsEnemy;
 
                     if (string.IsNullOrEmpty(flagsA.Name) || string.IsNullOrEmpty(flagsB.Name)) continue;
                     if (flagsA.Name == flagsB.Name) continue;
@@ -82,8 +84,8 @@ namespace _3dTesting.Helpers
                     if (isParticle && isShip) continue;
                     if (isBothParticles) continue;
                     if (isParticle && _skipParticles) continue;
-                    if (isKamikazeDroneSurfacePair) continue;
-                    if (isSeederSurfacePair) continue;
+                    if (isEnemySurfacePair) continue;
+                    if (isBothEnemies) continue;
                     if (isDecoySurfacePair) continue;
                     if (isDecoyShipPair) continue;
                     if (isPowerUp && !isPowerUpShipPair) continue;

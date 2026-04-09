@@ -72,9 +72,15 @@ namespace _3dTesting
         private readonly Canvas _motherShipHealthBarCanvas;
         private readonly System.Windows.Shapes.Rectangle _motherShipHealthBarBg;
         private readonly System.Windows.Shapes.Rectangle _motherShipHealthBarFill;
-        private const double MotherShipBarWidth = 8;
+        private const double MotherShipBarWidth = 16;
         private const double MotherShipBarHeight = 50;
         private const double MotherShipBarOffsetX = 140;
+
+        // MotherShip ram warning (flashing reticle)
+        private readonly Canvas _ramWarningCanvas;
+        private readonly System.Windows.Shapes.Ellipse _ramWarningOuter;
+        private readonly System.Windows.Shapes.Ellipse _ramWarningInner;
+        private const double RamWarningSize = 100;
 
         private bool isFading = false;
         private bool _isFadingIn = false;
@@ -157,9 +163,9 @@ namespace _3dTesting
             {
                 Width = MotherShipBarWidth,
                 Height = MotherShipBarHeight,
-                Fill = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
-                Stroke = new SolidColorBrush(Color.FromArgb(160, 0, 255, 255)),
-                StrokeThickness = 1
+                Fill = new SolidColorBrush(Color.FromArgb(140, 0, 0, 0)),
+                Stroke = new SolidColorBrush(Color.FromArgb(200, 0, 255, 255)),
+                StrokeThickness = 2
             };
 
             _motherShipHealthBarFill = new System.Windows.Shapes.Rectangle
@@ -173,6 +179,36 @@ namespace _3dTesting
             _motherShipHealthBarCanvas.Children.Add(_motherShipHealthBarBg);
             _motherShipHealthBarCanvas.Children.Add(_motherShipHealthBarFill);
             mainGrid.Children.Add(_motherShipHealthBarCanvas);
+
+            // MotherShip ram warning reticle
+            _ramWarningCanvas = new Canvas
+            {
+                IsHitTestVisible = false,
+                Visibility = Visibility.Collapsed
+            };
+            Panel.SetZIndex(_ramWarningCanvas, 10);
+
+            _ramWarningOuter = new System.Windows.Shapes.Ellipse
+            {
+                Width = RamWarningSize,
+                Height = RamWarningSize,
+                Fill = System.Windows.Media.Brushes.Transparent,
+                Stroke = new SolidColorBrush(Color.FromArgb(200, 255, 60, 30)),
+                StrokeThickness = 3
+            };
+
+            _ramWarningInner = new System.Windows.Shapes.Ellipse
+            {
+                Width = RamWarningSize * 0.5,
+                Height = RamWarningSize * 0.5,
+                Fill = new SolidColorBrush(Color.FromArgb(80, 255, 40, 20)),
+                Stroke = new SolidColorBrush(Color.FromArgb(160, 255, 80, 40)),
+                StrokeThickness = 2
+            };
+
+            _ramWarningCanvas.Children.Add(_ramWarningOuter);
+            _ramWarningCanvas.Children.Add(_ramWarningInner);
+            mainGrid.Children.Add(_ramWarningCanvas);
 
             timer.Interval = TimeSpan.FromMilliseconds(8);
             CompositionTarget.Rendering += Handle3dWorldRendering;
@@ -346,6 +382,9 @@ namespace _3dTesting
 
                 // MotherShip in-world health bar
                 UpdateMotherShipHealthBar(gameplay);
+
+                // MotherShip ram warning reticle
+                UpdateMotherShipRamWarning(gameplay);
             }
 
             world.SceneHandler.UpdateFrame(world);
@@ -493,7 +532,8 @@ namespace _3dTesting
 
             // Position the bar to the right of the mothership's screen center
             double barX = gameplay.MotherShipScreenX + MotherShipBarOffsetX;
-            double barY = gameplay.MotherShipScreenY - MotherShipBarHeight / 2;
+            double maxBarY = ScreenSetup.screenSizeY - 175 - MotherShipBarHeight / 2;
+            double barY = Math.Min(gameplay.MotherShipScreenY - MotherShipBarHeight / 2, maxBarY);
 
             Canvas.SetLeft(_motherShipHealthBarBg, barX);
             Canvas.SetTop(_motherShipHealthBarBg, barY);
@@ -520,6 +560,33 @@ namespace _3dTesting
             }
 
             _motherShipHealthBarFill.Fill = new SolidColorBrush(Color.FromArgb(220, r, g, 0));
+        }
+
+        private void UpdateMotherShipRamWarning(GamePlayState gameplay)
+        {
+            if (gameplay == null || !gameplay.MotherShipRamWarningActive || isFading)
+            {
+                _ramWarningCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (GameState.ScreenOverlayState.Type != ScreenOverlayType.Game)
+            {
+                _ramWarningCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            _ramWarningCanvas.Visibility = Visibility.Visible;
+
+            double cx = gameplay.MotherShipRamWarningScreenX;
+            double cy = gameplay.MotherShipRamWarningScreenY;
+
+            Canvas.SetLeft(_ramWarningOuter, cx - RamWarningSize / 2);
+            Canvas.SetTop(_ramWarningOuter, cy - RamWarningSize / 2);
+
+            double innerSize = RamWarningSize * 0.5;
+            Canvas.SetLeft(_ramWarningInner, cx - innerSize / 2);
+            Canvas.SetTop(_ramWarningInner, cy - innerSize / 2);
         }
 
         private static string ResolveVideoPath(string clipPath)

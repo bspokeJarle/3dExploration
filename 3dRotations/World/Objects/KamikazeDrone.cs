@@ -5,6 +5,7 @@ using _3dTesting.Helpers;
 using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Controls;
+using GameAiAndControls.Controls.KamikazeDroneControls;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.World.Objects

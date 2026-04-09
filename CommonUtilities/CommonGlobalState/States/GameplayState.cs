@@ -126,6 +126,11 @@ namespace Domain
         public bool ShowMotherShipHealthBar { get; set; } = false;
         public bool MotherShipIsOnScreen { get; set; } = false;
 
+        // MotherShip ram warning (flashing reticle before charge)
+        public bool MotherShipRamWarningActive { get; set; } = false;
+        public float MotherShipRamWarningScreenX { get; set; } = 0f;
+        public float MotherShipRamWarningScreenY { get; set; } = 0f;
+
         // PowerUp progression: each collected PowerUp unlocks the next weapon tier
         public int PowerUpsCollected { get; set; } = 0;
         public bool IsDecoyUnlocked => PowerUpsCollected >= 1;
@@ -275,6 +280,10 @@ namespace Domain
             MotherShipScreenY = 0f;
             ShowMotherShipHealthBar = false;
             MotherShipIsOnScreen = false;
+
+            MotherShipRamWarningActive = false;
+            MotherShipRamWarningScreenX = 0f;
+            MotherShipRamWarningScreenY = 0f;
 
             SelectedWeapon = WeaponType.Bullet;
             ActivePowerup = "BULLET";

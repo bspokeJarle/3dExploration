@@ -83,6 +83,8 @@ namespace GameAiAndControls.Controls
         public IPhysics Physics { get; set; } = new Physics.Physics();
         private bool hasInitialized = false;
         private bool isExploding = false;
+        private DateTime _motherShipCollisionCooldown = DateTime.MinValue;
+        private const float MotherShipCollisionCooldownSeconds = 2.0f;
         private bool _fireKeyHeld = false;
         private bool _leftHeld = false;
         private bool _rightHeld = false;
@@ -659,9 +661,15 @@ namespace GameAiAndControls.Controls
                 }
                 else if (crashedWith == "MotherShipSmall")
                 {
-                    int currentHealth = theObject.ImpactStatus.ObjectHealth ?? 0;
-                    theObject.ImpactStatus.ObjectHealth = 0;
-                    if (logging) Logger.Log($"[ShipCrash] MotherShip hit! Damage={currentHealth}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                    if ((DateTime.Now - _motherShipCollisionCooldown).TotalSeconds < MotherShipCollisionCooldownSeconds)
+                    {
+                        theObject.ImpactStatus.HasCrashed = false;
+                        return theObject;
+                    }
+                    _motherShipCollisionCooldown = DateTime.Now;
+                    int ramDamage = ShipSetup.DefaultShipHealth / 2;
+                    theObject.ImpactStatus.ObjectHealth -= ramDamage;
+                    if (logging) Logger.Log($"[ShipCrash] MotherShip ram! Damage={ramDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else if (EnemySetup.IsEnemyTypeValid(crashedWith))
                 {

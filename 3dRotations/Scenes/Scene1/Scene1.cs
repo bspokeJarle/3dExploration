@@ -5,6 +5,8 @@ using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
+using GameAiAndControls.Controls.KamikazeDroneControls;
+using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Controls.SeederControls;
 using System;
 using System.Collections.Generic;

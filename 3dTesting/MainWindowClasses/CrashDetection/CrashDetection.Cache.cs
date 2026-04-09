@@ -31,6 +31,7 @@ namespace _3dTesting.Helpers
             public readonly bool IsSeeder;
             public readonly bool IsShip;
             public readonly bool IsSurface;
+            public readonly bool IsEnemy;
             public readonly string Name;
 
             public ObjectTypeFlags(string name)
@@ -43,6 +44,7 @@ namespace _3dTesting.Helpers
                 IsSeeder = name == "Seeder";
                 IsShip = name == "Ship";
                 IsSurface = name == "Surface";
+                IsEnemy = CommonUtilities.CommonSetup.EnemySetup.IsEnemyTypeValid(name);
             }
         }
 
