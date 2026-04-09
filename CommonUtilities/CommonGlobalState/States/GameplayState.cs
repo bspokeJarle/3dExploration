@@ -117,6 +117,15 @@ namespace Domain
         public WeaponType SelectedWeapon { get; set; } = WeaponType.Bullet;
         public string ActivePowerup { get; set; } = "BULLET";
 
+        // -----------------------------
+        // MotherShip health bar (in-world, follows the object)
+        // -----------------------------
+        public float MotherShipHealthPercent { get; set; } = 1f;
+        public float MotherShipScreenX { get; set; } = 0f;
+        public float MotherShipScreenY { get; set; } = 0f;
+        public bool ShowMotherShipHealthBar { get; set; } = false;
+        public bool MotherShipIsOnScreen { get; set; } = false;
+
         // PowerUp progression: each collected PowerUp unlocks the next weapon tier
         public int PowerUpsCollected { get; set; } = 0;
         public bool IsDecoyUnlocked => PowerUpsCollected >= 1;
@@ -260,6 +269,12 @@ namespace Domain
             SeederOffscreenSpeedFactor = 6;
             LocalInfectionSpreadDelaySec = 1.0f;
             LocalInfectionSpreadRadius = 10000f;
+
+            MotherShipHealthPercent = 1f;
+            MotherShipScreenX = 0f;
+            MotherShipScreenY = 0f;
+            ShowMotherShipHealthBar = false;
+            MotherShipIsOnScreen = false;
 
             SelectedWeapon = WeaponType.Bullet;
             ActivePowerup = "BULLET";

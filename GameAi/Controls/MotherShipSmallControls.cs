@@ -32,7 +32,7 @@ namespace GameAiAndControls.Controls
 
         // Descent animation:
         private const float DescentDurationSeconds = 4.0f;
-        private const float DescentTargetY = 150f;
+        private const float DescentTargetY = 50f;
 
         // Explosion:
         private const float FirstExplosionForce = 200f;

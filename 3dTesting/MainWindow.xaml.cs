@@ -68,6 +68,14 @@ namespace _3dTesting
         private bool _videoOverlayIsPlaying;
         private bool _videoEntrancePlayed;
 
+        // MotherShip health bar (in-world overlay)
+        private readonly Canvas _motherShipHealthBarCanvas;
+        private readonly System.Windows.Shapes.Rectangle _motherShipHealthBarBg;
+        private readonly System.Windows.Shapes.Rectangle _motherShipHealthBarFill;
+        private const double MotherShipBarWidth = 8;
+        private const double MotherShipBarHeight = 50;
+        private const double MotherShipBarOffsetX = 140;
+
         private bool isFading = false;
         private bool _isFadingIn = false;
         private int Fps = 0;
@@ -136,6 +144,35 @@ namespace _3dTesting
             // Overlay handlers must be put in the grid
             _overlayHandler = new OverlayHandler(mainGrid);
             _hudHandler = new HudOverlayHandlerV2(mainGrid);
+
+            // MotherShip in-world health bar
+            _motherShipHealthBarCanvas = new Canvas
+            {
+                IsHitTestVisible = false,
+                Visibility = Visibility.Collapsed
+            };
+            Panel.SetZIndex(_motherShipHealthBarCanvas, 10);
+
+            _motherShipHealthBarBg = new System.Windows.Shapes.Rectangle
+            {
+                Width = MotherShipBarWidth,
+                Height = MotherShipBarHeight,
+                Fill = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
+                Stroke = new SolidColorBrush(Color.FromArgb(160, 0, 255, 255)),
+                StrokeThickness = 1
+            };
+
+            _motherShipHealthBarFill = new System.Windows.Shapes.Rectangle
+            {
+                Width = MotherShipBarWidth - 2,
+                Height = MotherShipBarHeight - 2,
+                Fill = Brushes.LimeGreen,
+                Opacity = 0.9
+            };
+
+            _motherShipHealthBarCanvas.Children.Add(_motherShipHealthBarBg);
+            _motherShipHealthBarCanvas.Children.Add(_motherShipHealthBarFill);
+            mainGrid.Children.Add(_motherShipHealthBarCanvas);
 
             timer.Interval = TimeSpan.FromMilliseconds(8);
             CompositionTarget.Rendering += Handle3dWorldRendering;
@@ -306,6 +343,9 @@ namespace _3dTesting
 
                 int triangles = worldRenderer.GetRenderingTriangleCount();
                 _hudHandler.Update(GameState.ScreenOverlayState, gameplay, w, h, Fps, triangles);
+
+                // MotherShip in-world health bar
+                UpdateMotherShipHealthBar(gameplay);
             }
 
             world.SceneHandler.UpdateFrame(world);
@@ -432,6 +472,55 @@ namespace _3dTesting
         _videoOverlay.Position = TimeSpan.Zero;
         _videoOverlay.Play();
     }
+
+        private void UpdateMotherShipHealthBar(GamePlayState gameplay)
+        {
+            if (gameplay == null || !gameplay.ShowMotherShipHealthBar || !gameplay.MotherShipIsOnScreen)
+            {
+                _motherShipHealthBarCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (GameState.ScreenOverlayState.Type != ScreenOverlayType.Game || isFading)
+            {
+                _motherShipHealthBarCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            _motherShipHealthBarCanvas.Visibility = Visibility.Visible;
+
+            float pct = Math.Clamp(gameplay.MotherShipHealthPercent, 0f, 1f);
+
+            // Position the bar to the right of the mothership's screen center
+            double barX = gameplay.MotherShipScreenX + MotherShipBarOffsetX;
+            double barY = gameplay.MotherShipScreenY - MotherShipBarHeight / 2;
+
+            Canvas.SetLeft(_motherShipHealthBarBg, barX);
+            Canvas.SetTop(_motherShipHealthBarBg, barY);
+
+            // Fill grows from bottom to top
+            double fillH = (MotherShipBarHeight - 2) * pct;
+            _motherShipHealthBarFill.Height = fillH;
+            Canvas.SetLeft(_motherShipHealthBarFill, barX + 1);
+            Canvas.SetTop(_motherShipHealthBarFill, barY + 1 + (MotherShipBarHeight - 2 - fillH));
+
+            // Color: green at 100%, yellow at 50%, red at 0%
+            byte r, g;
+            if (pct > 0.5f)
+            {
+                float t = (1f - pct) * 2f;
+                r = (byte)(255 * t);
+                g = 255;
+            }
+            else
+            {
+                float t = pct * 2f;
+                r = 255;
+                g = (byte)(255 * t);
+            }
+
+            _motherShipHealthBarFill.Fill = new SolidColorBrush(Color.FromArgb(220, r, g, 0));
+        }
 
         private static string ResolveVideoPath(string clipPath)
         {

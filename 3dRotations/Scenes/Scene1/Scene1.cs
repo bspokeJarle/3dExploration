@@ -120,6 +120,7 @@ namespace _3dRotations.Scene.Scene1
             motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
             motherShip.HasPowerUp = true;
             motherShip.IsActive = false;
+            motherShip.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(motherShip);
             GameState.SurfaceState.AiObjects.Add(motherShip);
 

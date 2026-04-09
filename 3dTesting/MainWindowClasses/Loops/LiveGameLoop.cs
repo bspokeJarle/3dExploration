@@ -504,6 +504,49 @@ namespace _3dTesting.MainWindowClasses.Loops
             gps.DronesRemaining = drones;
             gps.SeedersRemaining = seeders;
             gps.MotherShipsRemaining = motherShips;
+
+            // MotherShip health bar tracking
+            bool foundMotherShip = false;
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var obj = aiObjects[i];
+                if (obj.ObjectName != "MotherShipSmall" || !obj.IsActive)
+                    continue;
+                if (obj.ImpactStatus?.HasExploded == true)
+                    continue;
+
+                foundMotherShip = true;
+                int maxHealth = EnemySetup.MotherShipSmallHealth;
+                int currentHealth = obj.ImpactStatus?.ObjectHealth ?? maxHealth;
+                float healthPct = (float)currentHealth / maxHealth;
+
+                if (healthPct < 1f)
+                    gps.ShowMotherShipHealthBar = true;
+
+                gps.MotherShipHealthPercent = healthPct;
+
+                var localWorldPos = obj.GetLocalWorldPosition();
+                if (localWorldPos != null)
+                {
+                    float sx = ScreenSetup.screenSizeX / 2f - localWorldPos.x + (obj.ObjectOffsets?.x ?? 0);
+                    float sy = ScreenSetup.screenSizeY / 2f - localWorldPos.y + (obj.ObjectOffsets?.y ?? 0);
+                    gps.MotherShipScreenX = sx;
+                    gps.MotherShipScreenY = sy;
+                    gps.MotherShipIsOnScreen = sx > -100 && sx < ScreenSetup.screenSizeX + 100
+                                             && sy > -100 && sy < ScreenSetup.screenSizeY + 100;
+                }
+                else
+                {
+                    gps.MotherShipIsOnScreen = false;
+                }
+                break;
+            }
+
+            if (!foundMotherShip)
+            {
+                gps.ShowMotherShipHealthBar = false;
+                gps.MotherShipIsOnScreen = false;
+            }
         }
 
         private Dictionary<int, _3dObject> InitializeAiOnScreenTracking()

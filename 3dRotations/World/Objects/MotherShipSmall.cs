@@ -10,7 +10,7 @@ namespace _3dRotations.World.Objects
 {
     public class MotherShipSmall
     {
-        private const float ZoomRatio = 1.2f;
+        private const float ZoomRatio = 1.3f;
 
         // ----------------------------------------------------
         //  GEOMETRY PARAMETERS
