@@ -9,5 +9,10 @@
 
         public const int screenSizeX = 1500;
         public const int screenSizeY = 1024;
+
+        // Depth / view-distance constants
+        public const float RenderFarZ = 2000f;
+        public const float RenderNearZ = -2000f;
+        public const float ObjectVisibilityDistance = 2000f;
     }
 }

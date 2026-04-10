@@ -1,3 +1,4 @@
+using _3dRotations.World.Objects;
 using _3dTesting._3dRotation;
 using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
@@ -5,6 +6,7 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.SeederControls;
 using GameAudioInstances;
 using System;
@@ -73,6 +75,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 foreach (var inhabitant in inhabitants)
                 {
                     if (inhabitant.ObjectParts.Count == 0) continue;
+                    if (!inhabitant.IsActive) continue;
 
                     if (inhabitant is _3dObject concreteInhabitant && concreteInhabitant.CheckInhabitantVisibility())
                     {
@@ -220,6 +223,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 AiUpdateCounter = 0;
                 foreach (var aiObject in GameState.SurfaceState.AiObjects)
                 {
+                    if (!aiObject.IsActive) continue;
                     if (aiObject.IsOnScreen == false)
                     {
                         aiObject.Movement.MoveObject(aiObject, audioPlayer, soundRegistry);
@@ -236,13 +240,48 @@ namespace _3dTesting.MainWindowClasses.Loops
             CleanupExplodedObjects(world);
             UpdateHudState(world);
 
+            // Activate KamikazeDrones when Decoy weapon is unlocked (first PowerUp collected)
+            if (!_deathSequenceStarted && !_victorySequenceStarted &&
+                activeScene != null && activeScene.SceneType == SceneTypes.Game)
+            {
+                if (GameState.GamePlayState.IsDecoyUnlocked)
+                {
+                    var aiObjs = GameState.SurfaceState.AiObjects;
+                    for (int i = 0; i < aiObjs.Count; i++)
+                    {
+                        if (aiObjs[i].ObjectName == "KamikazeDrone" && !aiObjs[i].IsActive)
+                        {
+                            aiObjs[i].IsActive = true;
+                        }
+                    }
+                }
+            }
+
+            // Activate MotherShipSmall when all seeders are eliminated
+            if (!_deathSequenceStarted && !_victorySequenceStarted &&
+                activeScene != null && activeScene.SceneType == SceneTypes.Game)
+            {
+                var gps2 = GameState.GamePlayState;
+                if (gps2.InitialSeeders > 0 && gps2.SeedersRemaining == 0)
+                {
+                    var aiObjs = GameState.SurfaceState.AiObjects;
+                    for (int i = 0; i < aiObjs.Count; i++)
+                    {
+                        if (aiObjs[i].ObjectName == "MotherShipSmall" && !aiObjs[i].IsActive)
+                        {
+                            aiObjs[i].IsActive = true;
+                        }
+                    }
+                }
+            }
+
             // Victory detection: all enemies eliminated
             if (!_deathSequenceStarted && !_victorySequenceStarted &&
                 activeScene != null && activeScene.SceneType == SceneTypes.Game)
             {
                 var gps = GameState.GamePlayState;
                 if ((gps.InitialDrones > 0 || gps.InitialSeeders > 0) &&
-                    gps.DronesRemaining == 0 && gps.SeedersRemaining == 0)
+                    gps.DronesRemaining == 0 && gps.SeedersRemaining == 0 && gps.MotherShipsRemaining == 0)
                 {
                     _victorySequenceStarted = true;
                     _victoryStartTicks = Stopwatch.GetTimestamp();
@@ -307,6 +346,35 @@ namespace _3dTesting.MainWindowClasses.Loops
                 if (explodedObjects == null || explodedIds == null)
                 {
                     return;
+                }
+
+                // Spawn PowerUp objects at the location of exploded objects that have the flag
+                foreach (var obj in explodedObjects)
+                {
+                    if (obj.HasPowerUp && obj.WorldPosition != null)
+                    {
+                        var powerup = PowerUp.CreatePowerup(obj.ParentSurface);
+                        powerup.WorldPosition = new Vector3
+                        {
+                            x = obj.WorldPosition.x,
+                            y = 0,
+                            z = obj.WorldPosition.z
+                        };
+                        // Un-sync the parent's ObjectOffsets.y to recover the raw initial value.
+                        // SyncMovement formula: synced_y = globalMapY * 2.5 + rawY
+                        // PowerUpControls.SyncMovement will re-apply its own sync from this raw value.
+                        var globalMapY = GameState.SurfaceState?.GlobalMapPosition?.y ?? 0;
+                        var parentRawY = (obj.ObjectOffsets?.y ?? 0) - globalMapY * 2.5f;
+                        powerup.ObjectOffsets = new Vector3
+                        {
+                            x = 0,
+                            y = parentRawY - 50,
+                            z = 400
+                        };
+                        powerup.Movement = new PowerUpControls();
+                        inhabitants.Add(powerup);
+                        GameState.SurfaceState.AiObjects.Add(powerup);
+                    }
                 }
 
                 for (int i = inhabitants.Count - 1; i >= 0; i--)
@@ -409,6 +477,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             var aiObjects = GameState.SurfaceState.AiObjects;
             int drones = 0;
             int seeders = 0;
+            int motherShips = 0;
 
             for (int i = 0; i < aiObjects.Count; i++)
             {
@@ -416,10 +485,12 @@ namespace _3dTesting.MainWindowClasses.Loops
                 if (obj.ImpactStatus?.HasExploded == true)
                     continue;
 
-                if (obj.ObjectName == "KamikazeDrone")
+                if (obj.ObjectName == "KamikazeDrone" && obj.IsActive)
                     drones++;
                 else if (obj.ObjectName == "Seeder")
                     seeders++;
+                else if (obj.ObjectName == "MotherShipSmall" && obj.IsActive)
+                    motherShips++;
             }
 
             // Capture initial totals once (first frame where enemies exist)
@@ -427,9 +498,55 @@ namespace _3dTesting.MainWindowClasses.Loops
                 gps.InitialDrones = drones;
             if (gps.InitialSeeders == 0 && seeders > 0)
                 gps.InitialSeeders = seeders;
+            if (gps.InitialMotherShips == 0 && motherShips > 0)
+                gps.InitialMotherShips = motherShips;
 
             gps.DronesRemaining = drones;
             gps.SeedersRemaining = seeders;
+            gps.MotherShipsRemaining = motherShips;
+
+            // MotherShip health bar tracking
+            bool foundMotherShip = false;
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var obj = aiObjects[i];
+                if (obj.ObjectName != "MotherShipSmall" || !obj.IsActive)
+                    continue;
+                if (obj.ImpactStatus?.HasExploded == true)
+                    continue;
+
+                foundMotherShip = true;
+                int maxHealth = EnemySetup.MotherShipSmallHealth;
+                int currentHealth = obj.ImpactStatus?.ObjectHealth ?? maxHealth;
+                float healthPct = (float)currentHealth / maxHealth;
+
+                if (healthPct < 1f)
+                    gps.ShowMotherShipHealthBar = true;
+
+                gps.MotherShipHealthPercent = healthPct;
+
+                var localWorldPos = obj.GetLocalWorldPosition();
+                if (localWorldPos != null)
+                {
+                    float sx = ScreenSetup.screenSizeX / 2f - localWorldPos.x + (obj.ObjectOffsets?.x ?? 0);
+                    float sy = ScreenSetup.screenSizeY / 2f - localWorldPos.y + (obj.ObjectOffsets?.y ?? 0);
+                    gps.MotherShipScreenX = sx;
+                    gps.MotherShipScreenY = sy;
+                    gps.MotherShipIsOnScreen = sx > -100 && sx < ScreenSetup.screenSizeX + 100
+                                             && sy > -100 && sy < ScreenSetup.screenSizeY + 100;
+                }
+                else
+                {
+                    gps.MotherShipIsOnScreen = false;
+                }
+                break;
+            }
+
+            if (!foundMotherShip)
+            {
+                gps.ShowMotherShipHealthBar = false;
+                gps.MotherShipIsOnScreen = false;
+            }
         }
 
         private Dictionary<int, _3dObject> InitializeAiOnScreenTracking()
@@ -541,6 +658,12 @@ namespace _3dTesting.MainWindowClasses.Loops
                 case "JetMotorDirectionGuide":
                     if (enableLocalLogging) Logger.Log($"MainLoop Set Guide after rotation: {rotatedMesh.First().vert1.x + ", " + rotatedMesh.First().vert1.y + ", " + rotatedMesh.First().vert1.z} Inhabitant:{inhabitant.ObjectName} ");
                     inhabitant.Movement.SetParticleGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
+                    break;
+                case "RearEngine":
+                    inhabitant.Movement.SetRearEngineGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    break;
+                case "RearEngineDirectionGuide":
+                    inhabitant.Movement.SetRearEngineGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
                     break;
             }
         }

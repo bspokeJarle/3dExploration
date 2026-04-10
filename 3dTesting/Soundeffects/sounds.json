@@ -366,6 +366,110 @@
         "min": 0.92,
         "max": 1.12
       }
+    },
+    {
+      "id": "powerup_collect",
+      "usage": "PowerUpCollect",
+      "file": "OmegaStrain_Powerup.wav",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 2.0,
+        "end": 2.0
+      },
+
+      "settings": {
+        "volume": 1.0,
+        "maxVoices": 3,
+        "is3D": false,
+        "priority": 200
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "mothership_engine",
+      "usage": "MothershipEngine",
+      "file": "OmegaStrain_Mothership_Engine.wav",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 2.0,
+        "loopEnd": 49.0,
+        "end": 51.0
+      },
+
+      "settings": {
+        "volume": 1.0,
+        "maxVoices": 1,
+        "is3D": true,
+        "priority": 90
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.04, 0.04 ],
+        "min": 0.92,
+        "max": 1.08
+      }
+    },
+    {
+      "id": "mothership_attack",
+      "usage": "MothershipAttack",
+      "file": "OmegaStrain_MotherShip_attack.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 2.0,
+        "end": 2.0
+      },
+
+      "settings": {
+        "volume": 1.2,
+        "maxVoices": 2,
+        "is3D": true,
+        "priority": 130
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.03, 0.03 ],
+        "min": 0.9,
+        "max": 1.1
+      }
+    },
+    {
+      "id": "ship_collision_warning",
+      "usage": "ShipCollisionWarning",
+      "file": "OmegeStrain_Ship_CollisionWarning.wav",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.89,
+        "end": 0.89
+      },
+
+      "settings": {
+        "volume": 1.0,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 150
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
     }
   ]
 }

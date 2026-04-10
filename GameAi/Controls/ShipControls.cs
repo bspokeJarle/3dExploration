@@ -21,28 +21,25 @@ namespace GameAiAndControls.Controls
         private int movementLogCounter = 0;
         private const float MaxThrust = 10.0f;
         private const float ThrustIncreaseRate = 0.5f;
-        private const float GravityAcceleration = 0.75f;
-        private const float MaxFallSpeed = 6.9f;
-        private const float GravityMultiplier = 1.8f;
 
         private const float RotationAcceleration = 1000f;
         private const float MaxRotationSpeed = 160f;
         private const float RotationDrag = 0.90f;
         private const float DEG2RAD = MathF.PI / 180f;
-        private const int ShipCenterY = 0;
+        private const float ShipRestingScreenY = 200f;
 
-        private const float SpeedMultiplier = 9.6f;
-        private const float HeightMultiplier = 2.0f;
-        private const float ThrustAccelerationRate = 30.0f;
-        private const float InertiaDrag = 0.92f;
-        private const float MaxInertia = 9.0f;
+        // Engine glow colors: idle (dark red) when no thrust, active (yellow) at full thrust.
+        private static readonly (int r, int g, int b) EngineActiveRgb = (0xFF, 0xFF, 0x00);
+        private static readonly (int r, int g, int b) EngineIdleRgb = (0x88, 0x11, 0x00);
+        private static readonly Random _flickerRng = new();
+        private static readonly Random _emitterRng = new();
+        private const float EngineFlickerAmount = 0.10f;
 
-        private const float VerticalThrustSmoothing = 0.6f;
-        private const float VerticalLiftAcceleration = 0.15f;
-
-        public float MaxHeight { get; set; } = 1000f;
-        public float MinHeight { get; set; } = -100f;
-        public float MaxScreenDrop { get; set; } = 450f;
+        // Cannon recoil animation state
+        private float _cannonRecoilOffset = 0f;
+        private float _cannonRecoilReturnSpeed = 0f;
+        private const float CannonRecoilDistance = 20f;
+        private const float CannonRecoilReturnFraction = 0.6f;
 
         // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
@@ -51,14 +48,10 @@ namespace GameAiAndControls.Controls
         private SoundDefinition? _releaseDecoySound;
         private SoundDefinition? _changeWeaponSound;
         private SoundDefinition? _bulletSound;
+        private SoundDefinition? _powerupSound;
         private IAudioInstance? _rocketInstance;
         private IAudioInstance? _bulletInstance;
 
-        private float fallVelocity = 0f;
-        private float inertiaX = 0f;
-        private float inertiaZ = 0f;
-        private float thrustEffect = 0f;
-        private float verticalLiftFactor = 0f;
         private float _yawVelocity = 0f;
         private float _pitchVelocity = 0f;
         private float _yawAccumulator = 0f;
@@ -82,12 +75,16 @@ namespace GameAiAndControls.Controls
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public ITriangleMeshWithColor? WeaponStartCoordinates { get; set; }
         public ITriangleMeshWithColor? WeaponGuideCoordinates { get; set; }
+        public ITriangleMeshWithColor? RearStartCoordinates { get; set; }
+        public ITriangleMeshWithColor? RearGuideCoordinates { get; set; }
 
         public float Thrust { get; set; } = 0;
         public bool ThrustOn { get; set; } = false;
         public IPhysics Physics { get; set; } = new Physics.Physics();
         private bool hasInitialized = false;
         private bool isExploding = false;
+        private DateTime _motherShipCollisionCooldown = DateTime.MinValue;
+        private const float MotherShipCollisionCooldownSeconds = 2.0f;
         private bool _fireKeyHeld = false;
         private bool _leftHeld = false;
         private bool _rightHeld = false;
@@ -109,7 +106,7 @@ namespace GameAiAndControls.Controls
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             // Already configured, so nothing else is required.
-            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null)
+            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null && _powerupSound != null)
                 return;
 
             if (audioPlayer == null || soundRegistry == null)
@@ -121,12 +118,19 @@ namespace GameAiAndControls.Controls
             _releaseDecoySound = soundRegistry.Get("release_decoy");
             _changeWeaponSound = soundRegistry.Get("change_weapon");
             _bulletSound = soundRegistry.Get("bullet_main");
+            _powerupSound = soundRegistry.Get("powerup_collect");
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
+        }
+
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        {
+            if (StartCoord != null) RearStartCoordinates = StartCoord;
+            if (GuideCoord != null) RearGuideCoordinates = GuideCoord;
         }
 
         private void GlobalHookKeyDown(object sender, KeyEventArgs e)
@@ -139,11 +143,11 @@ namespace GameAiAndControls.Controls
 
             if (e.KeyCode == Keys.D1 || e.KeyCode == Keys.NumPad1)
             {
-                bool weaponChanged = GameState.GamePlayState.SelectedWeapon != WeaponType.Lazer ||
-                    !string.Equals(GameState.GamePlayState.ActivePowerup, "LAZER", StringComparison.OrdinalIgnoreCase);
+                bool weaponChanged = GameState.GamePlayState.SelectedWeapon != WeaponType.Bullet ||
+                    !string.Equals(GameState.GamePlayState.ActivePowerup, "BULLET", StringComparison.OrdinalIgnoreCase);
 
-                GameState.GamePlayState.SelectedWeapon = WeaponType.Lazer;
-                GameState.GamePlayState.ActivePowerup = "LAZER";
+                GameState.GamePlayState.SelectedWeapon = WeaponType.Bullet;
+                GameState.GamePlayState.ActivePowerup = "BULLET";
 
                 if (weaponChanged && _audio != null && _changeWeaponSound != null)
                 {
@@ -160,6 +164,8 @@ namespace GameAiAndControls.Controls
 
             if (e.KeyCode == Keys.D2 || e.KeyCode == Keys.NumPad2)
             {
+                if (!GameState.GamePlayState.IsDecoyUnlocked)
+                    return;
                 bool weaponChanged = !string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase);
 
                 GameState.GamePlayState.ActivePowerup = "DECOY";
@@ -179,11 +185,14 @@ namespace GameAiAndControls.Controls
 
             if (e.KeyCode == Keys.D3 || e.KeyCode == Keys.NumPad3)
             {
-                bool weaponChanged = GameState.GamePlayState.SelectedWeapon != WeaponType.Bullet ||
-                    !string.Equals(GameState.GamePlayState.ActivePowerup, "BULLET", StringComparison.OrdinalIgnoreCase);
+                if (!GameState.GamePlayState.IsLazerUnlocked)
+                    return;
 
-                GameState.GamePlayState.SelectedWeapon = WeaponType.Bullet;
-                GameState.GamePlayState.ActivePowerup = "BULLET";
+                bool weaponChanged = GameState.GamePlayState.SelectedWeapon != WeaponType.Lazer ||
+                    !string.Equals(GameState.GamePlayState.ActivePowerup, "LAZER", StringComparison.OrdinalIgnoreCase);
+
+                GameState.GamePlayState.SelectedWeapon = WeaponType.Lazer;
+                GameState.GamePlayState.ActivePowerup = "LAZER";
 
                 if (weaponChanged && _audio != null && _changeWeaponSound != null)
                 {
@@ -275,8 +284,8 @@ namespace GameAiAndControls.Controls
             {
                 ThrustOn = false;
                 Thrust = 0;
-                thrustEffect = 0f;
-                verticalLiftFactor = 0f;
+                Physics.ThrustEffect = 0f;
+                Physics.VerticalLiftFactor = 0f;
 
                 // Stop the rocket loop if it is still playing.
                 if (_rocketInstance != null)
@@ -311,8 +320,8 @@ namespace GameAiAndControls.Controls
         {
             ThrustOn = false;
             Thrust = 0;
-            thrustEffect = 0f;
-            verticalLiftFactor = 0f;
+            Physics.ThrustEffect = 0f;
+            Physics.VerticalLiftFactor = 0f;
 
             if (_rocketInstance != null)
             {
@@ -331,6 +340,7 @@ namespace GameAiAndControls.Controls
                     _bulletInstance = null;
                 }
                 DeployDecoy();
+                _fireKeyHeld = false;
                 return;
             }
 
@@ -352,6 +362,17 @@ namespace GameAiAndControls.Controls
                 GameState.GamePlayState.SelectedWeapon,
                 ParentObject,
                 tilt);
+
+            // Trigger cannon recoil for lazer and bullet
+            if (GameState.GamePlayState.SelectedWeapon == WeaponType.Lazer ||
+                GameState.GamePlayState.SelectedWeapon == WeaponType.Bullet)
+            {
+                _cannonRecoilOffset = CannonRecoilDistance;
+                float cooldown = GameState.GamePlayState.SelectedWeapon == WeaponType.Bullet
+                    ? GameState.GamePlayState.BulletCooldownSeconds
+                    : GameState.GamePlayState.LaserCooldownSeconds;
+                _cannonRecoilReturnSpeed = CannonRecoilDistance / (cooldown * CannonRecoilReturnFraction);
+            }
         }
 
         private void DeployDecoy()
@@ -447,31 +468,46 @@ namespace GameAiAndControls.Controls
         {
             if (Thrust < MaxThrust) Thrust += ThrustIncreaseRate;
 
+            int totalThrust = (int)Thrust;
+
+            if (totalThrust == 0)
+            {
+                ParentObject?.Particles?.ReleaseParticles(
+                    GuideCoordinates,
+                    StartCoordinates,
+                    GameState.SurfaceState.GlobalMapPosition,
+                    this,
+                    0,
+                    false);
+                return;
+            }
+
+            var (vertical, forward) = GetThrustComponents();
+            bool hasRear = forward > 0.01f && RearStartCoordinates != null && RearGuideCoordinates != null;
+
+            // Each frame, pick which engine emits based on thrust component weights.
+            // Over time this distributes particles proportionally between engines
+            // while avoiding shared-pool contention from multiple calls.
+            ITriangleMeshWithColor? emitStart = StartCoordinates;
+            ITriangleMeshWithColor? emitGuide = GuideCoordinates;
+
+            if (hasRear)
+            {
+                float rearProbability = forward / (vertical + forward);
+                if (_emitterRng.NextDouble() < rearProbability)
+                {
+                    emitStart = RearStartCoordinates;
+                    emitGuide = RearGuideCoordinates;
+                }
+            }
+
             ParentObject?.Particles?.ReleaseParticles(
-                GuideCoordinates,
-                StartCoordinates,
+                emitGuide,
+                emitStart,
                 GameState.SurfaceState.GlobalMapPosition,
                 this,
-                (int)Thrust,
+                totalThrust,
                 false);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private float Clamp(float value, float min, float max) => MathF.Min(MathF.Max(value, min), max);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private float ClampHeight(float value) => Clamp(value, MinHeight, MaxHeight);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private float ClampScreenHeight(float value) => MathF.Min(value, MaxScreenDrop);
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static float GetWrappedPosition(float position, float diff, float minValue, float maxValue)
-        {
-            float newPos = position + diff;
-            if (newPos >= maxValue) return minValue;
-            if (newPos <= minValue) return maxValue;
-            return newPos;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -491,7 +527,6 @@ namespace GameAiAndControls.Controls
             GameState.ShipState.ShipHasShadow = theObject.HasShadow;
         }
 
-        // Merk: du har endret signatur her – sørg for at IObjectMovement matcher!
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             //Update gamestate with thrust
@@ -509,7 +544,7 @@ namespace GameAiAndControls.Controls
                 ThrustOn = false;
                 landed = true;
                 ParentObject.ObjectOffsets.x = 0;
-                ParentObject.ObjectOffsets.y = 200;
+                ParentObject.ObjectOffsets.y = ShipRestingScreenY;
                 ParentObject.ObjectOffsets.z = zoom;
             }
 
@@ -535,12 +570,19 @@ namespace GameAiAndControls.Controls
             if (yawStep != 0) { rotationZ += yawStep; _yawAccumulator -= yawStep; }
             if (pitchStep != 0) { tilt += pitchStep; _pitchAccumulator -= pitchStep; }
 
+            if (_cannonRecoilOffset > 0f)
+            {
+                _cannonRecoilOffset -= _cannonRecoilReturnSpeed * deltaTime;
+                if (_cannonRecoilOffset < 0f) _cannonRecoilOffset = 0f;
+            }
+
             if (_fireKeyHeld && !isExploding)
                 FireWeapon();
 
             if (ThrustOn)
             {
                 landed = false;
+                Physics.ResetHover();
                 IncreaseThrustAndRelease();
                 HandleThrust(deltaTime);
             }
@@ -553,7 +595,7 @@ namespace GameAiAndControls.Controls
 
             if (theObject.ObjectOffsets != null)
             {
-                theObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y));
+                theObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y));
                 theObject.ObjectOffsets.z = zoom;
             }
 
@@ -571,8 +613,8 @@ namespace GameAiAndControls.Controls
 
             GameState.GamePlayState.UpdateAltitude(
                 GameState.SurfaceState.GlobalMapPosition.y,
-                MinHeight,
-                MaxHeight);
+                Physics.FloorHeight,
+                Physics.CeilingHeight);
 
             // Only update explosion if it has already started
             if (isExploding)
@@ -589,7 +631,11 @@ namespace GameAiAndControls.Controls
             }
 
             if (!isExploding)
+            {
                 ApplyLocalTiltToMesh(tilt, theObject);
+                ApplyCannonRecoil(theObject);
+                UpdateEngineColors(theObject);
+            }
 
             if (theObject.Rotation != null)
             {
@@ -605,7 +651,27 @@ namespace GameAiAndControls.Controls
                 if (logging) Logger.Log($"[ShipCrash] HasCrashed=true, ObjectName='{crashedWith}', Health={theObject.ImpactStatus.ObjectHealth}, Direction={theObject.ImpactStatus.ImpactDirection}");
 
                 // Apply damage from any enemy or weapon collision
-                if (EnemySetup.IsEnemyTypeValid(crashedWith))
+                if (crashedWith == "PowerUp")
+                {
+                    // No damage — collect the powerup; skip health/explosion check
+                    CollectPowerUp(theObject);
+                    if (logging) Logger.Log($"[ShipCrash] PowerUp collected!");
+                    theObject.ImpactStatus.HasCrashed = false;
+                    return theObject;
+                }
+                else if (crashedWith == "MotherShipSmall")
+                {
+                    if ((DateTime.Now - _motherShipCollisionCooldown).TotalSeconds < MotherShipCollisionCooldownSeconds)
+                    {
+                        theObject.ImpactStatus.HasCrashed = false;
+                        return theObject;
+                    }
+                    _motherShipCollisionCooldown = DateTime.Now;
+                    int ramDamage = ShipSetup.DefaultShipHealth / 2;
+                    theObject.ImpactStatus.ObjectHealth -= ramDamage;
+                    if (logging) Logger.Log($"[ShipCrash] MotherShip ram! Damage={ramDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                }
+                else if (EnemySetup.IsEnemyTypeValid(crashedWith))
                 {
                     theObject.ImpactStatus.ObjectHealth -= EnemySetup.KamikazeDroneCollisionDamage;
                     if (logging) Logger.Log($"[ShipCrash] Enemy hit! Damage={EnemySetup.KamikazeDroneCollisionDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
@@ -619,8 +685,12 @@ namespace GameAiAndControls.Controls
                 else if (theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
                 {
-                    // Surface/terrain landing — damage only at high speed
-                    landed = true;
+                    // Surface/terrain landing — stop falling and let the settle
+                        // logic in ApplyGravity smoothly return both the screen
+                        // position and altitude to their resting values.
+                        landed = true;
+                        Physics.InertiaY = 0f;
+
                     if (landingSpeed > 5f)
                     {
                         theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
@@ -693,15 +763,7 @@ namespace GameAiAndControls.Controls
             return theObject;
         }
 
-        public float CurrentSpeed
-        {
-            get
-            {
-                float horizontalSpeed = MathF.Sqrt(inertiaX * inertiaX + inertiaZ * inertiaZ);
-            float verticalSpeed = landed ? 0f : MathF.Abs(fallVelocity); // Zero once the ship has landed.
-                return horizontalSpeed + verticalSpeed;
-            }
-        }
+        public float CurrentSpeed => Physics.CalculateCurrentSpeed(landed);
 
         public void ApplyLocalTiltToMesh(int tilt, I3dObject inhabitant)
         {
@@ -740,73 +802,170 @@ namespace GameAiAndControls.Controls
             return new Vector3(point.x, y, z);
         }
 
+        private void ApplyCannonRecoil(I3dObject theObject)
+        {
+            if (_cannonRecoilOffset <= 0f) return;
+
+            foreach (var part in theObject.ObjectParts)
+            {
+                if (part.PartName != "TopCannon") continue;
+
+                for (int i = 0; i < part.Triangles.Count; i++)
+                {
+                    var tri = part.Triangles[i];
+                    var v1 = (Vector3)tri.vert1;
+                    var v2 = (Vector3)tri.vert2;
+                    var v3 = (Vector3)tri.vert3;
+                    tri.vert1 = new Vector3 { x = v1.x, y = v1.y + _cannonRecoilOffset, z = v1.z };
+                    tri.vert2 = new Vector3 { x = v2.x, y = v2.y + _cannonRecoilOffset, z = v2.z };
+                    tri.vert3 = new Vector3 { x = v3.x, y = v3.y + _cannonRecoilOffset, z = v3.z };
+                    part.Triangles[i] = tri;
+                }
+                break;
+            }
+        }
+
         public void HandleThrust(float deltaTime)
         {
-            thrustEffect = MathF.Min(thrustEffect + ThrustAccelerationRate * deltaTime, 1f);
-            verticalLiftFactor = MathF.Min(verticalLiftFactor + VerticalLiftAcceleration * deltaTime, 1f);
-
-            float tiltRad = tilt * DEG2RAD;
-            float rotationRad = rotationZ * DEG2RAD;
-
-            float upwardFactor = MathF.Cos(tiltRad);
-            float forwardFactor = MathF.Sin(tiltRad);
-            float dirX = MathF.Sin(rotationRad);
-            float dirZ = MathF.Cos(rotationRad);
-
-            float xForce = Thrust * thrustEffect * SpeedMultiplier * forwardFactor * dirX * deltaTime;
-            float zForce = Thrust * thrustEffect * SpeedMultiplier * forwardFactor * dirZ * deltaTime;
-            float yDiff = Thrust * verticalLiftFactor * HeightMultiplier * upwardFactor * VerticalThrustSmoothing * deltaTime;
-
-            inertiaX += xForce;
-            inertiaZ += -zForce;
-
-            inertiaX = Clamp(inertiaX * InertiaDrag, -MaxInertia, MaxInertia);
-            inertiaZ = Clamp(inertiaZ * InertiaDrag, -MaxInertia, MaxInertia);
+            float verticalInertia = Physics.CalculateThrustForces(Thrust, tilt, rotationZ, deltaTime);
 
             float maxX = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
                          (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
             float maxZ = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
                          (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
 
-            GameState.SurfaceState.GlobalMapPosition.x = GetWrappedPosition(GameState.SurfaceState.GlobalMapPosition.x, inertiaX, 75, maxX);
-            GameState.SurfaceState.GlobalMapPosition.z = GetWrappedPosition(GameState.SurfaceState.GlobalMapPosition.z, inertiaZ, 0, maxZ);
+            GameState.SurfaceState.GlobalMapPosition.x = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.x, Physics.InertiaX, 75, maxX);
+            GameState.SurfaceState.GlobalMapPosition.z = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.z, Physics.InertiaZ, 0, maxZ);
 
-            float delta = ShipCenterY - ParentObject.ObjectOffsets.y;
-
-            if (delta > 2f || delta < -2f)
-            {
-                float liftAdjust = (upwardFactor > 0f) ? delta * 0.1f : 0f;
-                ParentObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y + liftAdjust + yDiff * 0.1f));
-            }
-            else
-            {
-                GameState.SurfaceState.GlobalMapPosition.y = ClampHeight(GameState.SurfaceState.GlobalMapPosition.y + 2.5f);
-            }
+            // Apply vertical inertia to screen position (positive InertiaY = up = ObjectOffsets.y decreases)
+            ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia));
+            // Apply vertical inertia to altitude (positive InertiaY = up = altitude increases)
+            GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia);
         }
 
         public void ApplyGravity(float deltaTime)
         {
-            //If ship has landed and thrust is off, we need to stop the ship
-            if (landed && !ThrustOn) return;
-            if (!ThrustOn)
+            if (landed && !ThrustOn)
             {
-                float rotationXMod180Rad = (rotationX % 180) * DEG2RAD;
-                float gravityModifier = Clamp(MathF.Sin(rotationXMod180Rad), 0.3f, 1.0f);
-                float adjustedGravity = GravityAcceleration * gravityModifier * GravityMultiplier * deltaTime;
+                // Smoothly settle screen position and altitude to resting values after landing.
+                // Uses proportional easing capped at MaxSettleSpeed to prevent
+                // visually jarring jumps when returning from high altitude.
+                const float MaxSettleSpeed = 300f;
+                float screenDiff = ShipRestingScreenY - ParentObject.ObjectOffsets.y;
+                float altDiff = -GameState.SurfaceState.GlobalMapPosition.y;
+                float settleRate = 12f;
+                float t = MathF.Min(settleRate * deltaTime, 1f);
+                float maxStep = MaxSettleSpeed * deltaTime;
 
-                fallVelocity = Math.Min(fallVelocity + adjustedGravity, MaxFallSpeed);
-                ParentObject.ObjectOffsets.y = ClampScreenHeight(ClampHeight(ParentObject.ObjectOffsets.y + fallVelocity));
-
-                if (GameState.SurfaceState.GlobalMapPosition.y > MinHeight)
+                if (MathF.Abs(screenDiff) > 0.5f)
                 {
-                    GameState.SurfaceState.GlobalMapPosition.y = ClampHeight(GameState.SurfaceState.GlobalMapPosition.y - fallVelocity);
+                    float screenStep = screenDiff * t;
+                    if (MathF.Abs(screenStep) > maxStep)
+                        screenStep = maxStep * MathF.Sign(screenDiff);
+                    ParentObject.ObjectOffsets.y += screenStep;
                 }
+                else
+                    ParentObject.ObjectOffsets.y = ShipRestingScreenY;
+
+                if (MathF.Abs(altDiff) > 0.5f)
+                {
+                    float altStep = altDiff * t;
+                    if (MathF.Abs(altStep) > maxStep)
+                        altStep = maxStep * MathF.Sign(altDiff);
+                    GameState.SurfaceState.GlobalMapPosition.y += altStep;
+                }
+                else
+                    GameState.SurfaceState.GlobalMapPosition.y = 0f;
+
+                return;
             }
-            else
+
+            float verticalInertia = Physics.ApplyFallGravity(rotationX, deltaTime);
+            ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia));
+            GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia);
+
+            // Gently pull screen position and altitude back toward resting values
+            const float MaxAirSettleSpeed = 300f;
+            float airSettle = MathF.Min(Physics.AirborneSettleRate * deltaTime, 1f);
+            float airScreenDiff = ShipRestingScreenY - ParentObject.ObjectOffsets.y;
+            float airAltDiff = -GameState.SurfaceState.GlobalMapPosition.y;
+            float airMaxStep = MaxAirSettleSpeed * deltaTime;
+
+            if (MathF.Abs(airScreenDiff) > 0.5f)
             {
-                float upwardFactor = MathF.Cos(rotationX * DEG2RAD);
-                float thrustLift = Thrust * upwardFactor * 0.75f * deltaTime;
-                fallVelocity = Math.Max(fallVelocity - thrustLift, 0f);
+                float airScreenStep = airScreenDiff * airSettle;
+                if (MathF.Abs(airScreenStep) > airMaxStep)
+                    airScreenStep = airMaxStep * MathF.Sign(airScreenDiff);
+                ParentObject.ObjectOffsets.y += airScreenStep;
+            }
+
+            if (MathF.Abs(airAltDiff) > 0.5f)
+            {
+                float airAltStep = airAltDiff * airSettle;
+                if (MathF.Abs(airAltStep) > airMaxStep)
+                    airAltStep = airMaxStep * MathF.Sign(airAltDiff);
+                GameState.SurfaceState.GlobalMapPosition.y += airAltStep;
+            }
+        }
+
+        /// <summary>
+        /// Decomposes current thrust into vertical (altitude) and forward components
+        /// based on the ship's tilt angle. Returns normalised fractions in [0, 1].
+        /// </summary>
+        private (float vertical, float forward) GetThrustComponents()
+        {
+            if (!ThrustOn || Thrust <= 0f)
+                return (0f, 0f);
+
+            float thrustNormalized = Thrust / MaxThrust;
+            float tiltRad = tilt * DEG2RAD;
+            float vertical = thrustNormalized * MathF.Abs(MathF.Cos(tiltRad));
+            float forward  = thrustNormalized * MathF.Abs(MathF.Sin(tiltRad));
+            return (vertical, forward);
+        }
+
+        /// <summary>
+        /// Sets the JetMotor (lower engine) and RearEngine colors based on
+        /// the current vertical and forward thrust fractions.
+        /// </summary>
+        private void UpdateEngineColors(I3dObject theObject)
+        {
+            var (verticalThrust, forwardThrust) = GetThrustComponents();
+            string lowerColor = InterpolateEngineColor(verticalThrust);
+            string rearColor  = InterpolateEngineColor(forwardThrust);
+            SetPartColor(theObject, "JetMotor", lowerColor);
+            SetPartColor(theObject, "RearEngine", rearColor);
+        }
+
+        /// <summary>
+        /// Linearly interpolates between the idle (dark red) and active (yellow)
+        /// engine colors. <paramref name="t"/> is clamped to [0, 1].
+        /// </summary>
+        private static string InterpolateEngineColor(float t)
+        {
+            t = MathF.Max(0f, MathF.Min(1f, t));
+            float flicker = (_flickerRng.NextSingle() - 0.5f) * 2f * EngineFlickerAmount;
+            t = MathF.Max(0f, MathF.Min(1f, t + flicker));
+            int r = (int)(EngineIdleRgb.r + (EngineActiveRgb.r - EngineIdleRgb.r) * t);
+            int g = (int)(EngineIdleRgb.g + (EngineActiveRgb.g - EngineIdleRgb.g) * t);
+            int b = (int)(EngineIdleRgb.b + (EngineActiveRgb.b - EngineIdleRgb.b) * t);
+            return $"{r:X2}{g:X2}{b:X2}";
+        }
+
+        private static void SetPartColor(I3dObject theObject, string partName, string color)
+        {
+            foreach (var part in theObject.ObjectParts)
+            {
+                if (part.PartName != partName)
+                    continue;
+
+                for (int i = 0; i < part.Triangles.Count; i++)
+                {
+                    var tri = part.Triangles[i];
+                    tri.Color = color;
+                    part.Triangles[i] = tri;
+                }
+                break;
             }
         }
 
@@ -840,6 +999,24 @@ namespace GameAiAndControls.Controls
         public void ReleaseParticles(I3dObject theObject)
         {
             throw new NotImplementedException();
+        }
+
+        private void CollectPowerUp(I3dObject ship)
+        {
+            var aiObjects = GameState.SurfaceState.AiObjects;
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var obj = aiObjects[i];
+                if (obj.ObjectName == "PowerUp" && obj.ImpactStatus?.HasCrashed == true)
+                {
+                    GameState.GamePlayState.PowerUpsCollected++;
+
+                    if (_audio != null && _powerupSound != null)
+                        _audio.Play(_powerupSound, AudioPlayMode.OneShot, new AudioPlayOptions());
+
+                    break;
+                }
+            }
         }
     }
 }

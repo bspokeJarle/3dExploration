@@ -68,7 +68,22 @@ namespace _3dTesting
         private bool _videoOverlayIsPlaying;
         private bool _videoEntrancePlayed;
 
+        // MotherShip health bar (in-world overlay)
+        private readonly Canvas _motherShipHealthBarCanvas;
+        private readonly System.Windows.Shapes.Rectangle _motherShipHealthBarBg;
+        private readonly System.Windows.Shapes.Rectangle _motherShipHealthBarFill;
+        private const double MotherShipBarWidth = 16;
+        private const double MotherShipBarHeight = 50;
+        private const double MotherShipBarOffsetX = 140;
+
+        // MotherShip ram warning (flashing reticle)
+        private readonly Canvas _ramWarningCanvas;
+        private readonly System.Windows.Shapes.Ellipse _ramWarningOuter;
+        private readonly System.Windows.Shapes.Ellipse _ramWarningInner;
+        private const double RamWarningSize = 100;
+
         private bool isFading = false;
+        private bool _isFadingIn = false;
         private int Fps = 0;
 
         private const int TargetFps = ScreenSetup.targetFps;
@@ -135,6 +150,65 @@ namespace _3dTesting
             // Overlay handlers must be put in the grid
             _overlayHandler = new OverlayHandler(mainGrid);
             _hudHandler = new HudOverlayHandlerV2(mainGrid);
+
+            // MotherShip in-world health bar
+            _motherShipHealthBarCanvas = new Canvas
+            {
+                IsHitTestVisible = false,
+                Visibility = Visibility.Collapsed
+            };
+            Panel.SetZIndex(_motherShipHealthBarCanvas, 10);
+
+            _motherShipHealthBarBg = new System.Windows.Shapes.Rectangle
+            {
+                Width = MotherShipBarWidth,
+                Height = MotherShipBarHeight,
+                Fill = new SolidColorBrush(Color.FromArgb(140, 0, 0, 0)),
+                Stroke = new SolidColorBrush(Color.FromArgb(200, 0, 255, 255)),
+                StrokeThickness = 2
+            };
+
+            _motherShipHealthBarFill = new System.Windows.Shapes.Rectangle
+            {
+                Width = MotherShipBarWidth - 2,
+                Height = MotherShipBarHeight - 2,
+                Fill = Brushes.LimeGreen,
+                Opacity = 0.9
+            };
+
+            _motherShipHealthBarCanvas.Children.Add(_motherShipHealthBarBg);
+            _motherShipHealthBarCanvas.Children.Add(_motherShipHealthBarFill);
+            mainGrid.Children.Add(_motherShipHealthBarCanvas);
+
+            // MotherShip ram warning reticle
+            _ramWarningCanvas = new Canvas
+            {
+                IsHitTestVisible = false,
+                Visibility = Visibility.Collapsed
+            };
+            Panel.SetZIndex(_ramWarningCanvas, 10);
+
+            _ramWarningOuter = new System.Windows.Shapes.Ellipse
+            {
+                Width = RamWarningSize,
+                Height = RamWarningSize,
+                Fill = System.Windows.Media.Brushes.Transparent,
+                Stroke = new SolidColorBrush(Color.FromArgb(200, 255, 60, 30)),
+                StrokeThickness = 3
+            };
+
+            _ramWarningInner = new System.Windows.Shapes.Ellipse
+            {
+                Width = RamWarningSize * 0.5,
+                Height = RamWarningSize * 0.5,
+                Fill = new SolidColorBrush(Color.FromArgb(80, 255, 40, 20)),
+                Stroke = new SolidColorBrush(Color.FromArgb(160, 255, 80, 40)),
+                StrokeThickness = 2
+            };
+
+            _ramWarningCanvas.Children.Add(_ramWarningOuter);
+            _ramWarningCanvas.Children.Add(_ramWarningInner);
+            mainGrid.Children.Add(_ramWarningCanvas);
 
             timer.Interval = TimeSpan.FromMilliseconds(8);
             CompositionTarget.Rendering += Handle3dWorldRendering;
@@ -257,6 +331,9 @@ namespace _3dTesting
 
             if (pauseFrameCount < limitFrameCount && gameWorldManager.FadeInWorld)
             {
+                // Clear immediately so concurrent async Handle3dWorld calls
+                // from the same render tick don't start overlapping FadeInAsync animations
+                gameWorldManager.FadeInWorld = false;
                 if (!isFading)
                 {
                     // FadeOut was skipped (e.g., ship exploded before the fadeout delay elapsed)
@@ -265,8 +342,9 @@ namespace _3dTesting
                     FadeOverlay.Opacity = 1;
                     isFading = true;
                 }
+                _isFadingIn = true;
                 await FadeInAsync(1.5f);
-                gameWorldManager.FadeInWorld = false;
+                _isFadingIn = false;
                 isFading = false;
                 fadeOutTrigged = DateTime.MinValue;
             }
@@ -281,15 +359,10 @@ namespace _3dTesting
             }
 
             // Overlay update + render (UI layer)
+            // FadeOverlay (Z=MaxValue) covers everything during fade,
+            // so overlay state progresses naturally — no need to suppress ShowOverlay
             if (GameState.ScreenOverlayState != null)
             {
-                // FadeOverlay wins – avoid double-dim
-                if (isFading || FadeOverlay.Visibility == Visibility.Visible)
-                {
-                    // keep existing behavior
-                    GameState.ScreenOverlayState.ShowOverlay = false;
-                }
-
                 GameState.ScreenOverlayState.Update(dt);
 
                 UpdateVideoOverlay();
@@ -306,6 +379,12 @@ namespace _3dTesting
 
                 int triangles = worldRenderer.GetRenderingTriangleCount();
                 _hudHandler.Update(GameState.ScreenOverlayState, gameplay, w, h, Fps, triangles);
+
+                // MotherShip in-world health bar
+                UpdateMotherShipHealthBar(gameplay);
+
+                // MotherShip ram warning reticle
+                UpdateMotherShipRamWarning(gameplay);
             }
 
             world.SceneHandler.UpdateFrame(world);
@@ -361,7 +440,7 @@ namespace _3dTesting
                         Logger.Log($"[UpdateWorld] ms={elapsedMs:0.###}");
                     }
 
-                    if (!isFading)
+                    if (!isFading || _isFadingIn)
                         Dispatcher.BeginInvoke(() => worldRenderer.RenderTriangles(screenCoordinates));
                 }
                 finally
@@ -432,6 +511,83 @@ namespace _3dTesting
         _videoOverlay.Position = TimeSpan.Zero;
         _videoOverlay.Play();
     }
+
+        private void UpdateMotherShipHealthBar(GamePlayState gameplay)
+        {
+            if (gameplay == null || !gameplay.ShowMotherShipHealthBar || !gameplay.MotherShipIsOnScreen)
+            {
+                _motherShipHealthBarCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (GameState.ScreenOverlayState.Type != ScreenOverlayType.Game || isFading)
+            {
+                _motherShipHealthBarCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            _motherShipHealthBarCanvas.Visibility = Visibility.Visible;
+
+            float pct = Math.Clamp(gameplay.MotherShipHealthPercent, 0f, 1f);
+
+            // Position the bar to the right of the mothership's screen center
+            double barX = gameplay.MotherShipScreenX + MotherShipBarOffsetX;
+            double maxBarY = ScreenSetup.screenSizeY - 175 - MotherShipBarHeight / 2;
+            double barY = Math.Min(gameplay.MotherShipScreenY - MotherShipBarHeight / 2, maxBarY);
+
+            Canvas.SetLeft(_motherShipHealthBarBg, barX);
+            Canvas.SetTop(_motherShipHealthBarBg, barY);
+
+            // Fill grows from bottom to top
+            double fillH = (MotherShipBarHeight - 2) * pct;
+            _motherShipHealthBarFill.Height = fillH;
+            Canvas.SetLeft(_motherShipHealthBarFill, barX + 1);
+            Canvas.SetTop(_motherShipHealthBarFill, barY + 1 + (MotherShipBarHeight - 2 - fillH));
+
+            // Color: green at 100%, yellow at 50%, red at 0%
+            byte r, g;
+            if (pct > 0.5f)
+            {
+                float t = (1f - pct) * 2f;
+                r = (byte)(255 * t);
+                g = 255;
+            }
+            else
+            {
+                float t = pct * 2f;
+                r = 255;
+                g = (byte)(255 * t);
+            }
+
+            _motherShipHealthBarFill.Fill = new SolidColorBrush(Color.FromArgb(220, r, g, 0));
+        }
+
+        private void UpdateMotherShipRamWarning(GamePlayState gameplay)
+        {
+            if (gameplay == null || !gameplay.MotherShipRamWarningActive || isFading)
+            {
+                _ramWarningCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (GameState.ScreenOverlayState.Type != ScreenOverlayType.Game)
+            {
+                _ramWarningCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            _ramWarningCanvas.Visibility = Visibility.Visible;
+
+            double cx = gameplay.MotherShipRamWarningScreenX;
+            double cy = gameplay.MotherShipRamWarningScreenY;
+
+            Canvas.SetLeft(_ramWarningOuter, cx - RamWarningSize / 2);
+            Canvas.SetTop(_ramWarningOuter, cy - RamWarningSize / 2);
+
+            double innerSize = RamWarningSize * 0.5;
+            Canvas.SetLeft(_ramWarningInner, cx - innerSize / 2);
+            Canvas.SetTop(_ramWarningInner, cy - innerSize / 2);
+        }
 
         private static string ResolveVideoPath(string clipPath)
         {

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Linq;
 using CommonUtilities._3DHelpers;
 using Domain;
@@ -13,19 +13,66 @@ namespace GameAiAndControls.Physics
     public class Physics : IPhysics
     {
         private bool LocalEnableLogging = false;
+        private const float DEG2RAD = MathF.PI / 180f;
 
+        // ── General physics ──────────────────────────────────────────
         public float Mass { get; set; } = 1.0f;
-        public IVector3 Velocity { get; set; } = new Vector3(0, -90f, 0); // Initial downward velocity for bouncing
+        public IVector3 Velocity { get; set; } = new Vector3(0, -90f, 0);
         public float Thrust { get; set; }
-        public float Friction { get; set; } = 0.0f; // No air resistance for the test
+        public float Friction { get; set; } = 0.0f;
         public float MaxSpeed { get; set; } = 10.0f;
         public float MaxThrust { get; set; } = 20.0f;
-        public float GravityStrength { get; set; } = 1f; // Strong gravity for faster falling
-        public IVector3 GravitySource { get; set; } = new Vector3 { x = 0, y = -10f, z = 0 };
         public IVector3 Acceleration { get; set; } = new Vector3(0, 0, 0);
-        public float BounceHeightMultiplier { get; set; } = 0.8f; // Affects bounce height
-        public float EnergyLossFactor { get; set; } = 0.2f; // Bounce energy retention factor
+
+        // ── Gravity & bounce (used by particle/object physics) ───────
+        public float GravityStrength { get; set; } = 1f;
+        public IVector3 GravitySource { get; set; } = new Vector3 { x = 0, y = -10f, z = 0 };
+        public float BounceHeightMultiplier { get; set; } = 0.8f;
+        public float EnergyLossFactor { get; set; } = 0.2f;
         public int BounceCooldownFrames { get; set; } = 0;
+
+        // ── Flight inertia state (reset between thrust activations) ──
+        public float FallVelocity { get; set; } = 0f;
+        public float InertiaX { get; set; } = 0f;
+        public float InertiaY { get; set; } = 0f;
+        public float InertiaZ { get; set; } = 0f;
+        public float ThrustEffect { get; set; } = 0f;
+        public float VerticalLiftFactor { get; set; } = 0f;
+
+        // ── Flight tuning constants ──────────────────────────────────
+        public float GravityAcceleration { get; set; } = 2.8f;
+        public float TerminalFallSpeed { get; set; } = 35f;
+        public float GravityPullMultiplier { get; set; } = 9.0f;
+        public float ThrustSpeedMultiplier { get; set; } = 9.6f;
+        public float ThrustHeightMultiplier { get; set; } = 7.0f;
+        public float ThrustRampRate { get; set; } = 30.0f;
+        public float InertiaDrag { get; set; } = 0.92f;
+        public float MaxInertia { get; set; } = 45.0f;
+        public float VerticalThrustSmoothing { get; set; } = 0.6f;
+        public float VerticalLiftRate { get; set; } = 3.0f;
+
+        // ── Height limits ────────────────────────────────────────────
+        public float CeilingHeight { get; set; } = 1000f;
+        public float FloorHeight { get; set; } = -100f;
+        public float MaxScreenDrop { get; set; } = 450f;
+
+        // ── Hover/float after thrust release ─────────────────────────
+        // When thrust stops, gravity stays at HoverMinGravityScale for
+        // HoverFloatDuration seconds, then ramps linearly to full over
+        // HoverRampDuration seconds.
+        public float HoverElapsed { get; set; } = 0f;
+        public float HoverFloatDuration { get; set; } = 0.4f;
+        public float HoverRampDuration { get; set; } = 0.75f;
+        public float HoverMinGravityScale { get; set; } = 0.05f;
+
+        // ── Airborne settle (return-to-rest while not thrusting) ─────
+        // Gentle spring rate that pulls the surface back toward its
+        // resting screen position and zero altitude when airborne.
+        public float AirborneSettleRate { get; set; } = 2.0f;
+
+        // Applies drag and clamps inertia to [-MaxInertia, MaxInertia]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float ApplyDragAndClamp(float inertia) => Math.Clamp(inertia * InertiaDrag, -MaxInertia, MaxInertia);
 
         // Applies drag to the current velocity and returns the updated position
         public IVector3 ApplyDragForce(IVector3 currentPosition, float deltaTime)
@@ -63,20 +110,20 @@ namespace GameAiAndControls.Physics
                 return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
             }
 
-            // 1. Legg til akselerasjon (hvis partikkelen har det)
+            // 1. Add acceleration (if the particle has it)
             Velocity.x += Acceleration.x;
             Velocity.y += Acceleration.y;
             Velocity.z += Acceleration.z;
 
-            // 2. Påfør gravity på Y-aksen (GravityStrength drar ned, altså minus siden -Y er opp)
+            // 2. Apply gravity on the Y axis (GravityStrength pulls down, minus since -Y is up)
             Velocity.y -= GravityStrength * deltaTime;
 
-            // 3. Påfør friksjon
+            // 3. Apply friction
             Velocity.x *= 0.95f;
             Velocity.y *= 0.95f;
             Velocity.z *= 0.95f;
 
-            // 4. Flytt posisjon motsatt av velocity
+            // 4. Move position opposite to velocity
             currentPosition.x -= Velocity.x;
             currentPosition.y -= Velocity.y;
             currentPosition.z -= Velocity.z;
@@ -131,19 +178,19 @@ namespace GameAiAndControls.Physics
                 };
             }
 
-            // Bounce på Y-akse (Top/Bottom)
+            // Bounce on Y axis (Top/Bottom)
             if (normal.y != 0)
             {
                 Velocity.y = -Velocity.y * EnergyLossFactor;
             }
 
-            // Bounce på X-akse (Left/Right)
+            // Bounce on X axis (Left/Right)
             if (normal.x != 0)
             {
                 Velocity.x = -Velocity.x * EnergyLossFactor;
             }
 
-            // Bounce på Z-akse (for front/back treff, hvis vi trenger det)
+            // Bounce on Z axis (for front/back hits, if needed)
             if (normal.z != 0)
             {
                 Velocity.z = -Velocity.z * EnergyLossFactor;
@@ -153,14 +200,101 @@ namespace GameAiAndControls.Physics
         }
 
 
-        public IVector3 ApplyRotationDragForce(IVector3 rotationVector)
+        // Not yet implemented — retained for IPhysics contract
+        public IVector3 ApplyRotationDragForce(IVector3 rotationVector) => null;
+        public void TiltStabilization(ref IVector3 tiltState) { }
+
+        // Applies gravity when falling (no thrust). Returns updated InertiaY.
+        // Gravity is scaled by the hover ramp: near-zero during float, then gradually increasing.
+        public float ApplyFallGravity(float rotationDegrees, float deltaTime)
         {
-            return null; // Not implemented yet
+            HoverElapsed += deltaTime;
+            float gravityScale = GetHoverGravityScale();
+
+            float rotationRad = (rotationDegrees % 180) * DEG2RAD;
+            float gravityModifier = Math.Clamp(MathF.Sin(rotationRad), 0.3f, 1.0f);
+            float gravityPull = GravityAcceleration * gravityModifier * GravityPullMultiplier * gravityScale * deltaTime;
+
+            InertiaY = ApplyDragAndClamp(InertiaY - gravityPull);
+            FallVelocity = MathF.Max(-InertiaY, 0f);
+            return InertiaY;
         }
 
-        public void TiltStabilization(ref IVector3 tiltState)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float GetHoverGravityScale()
         {
-            // Not implemented yet
+            if (HoverElapsed < HoverFloatDuration)
+                return HoverMinGravityScale;
+
+            float rampElapsed = HoverElapsed - HoverFloatDuration;
+            if (rampElapsed >= HoverRampDuration)
+                return 1f;
+
+            return HoverMinGravityScale + (1f - HoverMinGravityScale) * (rampElapsed / HoverRampDuration);
+        }
+
+        public void ResetHover() => HoverElapsed = 0f;
+
+        // Retained for IPhysics contract — no longer called by ship controls
+        public void ReduceFallWithThrust(float thrust, float rotationDegrees, float deltaTime)
+        {
+            float upwardFactor = MathF.Cos(rotationDegrees * DEG2RAD);
+            float thrustLift = thrust * upwardFactor * 0.75f * deltaTime;
+            FallVelocity = Math.Max(FallVelocity - thrustLift, 0f);
+        }
+
+        // Calculates thrust on all three axes with continuous gravity. Returns updated InertiaY.
+        // Tilt controls vertical/forward split; rotation controls heading.
+        // When inverted (tilt ~180°), upwardFactor goes negative — thrust pushes into the ground.
+        // Gravity scales in with VerticalLiftFactor to prevent an initial dip at thrust start.
+        public float CalculateThrustForces(float thrust, float tiltDegrees, float rotationDegrees, float deltaTime)
+        {
+            ThrustEffect = MathF.Min(ThrustEffect + ThrustRampRate * deltaTime, 1f);
+            VerticalLiftFactor = MathF.Min(VerticalLiftFactor + VerticalLiftRate * deltaTime, 1f);
+
+            float tiltRad = tiltDegrees * DEG2RAD;
+            float rotationRad = rotationDegrees * DEG2RAD;
+
+            float upwardFactor = MathF.Cos(tiltRad);   // +1 upright, 0 sideways, -1 inverted
+            float forwardFactor = MathF.Sin(tiltRad);
+            float dirX = MathF.Sin(rotationRad);
+            float dirZ = MathF.Cos(rotationRad);
+
+            // Horizontal forces — projected onto world X/Z axes
+            float horizontalForce = thrust * ThrustEffect * ThrustSpeedMultiplier * forwardFactor * deltaTime;
+            InertiaX = ApplyDragAndClamp(InertiaX + horizontalForce * dirX);
+            InertiaZ = ApplyDragAndClamp(InertiaZ - horizontalForce * dirZ);
+
+            // Vertical thrust — angle-dependent (negative when inverted pushes into ground)
+            float verticalThrust = thrust * ThrustEffect * VerticalLiftFactor * ThrustHeightMultiplier
+                                 * upwardFactor * VerticalThrustSmoothing * deltaTime;
+            float gravityPull = GravityAcceleration * GravityPullMultiplier * VerticalLiftFactor * deltaTime;
+
+            InertiaY = ApplyDragAndClamp(InertiaY + verticalThrust - gravityPull);
+            FallVelocity = MathF.Max(-InertiaY, 0f);
+            return InertiaY;
+        }
+
+        public float CalculateCurrentSpeed(bool isLanded)
+        {
+            float horizontalSpeed = MathF.Sqrt(InertiaX * InertiaX + InertiaZ * InertiaZ);
+            float verticalSpeed = isLanded ? 0f : MathF.Abs(InertiaY);
+            return horizontalSpeed + verticalSpeed;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float ClampToHeightRange(float value) => Math.Clamp(value, FloorHeight, CeilingHeight);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float ClampToScreenDrop(float value) => MathF.Min(value, MaxScreenDrop);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float WrapPosition(float position, float diff, float minValue, float maxValue)
+        {
+            float newPos = position + diff;
+            if (newPos >= maxValue) return minValue;
+            if (newPos <= minValue) return maxValue;
+            return newPos;
         }
 
         private class ExplodingTriangle
@@ -180,6 +314,8 @@ namespace GameAiAndControls.Physics
 
         private List<ExplodingTriangle> _explodingTriangles = new();
         private bool _isExploding = false;
+
+        public string? ExplosionColorOverride { get; set; }
 
         public I3dObject ExplodeObject(I3dObject originalObject, float explosionForce = 200f)
         {
@@ -216,12 +352,12 @@ namespace GameAiAndControls.Physics
                     var rawDir = Subtract(triCenter, center);
                     var direction = Normalize(rawDir);
 
-                    // --- Her justeres retningen ---
-                    if (direction.y < 0) direction.y *= 0.25f; // Demp nedover
-                    if (direction.y < 0.05f) direction.y += 0.1f; // Løft litt
-                    direction.x *= 1.3f; // Mer sideveis
+                    // Adjust the explosion direction
+                    if (direction.y < 0) direction.y *= 0.25f; // Dampen downward
+                    if (direction.y < 0.05f) direction.y += 0.1f; // Lift slightly
+                    direction.x *= 1.3f; // More sideways spread
                     direction.z *= 1.3f;
-                    direction = Normalize(direction); // Re-normaliser
+                    direction = Normalize(direction); // Re-normalize
 
                     var rotationAxis = RandomUnitVector();
 
@@ -282,7 +418,7 @@ namespace GameAiAndControls.Physics
                 float progress = Clamp(exploding.ElapsedTime / exploding.Duration, 0f, 1f);
 
                 // Apply color transition based on progress
-                exploding.Triangle.Color = GetExplosionColor(progress, exploding.Triangle.Color);
+                exploding.Triangle.Color = GetExplosionColor(progress, exploding.OriginalColor);
 
                 if (Logger.EnableFileLogging && LocalEnableLogging)
                 {
@@ -337,8 +473,20 @@ namespace GameAiAndControls.Physics
             return explodingObject;
         }
 
-        private static string GetExplosionColor(float progress, string originalHex)
+        private string GetExplosionColor(float progress, string originalHex)
         {
+            if (ExplosionColorOverride != null)
+            {
+                if (progress < 0.10f)
+                    return LerpColorHex("AADDFF", ExplosionColorOverride, progress / 0.10f);
+                else if (progress < 0.35f)
+                    return LerpColorHex(ExplosionColorOverride, "1133AA", (progress - 0.10f) / 0.25f);
+                else if (progress < 0.7f)
+                    return LerpColorHex("1133AA", "001133", (progress - 0.35f) / 0.35f);
+                else
+                    return LerpColorHex("001133", "000000", (progress - 0.7f) / 0.3f);
+            }
+
             if (progress < 0.10f)
                 return LerpColorHex(originalHex, "ffff00", progress / 0.10f); // original → yellow
             else if (progress < 0.35f)

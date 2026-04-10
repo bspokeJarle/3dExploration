@@ -6,7 +6,7 @@ using System.Linq;
 
 public static class Logger
 {
-    public static bool EnableFileLogging = false;
+    public static bool EnableFileLogging = true;
     private static readonly string LogFilePath = @"C:\Temp\OmegaStrainLogging.txt";
 
     public static int MaxLogLines = 5000;

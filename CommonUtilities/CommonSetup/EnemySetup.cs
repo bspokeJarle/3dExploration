@@ -11,6 +11,8 @@ namespace CommonUtilities.CommonSetup
     {
         public const int KamikazeDroneHealth = 55;
         public const int KamikazeDroneCollisionDamage = 50;
+        public const int MotherShipSmallHealth = 550;
+        public const int MotherShipSmallCollisionDamage = 80;
 
         public static List<string> EnemyTypes = new List<string>
         {
@@ -19,7 +21,8 @@ namespace CommonUtilities.CommonSetup
             "Bomber",
             "AttackShip",
             "Endboss1",
-            "Endboss2"
+            "Endboss2",
+            "MotherShipSmall"
         };
         public static bool IsEnemyTypeValid(string objectName)
         {

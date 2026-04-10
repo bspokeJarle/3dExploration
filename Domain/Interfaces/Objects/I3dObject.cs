@@ -17,6 +17,7 @@ namespace Domain
         IParticles? Particles { get; set; }
         IWeapon? WeaponSystems { get; set; }
         List<List<IVector3>> CrashBoxes { get; set; }
+        List<string?>? CrashBoxNames { get; set; }
         bool CrashBoxesFollowRotation { get; set; }
         IImpactStatus? ImpactStatus { get; set; }
         int? Mass { get; set; }
@@ -26,5 +27,7 @@ namespace Domain
         IVector3? CalculatedCrashOffset { get; set; }
         bool IsOnScreen { get; set; }
         bool HasShadow { get; set; }
+        bool HasPowerUp { get; set; }
+        bool IsActive { get; set; }
     }
 }

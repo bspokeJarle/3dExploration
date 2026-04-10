@@ -9,6 +9,7 @@ namespace Domain
             public ImpactDirection? ImpactDirection { get; set; }
             public IParticle SourceParticle { get; set; }
             public int? ObjectHealth { get; set; } = 100;
+            public string? CrashBoxName { get; set; }
             public bool HasExploded { get; set; }
         }
     }

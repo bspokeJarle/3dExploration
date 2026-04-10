@@ -1,4 +1,5 @@
 ﻿using _3dTesting._Coordinates;
+using CommonUtilities.CommonSetup;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -22,8 +23,8 @@ namespace _3dTesting.Rendering
         private readonly List<StreamGeometry> geometryPool = new();
         private int geometryPoolIndex = 0;
 
-        private const float FarZ = 2000f;
-        private const float NearZ = -2000f;
+        private const float FarZ = ScreenSetup.RenderFarZ;
+        private const float NearZ = ScreenSetup.RenderNearZ;
 
         public int GetRenderingTriangleCount() => renderingTriangleCount;
 
@@ -136,7 +137,7 @@ namespace _3dTesting.Rendering
 
                 foreach (var triangle in triangleArray)
                 {
-                    if (triangle.CalculatedZ > 1200 || triangle.CalculatedZ < -2000)
+                    if (triangle.CalculatedZ > FarZ || triangle.CalculatedZ < NearZ)
                         continue;
 
                     float depthFactor01 = GetDepthFactor01(triangle.CalculatedZ);
@@ -228,7 +229,7 @@ namespace _3dTesting.Rendering
             {
                 var triangle = triangles[i];
 
-                if (triangle.CalculatedZ > 1200 || triangle.CalculatedZ < -2000)
+                if (triangle.CalculatedZ > FarZ || triangle.CalculatedZ < NearZ)
                     continue;
 
                 float depthFactor01 = GetDepthFactor01(triangle.CalculatedZ);

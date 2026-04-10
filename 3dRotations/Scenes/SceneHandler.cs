@@ -3,10 +3,14 @@ using _3dRotations.Scenes.Intro;
 using _3dRotations.Scenes.Outro;
 using _3dTesting._3dWorld;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Windows.Input;
+using static Domain._3dSpecificsImplementations;
 
 namespace _3DWorld.Scene
 {
@@ -38,6 +42,8 @@ namespace _3DWorld.Scene
             GameState.GamePlayState.SeederOffscreenSpeedFactor = scene.SeederOffscreenSpeedFactor;
             GameState.GamePlayState.LocalInfectionSpreadDelaySec = scene.LocalInfectionSpreadDelaySec;
             GameState.GamePlayState.LocalInfectionSpreadRadius = scene.LocalInfectionSpreadRadius;
+
+            ValidateGameSceneSetup(scene, world);
         }
 
         public void ResetActiveScene(I3dWorld world)
@@ -53,6 +59,13 @@ namespace _3DWorld.Scene
                 GameState.GamePlayState.ResetForNewGame();
                 GameState.SurfaceState.GlobalMapBitmap = null;
                 GameState.SurfaceState.SurfaceViewportObject = null;
+                GameState.SurfaceState.GlobalMapPosition = new _3dSpecificsImplementations.Vector3
+                {
+                    x = SurfaceSetup.DefaultMapPosition.x,
+                    y = SurfaceSetup.DefaultMapPosition.y,
+                    z = SurfaceSetup.DefaultMapPosition.z
+                };
+                GameState.SurfaceState.ScreenEcoMetas = new ScreenEcoMeta[MapSetup.screensPrMap, MapSetup.screensPrMap];
                 scenes[currentSceneIndex] = newScene;
                 GameState.ScreenOverlayState.HardHide();
                 newScene.SetupGameOverlay();
@@ -112,6 +125,13 @@ namespace _3DWorld.Scene
             GameState.GamePlayState.ResetForNewGame();
             GameState.SurfaceState.GlobalMapBitmap = null;
             GameState.SurfaceState.SurfaceViewportObject = null;
+            GameState.SurfaceState.GlobalMapPosition = new _3dSpecificsImplementations.Vector3
+            {
+                x = SurfaceSetup.DefaultMapPosition.x,
+                y = SurfaceSetup.DefaultMapPosition.y,
+                z = SurfaceSetup.DefaultMapPosition.z
+            };
+            GameState.SurfaceState.ScreenEcoMetas = new ScreenEcoMeta[MapSetup.screensPrMap, MapSetup.screensPrMap];
             SetupActiveScene(world);
         }
 
@@ -129,6 +149,32 @@ namespace _3DWorld.Scene
             _pendingSceneAdvance = false;
             currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
             SetupActiveScene(world);
+        }
+
+        /// <summary>
+        /// Validates that a Game-type scene has set up all critical state.
+        /// Runs after SetupScene so missing fields are caught during development.
+        /// </summary>
+        [Conditional("DEBUG")]
+        private static void ValidateGameSceneSetup(IScene scene, I3dWorld world)
+        {
+            if (scene.SceneType != SceneTypes.Game) return;
+
+            var inhabitants = world.WorldInhabitants;
+            var ship = inhabitants.FirstOrDefault(o => o.ObjectName == "Ship");
+
+            Debug.Assert(ship != null,
+                $"[{scene.GetType().Name}] No Ship found in WorldInhabitants.");
+            Debug.Assert(ship?.WeaponSystems != null,
+                $"[{scene.GetType().Name}] Ship.WeaponSystems is null — weapons not assigned.");
+            Debug.Assert(ship?.ImpactStatus?.ObjectHealth > 0,
+                $"[{scene.GetType().Name}] Ship.ImpactStatus.ObjectHealth is 0 — ship has no health.");
+            Debug.Assert(GameState.SurfaceState.SurfaceViewportObject != null,
+                $"[{scene.GetType().Name}] SurfaceViewportObject is null — surface not stored in GameState.");
+            Debug.Assert(GameState.SurfaceState.AiObjects.Count > 0,
+                $"[{scene.GetType().Name}] No AI objects — scene has no enemies.");
+            Debug.Assert(inhabitants.Any(o => o.ObjectName == "SeederGuidanceArrow"),
+                $"[{scene.GetType().Name}] No SeederGuidanceArrow — guidance arrow missing.");
         }
     }
 }

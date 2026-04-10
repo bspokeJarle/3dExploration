@@ -5,12 +5,15 @@ using _3dTesting.Helpers;
 using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Controls;
+using GameAiAndControls.Controls.KamikazeDroneControls;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.World.Objects
 {
     public class KamikazeDrone
     {
+        private const float ZoomRatio = 1f;
+
         // ----------------------------------------------------
         //  GEOMETRY PARAMETERS
         // ----------------------------------------------------
@@ -133,6 +136,9 @@ namespace _3dRotations.World.Objects
 
             drone.ParentSurface = parentSurface;
             drone.HasShadow = true;
+
+            _3dObjectHelpers.ApplyScaleToObject(drone, ZoomRatio);
+
             return drone;
         }
 

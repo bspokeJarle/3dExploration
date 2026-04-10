@@ -195,10 +195,19 @@ namespace _3dTesting.Helpers
             bool aiVisible = (_markerFrame % 30) < 15;
 
             // BGRA format
-            byte[] greyPx   = { 180, 180, 180, 255 }; // Ship
-            byte[] blackPx  = { 0, 0, 0, 255 };       // Seeder
-            byte[] bluePx   = { 255, 80, 0, 255 };    // Drone
-            byte[] orangePx = { 0, 140, 255, 255 };   // Decoy
+            byte[] greyPx    = { 180, 180, 180, 255 }; // Ship
+            byte[] blackPx   = { 0, 0, 0, 255 };       // Seeder
+            byte[] bluePx    = { 255, 80, 0, 255 };    // Drone
+            byte[] orangePx  = { 0, 140, 255, 255 };   // Decoy
+            byte[] powerupPx = { 255, 140, 30, 255 };  // PowerUp (strong blue)
+
+            // Mothership — large marker flashing red/black independently
+            bool mothershipFlashRed = (_markerFrame % 20) < 10;
+            byte[] mothershipPx = mothershipFlashRed
+                ? new byte[] { 0, 0, 255, 255 }    // BGRA red
+                : new byte[] { 0, 0, 0, 255 };     // BGRA black
+
+            bool powerupVisible = (_markerFrame % 8) < 5;
 
             // Ship marker — always visible at viewport center
             var mapPos = GameState.SurfaceState.GlobalMapPosition;
@@ -208,6 +217,33 @@ namespace _3dTesting.Helpers
                 int shipBx = (int)((mapPos.x + viewportCenterOffset) / tileSize) - cropOriginX;
                 int shipBz = (int)((mapPos.z + viewportCenterOffset) / tileSize) - cropOriginZ;
                 StampMarker(pixels, cropW, cropH, stride, shipBx, shipBz, greyPx);
+            }
+
+            // Mothership marker — always drawn with its own red/black flash cycle
+            {
+                var aiObjects = GameState.SurfaceState?.AiObjects;
+                _3dObject[]? msSnapshot = null;
+                if (aiObjects != null)
+                {
+                    lock (aiObjects) { msSnapshot = [.. aiObjects]; }
+                }
+                if (msSnapshot != null)
+                {
+                    for (int i = 0; i < msSnapshot.Length; i++)
+                    {
+                        var obj = msSnapshot[i];
+                        if (obj == null || obj.ObjectName != "MotherShipSmall") continue;
+                        if (!obj.IsActive) continue;
+                        if (obj.ImpactStatus?.HasExploded == true) continue;
+                        if (obj.ObjectParts == null || obj.ObjectParts.Count == 0) continue;
+                        if (obj.WorldPosition == null) continue;
+                        if (obj.WorldPosition.x == 0 && obj.WorldPosition.z == 0) continue;
+
+                        int mx = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
+                        int mz = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                        StampMarkerBoss(pixels, cropW, cropH, stride, mx, mz, mothershipPx);
+                    }
+                }
             }
 
             // AI objects — only during blink-on phase
@@ -225,6 +261,7 @@ namespace _3dTesting.Helpers
                     {
                         var obj = snapshot[i];
                         if (obj == null) continue;
+                        if (!obj.IsActive) continue;
                         if (obj.ImpactStatus?.HasExploded == true)
                             continue;
                         // Also skip objects whose parts have been cleared (fully dead)
@@ -235,6 +272,20 @@ namespace _3dTesting.Helpers
                         if (obj.WorldPosition.x == 0 && obj.WorldPosition.z == 0)
                             continue;
 
+                        bool isPowerUp = obj.ObjectName == "PowerUp";
+
+                        if (isPowerUp)
+                        {
+                            if (!powerupVisible) continue;
+                            int bx = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
+                            int bz = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                            StampMarkerLarge(pixels, cropW, cropH, stride, bx, bz, powerupPx);
+                            continue;
+                        }
+
+                        // Mothership drawn separately below with its own flash cycle
+                        if (obj.ObjectName == "MotherShipSmall") continue;
+
                         byte[]? color = obj.ObjectName switch
                         {
                             "Seeder" => blackPx,
@@ -244,9 +295,9 @@ namespace _3dTesting.Helpers
                         };
                         if (color == null) continue;
 
-                        int bx = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
-                        int bz = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
-                        StampMarker(pixels, cropW, cropH, stride, bx, bz, color);
+                        int bx2 = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
+                        int bz2 = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                        StampMarker(pixels, cropW, cropH, stride, bx2, bz2, color);
                     }
                 }
             }
@@ -261,6 +312,48 @@ namespace _3dTesting.Helpers
             for (int dx = -1; dx <= 1; dx++)
             {
                 for (int dz = -1; dz <= 1; dz++)
+                {
+                    int px = cx + dx;
+                    int pz = cz + dz;
+                    if (px >= 0 && pz >= 0 && px < w && pz < h)
+                    {
+                        int offset = pz * stride + px * 4;
+                        pixels[offset]     = bgra[0]; // B
+                        pixels[offset + 1] = bgra[1]; // G
+                        pixels[offset + 2] = bgra[2]; // R
+                        pixels[offset + 3] = bgra[3]; // A
+                    }
+                }
+            }
+        }
+
+        private static void StampMarkerBoss(byte[] pixels, int w, int h, int stride,
+            int cx, int cz, byte[] bgra)
+        {
+            for (int dx = -3; dx <= 3; dx++)
+            {
+                for (int dz = -3; dz <= 3; dz++)
+                {
+                    int px = cx + dx;
+                    int pz = cz + dz;
+                    if (px >= 0 && pz >= 0 && px < w && pz < h)
+                    {
+                        int offset = pz * stride + px * 4;
+                        pixels[offset]     = bgra[0]; // B
+                        pixels[offset + 1] = bgra[1]; // G
+                        pixels[offset + 2] = bgra[2]; // R
+                        pixels[offset + 3] = bgra[3]; // A
+                    }
+                }
+            }
+        }
+
+        private static void StampMarkerLarge(byte[] pixels, int w, int h, int stride,
+            int cx, int cz, byte[] bgra)
+        {
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                for (int dz = -2; dz <= 2; dz++)
                 {
                     int px = cx + dx;
                     int pz = cz + dz;

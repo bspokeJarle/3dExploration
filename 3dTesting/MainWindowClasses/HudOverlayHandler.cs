@@ -97,9 +97,9 @@ namespace _3dTesting.MainWindowClasses
         private const double PowerBarW = 18;
         private const double PowerBarH = 35;
 
-        private const double PowerupLazerX = 845;
+        private const double PowerupBulletX = 845;
         private const double PowerupDecoyX = 945;
-        private const double PowerupBulletX = 1045;
+        private const double PowerupLazerX = 1045;
         private const double PowerupRowY = 85;
         private const double PowerupIconSize = 48;
 
@@ -324,9 +324,11 @@ namespace _3dTesting.MainWindowClasses
 
             _fpsCenter.Text = $"{fps}                       {triangles}";
 
-            _powerupLazerIcon.Opacity = activePowerup == "LAZER" ? 1.0 : 0.45;
-            _powerupDecoyIcon.Opacity = activePowerup == "DECOY" ? 1.0 : 0.45;
             _powerupBulletIcon.Opacity = activePowerup == "BULLET" ? 1.0 : 0.45;
+            _powerupDecoyIcon.Opacity = !gameplay.IsDecoyUnlocked ? 0.15
+                : activePowerup == "DECOY" ? 1.0 : 0.45;
+            _powerupLazerIcon.Opacity = !gameplay.IsLazerUnlocked ? 0.15
+                : activePowerup == "LAZER" ? 1.0 : 0.45;
 
             // Ship power (health) vertical bar: fills bottom-to-top, green→red
             UpdatePowerBar(gameplay);

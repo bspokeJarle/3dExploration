@@ -1,11 +1,16 @@
 ﻿
-using _3dRotations.World.Objects;
-using static Domain._3dSpecificsImplementations;
-using CommonUtilities.CommonSetup;
-using GameAiAndControls.Controls;
 using _3dRotations.Helpers;
-using Domain;
+using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
+using Domain;
+using GameAiAndControls.Controls;
+using GameAiAndControls.Controls.MotherShipSmallControls;
+using GameAiAndControls.Controls.SeederControls;
+using System;
+using System.Collections.Generic;
+using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.Scene.Scene1
 {
@@ -25,46 +30,70 @@ namespace _3dRotations.Scene.Scene1
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
             Surface.Create2DMap(500,50,GameMode,null);
-
+            var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
             ship.ObjectName = "Ship";
-            ship.ImpactStatus = new ImpactStatus { };
+            ship.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
             ship.CrashBoxDebugMode = false;
+            ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
 
-            /*
-            //Add three seeders
-            var seeder = Seeder.CreateSeeder(Surface);
-            //Initialize the seeder rotation
-            seeder.Rotation = new Vector3 { };
-            seeder.WorldPosition = new Vector3 { x = 96000, y = 0, z = 96000 };
-            seeder.ObjectOffsets = new Vector3 { x = -150, y = -200, z = 0 };
-            seeder.CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 };
-            seeder.ObjectName = "Seeder";
-            seeder.Movement = new SeederControls();            
-            world.WorldInhabitants.Add(seeder);
+            // Guidance arrow — on-screen indicator pointing toward closest seeder
+            var guidanceArrow = SeederGuidanceArrow.CreateSeederGuidanceArrow(Surface);
+            guidanceArrow.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 200 };
+            guidanceArrow.Rotation = new Vector3 { x = 70, y = 0, z = 90 };
+            guidanceArrow.WorldPosition = new Vector3 { };
+            guidanceArrow.ObjectName = "SeederGuidanceArrow";
+            guidanceArrow.ImpactStatus = new ImpactStatus { };
+            guidanceArrow.CrashBoxDebugMode = false;
+            world.WorldInhabitants.Add(guidanceArrow);
 
-            var seeder2 = Seeder.CreateSeeder(Surface);
-            //Initialize the seeder rotation
-            seeder2.Rotation = new Vector3 { };
-            seeder2.WorldPosition = new Vector3 { x = 93750, y = 0, z = 93000 };
-            seeder2.ObjectOffsets = new Vector3 { x = -150, y = -100, z = 0 };
-            seeder2.CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 };
-            seeder2.ObjectName = "Seeder";
-            seeder2.Movement = new SeederControls();
-            world.WorldInhabitants.Add(seeder2);
+            for (int i = 0; i < 7; i++)
+            {
+                var rmd = new Random();
 
-            var seeder3 = Seeder.CreateSeeder(Surface);
-            //Initialize the seeder rotation
-            seeder3.Rotation = new Vector3 { };
-            seeder3.WorldPosition = new Vector3 { x = 94000, y = 0, z = 90000 };
-            seeder3.ObjectOffsets = new Vector3 { x = -150, y = -100, z = 0 };
-            seeder3.CrashboxOffsets = new Vector3 { x = 0, y = 0, z = 0 };
-            seeder3.ObjectName = "Seeder";
-            seeder3.Movement = new SeederControls();
-            world.WorldInhabitants.Add(seeder3);
-            */
+                var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
+                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-55000, 55000), y = 0, z = 92000 + rmd.Next(-55000, 55000) };
+                kamikaze.Rotation = new Vector3 { };
+                kamikaze.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
+                kamikaze.ObjectName = "KamikazeDrone";
+                kamikaze.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.KamikazeDroneHealth };
+                kamikaze.CrashBoxDebugMode = false;
+                kamikaze.WeaponSystems = null;
+                kamikaze.IsActive = false;
+                world.WorldInhabitants.Add(kamikaze);
+                GameState.SurfaceState.AiObjects.Add(kamikaze);
+            }
+
+            for (int i = 0; i < 7; i++)
+            {
+                var rmd = new Random();
+
+                var seeder = Seeder.CreateSeeder(Surface);
+                seeder.Rotation = new Vector3 { };
+                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-30000, 30000), y = 0, z = 92000 + rmd.Next(-30000, 30000) };
+                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                seeder.ObjectName = "Seeder";
+                seeder.Movement = new SeederControls();
+                seeder.CrashBoxDebugMode = false;
+                seeder.ImpactStatus = new ImpactStatus { };
+                world.WorldInhabitants.Add(seeder);
+                GameState.SurfaceState.AiObjects.Add(seeder);
+            }
+
+            // MotherShipSmall — spawns inactive, enters when all seeders are destroyed
+            var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
+            motherShip.Rotation = new Vector3 { };
+            motherShip.WorldPosition = new Vector3 { x = 95700, y = 0, z = 92000 };
+            motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
+            motherShip.ObjectName = "MotherShipSmall";
+            motherShip.Movement = new MotherShipSmallControls();
+            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
+            motherShip.CrashBoxDebugMode = false;
+            motherShip.IsActive = false;
+            world.WorldInhabitants.Add(motherShip);
+            GameState.SurfaceState.AiObjects.Add(motherShip);
 
             //Get the surface viewport based on the global Map Position
             //Important: In a Scene, Surface should be amongst the first objects added to the world
@@ -79,7 +108,9 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.ParentSurface = Surface;
             surfaceObject.ImpactStatus = new ImpactStatus { };
             surfaceObject.CrashBoxDebugMode = false;
+            surfaceObject.CrashBoxesFollowRotation = false;
             world.WorldInhabitants.Add(surfaceObject);
+            GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight(),null);
             var treeIndex = 0;
@@ -92,6 +123,7 @@ namespace _3dRotations.Scene.Scene1
                 //The tree don't need a world position, it's a surface based object
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tree.SurfaceBasedId = GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
                 tree.ObjectOffsets = new Vector3 { x = 75, y = 425, z = 300 };
                 //Crashbox offsets for Tree, counteract the object offsets
@@ -114,6 +146,7 @@ namespace _3dRotations.Scene.Scene1
                 house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 //Find the surface based id for the tree
                 house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
                 house.ObjectOffsets = new Vector3 { x = 75, y = 450, z = 300 };
                 //TODO need to find the right offsets for house
                 //house.CrashboxOffsets = new Vector3 { };
@@ -128,15 +161,49 @@ namespace _3dRotations.Scene.Scene1
         public void SetupSceneOverlay()
         {
             GameState.ScreenOverlayState.ResetToDefaults();
+            var o = GameState.ScreenOverlayState;
+
+            o.Type = ScreenOverlayType.Intro;
+            o.Anchor = ScreenOverlayAnchor.Top;
+
+            o.Header = "RETROMESH // SECTOR BRIEFING";
+            o.Title = "THE OMEGA STRAIN — PHASE II";
+
+            o.Body =
+                "NEREID outer colony TRITON-7 has gone dark.\n\n" +
+                "Long-range telemetry confirms Omega Strain\n" +
+                "has breached the quarantine perimeter.\n" +
+                "Seeder count: SEVEN. Escort drones: SEVEN.\n" +
+                "Terrain: unknown — no prior survey data.\n\n" +
+                "Bio-contamination tolerance: 8%.\n" +
+                "Kamikaze drone swarm density: EXTREME.\n\n" +
+                "REVISED DIRECTIVE:\n" +
+                "Sterilize TRITON-7. Leave nothing behind.";
+
+            o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";
+
+            o.ShowOverlay = true;
+            o.AutoHide = false;
+            o.AutoHideSeconds = 0f;
+
+            o.DimStrength = 0.60f;
+            o.PanelWidthRatio = 0.74f;
+            o.PanelHeightRatio = 0.34f;
+
+            o.ShowDebugOverlay = false;
         }
         public void SetupGameOverlay()
         {
             GameState.ScreenOverlayState.ResetToDefaults();
+            GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
+            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "The Omega Strain", "", "");
+            GameState.ScreenOverlayState.ShowOverlay = false;
+            GameState.ScreenOverlayState.ShowDebugOverlay = false;
         }
 
         public void SetupVideoOverlay(string fileName)
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
     }
 }

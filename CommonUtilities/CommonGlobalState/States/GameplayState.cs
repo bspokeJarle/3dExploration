@@ -55,8 +55,10 @@ namespace Domain
         // -----------------------------
         public int DronesRemaining { get; set; } = 0;
         public int SeedersRemaining { get; set; } = 0;
+        public int MotherShipsRemaining { get; set; } = 0;
         public int InitialDrones { get; set; } = 0;
         public int InitialSeeders { get; set; } = 0;
+        public int InitialMotherShips { get; set; } = 0;
 
         // -----------------------------
         // Infection / lose condition (core to Omega Strain)
@@ -112,8 +114,27 @@ namespace Domain
         // -----------------------------
         // Weapons (simple, but practical)
         // -----------------------------
-        public WeaponType SelectedWeapon { get; set; } = WeaponType.Lazer;
-        public string ActivePowerup { get; set; } = "LAZER";
+        public WeaponType SelectedWeapon { get; set; } = WeaponType.Bullet;
+        public string ActivePowerup { get; set; } = "BULLET";
+
+        // -----------------------------
+        // MotherShip health bar (in-world, follows the object)
+        // -----------------------------
+        public float MotherShipHealthPercent { get; set; } = 1f;
+        public float MotherShipScreenX { get; set; } = 0f;
+        public float MotherShipScreenY { get; set; } = 0f;
+        public bool ShowMotherShipHealthBar { get; set; } = false;
+        public bool MotherShipIsOnScreen { get; set; } = false;
+
+        // MotherShip ram warning (flashing reticle before charge)
+        public bool MotherShipRamWarningActive { get; set; } = false;
+        public float MotherShipRamWarningScreenX { get; set; } = 0f;
+        public float MotherShipRamWarningScreenY { get; set; } = 0f;
+
+        // PowerUp progression: each collected PowerUp unlocks the next weapon tier
+        public int PowerUpsCollected { get; set; } = 0;
+        public bool IsDecoyUnlocked => PowerUpsCollected >= 1;
+        public bool IsLazerUnlocked => PowerUpsCollected >= 2;
 
         public int LaserAmmo { get; set; } = -1;   // -1 means infinite
         public int RocketAmmo { get; set; } = 10;
@@ -254,8 +275,19 @@ namespace Domain
             LocalInfectionSpreadDelaySec = 1.0f;
             LocalInfectionSpreadRadius = 10000f;
 
-            SelectedWeapon = WeaponType.Lazer;
-            ActivePowerup = "LAZER";
+            MotherShipHealthPercent = 1f;
+            MotherShipScreenX = 0f;
+            MotherShipScreenY = 0f;
+            ShowMotherShipHealthBar = false;
+            MotherShipIsOnScreen = false;
+
+            MotherShipRamWarningActive = false;
+            MotherShipRamWarningScreenX = 0f;
+            MotherShipRamWarningScreenY = 0f;
+
+            SelectedWeapon = WeaponType.Bullet;
+            ActivePowerup = "BULLET";
+            PowerUpsCollected = 0;
             LaserAmmo = -1;
             RocketAmmo = 10;
             BulletAmmo = -1;

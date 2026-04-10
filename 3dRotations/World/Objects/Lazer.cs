@@ -11,6 +11,8 @@ namespace _3dRotations.World.Objects
 {
     public static class Lazer
     {
+        private const float ZoomRatio = 1f;
+
         public static _3dObject CreateLazer(ISurface parentSurface)
         {
             var seg1 = LazerSegment1(); // longest, bright
@@ -35,6 +37,9 @@ namespace _3dRotations.World.Objects
             beam.CrashBoxDebugMode = false;
             beam.ImpactStatus = new ImpactStatus { ObjectName = "Lazer" };
             if (crash != null) beam.CrashBoxes = crash;
+
+            _3dObjectHelpers.ApplyScaleToObject(beam, ZoomRatio);
+
             return beam;
         }
 

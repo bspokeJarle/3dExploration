@@ -11,6 +11,8 @@ namespace _3dRotations.World.Objects
 {
     public class DecoyBeacon
     {
+        private const float ZoomRatio = 1f;
+
         // ----------------------------------------------------
         //  GEOMETRY PARAMETERS
         // ----------------------------------------------------
@@ -82,6 +84,9 @@ namespace _3dRotations.World.Objects
 
             decoy.ParentSurface = parentSurface;
             decoy.HasShadow = true;
+
+            _3dObjectHelpers.ApplyScaleToObject(decoy, ZoomRatio);
+
             return decoy;
         }
 

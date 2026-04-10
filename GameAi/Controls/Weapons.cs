@@ -287,14 +287,35 @@ namespace GameAiAndControls.Controls
         private static (Vector3 rotation, int tilt) AdjustWeaponRotation(
             IVector3 origDir, IVector3 assistedDir, IVector3 shipRotation, int baseTilt)
         {
-            // Weapon geometry points along -Y. The projection maps v.x→screen x, v.y→screen y.
-            // After RotateZ(θ) + RotateX(cameraTilt), the beam tip direction on screen is:
-            //   Δx = L·sin(θ),  Δy = -L·cos(θ)·cos(cameraTilt)
-            // To match the travel direction (dir.x, dir.y):
-            //   θ = atan2(dir.x, -dir.y / cos(cameraTilt))
+            // Weapon geometry points along -Y. InitializeWeaponGeometry applies:
+            //   RotateX(baseTilt) → RotateZ(θ) → RotateX(cameraTilt)
+            // After all rotations, the beam tip on screen is:
+            //   Δx = cos(tilt)·sin(θ)
+            //   Δy = -cos(tilt)·cos(θ)·cos(cT) + sin(tilt)·sin(cT)
+            // Solving for θ that aligns the mesh with (dir.x, dir.y):
+            //   θ = π − arcsin(tan(tilt)·sin(cT)·dir.x / R) − atan2(dir.x·cos(cT), dir.y)
+            // where R = √(dir.y² + dir.x²·cos²(cT))
             float cameraTiltRad = shipRotation.x * (MathF.PI / 180f);
-            float cosTilt = MathF.Cos(cameraTiltRad);
-            float zRot = MathF.Atan2(assistedDir.x, -assistedDir.y / cosTilt) * (180f / MathF.PI);
+            float cosCT = MathF.Cos(cameraTiltRad);
+            float sinCT = MathF.Sin(cameraTiltRad);
+
+            float tiltRad = baseTilt * (MathF.PI / 180f);
+
+            float dx = assistedDir.x;
+            float dy = assistedDir.y;
+            float R = MathF.Sqrt(dy * dy + dx * dx * cosCT * cosCT);
+
+            float zRot;
+            if (R < 1e-6f)
+            {
+                zRot = 0f;
+            }
+            else
+            {
+                float sinArg = MathF.Tan(tiltRad) * sinCT * dx / R;
+                sinArg = MathF.Max(-1f, MathF.Min(1f, sinArg));
+                zRot = (MathF.PI - MathF.Asin(sinArg) - MathF.Atan2(dx * cosCT, dy)) * (180f / MathF.PI);
+            }
 
             var rotation = new Vector3(shipRotation.x, shipRotation.y, zRot);
             return (rotation, baseTilt);

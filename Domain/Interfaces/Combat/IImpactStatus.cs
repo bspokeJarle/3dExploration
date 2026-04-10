@@ -8,5 +8,6 @@ namespace Domain
         ImpactDirection? ImpactDirection { get; set; }
         IParticle? SourceParticle { get; set; }
         int? ObjectHealth { get; set; }
+        string? CrashBoxName { get; set; }
     }
 }

@@ -17,6 +17,7 @@ namespace Domain
             public IObjectMovement? Movement { get; set; }
             public IParticles? Particles { get; set; }
             public List<List<IVector3>> CrashBoxes { get; set; }
+            public List<string?>? CrashBoxNames { get; set; }
             public bool CrashBoxesFollowRotation { get; set; } = true;
             public IImpactStatus? ImpactStatus { get; set; }
             public int? Mass { get; set; }
@@ -28,6 +29,8 @@ namespace Domain
             public IVector3? CalculatedCrashOffset { get; set; }
             public bool IsOnScreen { get; set; } = false;
             public bool HasShadow { get; set; } = false;
+            public bool HasPowerUp { get; set; } = false;
+            public bool IsActive { get; set; } = true;
         }
     }
 }
