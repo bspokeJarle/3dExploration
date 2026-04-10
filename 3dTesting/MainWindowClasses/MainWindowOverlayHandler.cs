@@ -154,6 +154,13 @@ namespace _3dTesting.MainWindowClasses
             _body.Visibility   = string.IsNullOrWhiteSpace(_body.Text)   ? Visibility.Collapsed : Visibility.Visible;
             _footer.Visibility = string.IsNullOrWhiteSpace(_footer.Text) ? Visibility.Collapsed : Visibility.Visible;
 
+            // Text alignment
+            var align = state.CenterText ? TextAlignment.Center : TextAlignment.Left;
+            _header.TextAlignment = align;
+            _title.TextAlignment = align;
+            _body.TextAlignment = align;
+            _footer.TextAlignment = align;
+
             // Panel width from ratio
             double panelW = screenWidth * Clamp01(state.PanelWidthRatio);
             if (panelW < 420) panelW = 420;
@@ -210,10 +217,6 @@ namespace _3dTesting.MainWindowClasses
             if (finalH > softMax) finalH = softMax;
 
             _panel.Height = finalH;
-
-            // Re-measure/arrange for stable layout
-            _panel.Measure(new Size(panelW, finalH));
-            _panel.Arrange(new Rect(0, 0, panelW, finalH));
         }
 
         private static double Clamp01(double v)

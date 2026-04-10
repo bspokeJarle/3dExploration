@@ -21,7 +21,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
         // Sync offsets:
         private const float SyncFactorY = 2.5f;
-        private const float MinGroundClearance = 175f;
+        private const float SyncAnchorY = 75f;
 
         // Weak spot animation:
         private const float WeakSpotSpinSpeed = 1.5f;
@@ -33,9 +33,8 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
         // Descent animation:
         private const float DescentDurationSeconds = 4.0f;
-        private const float DescentTargetY = 50f;
-        private const float DescentSpawnOffsetX = 3000f;
-        private const float DescentSpawnOffsetZ = 3350f;
+        private const float DescentSpawnOffsetX = 0f;
+        private const float DescentSpawnOffsetZ = -1500f;
 
         // Explosion:
         private const float FirstExplosionForce = 200f;
@@ -131,6 +130,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                 if (theObject.ImpactStatus?.HasExploded == true)
                     theObject.ObjectParts = new List<I3dObjectPart>();
 
+                SyncMovement(theObject);
                 SyncToOriginal(theObject);
                 _lastMovementTime = DateTime.Now;
                 return theObject;
@@ -216,24 +216,26 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                 _isDescending = true;
                 _descentStartY = theObject.ObjectOffsets.y;
                 _descentStartTime = now;
-
-                // Reposition near the ship so the mothership always descends in view
-                var shipWp = GetShipWorldPosition();
-                theObject.WorldPosition = new Vector3
-                {
-                    x = shipWp.x + DescentSpawnOffsetX,
-                    y = shipWp.y,
-                    z = shipWp.z + DescentSpawnOffsetZ
-                };
             }
 
             if (_isDescending)
             {
+                // Track the ship's position during descent so the mothership stays in view
+                var shipWp = GetShipWorldPosition();
+                theObject.WorldPosition = new Vector3
+                {
+                    x = shipWp.x + DescentSpawnOffsetX,
+                    y = 0,
+                    z = shipWp.z + DescentSpawnOffsetZ
+                };
+
                 float elapsed = (float)(now - _descentStartTime).TotalSeconds;
                 float t = Math.Clamp(elapsed / DescentDurationSeconds, 0f, 1f);
-                // Smooth ease-out: decelerate as it approaches the target
+                // Smooth ease-out: decelerate as it approaches the target.
+                // Target tracks the sync formula so the transition is seamless.
                 float smoothT = 1f - (1f - t) * (1f - t);
-                theObject.ObjectOffsets.y = _descentStartY + (DescentTargetY - _descentStartY) * smoothT;
+                float descentTarget = GameState.SurfaceState.GlobalMapPosition.y * SyncFactorY + SyncAnchorY;
+                theObject.ObjectOffsets.y = _descentStartY + (descentTarget - _descentStartY) * smoothT;
 
                 if (t >= 1f)
                     _isDescending = false;
@@ -322,11 +324,8 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
         private static Vector3 GetShipWorldPosition()
         {
-            if (GameState.ShipState?.ShipWorldPosition is Vector3 swp)
-                return swp;
-
             var map = GameState.SurfaceState.GlobalMapPosition;
-            return new Vector3 { x = map.x, y = map.y, z = map.z };
+            return new Vector3 { x = map.x, y = 0, z = map.z };
         }
 
         private void SyncMovement(I3dObject theObject)
@@ -337,15 +336,10 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
             if (!_syncInitialized)
             {
                 _syncInitialized = true;
-                _syncY = theObject.ObjectOffsets.y;
+                _syncY = SyncAnchorY;
             }
 
             theObject.ObjectOffsets = SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY, SyncFactorY);
-
-            float groundY = GameState.SurfaceState.SurfaceViewportObject?.ObjectOffsets?.y ?? 500f;
-            float maxY = groundY - MinGroundClearance;
-            if (theObject.ObjectOffsets.y > maxY)
-                theObject.ObjectOffsets.y = maxY;
         }
 
         private static void SyncToOriginal(I3dObject deepCopy)

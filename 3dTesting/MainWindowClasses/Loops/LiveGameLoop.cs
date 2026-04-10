@@ -5,6 +5,7 @@ using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.Persistence;
 using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.SeederControls;
@@ -238,9 +239,10 @@ namespace _3dTesting.MainWindowClasses.Loops
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             CleanupExplodedObjects(world);
-            UpdateHudState(world);
 
             // Activate KamikazeDrones when Decoy weapon is unlocked (first PowerUp collected)
+            // NOTE: Activation must happen BEFORE UpdateHudState so newly activated
+            // enemies are counted before the victory condition is evaluated.
             if (!_deathSequenceStarted && !_victorySequenceStarted &&
                 activeScene != null && activeScene.SceneType == SceneTypes.Game)
             {
@@ -257,23 +259,52 @@ namespace _3dTesting.MainWindowClasses.Loops
                 }
             }
 
-            // Activate MotherShipSmall when all seeders are eliminated
+            // Activate MotherShipSmall when all seeders and drones are eliminated.
+            // Count ALL drones (not just active) so the mothership waits until
+            // drones are truly dead, not merely inactive.
             if (!_deathSequenceStarted && !_victorySequenceStarted &&
                 activeScene != null && activeScene.SceneType == SceneTypes.Game)
             {
                 var gps2 = GameState.GamePlayState;
-                if (gps2.InitialSeeders > 0 && gps2.SeedersRemaining == 0)
+                if (gps2.InitialSeeders > 0)
                 {
                     var aiObjs = GameState.SurfaceState.AiObjects;
+                    int liveSeeders = 0;
+                    int liveDrones = 0;
                     for (int i = 0; i < aiObjs.Count; i++)
                     {
-                        if (aiObjs[i].ObjectName == "MotherShipSmall" && !aiObjs[i].IsActive)
+                        if (aiObjs[i].ObjectName == "Seeder")
+                            liveSeeders++;
+                        else if (aiObjs[i].ObjectName == "KamikazeDrone")
+                            liveDrones++;
+                    }
+
+                    if (liveSeeders == 0 && liveDrones == 0)
+                    {
+                        bool activated = false;
+                        int msCount = 0;
+                        for (int i = 0; i < aiObjs.Count; i++)
                         {
-                            aiObjs[i].IsActive = true;
+                            if (aiObjs[i].ObjectName == "MotherShipSmall" && !aiObjs[i].IsActive)
+                            {
+                                aiObjs[i].IsActive = true;
+                                activated = true;
+                            }
+                            if (aiObjs[i].ObjectName == "MotherShipSmall" && aiObjs[i].IsActive)
+                                msCount++;
+                        }
+
+                        if (activated)
+                        {
+                            gps2.MotherShipsRemaining = msCount;
+                            gps2.SaveCheckpoint();
+                            try { GameStatePersistence.SaveGameState(); } catch { }
                         }
                     }
                 }
             }
+
+            UpdateHudState(world);
 
             // Victory detection: all enemies eliminated
             if (!_deathSequenceStarted && !_victorySequenceStarted &&
@@ -349,8 +380,20 @@ namespace _3dTesting.MainWindowClasses.Loops
                 }
 
                 // Spawn PowerUp objects at the location of exploded objects that have the flag
+                // and award score for enemy kills / trigger checkpoints
+                var gps = GameState.GamePlayState;
+                bool checkpointTriggered = false;
+
                 foreach (var obj in explodedObjects)
                 {
+                    if (EnemySetup.IsEnemyTypeValid(obj.ObjectName))
+                    {
+                        gps.RecordKill(obj.ObjectName);
+
+                        if (GameSetup.IsCheckpointEnemy(obj.ObjectName, obj.HasPowerUp))
+                            checkpointTriggered = true;
+                    }
+
                     if (obj.HasPowerUp && obj.WorldPosition != null)
                     {
                         var powerup = PowerUp.CreatePowerup(obj.ParentSurface);
@@ -375,6 +418,12 @@ namespace _3dTesting.MainWindowClasses.Loops
                         inhabitants.Add(powerup);
                         GameState.SurfaceState.AiObjects.Add(powerup);
                     }
+                }
+
+                if (checkpointTriggered)
+                {
+                    gps.SaveCheckpoint();
+                    try { GameStatePersistence.SaveGameState(); } catch { }
                 }
 
                 for (int i = inhabitants.Count - 1; i >= 0; i--)

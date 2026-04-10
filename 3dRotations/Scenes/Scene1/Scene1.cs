@@ -114,7 +114,7 @@ namespace _3dRotations.Scene.Scene1
             //Mothership for this Scene — spawns inactive, enters when all seeders are destroyed
             var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
             motherShip.Rotation = new Vector3 { };
-            motherShip.WorldPosition = new Vector3 { x = 95100, y = 0, z = 94200 };
+            motherShip.WorldPosition = new Vector3 { x = 95100, y = 0, z = 93700 };
             motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
             motherShip.ObjectName = "MotherShipSmall";
             motherShip.Movement = new MotherShipSmallControls();

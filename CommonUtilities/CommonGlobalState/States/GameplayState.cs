@@ -1,4 +1,5 @@
 ﻿using System;
+using CommonUtilities.CommonSetup;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 
 namespace Domain
@@ -29,6 +30,7 @@ namespace Domain
         // -----------------------------
         // Player / ship core stats
         // -----------------------------
+        public string PlayerName { get; set; } = "";
         public int Lives { get; set; } = 3;
 
         // Keep as float to allow smooth damage later (e.g., collision damage scaling)
@@ -49,6 +51,86 @@ namespace Domain
 
         // Wave/level can drive seeder spawn intensity later
         public int WaveNumber { get; set; } = 1;
+
+        // -----------------------------
+        // Combat statistics
+        // -----------------------------
+        public int TotalShotsFired { get; set; } = 0;
+        public int TotalKills { get; set; } = 0;
+        public int TotalDeaths { get; set; } = 0;
+        public float Accuracy => TotalShotsFired > 0 ? (float)TotalKills / TotalShotsFired : 0f;
+
+        // -----------------------------
+        // Checkpoint state (auto-saved on powerup/mothership kill)
+        // -----------------------------
+
+        /// <summary>
+        /// Lightweight value type holding all checkpoint fields.
+        /// Used to preserve checkpoint data across scene resets.
+        /// </summary>
+        public readonly record struct CheckpointSnapshot(
+            long Score, int Lives, float Health, int PowerUpsCollected,
+            int SeedersRemaining, int DronesRemaining, int MotherShipsRemaining,
+            int TotalShotsFired, int TotalKills, int TotalDeaths,
+            float InfectionLevel, int WaveNumber);
+
+        public bool HasCheckpoint { get; set; } = false;
+        public long CheckpointScore { get; set; } = 0;
+        public int CheckpointLives { get; set; } = 3;
+        public float CheckpointHealth { get; set; } = 100f;
+        public int CheckpointPowerUpsCollected { get; set; } = 0;
+        public int CheckpointSeedersRemaining { get; set; } = 0;
+        public int CheckpointDronesRemaining { get; set; } = 0;
+        public int CheckpointMotherShipsRemaining { get; set; } = 0;
+        public int CheckpointTotalShotsFired { get; set; } = 0;
+        public int CheckpointTotalKills { get; set; } = 0;
+        public int CheckpointTotalDeaths { get; set; } = 0;
+        public float CheckpointInfectionLevel { get; set; } = 0f;
+        public int CheckpointWaveNumber { get; set; } = 1;
+
+        /// <summary>
+        /// Captures the current checkpoint fields into a snapshot value type.
+        /// Call before ResetForNewGame to preserve checkpoint data.
+        /// </summary>
+        public CheckpointSnapshot CaptureCheckpointSnapshot() => new(
+            CheckpointScore, CheckpointLives, CheckpointHealth, CheckpointPowerUpsCollected,
+            CheckpointSeedersRemaining, CheckpointDronesRemaining, CheckpointMotherShipsRemaining,
+            CheckpointTotalShotsFired, CheckpointTotalKills, CheckpointTotalDeaths,
+            CheckpointInfectionLevel, CheckpointWaveNumber);
+
+        /// <summary>
+        /// Restores both current gameplay state and checkpoint fields from a snapshot.
+        /// Deducts one life and increments TotalDeaths for the death that triggered the restart.
+        /// </summary>
+        public void ApplyCheckpointRestart(CheckpointSnapshot cp)
+        {
+            HasCheckpoint = true;
+
+            // Restore current state from checkpoint (with death penalty)
+            Score = cp.Score;
+            Lives = Math.Max(0, cp.Lives - 1);
+            Health = cp.Health;
+            PowerUpsCollected = cp.PowerUpsCollected;
+            TotalShotsFired = cp.TotalShotsFired;
+            TotalKills = cp.TotalKills;
+            TotalDeaths = cp.TotalDeaths + 1;
+            InfectionLevel = cp.InfectionLevel;
+            WaveNumber = cp.WaveNumber;
+
+            // Preserve checkpoint fields for future deaths
+            CheckpointScore = cp.Score;
+            CheckpointLives = cp.Lives;
+            CheckpointHealth = cp.Health;
+            CheckpointPowerUpsCollected = cp.PowerUpsCollected;
+            CheckpointSeedersRemaining = cp.SeedersRemaining;
+            CheckpointDronesRemaining = cp.DronesRemaining;
+            CheckpointMotherShipsRemaining = cp.MotherShipsRemaining;
+            CheckpointTotalShotsFired = cp.TotalShotsFired;
+            CheckpointTotalKills = cp.TotalKills;
+            CheckpointTotalDeaths = cp.TotalDeaths;
+            CheckpointInfectionLevel = cp.InfectionLevel;
+            CheckpointWaveNumber = cp.WaveNumber;
+        }
 
         // -----------------------------
         // Enemy tracking (alive counts for HUD)
@@ -209,9 +291,16 @@ namespace Domain
 
         public void ConsumeLifeAndRespawn()
         {
+            TotalDeaths++;
+            Score = Math.Max(0, Score - GameSetup.DeathScorePenalty);
+
+            if (HasCheckpoint)
+            {
+                RestoreCheckpoint();
+            }
+
             if (Lives > 0) Lives--;
 
-            // Simple respawn defaults (tweak later)
             Health = MaxHealth;
             InvulnerableSecondsLeft = 1.0f;
 
@@ -229,6 +318,7 @@ namespace Domain
             {
                 LaserCooldownLeft = LaserCooldownSeconds;
                 if (LaserAmmo > 0) LaserAmmo--;
+                TotalShotsFired++;
                 return true;
             }
 
@@ -237,6 +327,7 @@ namespace Domain
                 RocketCooldownLeft = RocketCooldownSeconds;
                 RocketAmmo--;
                 if (RocketAmmo < 0) RocketAmmo = 0;
+                TotalShotsFired++;
                 return true;
             }
 
@@ -244,6 +335,7 @@ namespace Domain
             {
                 BulletCooldownLeft = BulletCooldownSeconds;
                 if (BulletAmmo > 0) BulletAmmo--;
+                TotalShotsFired++;
                 return true;
             }
 
@@ -262,10 +354,30 @@ namespace Domain
             Score = 0;
             WaveNumber = 1;
 
+            TotalShotsFired = 0;
+            TotalKills = 0;
+            TotalDeaths = 0;
+
+            HasCheckpoint = false;
+            CheckpointScore = 0;
+            CheckpointLives = 3;
+            CheckpointHealth = 100f;
+            CheckpointPowerUpsCollected = 0;
+            CheckpointSeedersRemaining = 0;
+            CheckpointDronesRemaining = 0;
+            CheckpointMotherShipsRemaining = 0;
+            CheckpointTotalShotsFired = 0;
+            CheckpointTotalKills = 0;
+            CheckpointTotalDeaths = 0;
+            CheckpointInfectionLevel = 0f;
+            CheckpointWaveNumber = 1;
+
             DronesRemaining = 0;
             SeedersRemaining = 0;
+            MotherShipsRemaining = 0;
             InitialDrones = 0;
             InitialSeeders = 0;
+            InitialMotherShips = 0;
 
             InfectionLevel = 0f;
             TotalBioTiles = 0;
@@ -295,6 +407,67 @@ namespace Domain
             LaserCooldownLeft = 0f;
             RocketCooldownLeft = 0f;
             BulletCooldownLeft = 0f;
+        }
+
+        /// <summary>
+        /// Awards score for killing an enemy and increments the kill counter.
+        /// </summary>
+        public void RecordKill(string enemyType)
+        {
+            TotalKills++;
+            Score += GameSetup.GetKillScore(enemyType);
+        }
+
+        /// <summary>
+        /// Snapshots the current game state as a checkpoint.
+        /// Triggered when a powerup enemy or MotherShip is killed.
+        /// </summary>
+        public void SaveCheckpoint()
+        {
+            HasCheckpoint = true;
+            CheckpointScore = Score;
+            CheckpointLives = Lives;
+            CheckpointHealth = Health;
+            CheckpointPowerUpsCollected = PowerUpsCollected;
+            CheckpointSeedersRemaining = SeedersRemaining;
+            CheckpointDronesRemaining = DronesRemaining;
+            CheckpointMotherShipsRemaining = MotherShipsRemaining;
+            CheckpointTotalShotsFired = TotalShotsFired;
+            CheckpointTotalKills = TotalKills;
+            CheckpointTotalDeaths = TotalDeaths;
+            CheckpointInfectionLevel = InfectionLevel;
+            CheckpointWaveNumber = WaveNumber;
+        }
+
+        /// <summary>
+        /// Restores game progress to the last checkpoint.
+        /// TotalDeaths is NOT restored so the death count persists.
+        /// Called automatically from <see cref="ConsumeLifeAndRespawn"/>.
+        /// </summary>
+        public void RestoreCheckpoint()
+        {
+            if (!HasCheckpoint) return;
+
+            Score = CheckpointScore;
+            Lives = CheckpointLives;
+            PowerUpsCollected = CheckpointPowerUpsCollected;
+            SeedersRemaining = CheckpointSeedersRemaining;
+            DronesRemaining = CheckpointDronesRemaining;
+            MotherShipsRemaining = CheckpointMotherShipsRemaining;
+            TotalShotsFired = CheckpointTotalShotsFired;
+            TotalKills = CheckpointTotalKills;
+            InfectionLevel = CheckpointInfectionLevel;
+            WaveNumber = CheckpointWaveNumber;
+        }
+
+        /// <summary>
+        /// Calculates the final score including an accuracy bonus.
+        /// Call at game end (victory or final game over) for highscore submission.
+        /// </summary>
+        public long CalculateFinalScore()
+        {
+            long accuracyBonus = (long)(Score * Accuracy * GameSetup.AccuracyBonusMultiplier);
+            return Math.Max(0, Score + accuracyBonus);
         }
 
         public void UpdateAltitude(float height, float minHeight, float maxHeight)

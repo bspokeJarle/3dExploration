@@ -63,13 +63,17 @@ namespace _3dRotations.World.Objects
         }
 
         // ----------------------------------------------------
-        //  CRASH BOX – covers the full plus span
+        //  CRASH BOX – enlarged for easy pickup
         // ----------------------------------------------------
+
+        private const float CrashBoxSizeMultiplier = 6f;
 
         public static List<List<IVector3>>? PlusSignCrashBoxes()
         {
-            var min = new Vector3 { x = -ArmLength, y = -ArmDepth, z = -ArmLength };
-            var max = new Vector3 { x = ArmLength, y = ArmDepth, z = ArmLength };
+            float extent = ArmLength * CrashBoxSizeMultiplier;
+            float depth = ArmDepth * CrashBoxSizeMultiplier;
+            var min = new Vector3 { x = -extent, y = -depth, z = -extent };
+            var max = new Vector3 { x = extent, y = depth, z = extent };
 
             return new List<List<IVector3>>
             {

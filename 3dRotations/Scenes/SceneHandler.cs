@@ -4,6 +4,7 @@ using _3dRotations.Scenes.Outro;
 using _3dTesting._3dWorld;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.Persistence;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -16,122 +17,70 @@ namespace _3DWorld.Scene
 {
     public class SceneHandler : ISceneHandler
     {
-        // List of the available scenes for the game
         private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Outro() };
-        private int currentSceneIndex = 1;
+        private int currentSceneIndex = 0;
         private const bool enableLogging = false;
         private const int SceneAdvanceDelayFrames = 5;
         private bool _pendingSceneAdvance = false;
         private int _pendingSceneAdvanceFramesLeft = 0;
 
-        public IScene GetActiveScene()
-        {
-            return scenes[currentSceneIndex];
-        }
+        public IScene GetActiveScene() => scenes[currentSceneIndex];
+
+        // -----------------------------------------------------------------
+        // Scene lifecycle
+        // -----------------------------------------------------------------
 
         public void SetupActiveScene(I3dWorld world)
         {
-            // Setup the active scene (overlay + world objects)
             var scene = GetActiveScene();
             scene.SetupSceneOverlay();
-            GameState.ScreenOverlayState.ShowVideoOverlay = false;
-            GameState.ScreenOverlayState.VideoClipPath = string.Empty;
+            ClearVideoOverlay();
             scene.SetupScene((_3dWorld)world);
-            GameState.GamePlayState.InfectionCriticalMass = scene.InfectionThresholdPercent;
-            GameState.GamePlayState.InfectionSpreadRate = scene.InfectionSpreadRate;
-            GameState.GamePlayState.SeederOffscreenSpeedFactor = scene.SeederOffscreenSpeedFactor;
-            GameState.GamePlayState.LocalInfectionSpreadDelaySec = scene.LocalInfectionSpreadDelaySec;
-            GameState.GamePlayState.LocalInfectionSpreadRadius = scene.LocalInfectionSpreadRadius;
-
+            ApplySceneSettings(scene);
             ValidateGameSceneSetup(scene, world);
         }
 
         public void ResetActiveScene(I3dWorld world)
         {
             if (enableLogging) Logger.Log("Scenehandler: ResetActiveScene");
-            var oldScene = GetActiveScene();
-            var newScene = (IScene?)Activator.CreateInstance(oldScene.GetType());
 
-            if (newScene != null)
+            var newScene = CreateFreshScene();
+            if (newScene == null)
+                throw new InvalidOperationException($"Failed to create a new instance of scene type {GetActiveScene().GetType()}.");
+
+            var gps = GameState.GamePlayState;
+            bool hadCheckpoint = gps.HasCheckpoint;
+            var snapshot = hadCheckpoint ? gps.CaptureCheckpointSnapshot() : default;
+
+            ClearVideoOverlay();
+            gps.ResetForNewGame();
+            ResetSurfaceState();
+
+            scenes[currentSceneIndex] = newScene;
+            GameState.ScreenOverlayState.HardHide();
+            newScene.SetupGameOverlay();
+            newScene.SetupScene((_3dWorld)world);
+            ApplySceneSettings(newScene);
+
+            if (hadCheckpoint)
             {
-                GameState.ScreenOverlayState.ShowVideoOverlay = false;
-                GameState.ScreenOverlayState.VideoClipPath = string.Empty;
-                GameState.GamePlayState.ResetForNewGame();
-                GameState.SurfaceState.GlobalMapBitmap = null;
-                GameState.SurfaceState.SurfaceViewportObject = null;
-                GameState.SurfaceState.GlobalMapPosition = new _3dSpecificsImplementations.Vector3
-                {
-                    x = SurfaceSetup.DefaultMapPosition.x,
-                    y = SurfaceSetup.DefaultMapPosition.y,
-                    z = SurfaceSetup.DefaultMapPosition.z
-                };
-                GameState.SurfaceState.ScreenEcoMetas = new ScreenEcoMeta[MapSetup.screensPrMap, MapSetup.screensPrMap];
-                scenes[currentSceneIndex] = newScene;
-                GameState.ScreenOverlayState.HardHide();
-                newScene.SetupGameOverlay();
+                TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
+                TrimEnemies(world, "KamikazeDrone", snapshot.DronesRemaining);
+                TrimEnemies(world, "MotherShipSmall", snapshot.MotherShipsRemaining);
+                gps.ApplyCheckpointRestart(snapshot);
 
-                newScene.SetupScene((_3dWorld)world);
-                GameState.GamePlayState.InfectionCriticalMass = newScene.InfectionThresholdPercent;
-                GameState.GamePlayState.InfectionSpreadRate = newScene.InfectionSpreadRate;
-                GameState.GamePlayState.SeederOffscreenSpeedFactor = newScene.SeederOffscreenSpeedFactor;
-                GameState.GamePlayState.LocalInfectionSpreadDelaySec = newScene.LocalInfectionSpreadDelaySec;
-                GameState.GamePlayState.LocalInfectionSpreadRadius = newScene.LocalInfectionSpreadRadius;
-            }
-            else
-            {
-                throw new InvalidOperationException($"Failed to create a new instance of scene type {oldScene.GetType()}.");
-            }
-        }
-
-        public void HandleKeyPress(KeyEventArgs k, I3dWorld world)
-        {
-            var scene = GetActiveScene();
-            if (GameState.ScreenOverlayState.ShowOverlay == false) return;
-
-            // Intro scene: any key continues
-            if (scene.SceneType == SceneTypes.Intro)
-            {
-                if (enableLogging) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {GameState.ScreenOverlayState.ShowOverlay} ", "General");
-
-                GameState.ScreenOverlayState.HardHide();
-                GameState.ScreenOverlayState.ShowVideoOverlay = false;
-                GameState.ScreenOverlayState.VideoClipPath = string.Empty;
-                _pendingSceneAdvance = true;
-                _pendingSceneAdvanceFramesLeft = SceneAdvanceDelayFrames;
-                return;
-            }
-
-            // Game scene
-            if (scene.SceneType == SceneTypes.Game)
-            {
-                // Only react if the scene intro overlay is actually showing
-                if (GameState.ScreenOverlayState.Type == ScreenOverlayType.Intro &&
-                    GameState.ScreenOverlayState.ShowOverlay)
-                {
-                    if (enableLogging) Logger.Log($"Scenehandler: Game keypress. Overlay Type={GameState.ScreenOverlayState.Type} Show={GameState.ScreenOverlayState.ShowOverlay}", "General");
-                    scene.SetupGameOverlay(); // SetupGameOverlay must set Type=Game and ShowOverlay=false
-                }
-                // Otherwise: let the rest of the game handle the key (do nothing here)
+                if (enableLogging) Logger.Log($"Scenehandler: Checkpoint restored. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
             }
         }
 
         public void NextScene(I3dWorld world)
         {
             if (enableLogging) Logger.Log($"Scenehandler: NextScene :{GameState.ScreenOverlayState.ShowOverlay} ");
-            // Increment the scene index and wrap around if necessary
+
             currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
-            GameState.ScreenOverlayState.ShowVideoOverlay = false;
-            GameState.ScreenOverlayState.VideoClipPath = string.Empty;
+            ClearVideoOverlay();
             GameState.GamePlayState.ResetForNewGame();
-            GameState.SurfaceState.GlobalMapBitmap = null;
-            GameState.SurfaceState.SurfaceViewportObject = null;
-            GameState.SurfaceState.GlobalMapPosition = new _3dSpecificsImplementations.Vector3
-            {
-                x = SurfaceSetup.DefaultMapPosition.x,
-                y = SurfaceSetup.DefaultMapPosition.y,
-                z = SurfaceSetup.DefaultMapPosition.z
-            };
-            GameState.SurfaceState.ScreenEcoMetas = new ScreenEcoMeta[MapSetup.screensPrMap, MapSetup.screensPrMap];
+            ResetSurfaceState();
             SetupActiveScene(world);
         }
 
@@ -151,10 +100,219 @@ namespace _3DWorld.Scene
             SetupActiveScene(world);
         }
 
+        // -----------------------------------------------------------------
+        // Key handling
+        // -----------------------------------------------------------------
+
+        public void HandleKeyPress(KeyEventArgs k, I3dWorld world)
+        {
+            var scene = GetActiveScene();
+            var overlay = GameState.ScreenOverlayState;
+
+            if (overlay.Type == ScreenOverlayType.NameEntry && overlay.ShowOverlay)
+            {
+                HandleNameEntryKey(k, scene, overlay);
+                return;
+            }
+
+            if (!overlay.ShowOverlay)
+            {
+                if (scene.SceneType == SceneTypes.Intro)
+                    SkipLogoCube(world, scene);
+                return;
+            }
+
+            if (scene.SceneType == SceneTypes.Intro)
+            {
+                HandleIntroKey(overlay);
+                return;
+            }
+
+            if (scene.SceneType == SceneTypes.Game)
+                HandleGameKey(scene, overlay);
+        }
+
+        private void HandleNameEntryKey(KeyEventArgs k, IScene scene, ScreenOverlayState overlay)
+        {
+            if (k.Key == Key.Escape)
+            {
+                overlay.HardHide();
+                scene.SetupSceneOverlay();
+                return;
+            }
+
+            if (k.Key == Key.Return || k.Key == Key.Enter)
+            {
+                var name = overlay.NameEntryBuffer.Trim();
+                if (string.IsNullOrEmpty(name))
+                {
+                    overlay.NameEntryValidationMessage = ">> CALLSIGN CANNOT BE EMPTY";
+                    return;
+                }
+
+                var priorName = PersistenceSetup.LoadLastPlayerName();
+                if (!string.Equals(name, priorName, StringComparison.OrdinalIgnoreCase))
+                {
+                    var highscores = HighscoreService.LoadLocalHighscores();
+                    bool taken = highscores.Entries.Exists(e =>
+                        string.Equals(e.PlayerName, name, StringComparison.OrdinalIgnoreCase));
+                    if (taken)
+                    {
+                        overlay.NameEntryValidationMessage = ">> CALLSIGN ALREADY IN USE — CHOOSE ANOTHER";
+                        return;
+                    }
+                }
+
+                overlay.IsNameConfirmed = true;
+                GameState.GamePlayState.PlayerName = name;
+                PersistenceSetup.SaveLastPlayerName(name);
+
+                overlay.HardHide();
+                _pendingSceneAdvance = true;
+                _pendingSceneAdvanceFramesLeft = SceneAdvanceDelayFrames;
+                return;
+            }
+
+            overlay.ProcessNameEntryKey(k.Key);
+        }
+
+        private void HandleIntroKey(ScreenOverlayState overlay)
+        {
+            if (enableLogging) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {overlay.ShowOverlay} ", "General");
+
+            overlay.HardHide();
+            ClearVideoOverlay();
+
+            var lastPlayer = PersistenceSetup.LoadLastPlayerName();
+            overlay.SetNameEntryPreset(lastPlayer);
+        }
+
+        private static void HandleGameKey(IScene scene, ScreenOverlayState overlay)
+        {
+            if (overlay.Type == ScreenOverlayType.Intro && overlay.ShowOverlay)
+            {
+                if (enableLogging) Logger.Log($"Scenehandler: Game keypress. Overlay Type={overlay.Type} Show={overlay.ShowOverlay}", "General");
+                scene.SetupGameOverlay();
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // Shared helpers
+        // -----------------------------------------------------------------
+
+        private static void SkipLogoCube(I3dWorld world, IScene scene)
+        {
+            var inhabitants = world.WorldInhabitants;
+            for (int i = inhabitants.Count - 1; i >= 0; i--)
+            {
+                if (inhabitants[i].ObjectName == "LogoCube")
+                {
+                    inhabitants.RemoveAt(i);
+                    break;
+                }
+            }
+
+            GameState.ScreenOverlayState.ShowOverlay = true;
+            scene.SetupVideoOverlay("introclip.mp4");
+        }
+
+        private IScene? CreateFreshScene() =>
+            (IScene?)Activator.CreateInstance(GetActiveScene().GetType());
+
+        private static void ClearVideoOverlay()
+        {
+            GameState.ScreenOverlayState.ShowVideoOverlay = false;
+            GameState.ScreenOverlayState.VideoClipPath = string.Empty;
+        }
+
+        private static void ResetSurfaceState()
+        {
+            GameState.SurfaceState.GlobalMapBitmap = null;
+            GameState.SurfaceState.SurfaceViewportObject = null;
+            GameState.SurfaceState.GlobalMapPosition = new Vector3
+            {
+                x = SurfaceSetup.DefaultMapPosition.x,
+                y = SurfaceSetup.DefaultMapPosition.y,
+                z = SurfaceSetup.DefaultMapPosition.z
+            };
+            GameState.SurfaceState.ScreenEcoMetas = new ScreenEcoMeta[MapSetup.screensPrMap, MapSetup.screensPrMap];
+        }
+
+        private static void ApplySceneSettings(IScene scene)
+        {
+            var gps = GameState.GamePlayState;
+            gps.InfectionCriticalMass = scene.InfectionThresholdPercent;
+            gps.InfectionSpreadRate = scene.InfectionSpreadRate;
+            gps.SeederOffscreenSpeedFactor = scene.SeederOffscreenSpeedFactor;
+            gps.LocalInfectionSpreadDelaySec = scene.LocalInfectionSpreadDelaySec;
+            gps.LocalInfectionSpreadRadius = scene.LocalInfectionSpreadRadius;
+        }
+
+        // -----------------------------------------------------------------
+        // Enemy trimming (checkpoint restore)
+        // -----------------------------------------------------------------
+
         /// <summary>
-        /// Validates that a Game-type scene has set up all critical state.
-        /// Runs after SetupScene so missing fields are caught during development.
+        /// Removes excess enemies of a given type so the count matches the checkpoint
+        /// remaining count. Removes non-powerup enemies first.
+        /// Drones and MotherShips are only counted when active (matching UpdateHudState).
         /// </summary>
+        private static void TrimEnemies(I3dWorld world, string enemyName, int targetRemaining)
+        {
+            var inhabitants = world.WorldInhabitants;
+
+            int current = 0;
+            for (int i = 0; i < inhabitants.Count; i++)
+            {
+                if (inhabitants[i].ObjectName == enemyName)
+                    current++;
+            }
+
+            int toRemove = current - targetRemaining;
+            if (toRemove <= 0) return;
+
+            // First pass: non-powerup enemies (from end)
+            for (int i = inhabitants.Count - 1; i >= 0 && toRemove > 0; i--)
+            {
+                var obj = inhabitants[i];
+                if (obj.ObjectName == enemyName && !obj.HasPowerUp)
+                {
+                    RemoveEnemyAt(world, i, obj.ObjectId);
+                    toRemove--;
+                }
+            }
+
+            // Second pass: powerup enemies if still needed
+            for (int i = inhabitants.Count - 1; i >= 0 && toRemove > 0; i--)
+            {
+                var obj = inhabitants[i];
+                if (obj.ObjectName == enemyName && obj.HasPowerUp)
+                {
+                    RemoveEnemyAt(world, i, obj.ObjectId);
+                    toRemove--;
+                }
+            }
+        }
+
+        private static void RemoveEnemyAt(I3dWorld world, int inhabitantIndex, int objectId)
+        {
+            world.WorldInhabitants.RemoveAt(inhabitantIndex);
+
+            var aiObjects = GameState.SurfaceState.AiObjects;
+            for (int j = aiObjects.Count - 1; j >= 0; j--)
+            {
+                if (aiObjects[j].ObjectId == objectId)
+                {
+                    aiObjects.RemoveAt(j);
+                    break;
+                }
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // Validation (DEBUG only)
+        // -----------------------------------------------------------------
+
         [Conditional("DEBUG")]
         private static void ValidateGameSceneSetup(IScene scene, I3dWorld world)
         {

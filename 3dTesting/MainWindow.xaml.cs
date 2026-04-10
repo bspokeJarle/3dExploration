@@ -1,8 +1,10 @@
 ﻿using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
+using _3dTesting.MainWindowClasses.Overlays;
 using _3dTesting.Rendering;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.Persistence;
 using Domain;
 using System;
 using System.IO;
@@ -61,8 +63,7 @@ namespace _3dTesting
         private long _lastTickTimestamp = 0;
 
         // Overlay handlers
-        private OverlayHandler _overlayHandler;
-        private HudOverlayHandlerV2 _hudHandler;
+        private OverlayManager _overlayManager;
         private MediaElement _videoOverlay;
         private string? _currentVideoClipPath;
         private bool _videoOverlayIsPlaying;
@@ -96,6 +97,11 @@ namespace _3dTesting
             Logger.EnableFileLogging = true;
             Logger.ClearLog();
             GameState.SurfaceState.RecordingFps = ScreenSetup.targetFps;
+
+            PersistenceSetup.SupabaseUrl = "https://tzzydggvjdpcipbpqmsz.supabase.co";
+            PersistenceSetup.SupabaseAnonKey = "sb_publishable_nepdOJnAgCyE9YXRdEFXfw_zR2hpiWm";
+            PersistenceSetup.Initialize();
+            GameState.GamePlayState.PlayerName = PersistenceSetup.LoadLastPlayerName();
 
             InitializeComponent();
             this.PreviewKeyDown += new KeyEventHandler(HandleKeys);
@@ -148,8 +154,7 @@ namespace _3dTesting
             //surfaceMapBitmap = GameState.SurfaceState.GlobalMapBitmap;
 
             // Overlay handlers must be put in the grid
-            _overlayHandler = new OverlayHandler(mainGrid);
-            _hudHandler = new HudOverlayHandlerV2(mainGrid);
+            _overlayManager = new OverlayManager(mainGrid);
 
             // MotherShip in-world health bar
             _motherShipHealthBarCanvas = new Canvas
@@ -222,7 +227,16 @@ namespace _3dTesting
         private void HandleKeys(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
+            {
+                // During name entry, Escape goes back to intro instead of quitting
+                if (GameState.ScreenOverlayState.Type == ScreenOverlayType.NameEntry
+                    && GameState.ScreenOverlayState.ShowOverlay)
+                {
+                    world.SceneHandler.HandleKeyPress(e, world);
+                    return;
+                }
                 Application.Current.Shutdown();
+            }
 
             if (e.Key == Key.LeftCtrl)
             {
@@ -372,13 +386,10 @@ namespace _3dTesting
                 if (w <= 0) w = 1920;
                 if (h <= 0) h = 1080;
 
-                _overlayHandler.Update(GameState.ScreenOverlayState, w, h);
-
-                // HUD V2: update each tick (it hides itself when ShowOverlay==true)
                 var gameplay = GameState.GamePlayState;
-
                 int triangles = worldRenderer.GetRenderingTriangleCount();
-                _hudHandler.Update(GameState.ScreenOverlayState, gameplay, w, h, Fps, triangles);
+
+                _overlayManager.Update(GameState.ScreenOverlayState, gameplay, w, h, Fps, triangles);
 
                 // MotherShip in-world health bar
                 UpdateMotherShipHealthBar(gameplay);
@@ -410,7 +421,7 @@ namespace _3dTesting
                     // Crop the source bitmap, draw markers on the copy, display it.
                     // Markers never touch the source bitmap — no save/restore needed.
                     GameHelpers.UpdateMapOverlayWithMarkers(
-                        _hudHandler.GetMinimapImage(),
+                        _overlayManager.GetMinimapImage(),
                         GameState.SurfaceState.GlobalMapBitmap,
                         Convert.ToInt32(GameState.SurfaceState.GlobalMapPosition.x),
                         Convert.ToInt32(GameState.SurfaceState.GlobalMapPosition.z)
