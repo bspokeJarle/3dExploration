@@ -34,6 +34,8 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
         // Descent animation:
         private const float DescentDurationSeconds = 4.0f;
         private const float DescentTargetY = 50f;
+        private const float DescentSpawnOffsetX = 3000f;
+        private const float DescentSpawnOffsetZ = 3350f;
 
         // Explosion:
         private const float FirstExplosionForce = 200f;
@@ -214,6 +216,15 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                 _isDescending = true;
                 _descentStartY = theObject.ObjectOffsets.y;
                 _descentStartTime = now;
+
+                // Reposition near the ship so the mothership always descends in view
+                var shipWp = GetShipWorldPosition();
+                theObject.WorldPosition = new Vector3
+                {
+                    x = shipWp.x + DescentSpawnOffsetX,
+                    y = shipWp.y,
+                    z = shipWp.z + DescentSpawnOffsetZ
+                };
             }
 
             if (_isDescending)
@@ -411,8 +422,14 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                 string objectName when WeaponSetup.IsWeaponTypeValid(objectName) => isVulnerablePart
                     ? (int)(WeaponSetup.GetWeaponDamage(objectName) * ((float)HullHitsToDestroy / VulnerableHitsToDestroy))
                     : WeaponSetup.GetWeaponDamage(objectName),
-                _ => currentHealth
+                _ => 0
             };
+
+            if (damage <= 0)
+            {
+                theObject.ImpactStatus.HasCrashed = false;
+                return;
+            }
 
             if (isShipCollision)
                 _shipCollisionCooldown = DateTime.Now;

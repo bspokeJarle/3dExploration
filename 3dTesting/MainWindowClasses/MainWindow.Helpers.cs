@@ -201,6 +201,12 @@ namespace _3dTesting.Helpers
             byte[] orangePx  = { 0, 140, 255, 255 };   // Decoy
             byte[] powerupPx = { 255, 140, 30, 255 };  // PowerUp (strong blue)
 
+            // Mothership — large marker flashing red/black independently
+            bool mothershipFlashRed = (_markerFrame % 20) < 10;
+            byte[] mothershipPx = mothershipFlashRed
+                ? new byte[] { 0, 0, 255, 255 }    // BGRA red
+                : new byte[] { 0, 0, 0, 255 };     // BGRA black
+
             bool powerupVisible = (_markerFrame % 8) < 5;
 
             // Ship marker — always visible at viewport center
@@ -211,6 +217,33 @@ namespace _3dTesting.Helpers
                 int shipBx = (int)((mapPos.x + viewportCenterOffset) / tileSize) - cropOriginX;
                 int shipBz = (int)((mapPos.z + viewportCenterOffset) / tileSize) - cropOriginZ;
                 StampMarker(pixels, cropW, cropH, stride, shipBx, shipBz, greyPx);
+            }
+
+            // Mothership marker — always drawn with its own red/black flash cycle
+            {
+                var aiObjects = GameState.SurfaceState?.AiObjects;
+                _3dObject[]? msSnapshot = null;
+                if (aiObjects != null)
+                {
+                    lock (aiObjects) { msSnapshot = [.. aiObjects]; }
+                }
+                if (msSnapshot != null)
+                {
+                    for (int i = 0; i < msSnapshot.Length; i++)
+                    {
+                        var obj = msSnapshot[i];
+                        if (obj == null || obj.ObjectName != "MotherShipSmall") continue;
+                        if (!obj.IsActive) continue;
+                        if (obj.ImpactStatus?.HasExploded == true) continue;
+                        if (obj.ObjectParts == null || obj.ObjectParts.Count == 0) continue;
+                        if (obj.WorldPosition == null) continue;
+                        if (obj.WorldPosition.x == 0 && obj.WorldPosition.z == 0) continue;
+
+                        int mx = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
+                        int mz = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                        StampMarkerBoss(pixels, cropW, cropH, stride, mx, mz, mothershipPx);
+                    }
+                }
             }
 
             // AI objects — only during blink-on phase
@@ -250,12 +283,14 @@ namespace _3dTesting.Helpers
                             continue;
                         }
 
+                        // Mothership drawn separately below with its own flash cycle
+                        if (obj.ObjectName == "MotherShipSmall") continue;
+
                         byte[]? color = obj.ObjectName switch
                         {
                             "Seeder" => blackPx,
                             "KamikazeDrone" => bluePx,
                             "DroneDecoy" => orangePx,
-                            "MotherShipSmall" => new byte[] { 0, 0, 255, 255 },
                             _ => null
                         };
                         if (color == null) continue;
@@ -277,6 +312,27 @@ namespace _3dTesting.Helpers
             for (int dx = -1; dx <= 1; dx++)
             {
                 for (int dz = -1; dz <= 1; dz++)
+                {
+                    int px = cx + dx;
+                    int pz = cz + dz;
+                    if (px >= 0 && pz >= 0 && px < w && pz < h)
+                    {
+                        int offset = pz * stride + px * 4;
+                        pixels[offset]     = bgra[0]; // B
+                        pixels[offset + 1] = bgra[1]; // G
+                        pixels[offset + 2] = bgra[2]; // R
+                        pixels[offset + 3] = bgra[3]; // A
+                    }
+                }
+            }
+        }
+
+        private static void StampMarkerBoss(byte[] pixels, int w, int h, int stride,
+            int cx, int cz, byte[] bgra)
+        {
+            for (int dx = -3; dx <= 3; dx++)
+            {
+                for (int dz = -3; dz <= 3; dz++)
                 {
                     int px = cx + dx;
                     int pz = cz + dz;
