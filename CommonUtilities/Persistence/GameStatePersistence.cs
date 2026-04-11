@@ -20,14 +20,17 @@ namespace CommonUtilities.Persistence
 
         /// <summary>
         /// Takes a snapshot of the current <see cref="GameState.GamePlayState"/>
-        /// and writes it as an encrypted file.
+        /// and writes it as an encrypted per-player file.
         /// </summary>
         public static void SaveGameState()
         {
             var state = GameState.GamePlayState;
+            if (string.IsNullOrWhiteSpace(state.PlayerName)) return;
 
             var saved = new SavedGameState
             {
+                PlayerName = state.PlayerName,
+                SceneIndex = state.SceneIndex,
                 Score = state.Score,
                 Lives = state.Lives,
                 Health = state.Health,
@@ -55,32 +58,37 @@ namespace CommonUtilities.Persistence
                 CheckpointTotalDeaths = state.CheckpointTotalDeaths,
                 CheckpointInfectionLevel = state.CheckpointInfectionLevel,
                 CheckpointWaveNumber = state.CheckpointWaveNumber,
+                CheckpointInitialSeeders = state.CheckpointInitialSeeders,
+                CheckpointInitialDrones = state.CheckpointInitialDrones,
+                CheckpointInitialMotherShips = state.CheckpointInitialMotherShips,
                 SavedAtUtc = DateTime.UtcNow.ToString("o")
             };
 
+            var filePath = PersistenceSetup.GetPlayerGameStateFilePath(state.PlayerName);
             Directory.CreateDirectory(PersistenceSetup.LocalFolder);
             EncryptionHelper.EnsureKeyFile(PersistenceSetup.LocalKeyFilePath);
 
             var json = JsonSerializer.Serialize(saved, JsonOptions);
             EncryptionHelper.EncryptToFile(
-                PersistenceSetup.LocalGameStateFilePath,
+                filePath,
                 json,
                 PersistenceSetup.LocalKeyFilePath);
         }
 
         /// <summary>
-        /// Loads the saved game state from disk.
+        /// Loads the saved game state for a specific player from disk.
         /// Returns null if no save exists or if decryption fails.
         /// </summary>
-        public static SavedGameState? LoadGameState()
+        public static SavedGameState? LoadGameState(string playerName)
         {
             try
             {
-                if (!File.Exists(PersistenceSetup.LocalGameStateFilePath))
+                var filePath = PersistenceSetup.GetPlayerGameStateFilePath(playerName);
+                if (!File.Exists(filePath))
                     return null;
 
                 var json = EncryptionHelper.DecryptFromFile(
-                    PersistenceSetup.LocalGameStateFilePath,
+                    filePath,
                     PersistenceSetup.LocalKeyFilePath);
 
                 if (json == null) return null;
@@ -102,6 +110,7 @@ namespace CommonUtilities.Persistence
             var state = GameState.GamePlayState;
 
             state.Score = saved.Score;
+            state.SceneIndex = saved.SceneIndex;
             state.Lives = saved.Lives;
             state.Health = saved.Health;
             state.MaxHealth = saved.MaxHealth;
@@ -131,17 +140,17 @@ namespace CommonUtilities.Persistence
         }
 
         /// <summary>
-        /// Returns true if a saved game file exists on disk.
+        /// Returns true if a saved game file exists for the given player.
         /// </summary>
-        public static bool HasSavedGame() =>
-            File.Exists(PersistenceSetup.LocalGameStateFilePath);
+        public static bool HasSavedGame(string playerName) =>
+            PersistenceSetup.HasPlayerSaveFile(playerName);
 
         /// <summary>
-        /// Deletes the saved game file (clean slate).
+        /// Deletes the saved game file for the given player.
         /// </summary>
-        public static void DeleteSave()
+        public static void DeleteSave(string playerName)
         {
-            var path = PersistenceSetup.LocalGameStateFilePath;
+            var path = PersistenceSetup.GetPlayerGameStateFilePath(playerName);
             if (File.Exists(path))
                 File.Delete(path);
         }

@@ -60,7 +60,7 @@ namespace _3dRotations.Scene.Scene1
             world.WorldInhabitants.Add(guidanceArrow);
 
             //Add drones that will be waiting until the player has a Decoy powerup
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 4; i++)
             {
                 var rmd = new Random();
 
@@ -120,7 +120,7 @@ namespace _3dRotations.Scene.Scene1
             motherShip.Movement = new MotherShipSmallControls();
             motherShip.CrashBoxDebugMode = false;
             motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
-            motherShip.HasPowerUp = true;
+            motherShip.HasPowerUp = false;
             motherShip.IsActive = false;
             motherShip.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(motherShip);

@@ -111,7 +111,8 @@ namespace CommonUtilities.Persistence
         }
 
         /// <summary>
-        /// Inserts an entry into the local list, sorts, trims to max, and saves.
+        /// Inserts or updates an entry in the local list, sorts, trims to max, and saves.
+        /// If the player already has an entry, it is updated only when the new score is higher.
         /// </summary>
         private static bool InsertIntoLocalList(HighscoreEntry entry)
         {
@@ -120,10 +121,30 @@ namespace CommonUtilities.Persistence
                 var list = LoadLocalHighscores();
                 int max = PersistenceSetup.MaxHighscoreEntries;
 
-                if (list.Entries.Count >= max && entry.Score <= list.Entries[^1].Score)
-                    return false;
+                var existing = list.Entries.Find(e =>
+                    string.Equals(e.PlayerName, entry.PlayerName, StringComparison.OrdinalIgnoreCase));
 
-                list.Entries.Add(entry);
+                if (existing != null)
+                {
+                    if (entry.Score <= existing.Score)
+                        return false;
+
+                    existing.Score = entry.Score;
+                    existing.WaveReached = entry.WaveReached;
+                    existing.TotalKills = entry.TotalKills;
+                    existing.TotalShotsFired = entry.TotalShotsFired;
+                    existing.TotalDeaths = entry.TotalDeaths;
+                    existing.Accuracy = entry.Accuracy;
+                    existing.DateUtc = entry.DateUtc;
+                }
+                else
+                {
+                    if (list.Entries.Count >= max && entry.Score <= list.Entries[^1].Score)
+                        return false;
+
+                    list.Entries.Add(entry);
+                }
+
                 list.Entries.Sort((a, b) => b.Score.CompareTo(a.Score));
 
                 if (list.Entries.Count > max)

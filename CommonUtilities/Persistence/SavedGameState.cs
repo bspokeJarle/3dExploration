@@ -7,6 +7,8 @@ namespace CommonUtilities.Persistence
     /// </summary>
     public sealed class SavedGameState
     {
+        public string PlayerName { get; set; } = "";
+        public int SceneIndex { get; set; }
         public long Score { get; set; }
         public int Lives { get; set; }
         public float Health { get; set; }
@@ -38,6 +40,9 @@ namespace CommonUtilities.Persistence
         public int CheckpointTotalDeaths { get; set; }
         public float CheckpointInfectionLevel { get; set; }
         public int CheckpointWaveNumber { get; set; }
+        public int CheckpointInitialSeeders { get; set; }
+        public int CheckpointInitialDrones { get; set; }
+        public int CheckpointInitialMotherShips { get; set; }
 
         public string SavedAtUtc { get; set; } = "";
     }

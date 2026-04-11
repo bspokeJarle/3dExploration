@@ -31,6 +31,7 @@ namespace Domain
         // Player / ship core stats
         // -----------------------------
         public string PlayerName { get; set; } = "";
+        public int SceneIndex { get; set; } = 0;
         public int Lives { get; set; } = 3;
 
         // Keep as float to allow smooth damage later (e.g., collision damage scaling)
@@ -72,7 +73,8 @@ namespace Domain
             long Score, int Lives, float Health, int PowerUpsCollected,
             int SeedersRemaining, int DronesRemaining, int MotherShipsRemaining,
             int TotalShotsFired, int TotalKills, int TotalDeaths,
-            float InfectionLevel, int WaveNumber);
+            float InfectionLevel, int WaveNumber,
+            int InitialSeeders, int InitialDrones, int InitialMotherShips);
 
         public bool HasCheckpoint { get; set; } = false;
         public long CheckpointScore { get; set; } = 0;
@@ -87,6 +89,9 @@ namespace Domain
         public int CheckpointTotalDeaths { get; set; } = 0;
         public float CheckpointInfectionLevel { get; set; } = 0f;
         public int CheckpointWaveNumber { get; set; } = 1;
+        public int CheckpointInitialSeeders { get; set; } = 0;
+        public int CheckpointInitialDrones { get; set; } = 0;
+        public int CheckpointInitialMotherShips { get; set; } = 0;
 
         /// <summary>
         /// Captures the current checkpoint fields into a snapshot value type.
@@ -96,7 +101,8 @@ namespace Domain
             CheckpointScore, CheckpointLives, CheckpointHealth, CheckpointPowerUpsCollected,
             CheckpointSeedersRemaining, CheckpointDronesRemaining, CheckpointMotherShipsRemaining,
             CheckpointTotalShotsFired, CheckpointTotalKills, CheckpointTotalDeaths,
-            CheckpointInfectionLevel, CheckpointWaveNumber);
+            CheckpointInfectionLevel, CheckpointWaveNumber,
+            CheckpointInitialSeeders, CheckpointInitialDrones, CheckpointInitialMotherShips);
 
         /// <summary>
         /// Restores both current gameplay state and checkpoint fields from a snapshot.
@@ -116,6 +122,9 @@ namespace Domain
             TotalDeaths = cp.TotalDeaths + 1;
             InfectionLevel = cp.InfectionLevel;
             WaveNumber = cp.WaveNumber;
+            InitialSeeders = cp.InitialSeeders;
+            InitialDrones = cp.InitialDrones;
+            InitialMotherShips = cp.InitialMotherShips;
 
             // Preserve checkpoint fields for future deaths
             CheckpointScore = cp.Score;
@@ -130,6 +139,9 @@ namespace Domain
             CheckpointTotalDeaths = cp.TotalDeaths;
             CheckpointInfectionLevel = cp.InfectionLevel;
             CheckpointWaveNumber = cp.WaveNumber;
+            CheckpointInitialSeeders = cp.InitialSeeders;
+            CheckpointInitialDrones = cp.InitialDrones;
+            CheckpointInitialMotherShips = cp.InitialMotherShips;
         }
 
         // -----------------------------
@@ -371,6 +383,9 @@ namespace Domain
             CheckpointTotalDeaths = 0;
             CheckpointInfectionLevel = 0f;
             CheckpointWaveNumber = 1;
+            CheckpointInitialSeeders = 0;
+            CheckpointInitialDrones = 0;
+            CheckpointInitialMotherShips = 0;
 
             DronesRemaining = 0;
             SeedersRemaining = 0;
@@ -437,6 +452,9 @@ namespace Domain
             CheckpointTotalDeaths = TotalDeaths;
             CheckpointInfectionLevel = InfectionLevel;
             CheckpointWaveNumber = WaveNumber;
+            CheckpointInitialSeeders = InitialSeeders;
+            CheckpointInitialDrones = InitialDrones;
+            CheckpointInitialMotherShips = InitialMotherShips;
         }
 
         /// <summary>

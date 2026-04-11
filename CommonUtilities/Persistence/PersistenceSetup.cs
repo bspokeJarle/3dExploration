@@ -15,7 +15,6 @@ namespace CommonUtilities.Persistence
 
         public static string KeyFileName { get; set; } = "omega.key";
         public static string HighscoreFileName { get; set; } = "highscores.enc";
-        public static string GameStateFileName { get; set; } = "gamestate.enc";
         public static int MaxHighscoreEntries { get; set; } = 100;
 
         // -----------------------------------------------------------------
@@ -41,8 +40,37 @@ namespace CommonUtilities.Persistence
         }
 
         public static string LocalKeyFilePath => Path.Combine(LocalFolder, KeyFileName);
-        public static string LocalGameStateFilePath => Path.Combine(LocalFolder, GameStateFileName);
         public static string LocalHighscoreFilePath => Path.Combine(LocalFolder, HighscoreFileName);
+
+        /// <summary>
+        /// Returns the per-player save file path for the given player name.
+        /// The name is sanitised to a safe filename.
+        /// </summary>
+        public static string GetPlayerGameStateFilePath(string playerName)
+        {
+            var safe = SanitiseFileName(playerName);
+            return Path.Combine(LocalFolder, $"save_{safe}.enc");
+        }
+
+        /// <summary>
+        /// Returns true if a per-player save file exists for the given name.
+        /// </summary>
+        public static bool HasPlayerSaveFile(string playerName)
+            => File.Exists(GetPlayerGameStateFilePath(playerName));
+
+        private static string SanitiseFileName(string name)
+        {
+            var lower = name.Trim().ToLowerInvariant();
+            var invalid = Path.GetInvalidFileNameChars();
+            var chars = lower.ToCharArray();
+            for (int i = 0; i < chars.Length; i++)
+            {
+                if (Array.IndexOf(invalid, chars[i]) >= 0 || chars[i] == ' ')
+                    chars[i] = '_';
+            }
+            var result = new string(chars);
+            return string.IsNullOrEmpty(result) ? "default" : result;
+        }
 
         /// <summary>
         /// Path to the plain-text file storing the last used player name.

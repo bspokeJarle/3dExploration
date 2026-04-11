@@ -296,9 +296,12 @@ namespace _3dTesting.MainWindowClasses.Loops
 
                         if (activated)
                         {
+                            gps2.SeedersRemaining = liveSeeders;
+                            gps2.DronesRemaining = liveDrones;
                             gps2.MotherShipsRemaining = msCount;
                             gps2.SaveCheckpoint();
                             try { GameStatePersistence.SaveGameState(); } catch { }
+                            try { SubmitHighscore(gps2); } catch { }
                         }
                     }
                 }
@@ -314,23 +317,41 @@ namespace _3dTesting.MainWindowClasses.Loops
                 if ((gps.InitialDrones > 0 || gps.InitialSeeders > 0) &&
                     gps.DronesRemaining == 0 && gps.SeedersRemaining == 0 && gps.MotherShipsRemaining == 0)
                 {
-                    _victorySequenceStarted = true;
-                    _victoryStartTicks = Stopwatch.GetTimestamp();
+                    // Guard: verify no enemies remain in AiObjects (including inactive
+                    // ones that UpdateHudState doesn't count in DronesRemaining etc.)
+                    var aiObjs = GameState.SurfaceState.AiObjects;
+                    bool hasRemainingEnemies = false;
+                    for (int i = 0; i < aiObjs.Count; i++)
+                    {
+                        var obj = aiObjs[i];
+                        if (obj.ImpactStatus?.HasExploded == true) continue;
+                        if (obj.ObjectName == "Seeder" || obj.ObjectName == "KamikazeDrone" || obj.ObjectName == "MotherShipSmall")
+                        {
+                            hasRemainingEnemies = true;
+                            break;
+                        }
+                    }
 
-                    var o = GameState.ScreenOverlayState;
-                    o.ResetToDefaults();
-                    o.Type = ScreenOverlayType.Game;
-                    o.Anchor = ScreenOverlayAnchor.Center;
-                    o.Header = "PLANET SECURED";
-                    o.Title = "ALL THREATS ELIMINATED";
-                    o.Body = "Proceeding to next sector...";
-                    o.Footer = "";
-                    o.DimStrength = 0.50f;
-                    o.PanelWidthRatio = 0.60f;
-                    o.PanelHeightRatio = 0.22f;
-                    o.ShowOverlay = true;
-                    o.AutoHide = false;
-                    o.ShowDebugOverlay = false;
+                    if (!hasRemainingEnemies)
+                    {
+                        _victorySequenceStarted = true;
+                        _victoryStartTicks = Stopwatch.GetTimestamp();
+
+                        var o = GameState.ScreenOverlayState;
+                        o.ResetToDefaults();
+                        o.Type = ScreenOverlayType.Game;
+                        o.Anchor = ScreenOverlayAnchor.Center;
+                        o.Header = "PLANET SECURED";
+                        o.Title = "ALL THREATS ELIMINATED";
+                        o.Body = "Proceeding to next sector...";
+                        o.Footer = "";
+                        o.DimStrength = 0.50f;
+                        o.PanelWidthRatio = 0.60f;
+                        o.PanelHeightRatio = 0.22f;
+                        o.ShowOverlay = true;
+                        o.AutoHide = false;
+                        o.ShowDebugOverlay = false;
+                    }
                 }
             }
 
@@ -396,6 +417,18 @@ namespace _3dTesting.MainWindowClasses.Loops
 
                     if (obj.HasPowerUp && obj.WorldPosition != null)
                     {
+                        // Only one PowerUp at a time — skip if one already exists
+                        bool alreadyExists = false;
+                        for (int i = 0; i < inhabitants.Count; i++)
+                        {
+                            if (inhabitants[i].ObjectName == "PowerUp")
+                            {
+                                alreadyExists = true;
+                                break;
+                            }
+                        }
+                        if (alreadyExists) continue;
+
                         var powerup = PowerUp.CreatePowerup(obj.ParentSurface);
                         powerup.WorldPosition = new Vector3
                         {
@@ -420,12 +453,6 @@ namespace _3dTesting.MainWindowClasses.Loops
                     }
                 }
 
-                if (checkpointTriggered)
-                {
-                    gps.SaveCheckpoint();
-                    try { GameStatePersistence.SaveGameState(); } catch { }
-                }
-
                 for (int i = inhabitants.Count - 1; i >= 0; i--)
                 {
                     if (explodedIds.Contains(inhabitants[i].ObjectId))
@@ -441,6 +468,28 @@ namespace _3dTesting.MainWindowClasses.Loops
                     {
                         aiObjects.RemoveAt(i);
                     }
+                }
+
+                if (checkpointTriggered)
+                {
+                    // Recount remaining enemies after removal so the checkpoint
+                    // reflects the actual state, not the stale previous-frame values.
+                    int seedersLeft = 0, dronesLeft = 0, motherShipsLeft = 0;
+                    for (int i = 0; i < aiObjects.Count; i++)
+                    {
+                        var o = aiObjects[i];
+                        if (o.ImpactStatus?.HasExploded == true) continue;
+                        if (o.ObjectName == "Seeder") seedersLeft++;
+                        else if (o.ObjectName == "KamikazeDrone" && o.IsActive) dronesLeft++;
+                        else if (o.ObjectName == "MotherShipSmall" && o.IsActive) motherShipsLeft++;
+                    }
+                    gps.SeedersRemaining = seedersLeft;
+                    gps.DronesRemaining = dronesLeft;
+                    gps.MotherShipsRemaining = motherShipsLeft;
+
+                    gps.SaveCheckpoint();
+                    try { GameStatePersistence.SaveGameState(); } catch { }
+                    try { SubmitHighscore(gps); } catch { }
                 }
 
                 var bestCandidateStates = GameState.ShipState.BestCandidateStates;
@@ -500,6 +549,22 @@ namespace _3dTesting.MainWindowClasses.Loops
             catch (NotImplementedException)
             {
             }
+        }
+
+        private static void SubmitHighscore(GamePlayState gps)
+        {
+            float accuracy = gps.TotalShotsFired > 0
+                ? (float)gps.TotalKills / gps.TotalShotsFired
+                : 0f;
+
+            HighscoreService.TrySubmitScore(
+                gps.PlayerName,
+                gps.Score,
+                gps.SceneIndex,
+                gps.TotalKills,
+                gps.TotalShotsFired,
+                gps.TotalDeaths,
+                accuracy);
         }
 
         /// <summary>

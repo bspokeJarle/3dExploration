@@ -23,6 +23,7 @@ namespace _3DWorld.Scene
         private const int SceneAdvanceDelayFrames = 5;
         private bool _pendingSceneAdvance = false;
         private int _pendingSceneAdvanceFramesLeft = 0;
+        private int? _targetSceneIndex = null;
 
         public IScene GetActiveScene() => scenes[currentSceneIndex];
 
@@ -77,9 +78,34 @@ namespace _3DWorld.Scene
         {
             if (enableLogging) Logger.Log($"Scenehandler: NextScene :{GameState.ScreenOverlayState.ShowOverlay} ");
 
+            var gps = GameState.GamePlayState;
+
+            // Submit highscore before the state is reset
+            try
+            {
+                float accuracy = gps.TotalShotsFired > 0
+                    ? (float)gps.TotalKills / gps.TotalShotsFired
+                    : 0f;
+
+                HighscoreService.TrySubmitScore(
+                    gps.PlayerName,
+                    gps.Score,
+                    currentSceneIndex,
+                    gps.TotalKills,
+                    gps.TotalShotsFired,
+                    gps.TotalDeaths,
+                    accuracy);
+            }
+            catch { }
+
             currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
+
+            // Persist scene progress so the player can resume from here
+            gps.SceneIndex = currentSceneIndex;
+            try { GameStatePersistence.SaveGameState(); } catch { }
+
             ClearVideoOverlay();
-            GameState.GamePlayState.ResetForNewGame();
+            gps.ResetForNewGame();
             ResetSurfaceState();
             SetupActiveScene(world);
         }
@@ -96,7 +122,18 @@ namespace _3DWorld.Scene
             }
 
             _pendingSceneAdvance = false;
-            currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
+
+            if (_targetSceneIndex.HasValue)
+            {
+                currentSceneIndex = _targetSceneIndex.Value;
+                _targetSceneIndex = null;
+            }
+            else
+            {
+                currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
+            }
+
+            GameState.GamePlayState.SceneIndex = currentSceneIndex;
             SetupActiveScene(world);
         }
 
@@ -151,7 +188,10 @@ namespace _3DWorld.Scene
                 }
 
                 var priorName = PersistenceSetup.LoadLastPlayerName();
-                if (!string.Equals(name, priorName, StringComparison.OrdinalIgnoreCase))
+                bool isOwnName = string.Equals(name, priorName, StringComparison.OrdinalIgnoreCase)
+                              || PersistenceSetup.HasPlayerSaveFile(name);
+
+                if (!isOwnName)
                 {
                     var highscores = HighscoreService.LoadLocalHighscores();
                     bool taken = highscores.Entries.Exists(e =>
@@ -166,6 +206,15 @@ namespace _3DWorld.Scene
                 overlay.IsNameConfirmed = true;
                 GameState.GamePlayState.PlayerName = name;
                 PersistenceSetup.SaveLastPlayerName(name);
+
+                // Check for saved scene progress for this player
+                var saved = GameStatePersistence.LoadGameState(name);
+                if (saved != null &&
+                    saved.SceneIndex > currentSceneIndex + 1 &&
+                    saved.SceneIndex < scenes.Count)
+                {
+                    _targetSceneIndex = saved.SceneIndex;
+                }
 
                 overlay.HardHide();
                 _pendingSceneAdvance = true;
