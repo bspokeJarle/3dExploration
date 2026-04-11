@@ -6,6 +6,7 @@ using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
+using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Controls.SeederControls;
 using System;
@@ -20,9 +21,13 @@ namespace _3dRotations.Scene.Scene1
 
         public string SceneMusic { get; } = "music_flight";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
+        public ISceneDirector Director { get; } = new Scene2Director();
         public GameModes GameMode { get; } = GameModes.Live;
         public float InfectionThresholdPercent { get; } = 8f;
-        public int InfectionSpreadRate { get; } = 3;
+        public int InfectionSpreadRate { get; } = 75;
+        public int SeederOffscreenSpeedFactor { get; } = 10;
+        public float LocalInfectionSpreadDelaySec { get; } = 8.0f;
+        public float LocalInfectionSpreadRadius { get; } = 3500f;
 
         public void SetupScene(I3dWorld world)
         {            
@@ -49,7 +54,8 @@ namespace _3dRotations.Scene.Scene1
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
 
-            for (int i = 0; i < 7; i++)
+            //Add drones that will be waiting until the player has a Decoy powerup
+            for (int i = 0; i < 6; i++)
             {
                 var rmd = new Random();
 
@@ -61,28 +67,62 @@ namespace _3dRotations.Scene.Scene1
                 kamikaze.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.KamikazeDroneHealth };
                 kamikaze.CrashBoxDebugMode = false;
                 kamikaze.WeaponSystems = null;
+                kamikaze.HasPowerUp = false;
                 kamikaze.IsActive = false;
                 world.WorldInhabitants.Add(kamikaze);
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-            for (int i = 0; i < 7; i++)
+            //Add seeders close to the player for immediate pressure
+            for (int i = 0; i < 4; i++)
             {
                 var rmd = new Random();
 
                 var seeder = Seeder.CreateSeeder(Surface);
                 seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-30000, 30000), y = 0, z = 92000 + rmd.Next(-30000, 30000) };
+                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-12000, 12000), y = 0, z = 92000 + rmd.Next(-12000, 12000) };
                 seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seeder.ObjectName = "Seeder";
                 seeder.Movement = new SeederControls();
                 seeder.CrashBoxDebugMode = false;
                 seeder.ImpactStatus = new ImpactStatus { };
+                seeder.HasPowerUp = false;
                 world.WorldInhabitants.Add(seeder);
                 GameState.SurfaceState.AiObjects.Add(seeder);
             }
 
-            // MotherShipSmall — spawns inactive, enters when all seeders are destroyed
+            //Add more seeders spread further across the map
+            for (int i = 0; i < 3; i++)
+            {
+                var rmd = new Random();
+
+                var seeder = Seeder.CreateSeeder(Surface);
+                seeder.Rotation = new Vector3 { };
+                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-25000, 5000), y = 0, z = 92000 + rmd.Next(-25000, 5000) };
+                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                seeder.ObjectName = "Seeder";
+                seeder.Movement = new SeederControls();
+                seeder.CrashBoxDebugMode = false;
+                seeder.ImpactStatus = new ImpactStatus { };
+                seeder.HasPowerUp = false;
+                world.WorldInhabitants.Add(seeder);
+                GameState.SurfaceState.AiObjects.Add(seeder);
+            }
+
+            //Late powerup seeder — placed far from the player so drones activate near the end
+            var seederPowerup = Seeder.CreateSeeder(Surface);
+            seederPowerup.Rotation = new Vector3 { };
+            seederPowerup.WorldPosition = new Vector3 { x = 95700 + 20000, y = 0, z = 92000 + 20000 };
+            seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+            seederPowerup.ObjectName = "Seeder";
+            seederPowerup.Movement = new SeederControls();
+            seederPowerup.CrashBoxDebugMode = false;
+            seederPowerup.ImpactStatus = new ImpactStatus { };
+            seederPowerup.HasPowerUp = true;
+            world.WorldInhabitants.Add(seederPowerup);
+            GameState.SurfaceState.AiObjects.Add(seederPowerup);
+
+            //Mothership — spawns inactive, enters when all seeders and drones are destroyed
             var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
             motherShip.Rotation = new Vector3 { };
             motherShip.WorldPosition = new Vector3 { x = 95700, y = 0, z = 92000 };
@@ -91,6 +131,7 @@ namespace _3dRotations.Scene.Scene1
             motherShip.Movement = new MotherShipSmallControls();
             motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
             motherShip.CrashBoxDebugMode = false;
+            motherShip.HasPowerUp = false;
             motherShip.IsActive = false;
             world.WorldInhabitants.Add(motherShip);
             GameState.SurfaceState.AiObjects.Add(motherShip);
@@ -173,10 +214,10 @@ namespace _3dRotations.Scene.Scene1
                 "NEREID outer colony TRITON-7 has gone dark.\n\n" +
                 "Long-range telemetry confirms Omega Strain\n" +
                 "has breached the quarantine perimeter.\n" +
-                "Seeder count: SEVEN. Escort drones: SEVEN.\n" +
+                "Seeder count: EIGHT. Escort drones: SIX.\n" +
+                "Infection spread rate: ACCELERATED.\n" +
                 "Terrain: unknown — no prior survey data.\n\n" +
-                "Bio-contamination tolerance: 8%.\n" +
-                "Kamikaze drone swarm density: EXTREME.\n\n" +
+                "Bio-contamination tolerance: 8%.\n\n" +
                 "REVISED DIRECTIVE:\n" +
                 "Sterilize TRITON-7. Leave nothing behind.";
 

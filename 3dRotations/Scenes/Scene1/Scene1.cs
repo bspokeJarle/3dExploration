@@ -21,6 +21,7 @@ namespace _3dRotations.Scene.Scene1
 
         public string SceneMusic { get; } = "music_flight";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
+        public ISceneDirector Director { get; } = new Scene1Director();
 
         public GameModes GameMode { get; } = GameModes.Playback;
         //How much of the surface needs to be infected for the player to lose, as a percentage of total bio tiles

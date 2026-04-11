@@ -1,3 +1,4 @@
+using Domain;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -72,6 +73,22 @@ namespace CommonUtilities.Persistence
         // -----------------------------------------------------------------
         // Submit score (local + remote push)
         // -----------------------------------------------------------------
+
+        /// <summary>
+        /// Convenience overload: extracts all scoring fields from the current
+        /// <see cref="GamePlayState"/> and submits them in one call.
+        /// </summary>
+        public static bool SubmitFromGamePlay(GamePlayState gps)
+        {
+            return TrySubmitScore(
+                gps.PlayerName,
+                gps.Score,
+                gps.SceneIndex,
+                gps.TotalKills,
+                gps.TotalShotsFired,
+                gps.TotalDeaths,
+                gps.Accuracy);
+        }
 
         /// <summary>
         /// Submits a score: saves to local file immediately, then pushes to

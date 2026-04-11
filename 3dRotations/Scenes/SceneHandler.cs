@@ -38,6 +38,7 @@ namespace _3DWorld.Scene
             ClearVideoOverlay();
             scene.SetupScene((_3dWorld)world);
             ApplySceneSettings(scene);
+            InitializeDirector(scene, world);
             ValidateGameSceneSetup(scene, world);
         }
 
@@ -45,6 +46,7 @@ namespace _3DWorld.Scene
         {
             if (enableLogging) Logger.Log("Scenehandler: ResetActiveScene");
 
+            DisposeDirector();
             var newScene = CreateFreshScene();
             if (newScene == null)
                 throw new InvalidOperationException($"Failed to create a new instance of scene type {GetActiveScene().GetType()}.");
@@ -78,23 +80,13 @@ namespace _3DWorld.Scene
         {
             if (enableLogging) Logger.Log($"Scenehandler: NextScene :{GameState.ScreenOverlayState.ShowOverlay} ");
 
+            DisposeDirector();
             var gps = GameState.GamePlayState;
 
             // Submit highscore before the state is reset
             try
             {
-                float accuracy = gps.TotalShotsFired > 0
-                    ? (float)gps.TotalKills / gps.TotalShotsFired
-                    : 0f;
-
-                HighscoreService.TrySubmitScore(
-                    gps.PlayerName,
-                    gps.Score,
-                    currentSceneIndex,
-                    gps.TotalKills,
-                    gps.TotalShotsFired,
-                    gps.TotalDeaths,
-                    accuracy);
+                HighscoreService.SubmitFromGamePlay(gps);
             }
             catch { }
 
@@ -295,6 +287,16 @@ namespace _3DWorld.Scene
             gps.SeederOffscreenSpeedFactor = scene.SeederOffscreenSpeedFactor;
             gps.LocalInfectionSpreadDelaySec = scene.LocalInfectionSpreadDelaySec;
             gps.LocalInfectionSpreadRadius = scene.LocalInfectionSpreadRadius;
+        }
+
+        private void InitializeDirector(IScene scene, I3dWorld world)
+        {
+            scene.Director?.Initialize(world.EventBus!, world);
+        }
+
+        private void DisposeDirector()
+        {
+            GetActiveScene().Director?.Dispose();
         }
 
         // -----------------------------------------------------------------
