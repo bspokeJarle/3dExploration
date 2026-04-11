@@ -19,10 +19,10 @@ namespace _3dRotations.Scene.Scene1
     {
         Surface Surface = new();
 
-        public string SceneMusic { get; } = "music_flight";
+        public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public ISceneDirector Director { get; } = new Scene2Director();
-        public GameModes GameMode { get; } = GameModes.Live;
+        public GameModes GameMode { get; } = GameModes.Playback;
         public float InfectionThresholdPercent { get; } = 8f;
         public int InfectionSpreadRate { get; } = 75;
         public int SeederOffscreenSpeedFactor { get; } = 10;
@@ -34,7 +34,7 @@ namespace _3dRotations.Scene.Scene1
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
-            Surface.Create2DMap(500,50,GameMode,null);
+            Surface.Create2DMap(30000,15000,GameMode, "Scene2SurfaceRecording.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -109,7 +109,7 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.AiObjects.Add(seeder);
             }
 
-            //Late powerup seeder — placed far from the player so drones activate near the end
+            //Late powerup seeder — this seeder is to unlock the lazer, the lazer takes out the mothership sooner
             var seederPowerup = Seeder.CreateSeeder(Surface);
             seederPowerup.Rotation = new Vector3 { };
             seederPowerup.WorldPosition = new Vector3 { x = 95700 + 20000, y = 0, z = 92000 + 20000 };
@@ -153,7 +153,34 @@ namespace _3dRotations.Scene.Scene1
             world.WorldInhabitants.Add(surfaceObject);
             GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
 
-            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight(),null);
+            var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
+
+            SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
+                GameState.SurfaceState.Global2DMap,
+                Surface.MaxHeight(),
+                towerPlacements,
+                writeDebugLogs: false
+            );
+
+            var towerIndex = 0;
+            foreach (var towerPlacement in towerPlacements)
+            {
+                towerIndex++;
+
+                var tower = Tower.CreateTower(Surface);
+                tower.Rotation = new Vector3 { };
+                tower.WorldPosition = new Vector3 { };
+                tower.SurfaceBasedId = GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
+                tower.ObjectOffsets = new Vector3 { x = 75, y = 280, z = 300 };
+                tower.ObjectName = "Tower";
+                tower.Movement = new TowerControls();
+                tower.CrashBoxDebugMode = false;
+                tower.ImpactStatus = new ImpactStatus { };
+                world.WorldInhabitants.Add(tower);
+            }
+
+            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight(), 30000);
             var treeIndex = 0;
             foreach (var treePlacement in treePlacements)
             {
@@ -176,7 +203,7 @@ namespace _3dRotations.Scene.Scene1
                 if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
             }
 
-            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements);
+            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
             foreach (var housePlacement in housePlacements)
             {
                 //Debug.WriteLine($"House placement: {housePlacement.x} {housePlacement.y}");
