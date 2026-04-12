@@ -24,6 +24,7 @@ namespace _3DWorld.Scene
         private bool _pendingSceneAdvance = false;
         private int _pendingSceneAdvanceFramesLeft = 0;
         private int? _targetSceneIndex = null;
+        private SavedGameState? _pendingSavedState = null;
 
         public IScene GetActiveScene() => scenes[currentSceneIndex];
 
@@ -83,6 +84,13 @@ namespace _3DWorld.Scene
             DisposeDirector();
             var gps = GameState.GamePlayState;
 
+            // Capture cumulative stats before reset
+            long prevScore = gps.Score;
+            int prevKills = gps.TotalKills;
+            int prevShots = gps.TotalShotsFired;
+            int prevDeaths = gps.TotalDeaths;
+            int prevPowerUps = gps.PowerUpsCollected;
+
             // Submit highscore before the state is reset
             try
             {
@@ -92,6 +100,12 @@ namespace _3DWorld.Scene
 
             currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
 
+            // Game completed — delete save so the next playthrough starts fresh
+            if (currentSceneIndex == 0)
+            {
+                try { GameStatePersistence.DeleteSave(gps.PlayerName); } catch { }
+            }
+
             // Persist scene progress so the player can resume from here
             gps.SceneIndex = currentSceneIndex;
             try { GameStatePersistence.SaveGameState(); } catch { }
@@ -100,6 +114,17 @@ namespace _3DWorld.Scene
             gps.ResetForNewGame();
             ResetSurfaceState();
             SetupActiveScene(world);
+
+            // Carry forward score, stats, and powerups into game scenes
+            var nextScene = GetActiveScene();
+            if (nextScene.SceneType == SceneTypes.Game)
+            {
+                gps.Score = prevScore;
+                gps.TotalKills = prevKills;
+                gps.TotalShotsFired = prevShots;
+                gps.TotalDeaths = prevDeaths;
+                gps.PowerUpsCollected = prevPowerUps;
+            }
         }
 
         public void UpdateFrame(I3dWorld world)
@@ -127,6 +152,18 @@ namespace _3DWorld.Scene
 
             GameState.GamePlayState.SceneIndex = currentSceneIndex;
             SetupActiveScene(world);
+
+            // Restore score and combat stats from saved game so the player builds upon them
+            if (_pendingSavedState != null)
+            {
+                var gps = GameState.GamePlayState;
+                gps.Score = _pendingSavedState.Score;
+                gps.TotalKills = _pendingSavedState.TotalKills;
+                gps.TotalShotsFired = _pendingSavedState.TotalShotsFired;
+                gps.TotalDeaths = _pendingSavedState.TotalDeaths;
+                gps.PowerUpsCollected = _pendingSavedState.PowerUpsCollected;
+                _pendingSavedState = null;
+            }
         }
 
         // -----------------------------------------------------------------
@@ -201,11 +238,18 @@ namespace _3DWorld.Scene
 
                 // Check for saved scene progress for this player
                 var saved = GameStatePersistence.LoadGameState(name);
-                if (saved != null &&
-                    saved.SceneIndex > currentSceneIndex + 1 &&
-                    saved.SceneIndex < scenes.Count)
+                if (saved != null)
                 {
-                    _targetSceneIndex = saved.SceneIndex;
+                    // Always restore score and stats so the player builds upon them
+                    _pendingSavedState = saved;
+
+                    // Skip to saved scene only if it's a Game scene ahead of current
+                    if (saved.SceneIndex > currentSceneIndex + 1 &&
+                        saved.SceneIndex < scenes.Count &&
+                        scenes[saved.SceneIndex].SceneType == SceneTypes.Game)
+                    {
+                        _targetSceneIndex = saved.SceneIndex;
+                    }
                 }
 
                 overlay.HardHide();

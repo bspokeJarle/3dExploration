@@ -52,3 +52,6 @@
 
 ## Animation Guidelines
 - For the decoy, animate the wheel part by rotating it around its own center, using the tower part-rotation pattern as a reference.
+
+## Combat Indicators
+- The aim assist indicator symbol must only be shown during active combat when the weapon is being used. It should not appear when there is no combat or the weapon is not in use.

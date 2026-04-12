@@ -83,6 +83,12 @@ namespace _3dTesting
         private readonly System.Windows.Shapes.Ellipse _ramWarningInner;
         private const double RamWarningSize = 100;
 
+        // Aim assist target indicator (white reticle)
+        private readonly Canvas _aimAssistCanvas;
+        private readonly System.Windows.Shapes.Ellipse _aimAssistOuter;
+        private readonly System.Windows.Shapes.Ellipse _aimAssistInner;
+        private const double AimAssistIndicatorSize = 90;
+
         private bool isFading = false;
         private bool _isFadingIn = false;
         private int Fps = 0;
@@ -214,6 +220,36 @@ namespace _3dTesting
             _ramWarningCanvas.Children.Add(_ramWarningOuter);
             _ramWarningCanvas.Children.Add(_ramWarningInner);
             mainGrid.Children.Add(_ramWarningCanvas);
+
+            // Aim assist target indicator (white concentric circles)
+            _aimAssistCanvas = new Canvas
+            {
+                IsHitTestVisible = false,
+                Visibility = Visibility.Collapsed
+            };
+            Panel.SetZIndex(_aimAssistCanvas, 10);
+
+            _aimAssistOuter = new System.Windows.Shapes.Ellipse
+            {
+                Width = AimAssistIndicatorSize,
+                Height = AimAssistIndicatorSize,
+                Fill = System.Windows.Media.Brushes.Transparent,
+                Stroke = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)),
+                StrokeThickness = 3
+            };
+
+            _aimAssistInner = new System.Windows.Shapes.Ellipse
+            {
+                Width = AimAssistIndicatorSize * 0.5,
+                Height = AimAssistIndicatorSize * 0.5,
+                Fill = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
+                Stroke = new SolidColorBrush(Color.FromArgb(160, 255, 255, 255)),
+                StrokeThickness = 2
+            };
+
+            _aimAssistCanvas.Children.Add(_aimAssistOuter);
+            _aimAssistCanvas.Children.Add(_aimAssistInner);
+            mainGrid.Children.Add(_aimAssistCanvas);
 
             timer.Interval = TimeSpan.FromMilliseconds(8);
             CompositionTarget.Rendering += Handle3dWorldRendering;
@@ -396,6 +432,9 @@ namespace _3dTesting
 
                 // MotherShip ram warning reticle
                 UpdateMotherShipRamWarning(gameplay);
+
+                // Aim assist target indicator
+                UpdateAimAssistIndicator(gameplay);
             }
 
             world.SceneHandler.UpdateFrame(world);
@@ -598,6 +637,44 @@ namespace _3dTesting
             double innerSize = RamWarningSize * 0.5;
             Canvas.SetLeft(_ramWarningInner, cx - innerSize / 2);
             Canvas.SetTop(_ramWarningInner, cy - innerSize / 2);
+        }
+
+        private void UpdateAimAssistIndicator(GamePlayState gameplay)
+        {
+            if (gameplay == null || !gameplay.AimAssistTargetActive || isFading)
+            {
+                _aimAssistCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (GameState.ScreenOverlayState.Type != ScreenOverlayType.Game)
+            {
+                _aimAssistCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            // Flash the indicator using a sine wave (toggles opacity)
+            double phase = (DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond) % 600.0 / 600.0;
+            double alpha = 0.5 + 0.5 * Math.Sin(phase * Math.PI * 2);
+            byte outerAlpha = (byte)(200 * alpha);
+            byte innerAlpha = (byte)(60 * alpha);
+            byte innerStrokeAlpha = (byte)(160 * alpha);
+
+            _aimAssistOuter.Stroke = new SolidColorBrush(Color.FromArgb(outerAlpha, 255, 255, 255));
+            _aimAssistInner.Fill = new SolidColorBrush(Color.FromArgb(innerAlpha, 255, 255, 255));
+            _aimAssistInner.Stroke = new SolidColorBrush(Color.FromArgb(innerStrokeAlpha, 255, 255, 255));
+
+            _aimAssistCanvas.Visibility = Visibility.Visible;
+
+            double cx = gameplay.AimAssistTargetScreenX;
+            double cy = gameplay.AimAssistTargetScreenY;
+
+            Canvas.SetLeft(_aimAssistOuter, cx - AimAssistIndicatorSize / 2);
+            Canvas.SetTop(_aimAssistOuter, cy - AimAssistIndicatorSize / 2);
+
+            double innerSize = AimAssistIndicatorSize * 0.5;
+            Canvas.SetLeft(_aimAssistInner, cx - innerSize / 2);
+            Canvas.SetTop(_aimAssistInner, cy - innerSize / 2);
         }
 
         private static string ResolveVideoPath(string clipPath)

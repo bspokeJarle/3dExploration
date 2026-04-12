@@ -9,6 +9,7 @@ using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Controls.SeederControls;
+using GameAiAndControls.Controls.SpaceSwanControls;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -53,6 +54,24 @@ namespace _3dRotations.Scene.Scene1
             guidanceArrow.ImpactStatus = new ImpactStatus { };
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
+
+            // SpaceSwans
+            for (int s = 0; s < 50; s++)
+            {
+                var rmdSwan = new Random();
+                var spaceSwan = SpaceSwan.CreateSpaceSwan(Surface);
+                spaceSwan.Rotation = new Vector3 { };
+                spaceSwan.WorldPosition = new Vector3 { x = 95700 + rmdSwan.Next(-40000, 40000), y = 0, z = 92000 + rmdSwan.Next(-40000, 40000) };
+                spaceSwan.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                spaceSwan.ObjectName = "SpaceSwan";
+                spaceSwan.Movement = new SpaceSwanControls();
+                spaceSwan.CrashBoxDebugMode = false;
+                spaceSwan.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.SpaceSwanHealth };
+                spaceSwan.HasPowerUp = false;
+                spaceSwan.IsActive = true;
+                world.WorldInhabitants.Add(spaceSwan);
+                GameState.SurfaceState.AiObjects.Add(spaceSwan);
+            }
 
             //Add drones that will be waiting until the player has a Decoy powerup
             for (int i = 0; i < 6; i++)

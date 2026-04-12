@@ -225,6 +225,11 @@ namespace Domain
         public float MotherShipRamWarningScreenX { get; set; } = 0f;
         public float MotherShipRamWarningScreenY { get; set; } = 0f;
 
+        // Aim assist target indicator (white reticle around locked target)
+        public bool AimAssistTargetActive { get; set; } = false;
+        public float AimAssistTargetScreenX { get; set; } = 0f;
+        public float AimAssistTargetScreenY { get; set; } = 0f;
+
         // PowerUp progression: each collected PowerUp unlocks the next weapon tier
         public int PowerUpsCollected { get; set; } = 0;
         public bool IsDecoyUnlocked => PowerUpsCollected >= 1;
@@ -411,6 +416,10 @@ namespace Domain
             MotherShipRamWarningActive = false;
             MotherShipRamWarningScreenX = 0f;
             MotherShipRamWarningScreenY = 0f;
+
+            AimAssistTargetActive = false;
+            AimAssistTargetScreenX = 0f;
+            AimAssistTargetScreenY = 0f;
 
             SelectedWeapon = WeaponType.Bullet;
             ActivePowerup = "BULLET";

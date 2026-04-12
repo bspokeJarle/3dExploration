@@ -58,13 +58,13 @@ namespace CommonUtilities.CommonSetup
         // Strength = blend factor toward enemy (0 = no assist, 1 = full snap)
         // MaxRange = max distance (screen units) to consider enemies
         // -------------------------------------------------------
-        public static float LazerAimAssistConeDot  = 0.96f;   // ~16° half-angle
-        public static float LazerAimAssistStrength = 0.6f;
-        public static float LazerAimAssistMaxRange = 1400f;
+        public static float LazerAimAssistConeDot  = 0.55f;   // ~57° half-angle
+        public static float LazerAimAssistStrength = 0.92f;
+        public static float LazerAimAssistMaxRange = 2500f;
 
-        public static float BulletAimAssistConeDot  = 0.60f;  // ~53° half-angle
-        public static float BulletAimAssistStrength = 0.95f;
-        public static float BulletAimAssistMaxRange = 1500f;
+        public static float BulletAimAssistConeDot  = 0.45f;  // ~63° half-angle
+        public static float BulletAimAssistStrength = 0.98f;
+        public static float BulletAimAssistMaxRange = 2500f;
 
         public static float RocketAimAssistConeDot  = 0.85f;  // ~32° half-angle
         public static float RocketAimAssistStrength = 0.8f;

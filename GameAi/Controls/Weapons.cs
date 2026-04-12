@@ -37,6 +37,8 @@ namespace GameAiAndControls.Controls
         public IVector3 ParentVelocityLocal { get; set; } = new Vector3(0, 0, 0);
         public List<IActiveWeapon> ActiveWeapons { get; set; } = new List<IActiveWeapon>();
 
+        private _3dObject? _aimAssistLockedTarget;
+
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             // Already configured? do nothing
@@ -238,6 +240,7 @@ namespace GameAiAndControls.Controls
 
             float bestDot = coneDot;
             IVector3? bestEnemyDir = null;
+            _3dObject? bestEnemy = null;
 
             for (int i = 0; i < aiObjects.Count; i++)
             {
@@ -270,8 +273,11 @@ namespace GameAiAndControls.Controls
                 {
                     bestDot = dot;
                     bestEnemyDir = toEnemyDir;
+                    bestEnemy = obj;
                 }
             }
+
+            _aimAssistLockedTarget = bestEnemy;
 
             if (bestEnemyDir == null)
                 return firingDir;
@@ -434,6 +440,8 @@ namespace GameAiAndControls.Controls
         {
             if (audioPlayer != null && soundRegistry != null) ConfigureAudio(audioPlayer, soundRegistry);
 
+            UpdateAimAssistTarget();
+
             DateTime now = DateTime.UtcNow;
 
             for (int i = 0; i < ActiveWeapons.Count; i++)
@@ -503,6 +511,75 @@ namespace GameAiAndControls.Controls
 
             if (enableLogging) Logger.Log($"[WeaponSystem] CrashBoxes collected: {boxes.Count}");
             return boxes;
+        }
+
+        private void UpdateAimAssistTarget()
+        {
+            var gameplay = GameState.GamePlayState;
+            gameplay.AimAssistTargetActive = false;
+
+            // Only show when weapons are actively in flight
+            if (ActiveWeapons.Count == 0)
+            {
+                _aimAssistLockedTarget = null;
+                return;
+            }
+
+            var aiObjects = GameState.SurfaceState.AiObjects;
+            if (aiObjects == null || aiObjects.Count == 0)
+            {
+                _aimAssistLockedTarget = null;
+                return;
+            }
+
+            var gmp = GameState.SurfaceState.GlobalMapPosition;
+            if (gmp == null) return;
+
+            float halfW = ScreenSetup.screenSizeX / 2f;
+            float halfH = ScreenSetup.screenSizeY / 2f;
+
+            float bestDistSq = float.MaxValue;
+            _3dObject? bestTarget = null;
+            float bestSx = 0f, bestSy = 0f;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var obj = aiObjects[i] as _3dObject;
+                if (obj == null) continue;
+                if (!EnemySetup.IsEnemyTypeValid(obj.ObjectName)) continue;
+                if (obj.ImpactStatus?.HasExploded == true) continue;
+                if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) continue;
+
+                float dx = obj.WorldPosition.x - gmp.x;
+                float dy = obj.WorldPosition.y - gmp.y;
+
+                float sx = halfW + dx;
+                float sy = halfH + dy + (obj.ObjectOffsets?.y ?? 0f);
+
+                if (sx < 0 || sx > ScreenSetup.screenSizeX) continue;
+                if (sy < 0 || sy > ScreenSetup.screenSizeY) continue;
+
+                float distSq = dx * dx + dy * dy;
+                if (distSq < bestDistSq)
+                {
+                    bestDistSq = distSq;
+                    bestTarget = obj;
+                    bestSx = sx;
+                    bestSy = sy;
+                }
+            }
+
+            if (bestTarget != null)
+            {
+                _aimAssistLockedTarget = bestTarget;
+                gameplay.AimAssistTargetActive = true;
+                gameplay.AimAssistTargetScreenX = bestSx;
+                gameplay.AimAssistTargetScreenY = bestSy;
+            }
+            else
+            {
+                _aimAssistLockedTarget = null;
+            }
         }
 
         private static void SetWorldPosition(I3dObject obj, IVector3 pos)

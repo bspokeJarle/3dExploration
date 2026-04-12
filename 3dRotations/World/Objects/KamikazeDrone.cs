@@ -7,6 +7,7 @@ using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using static Domain._3dSpecificsImplementations;
+using static _3dTesting.Helpers._3dObjectHelpers;
 
 namespace _3dRotations.World.Objects
 {
@@ -625,99 +626,6 @@ namespace _3dRotations.World.Objects
             }
 
             return points;
-        }
-
-        private static void AddQuadOutward(
-            List<ITriangleMeshWithColor> tris,
-            Vector3 v1,
-            Vector3 v2,
-            Vector3 v3,
-            Vector3 v4,
-            Vector3 center,
-            string color,
-            bool noHidden = false)
-        {
-            tris.Add(CreateTriangleOutward(v1, v2, v3, center, color, noHidden));
-            tris.Add(CreateTriangleOutward(v1, v3, v4, center, color, noHidden));
-        }
-
-        private static TriangleMeshWithColor CreateTriangleOutward(
-            Vector3 v1,
-            Vector3 v2,
-            Vector3 v3,
-            Vector3 center,
-            string color,
-            bool noHidden = false)
-        {
-            var edge1 = Subtract(v2, v1);
-            var edge2 = Subtract(v3, v1);
-            var normal = Normalize(Cross(edge1, edge2));
-
-            var mid = new Vector3
-            {
-                x = (v1.x + v2.x + v3.x) / 3f,
-                y = (v1.y + v2.y + v3.y) / 3f,
-                z = (v1.z + v2.z + v3.z) / 3f
-            };
-
-            var desired = Normalize(Subtract(mid, center));
-            float dot = Dot(normal, desired);
-
-            if (dot < 0f)
-            {
-                var temp = v2;
-                v2 = v3;
-                v3 = temp;
-            }
-
-            return new TriangleMeshWithColor
-            {
-                Color = color,
-                vert1 = v1,
-                vert2 = v2,
-                vert3 = v3,
-                noHidden = noHidden
-            };
-        }
-
-        private static Vector3 Subtract(Vector3 a, Vector3 b)
-        {
-            return new Vector3
-            {
-                x = a.x - b.x,
-                y = a.y - b.y,
-                z = a.z - b.z
-            };
-        }
-
-        private static Vector3 Cross(Vector3 a, Vector3 b)
-        {
-            return new Vector3
-            {
-                x = a.y * b.z - a.z * b.y,
-                y = a.z * b.x - a.x * b.z,
-                z = a.x * b.y - a.y * b.x
-            };
-        }
-
-        private static float Dot(Vector3 a, Vector3 b)
-        {
-            return a.x * b.x + a.y * b.y + a.z * b.z;
-        }
-
-        private static Vector3 Normalize(Vector3 v)
-        {
-            float lenSq = v.x * v.x + v.y * v.y + v.z * v.z;
-            if (lenSq <= 1e-6f)
-                return new Vector3 { x = 0, y = 0, z = 0 };
-
-            float invLen = 1.0f / (float)Math.Sqrt(lenSq);
-            return new Vector3
-            {
-                x = v.x * invLen,
-                y = v.y * invLen,
-                z = v.z * invLen
-            };
         }
     }
 }

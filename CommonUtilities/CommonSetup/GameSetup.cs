@@ -22,7 +22,9 @@ namespace CommonUtilities.CommonSetup
         public static int SeederKillScore { get; set; } = 100;
         public static int KamikazeDroneKillScore { get; set; } = 50;
         public static int MotherShipSmallKillScore { get; set; } = 500;
+        public static int SpaceSwanKillScore { get; set; } = 50;
         public static int DefaultKillScore { get; set; } = 25;
+        public static int PowerUpCollectScore { get; set; } = 150;
 
         // Score penalty deducted each time the player dies
         public static int DeathScorePenalty { get; set; } = 200;
@@ -38,6 +40,7 @@ namespace CommonUtilities.CommonSetup
             "Seeder" => SeederKillScore,
             "KamikazeDrone" => KamikazeDroneKillScore,
             "MotherShipSmall" => MotherShipSmallKillScore,
+            "SpaceSwan" => SpaceSwanKillScore,
             _ => DefaultKillScore
         };
 
