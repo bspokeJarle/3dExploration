@@ -23,6 +23,7 @@ namespace CommonUtilities.CommonSetup
         public static int KamikazeDroneKillScore { get; set; } = 50;
         public static int MotherShipSmallKillScore { get; set; } = 500;
         public static int SpaceSwanKillScore { get; set; } = 50;
+        public static int ZeppelinBomberKillScore { get; set; } = 75;
         public static int DefaultKillScore { get; set; } = 25;
         public static int PowerUpCollectScore { get; set; } = 150;
 
@@ -41,6 +42,7 @@ namespace CommonUtilities.CommonSetup
             "KamikazeDrone" => KamikazeDroneKillScore,
             "MotherShipSmall" => MotherShipSmallKillScore,
             "SpaceSwan" => SpaceSwanKillScore,
+            "ZeppelinBomber" => ZeppelinBomberKillScore,
             _ => DefaultKillScore
         };
 

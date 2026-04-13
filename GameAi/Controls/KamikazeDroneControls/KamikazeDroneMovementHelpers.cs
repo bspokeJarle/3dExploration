@@ -115,7 +115,7 @@ namespace GameAiAndControls.Helpers
                 {
                     x = shipCrashCenter.x - (CommonUtilities.CommonSetup.ScreenSetup.screenSizeX / 2f),
                     y = shipCrashCenter.y,
-                    z = shipCrashCenter.z
+                    z = shipCrashCenter.z - (CommonUtilities.CommonSetup.ScreenSetup.screenSizeY / 2f)
                 };
             }
 
@@ -125,7 +125,7 @@ namespace GameAiAndControls.Helpers
                 {
                     x = shipWorldPosition.x - (CommonUtilities.CommonSetup.ScreenSetup.screenSizeX / 2f),
                     y = shipWorldPosition.y,
-                    z = shipWorldPosition.z
+                    z = shipWorldPosition.z - (CommonUtilities.CommonSetup.ScreenSetup.screenSizeY / 2f)
                 };
             }
 

@@ -12,7 +12,7 @@
 
         // Depth / view-distance constants
         public const float RenderFarZ = 2000f;
-        public const float RenderNearZ = -2000f;
+        public const float RenderNearZ = -1750f;
         public const float ObjectVisibilityDistance = 2000f;
     }
 }

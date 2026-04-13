@@ -680,6 +680,12 @@ namespace _3dTesting.MainWindowClasses.Loops
                 case "RearEngineDirectionGuide":
                     inhabitant.Movement.SetRearEngineGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
                     break;
+                case "BomberBombDropStart":
+                    inhabitant.Movement.SetWeaponGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    break;
+                case "BomberBombDropEnd":
+                    inhabitant.Movement.SetWeaponGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
+                    break;
             }
         }
 

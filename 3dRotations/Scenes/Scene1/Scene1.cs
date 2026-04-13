@@ -5,6 +5,7 @@ using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
+using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Controls.SeederControls;
@@ -60,6 +61,23 @@ namespace _3dRotations.Scene.Scene1
             guidanceArrow.ImpactStatus = new ImpactStatus { };
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
+
+            // ZeppelinBombers — 20 scattered around the map at high altitude
+            for (int b = 0; b < 20; b++)
+            {
+                var rmdBomber = new Random();
+                var bomber = ZeppelinBomber.CreateZeppelinBomber(Surface);
+                bomber.Rotation = new Vector3 { };
+                bomber.WorldPosition = new Vector3 { x = 95700 + rmdBomber.Next(-40000, 40000), y = 0, z = 92000 + rmdBomber.Next(-40000, 40000) };
+                bomber.ObjectOffsets = new Vector3 { x = 0, y = -400, z = -400 };
+                bomber.ObjectName = "ZeppelinBomber";
+                bomber.Movement = new ZeppelinBomberControls();
+                bomber.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.ZeppelinBomberHealth };
+                bomber.CrashBoxDebugMode = false;
+                bomber.IsActive = true;
+                world.WorldInhabitants.Add(bomber);
+                GameState.SurfaceState.AiObjects.Add(bomber);
+            }
 
             //Add drones that will be waiting until the player has a Decoy powerup
             for (int i = 0; i < 4; i++)

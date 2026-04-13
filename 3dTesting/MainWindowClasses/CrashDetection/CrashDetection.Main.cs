@@ -75,6 +75,9 @@ namespace _3dTesting.Helpers
                         (flagsA.Name == "PowerUp" && flagsB.IsShip) ||
                         (flagsB.Name == "PowerUp" && flagsA.IsShip);
                     bool isEnemySurfacePair = (flagsA.IsEnemy && flagsB.IsSurface) || (flagsB.IsEnemy && flagsA.IsSurface);
+                    bool isBomberBombSurfacePair =
+                        (flagsA.Name == "BomberBomb" && flagsB.IsSurface) ||
+                        (flagsB.Name == "BomberBomb" && flagsA.IsSurface);
                     bool isBothEnemies = flagsA.IsEnemy && flagsB.IsEnemy;
 
                     if (string.IsNullOrEmpty(flagsA.Name) || string.IsNullOrEmpty(flagsB.Name)) continue;
@@ -84,7 +87,7 @@ namespace _3dTesting.Helpers
                     if (isParticle && isShip) continue;
                     if (isBothParticles) continue;
                     if (isParticle && _skipParticles) continue;
-                    if (isEnemySurfacePair) continue;
+                    if (isEnemySurfacePair && !isBomberBombSurfacePair) continue;
                     if (isBothEnemies) continue;
                     if (isDecoySurfacePair) continue;
                     if (isDecoyShipPair) continue;
@@ -144,8 +147,10 @@ namespace _3dTesting.Helpers
                     // Ship is in screen-space; enemies are in world-offset space.
                     // The center-distance check is meaningless for Ship↔Enemy pairs,
                     // so skip the early-out and let box-vs-box handle it.
+                    // Same for BomberBomb↔Surface: the Surface center is far from
+                    // any individual bomb, so let box-vs-box decide.
                     bool isShipEnemyPair = isShip && !isSurface && !isParticle && !isLazer;
-                    if (!isShipEnemyPair && distance > effectiveMaxCrashDistance)
+                    if (!isShipEnemyPair && !isBomberBombSurfacePair && distance > effectiveMaxCrashDistance)
                     {
                         SkippedByDistance++;
                         continue;
