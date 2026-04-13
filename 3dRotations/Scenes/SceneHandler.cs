@@ -190,12 +190,12 @@ namespace _3DWorld.Scene
 
             if (scene.SceneType == SceneTypes.Intro)
             {
-                HandleIntroKey(overlay);
+                HandleIntroKey(overlay, k);
                 return;
             }
 
             if (scene.SceneType == SceneTypes.Game)
-                HandleGameKey(scene, overlay);
+                HandleGameKey(k, scene, overlay);
         }
 
         private void HandleNameEntryKey(KeyEventArgs k, IScene scene, ScreenOverlayState overlay)
@@ -261,9 +261,24 @@ namespace _3DWorld.Scene
             overlay.ProcessNameEntryKey(k.Key);
         }
 
-        private void HandleIntroKey(ScreenOverlayState overlay)
+        private void HandleIntroKey(ScreenOverlayState overlay, KeyEventArgs k)
         {
             if (enableLogging) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {overlay.ShowOverlay} ", "General");
+
+            // Page navigation with arrow keys
+            if (overlay.HasMultiplePages)
+            {
+                if (k.Key == Key.Right || k.Key == Key.D)
+                {
+                    overlay.NextPage();
+                    return;
+                }
+                if (k.Key == Key.Left || k.Key == Key.A)
+                {
+                    overlay.PreviousPage();
+                    return;
+                }
+            }
 
             overlay.HardHide();
             ClearVideoOverlay();
@@ -272,10 +287,25 @@ namespace _3DWorld.Scene
             overlay.SetNameEntryPreset(lastPlayer);
         }
 
-        private static void HandleGameKey(IScene scene, ScreenOverlayState overlay)
+        private static void HandleGameKey(KeyEventArgs k, IScene scene, ScreenOverlayState overlay)
         {
             if (overlay.Type == ScreenOverlayType.Intro && overlay.ShowOverlay)
             {
+                // Page navigation with arrow keys
+                if (overlay.HasMultiplePages)
+                {
+                    if (k.Key == Key.Right || k.Key == Key.D)
+                    {
+                        overlay.NextPage();
+                        return;
+                    }
+                    if (k.Key == Key.Left || k.Key == Key.A)
+                    {
+                        overlay.PreviousPage();
+                        return;
+                    }
+                }
+
                 if (enableLogging) Logger.Log($"Scenehandler: Game keypress. Overlay Type={overlay.Type} Show={overlay.ShowOverlay}", "General");
                 scene.SetupGameOverlay();
             }

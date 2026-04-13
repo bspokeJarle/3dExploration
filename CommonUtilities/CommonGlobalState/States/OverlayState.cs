@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Windows.Input;
 
 namespace Domain
@@ -59,6 +60,70 @@ namespace Domain
         public string Title { get; set; } = "";    // main heading (big)
         public string Body { get; set; } = "";     // multi-line
         public string Footer { get; set; } = "";   // CTA (press any key)
+
+        // -----------------------------
+        // Paging
+        // -----------------------------
+        /// <summary>
+        /// Per-page content. When populated, Header/Title/Body/Footer are
+        /// driven by the current page index. Each inner list has exactly
+        /// 4 elements: [Header, Title, Body, Footer].
+        /// </summary>
+        public List<string[]> Pages { get; set; } = new();
+
+        /// <summary>Zero-based page index shown to the user.</summary>
+        public int CurrentPage { get; set; } = 0;
+
+        /// <summary>Total number of pages (derived from Pages.Count).</summary>
+        public int TotalPages => Pages.Count > 0 ? Pages.Count : 1;
+
+        /// <summary>True when there are multiple pages to navigate.</summary>
+        public bool HasMultiplePages => Pages.Count > 1;
+
+        /// <summary>
+        /// Advances to the next page if available. Returns true if the page changed.
+        /// </summary>
+        public bool NextPage()
+        {
+            if (!HasMultiplePages || CurrentPage >= Pages.Count - 1) return false;
+            CurrentPage++;
+            ApplyPageContent();
+            return true;
+        }
+
+        /// <summary>
+        /// Goes back to the previous page if available. Returns true if the page changed.
+        /// </summary>
+        public bool PreviousPage()
+        {
+            if (!HasMultiplePages || CurrentPage <= 0) return false;
+            CurrentPage--;
+            ApplyPageContent();
+            return true;
+        }
+
+        /// <summary>
+        /// Copies Header/Title/Body/Footer from the current page entry.
+        /// </summary>
+        public void ApplyPageContent()
+        {
+            if (Pages.Count == 0 || CurrentPage < 0 || CurrentPage >= Pages.Count) return;
+            var page = Pages[CurrentPage];
+            if (page.Length < 4) return;
+            Header = page[0];
+            Title = page[1];
+            Body = page[2];
+            Footer = page[3];
+        }
+
+        /// <summary>
+        /// Adds a page and returns the index. Each page is [Header, Title, Body, Footer].
+        /// </summary>
+        public int AddPage(string header, string title, string body, string footer)
+        {
+            Pages.Add(new[] { header, title, body, footer });
+            return Pages.Count - 1;
+        }
 
         // -----------------------------
         // Name entry state
@@ -208,6 +273,9 @@ namespace Domain
             IsNameConfirmed = false;
             _cursorBlinkTimer = 0f;
 
+            Pages.Clear();
+            CurrentPage = 0;
+
             HardHide();
         }
 
@@ -339,6 +407,9 @@ namespace Domain
             Type = ScreenOverlayType.NameEntry;
             Anchor = ScreenOverlayAnchor.Center;
             IsModal = true;
+
+            Pages.Clear();
+            CurrentPage = 0;
 
             Header = "RETROMESH // PILOT REGISTRY";
             Title = "IDENTIFY YOURSELF";
