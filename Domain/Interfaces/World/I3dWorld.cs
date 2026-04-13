@@ -6,6 +6,7 @@ namespace Domain
     {
         List<I3dObject> WorldInhabitants { get; set; }
         ISceneHandler SceneHandler { get; set; }
+        IGameEventBus? EventBus { get; set; }
         bool IsPaused { get; set; }
     }
 }

@@ -12,6 +12,9 @@
 *.user
 *.sln.docstates
 
+# Secrets (Supabase credentials etc.)
+secrets.json
+
 # Build results
 [Dd]ebug/
 [Rr]elease/

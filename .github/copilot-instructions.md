@@ -13,6 +13,7 @@
 - Implement audio spatialization consistently for all moving sound-emitting objects in the project, not just kamikaze drones.
 - Collision/crash detection logic must stay centralized in the `CrashDetection` class. Do not scatter collision triggers into individual object controls (like `KamikazeDroneControl`, `DecoyBeaconControl`, etc.). Keep detection in one place.
 - When the scene GameMode is Playback, do not run surface generation; load the surface from a recording file. During loading, calculate `TotalBioTiles` since `SurfaceGeneration.ReturnPseudoRandomMap` (which normally counts them) is not called.
+- When creating a new scene in Playback mode, always pass explicit override values to `FindTreePlacementAreas` and `FindHousePlacementAreas` (e.g., 30000 for trees, 15000 for houses). In Playback mode, `ReturnPseudoRandomMap` is not called, so the static `SurfaceGeneration.maxTrees` and `maxHouses` fields stay at 0. Without explicit overrides, no trees/houses are placed, and `WorldInhabitants.Count` stays below 50 — which is the gate for minimap rendering.
 - If an object has an unnatural crash, check the size of the object (geometry/scale), not the offset or anything else. The size of the actual object coordinates is very important to make a natural hit — if the object is too small in coordinates, the crash seems unnatural since it appears the object is far away.
 
 ## Control Class Pattern
@@ -51,3 +52,6 @@
 
 ## Animation Guidelines
 - For the decoy, animate the wheel part by rotating it around its own center, using the tower part-rotation pattern as a reference.
+
+## Combat Indicators
+- The aim assist indicator symbol must only be shown during active combat when the weapon is being used. It should not appear when there is no combat or the weapon is not in use.

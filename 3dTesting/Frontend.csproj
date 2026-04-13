@@ -127,6 +127,9 @@
     <None Update="Soundeffects\OmegaStrain_Thud_Heavy.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Soundeffects\OmegaStrain_Wings_Flapping.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\OmegeStrain_Ship_CollisionWarning.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

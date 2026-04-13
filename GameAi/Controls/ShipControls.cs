@@ -1010,6 +1010,7 @@ namespace GameAiAndControls.Controls
                 if (obj.ObjectName == "PowerUp" && obj.ImpactStatus?.HasCrashed == true)
                 {
                     GameState.GamePlayState.PowerUpsCollected++;
+                    GameState.GamePlayState.Score += GameSetup.PowerUpCollectScore;
 
                     if (_audio != null && _powerupSound != null)
                         _audio.Play(_powerupSound, AudioPlayMode.OneShot, new AudioPlayOptions());

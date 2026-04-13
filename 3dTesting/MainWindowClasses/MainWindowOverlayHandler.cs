@@ -26,6 +26,7 @@ namespace _3dTesting.MainWindowClasses
         private readonly TextBlock _title;
         private readonly TextBlock _body;
         private readonly TextBlock _footer;
+        private readonly TextBlock _pageIndicator;
 
         public OverlayHandler(Grid root)
         {
@@ -102,10 +103,21 @@ namespace _3dTesting.MainWindowClasses
                 Opacity = 0.9
             };
 
+            _pageIndicator = new TextBlock
+            {
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 16,
+                Foreground = Brushes.Lime,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Opacity = 0.7,
+                Margin = new Thickness(0, 8, 0, 0)
+            };
+
             _stack.Children.Add(_header);
             _stack.Children.Add(_title);
             _stack.Children.Add(_body);
             _stack.Children.Add(_footer);
+            _stack.Children.Add(_pageIndicator);
 
             _panel.Child = _stack;
 
@@ -153,6 +165,28 @@ namespace _3dTesting.MainWindowClasses
             _title.Visibility  = string.IsNullOrWhiteSpace(_title.Text)  ? Visibility.Collapsed : Visibility.Visible;
             _body.Visibility   = string.IsNullOrWhiteSpace(_body.Text)   ? Visibility.Collapsed : Visibility.Visible;
             _footer.Visibility = string.IsNullOrWhiteSpace(_footer.Text) ? Visibility.Collapsed : Visibility.Visible;
+
+            // Page indicator
+            if (state.HasMultiplePages)
+            {
+                var dots = new System.Text.StringBuilder();
+                for (int i = 0; i < state.TotalPages; i++)
+                    dots.Append(i == state.CurrentPage ? " ● " : " ○ ");
+                dots.Append("    [← →]");
+                _pageIndicator.Text = dots.ToString();
+                _pageIndicator.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                _pageIndicator.Visibility = Visibility.Collapsed;
+            }
+
+            // Text alignment
+            var align = state.CenterText ? TextAlignment.Center : TextAlignment.Left;
+            _header.TextAlignment = align;
+            _title.TextAlignment = align;
+            _body.TextAlignment = align;
+            _footer.TextAlignment = align;
 
             // Panel width from ratio
             double panelW = screenWidth * Clamp01(state.PanelWidthRatio);
@@ -210,10 +244,6 @@ namespace _3dTesting.MainWindowClasses
             if (finalH > softMax) finalH = softMax;
 
             _panel.Height = finalH;
-
-            // Re-measure/arrange for stable layout
-            _panel.Measure(new Size(panelW, finalH));
-            _panel.Arrange(new Rect(0, 0, panelW, finalH));
         }
 
         private static double Clamp01(double v)

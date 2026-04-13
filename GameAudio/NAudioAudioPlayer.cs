@@ -73,6 +73,16 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
             source = loopProvider;
             if (enableLogging) Logger.Log(@"Audio: Playing segmented loop.");
         }
+        else if (mode == AudioPlayMode.OneShot)
+        {
+            // OneShot with segment markers: seek to start, truncate at end.
+            if (definition.Segments.Start > 0)
+                fileReader.CurrentTime = TimeSpan.FromSeconds(definition.Segments.Start);
+
+            double segDuration = definition.Segments.End - definition.Segments.Start;
+            if (segDuration > 0 && definition.Segments.End < fileReader.TotalTime.TotalSeconds)
+                source = new TruncatingSampleProvider(source, TimeSpan.FromSeconds(segDuration));
+        }
 
         // Normalize the source into the shared mixer format.
         ISampleProvider sample = NormalizeToMixerFormat(source);

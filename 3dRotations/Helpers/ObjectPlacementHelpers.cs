@@ -60,10 +60,12 @@ namespace _3dTesting.Helpers
             else
             {
                 // Store the calculated local crash-sync offset used by crash detection.
+                // Signs must match the screen-position formula (negate X/Y) so that
+                // crash-box coordinates are in the same space as screen-space objects.
                 obj.CalculatedCrashOffset = new Vector3
                 {
-                    x = localWorldPosition.x + obj.ObjectOffsets!.x ,
-                    y = localWorldPosition.y + obj.ObjectOffsets!.y,
+                    x = -localWorldPosition.x + obj.ObjectOffsets!.x,
+                    y = -localWorldPosition.y + obj.ObjectOffsets!.y,
                     z = localWorldPosition.z + obj.ObjectOffsets!.z
                 };
                 //Calculate screen position

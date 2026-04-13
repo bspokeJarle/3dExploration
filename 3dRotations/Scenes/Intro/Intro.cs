@@ -1,5 +1,6 @@
 ﻿using _3dRotations.World.Objects.LogoCube;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.Persistence;
 using Domain;
 using GameAiAndControls.Controls;
 using System;
@@ -45,17 +46,45 @@ namespace _3dRotations.Scenes.Intro
             o.Type = ScreenOverlayType.Intro;
             o.Anchor = ScreenOverlayAnchor.Top;
 
-            o.Header = "RETROMESH SYSTEM INITIALIZING";
-            o.Title = "THE OMEGA STRAIN";
-
-            o.Body =
+            // Page 1: Story
+            o.AddPage(
+                "RETROMESH SYSTEM INITIALIZING",
+                "THE OMEGA STRAIN",
                 "Year 2147.\n\n" +
                 "A foreign organism has spread across the outer colonies.\n" +
                 "Designated: OMEGA STRAIN.\n\n" +
                 "Autonomous Seeder units detected.\n" +
-                "Containment probability: 12%.";
+                "Containment probability: 12%.",
+                "PRESS ANY KEY TO INITIATE PROTOCOL");
 
-            o.Footer = "PRESS ANY KEY TO INITIATE PROTOCOL";
+            // Page 2: Gameplay tips
+            o.AddPage(
+                "RETROMESH // FIELD MANUAL",
+                "TACTICAL BRIEFING",
+                "WEAPONS:\n" +
+                "  [1] BULLET  — High fire rate, effective vs Seeders\n" +
+                "  [2] DECOY   — Lures Kamikaze Drones away from your ship\n" +
+                "  [3] LAZER   — Powerful beam, cuts through targets\n\n" +
+                "COMBAT TIPS:\n" +
+                "  \u2022 Destroy Seeders to stop the infection from spreading\n" +
+                "  \u2022 Kamikaze Drones will rush your ship — deploy Decoys!\n" +
+                "  \u2022 Decoys unlock after collecting your first PowerUp\n" +
+                "  \u2022 PowerUps drop from glowing Seeders\n" +
+                "  \u2022 Eliminate all enemies to face the MotherShip\n\n" +
+                "NAVIGATION:\n" +
+                "  \u2022 Arrow keys or WASD to move\n" +
+                "  \u2022 Follow the guidance arrow to find Seeders",
+                "PRESS ANY KEY TO INITIATE PROTOCOL");
+
+            // Page 3: Highscores
+            o.AddPage(
+                "RETROMESH // HALL OF FAME",
+                "TOP PILOTS",
+                BuildHighscoreBody(),
+                "PRESS ANY KEY TO INITIATE PROTOCOL");
+
+            o.CurrentPage = 0;
+            o.ApplyPageContent();
 
             // LogoCube plays first
             o.ShowOverlay = false;
@@ -76,6 +105,33 @@ namespace _3dRotations.Scenes.Intro
         {
             GameState.ScreenOverlayState.ShowVideoOverlay = true;
             GameState.ScreenOverlayState.VideoClipPath = Path.Combine("gamegraphics", "introclip.mp4");
+        }
+
+        private static string BuildHighscoreBody()
+        {
+            var list = HighscoreService.LoadLocalHighscores();
+            var entries = list.Entries
+                .OrderByDescending(e => e.Score)
+                .Take(25)
+                .ToList();
+
+            if (entries.Count == 0)
+                return "No highscores recorded yet.\n\nBe the first pilot to make history!";
+
+            var sb = new StringBuilder();
+            sb.AppendLine("RANK  PILOT             SCORE      KILLS");
+            sb.AppendLine("----  -----             -----      -----");
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var e = entries[i];
+                var name = e.PlayerName.Length > 16
+                    ? e.PlayerName[..16]
+                    : e.PlayerName.PadRight(16);
+                sb.AppendLine($" {(i + 1),2}.  {name}  {e.Score,9}  {e.TotalKills,5}");
+            }
+
+            return sb.ToString().TrimEnd();
         }
     }
 }

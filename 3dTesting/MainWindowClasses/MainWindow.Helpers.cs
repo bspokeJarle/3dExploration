@@ -200,6 +200,7 @@ namespace _3dTesting.Helpers
             byte[] bluePx    = { 255, 80, 0, 255 };    // Drone
             byte[] orangePx  = { 0, 140, 255, 255 };   // Decoy
             byte[] powerupPx = { 255, 140, 30, 255 };  // PowerUp (strong blue)
+            byte[] swanPx    = { 240, 240, 240, 255 }; // SpaceSwan (white)
 
             // Mothership — large marker flashing red/black independently
             bool mothershipFlashRed = (_markerFrame % 20) < 10;
@@ -291,6 +292,7 @@ namespace _3dTesting.Helpers
                             "Seeder" => blackPx,
                             "KamikazeDrone" => bluePx,
                             "DroneDecoy" => orangePx,
+                            "SpaceSwan" => swanPx,
                             _ => null
                         };
                         if (color == null) continue;

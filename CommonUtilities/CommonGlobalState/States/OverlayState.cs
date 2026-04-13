@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Windows.Input;
 
 namespace Domain
 {
@@ -7,7 +9,8 @@ namespace Domain
         None = 0,
         Intro = 1,
         Outro = 2,
-        Game = 3
+        Game = 3,
+        NameEntry = 4
     }
 
     public enum ScreenOverlayAnchor
@@ -59,6 +62,79 @@ namespace Domain
         public string Footer { get; set; } = "";   // CTA (press any key)
 
         // -----------------------------
+        // Paging
+        // -----------------------------
+        /// <summary>
+        /// Per-page content. When populated, Header/Title/Body/Footer are
+        /// driven by the current page index. Each inner list has exactly
+        /// 4 elements: [Header, Title, Body, Footer].
+        /// </summary>
+        public List<string[]> Pages { get; set; } = new();
+
+        /// <summary>Zero-based page index shown to the user.</summary>
+        public int CurrentPage { get; set; } = 0;
+
+        /// <summary>Total number of pages (derived from Pages.Count).</summary>
+        public int TotalPages => Pages.Count > 0 ? Pages.Count : 1;
+
+        /// <summary>True when there are multiple pages to navigate.</summary>
+        public bool HasMultiplePages => Pages.Count > 1;
+
+        /// <summary>
+        /// Advances to the next page if available. Returns true if the page changed.
+        /// </summary>
+        public bool NextPage()
+        {
+            if (!HasMultiplePages || CurrentPage >= Pages.Count - 1) return false;
+            CurrentPage++;
+            ApplyPageContent();
+            return true;
+        }
+
+        /// <summary>
+        /// Goes back to the previous page if available. Returns true if the page changed.
+        /// </summary>
+        public bool PreviousPage()
+        {
+            if (!HasMultiplePages || CurrentPage <= 0) return false;
+            CurrentPage--;
+            ApplyPageContent();
+            return true;
+        }
+
+        /// <summary>
+        /// Copies Header/Title/Body/Footer from the current page entry.
+        /// </summary>
+        public void ApplyPageContent()
+        {
+            if (Pages.Count == 0 || CurrentPage < 0 || CurrentPage >= Pages.Count) return;
+            var page = Pages[CurrentPage];
+            if (page.Length < 4) return;
+            Header = page[0];
+            Title = page[1];
+            Body = page[2];
+            Footer = page[3];
+        }
+
+        /// <summary>
+        /// Adds a page and returns the index. Each page is [Header, Title, Body, Footer].
+        /// </summary>
+        public int AddPage(string header, string title, string body, string footer)
+        {
+            Pages.Add(new[] { header, title, body, footer });
+            return Pages.Count - 1;
+        }
+
+        // -----------------------------
+        // Name entry state
+        // -----------------------------
+        public const int MaxCallsignLength = 16;
+        public string NameEntryBuffer { get; set; } = "";
+        public string NameEntryValidationMessage { get; set; } = "";
+        public bool IsNameConfirmed { get; set; } = false;
+        private float _cursorBlinkTimer = 0f;
+
+        // -----------------------------
         // Presentation knobs (kept simple)
         // -----------------------------
         public ScreenOverlayAnchor Anchor { get; set; } = ScreenOverlayAnchor.Top;
@@ -100,6 +176,11 @@ namespace Domain
         /// Panel corner radius in DIP. Renderer can use this directly.
         /// </summary>
         public float CornerRadius { get; set; } = 12f;
+
+        /// <summary>
+        /// When true, text blocks are center-aligned within the panel.
+        /// </summary>
+        public bool CenterText { get; set; } = false;
 
         // -----------------------------
         // Fade (deterministic)
@@ -179,12 +260,21 @@ namespace Domain
             PanelHeightRatio = 0.28f;
             PanelYOffsetRatio = 0.18f;
             CornerRadius = 12f;
+            CenterText = false;
 
             FadeInSpeed = 2.5f;
             FadeOutSpeed = 3.0f;
 
             AutoHide = false;
             AutoHideSeconds = 0f;
+
+            NameEntryBuffer = "";
+            NameEntryValidationMessage = "";
+            IsNameConfirmed = false;
+            _cursorBlinkTimer = 0f;
+
+            Pages.Clear();
+            CurrentPage = 0;
 
             HardHide();
         }
@@ -235,6 +325,18 @@ namespace Domain
 
             // If fully invisible, Type can be reset automatically if you want.
             // Keeping it as-is is often useful for debugging/replay.
+
+            // Name entry: update Body with buffer + blinking cursor
+            if (Type == ScreenOverlayType.NameEntry && ShowOverlay)
+            {
+                _cursorBlinkTimer += dtSeconds;
+                bool showCursor = ((int)(_cursorBlinkTimer / 0.5f)) % 2 == 0;
+                string cursor = showCursor ? "█" : " ";
+                string display = NameEntryBuffer + cursor;
+                string validation = string.IsNullOrEmpty(NameEntryValidationMessage)
+                    ? "" : $"\n{NameEntryValidationMessage}";
+                Body = $"CALLSIGN: {display}{validation}";
+            }
         }
 
         // -----------------------------
@@ -298,6 +400,91 @@ namespace Domain
 
             AutoHide = false;
             AutoHideSeconds = 0f;
+        }
+
+        public void SetNameEntryPreset(string defaultName = "")
+        {
+            Type = ScreenOverlayType.NameEntry;
+            Anchor = ScreenOverlayAnchor.Center;
+            IsModal = true;
+
+            Pages.Clear();
+            CurrentPage = 0;
+
+            Header = "RETROMESH // PILOT REGISTRY";
+            Title = "IDENTIFY YOURSELF";
+            NameEntryBuffer = defaultName;
+            NameEntryValidationMessage = "";
+            IsNameConfirmed = false;
+            _cursorBlinkTimer = 0f;
+            Body = "";
+            Footer = "ENTER TO CONFIRM  //  ESC TO GO BACK";
+
+            DimStrength = 0.65f;
+            PanelWidthRatio = 0.68f;
+            PanelHeightRatio = 0.26f;
+            PanelYOffsetRatio = 0.00f;
+            CenterText = true;
+
+            AutoHide = false;
+            AutoHideSeconds = 0f;
+            ShowOverlay = true;
+        }
+
+        /// <summary>
+        /// Processes a key press during name entry. Returns true if the key was consumed.
+        /// </summary>
+        public bool ProcessNameEntryKey(Key key)
+        {
+            if (Type != ScreenOverlayType.NameEntry || !ShowOverlay) return false;
+
+            // Letters A-Z
+            if (key >= Key.A && key <= Key.Z)
+            {
+                if (NameEntryBuffer.Length < MaxCallsignLength)
+                    NameEntryBuffer += (char)('A' + (key - Key.A));
+                return true;
+            }
+
+            // Digits 0-9 (top row)
+            if (key >= Key.D0 && key <= Key.D9)
+            {
+                if (NameEntryBuffer.Length < MaxCallsignLength)
+                    NameEntryBuffer += (char)('0' + (key - Key.D0));
+                return true;
+            }
+
+            // NumPad digits
+            if (key >= Key.NumPad0 && key <= Key.NumPad9)
+            {
+                if (NameEntryBuffer.Length < MaxCallsignLength)
+                    NameEntryBuffer += (char)('0' + (key - Key.NumPad0));
+                return true;
+            }
+
+            // Backspace
+            if (key == Key.Back && NameEntryBuffer.Length > 0)
+            {
+                NameEntryBuffer = NameEntryBuffer[..^1];
+                NameEntryValidationMessage = "";
+                return true;
+            }
+
+            // Space
+            if (key == Key.Space && NameEntryBuffer.Length < MaxCallsignLength)
+            {
+                NameEntryBuffer += ' ';
+                return true;
+            }
+
+            // Minus / underscore
+            if ((key == Key.OemMinus || key == Key.Subtract) && NameEntryBuffer.Length < MaxCallsignLength)
+            {
+                NameEntryBuffer += '-';
+                return true;
+            }
+
+            return false;
         }
     }
 }

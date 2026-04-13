@@ -331,7 +331,7 @@ namespace _3dRotations.Helpers
                     int height = terrainMap[i, j].mapDepth;
                     Color color = GetTileColor(height, maxHeight);
 
-                    int index = (j * mapSize + i) * 4;
+                    int index = (i * mapSize + j) * 4;
                     pixelData[index] = color.B;
                     pixelData[index + 1] = color.G;
                     pixelData[index + 2] = color.R;

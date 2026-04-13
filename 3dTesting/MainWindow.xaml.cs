@@ -1,8 +1,10 @@
 ﻿using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
+using _3dTesting.MainWindowClasses.Overlays;
 using _3dTesting.Rendering;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.Persistence;
 using Domain;
 using System;
 using System.IO;
@@ -61,8 +63,7 @@ namespace _3dTesting
         private long _lastTickTimestamp = 0;
 
         // Overlay handlers
-        private OverlayHandler _overlayHandler;
-        private HudOverlayHandlerV2 _hudHandler;
+        private OverlayManager _overlayManager;
         private MediaElement _videoOverlay;
         private string? _currentVideoClipPath;
         private bool _videoOverlayIsPlaying;
@@ -82,6 +83,12 @@ namespace _3dTesting
         private readonly System.Windows.Shapes.Ellipse _ramWarningInner;
         private const double RamWarningSize = 100;
 
+        // Aim assist target indicator (white reticle)
+        private readonly Canvas _aimAssistCanvas;
+        private readonly System.Windows.Shapes.Ellipse _aimAssistOuter;
+        private readonly System.Windows.Shapes.Ellipse _aimAssistInner;
+        private const double AimAssistIndicatorSize = 90;
+
         private bool isFading = false;
         private bool _isFadingIn = false;
         private int Fps = 0;
@@ -96,6 +103,9 @@ namespace _3dTesting
             Logger.EnableFileLogging = true;
             Logger.ClearLog();
             GameState.SurfaceState.RecordingFps = ScreenSetup.targetFps;
+
+            PersistenceSetup.Initialize();
+            GameState.GamePlayState.PlayerName = PersistenceSetup.LoadLastPlayerName();
 
             InitializeComponent();
             this.PreviewKeyDown += new KeyEventHandler(HandleKeys);
@@ -148,8 +158,7 @@ namespace _3dTesting
             //surfaceMapBitmap = GameState.SurfaceState.GlobalMapBitmap;
 
             // Overlay handlers must be put in the grid
-            _overlayHandler = new OverlayHandler(mainGrid);
-            _hudHandler = new HudOverlayHandlerV2(mainGrid);
+            _overlayManager = new OverlayManager(mainGrid);
 
             // MotherShip in-world health bar
             _motherShipHealthBarCanvas = new Canvas
@@ -210,6 +219,36 @@ namespace _3dTesting
             _ramWarningCanvas.Children.Add(_ramWarningInner);
             mainGrid.Children.Add(_ramWarningCanvas);
 
+            // Aim assist target indicator (white concentric circles)
+            _aimAssistCanvas = new Canvas
+            {
+                IsHitTestVisible = false,
+                Visibility = Visibility.Collapsed
+            };
+            Panel.SetZIndex(_aimAssistCanvas, 10);
+
+            _aimAssistOuter = new System.Windows.Shapes.Ellipse
+            {
+                Width = AimAssistIndicatorSize,
+                Height = AimAssistIndicatorSize,
+                Fill = System.Windows.Media.Brushes.Transparent,
+                Stroke = new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)),
+                StrokeThickness = 3
+            };
+
+            _aimAssistInner = new System.Windows.Shapes.Ellipse
+            {
+                Width = AimAssistIndicatorSize * 0.5,
+                Height = AimAssistIndicatorSize * 0.5,
+                Fill = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)),
+                Stroke = new SolidColorBrush(Color.FromArgb(160, 255, 255, 255)),
+                StrokeThickness = 2
+            };
+
+            _aimAssistCanvas.Children.Add(_aimAssistOuter);
+            _aimAssistCanvas.Children.Add(_aimAssistInner);
+            mainGrid.Children.Add(_aimAssistCanvas);
+
             timer.Interval = TimeSpan.FromMilliseconds(8);
             CompositionTarget.Rendering += Handle3dWorldRendering;
             stopwatch.Start();
@@ -222,7 +261,16 @@ namespace _3dTesting
         private void HandleKeys(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
+            {
+                // During name entry, Escape goes back to intro instead of quitting
+                if (GameState.ScreenOverlayState.Type == ScreenOverlayType.NameEntry
+                    && GameState.ScreenOverlayState.ShowOverlay)
+                {
+                    world.SceneHandler.HandleKeyPress(e, world);
+                    return;
+                }
                 Application.Current.Shutdown();
+            }
 
             if (e.Key == Key.LeftCtrl)
             {
@@ -372,19 +420,19 @@ namespace _3dTesting
                 if (w <= 0) w = 1920;
                 if (h <= 0) h = 1080;
 
-                _overlayHandler.Update(GameState.ScreenOverlayState, w, h);
-
-                // HUD V2: update each tick (it hides itself when ShowOverlay==true)
                 var gameplay = GameState.GamePlayState;
-
                 int triangles = worldRenderer.GetRenderingTriangleCount();
-                _hudHandler.Update(GameState.ScreenOverlayState, gameplay, w, h, Fps, triangles);
+
+                _overlayManager.Update(GameState.ScreenOverlayState, gameplay, w, h, Fps, triangles);
 
                 // MotherShip in-world health bar
                 UpdateMotherShipHealthBar(gameplay);
 
                 // MotherShip ram warning reticle
                 UpdateMotherShipRamWarning(gameplay);
+
+                // Aim assist target indicator
+                UpdateAimAssistIndicator(gameplay);
             }
 
             world.SceneHandler.UpdateFrame(world);
@@ -410,7 +458,7 @@ namespace _3dTesting
                     // Crop the source bitmap, draw markers on the copy, display it.
                     // Markers never touch the source bitmap — no save/restore needed.
                     GameHelpers.UpdateMapOverlayWithMarkers(
-                        _hudHandler.GetMinimapImage(),
+                        _overlayManager.GetMinimapImage(),
                         GameState.SurfaceState.GlobalMapBitmap,
                         Convert.ToInt32(GameState.SurfaceState.GlobalMapPosition.x),
                         Convert.ToInt32(GameState.SurfaceState.GlobalMapPosition.z)
@@ -587,6 +635,44 @@ namespace _3dTesting
             double innerSize = RamWarningSize * 0.5;
             Canvas.SetLeft(_ramWarningInner, cx - innerSize / 2);
             Canvas.SetTop(_ramWarningInner, cy - innerSize / 2);
+        }
+
+        private void UpdateAimAssistIndicator(GamePlayState gameplay)
+        {
+            if (gameplay == null || !gameplay.AimAssistTargetActive || isFading)
+            {
+                _aimAssistCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            if (GameState.ScreenOverlayState.Type != ScreenOverlayType.Game)
+            {
+                _aimAssistCanvas.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            // Flash the indicator using a sine wave (toggles opacity)
+            double phase = (DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond) % 600.0 / 600.0;
+            double alpha = 0.5 + 0.5 * Math.Sin(phase * Math.PI * 2);
+            byte outerAlpha = (byte)(200 * alpha);
+            byte innerAlpha = (byte)(60 * alpha);
+            byte innerStrokeAlpha = (byte)(160 * alpha);
+
+            _aimAssistOuter.Stroke = new SolidColorBrush(Color.FromArgb(outerAlpha, 255, 255, 255));
+            _aimAssistInner.Fill = new SolidColorBrush(Color.FromArgb(innerAlpha, 255, 255, 255));
+            _aimAssistInner.Stroke = new SolidColorBrush(Color.FromArgb(innerStrokeAlpha, 255, 255, 255));
+
+            _aimAssistCanvas.Visibility = Visibility.Visible;
+
+            double cx = gameplay.AimAssistTargetScreenX;
+            double cy = gameplay.AimAssistTargetScreenY;
+
+            Canvas.SetLeft(_aimAssistOuter, cx - AimAssistIndicatorSize / 2);
+            Canvas.SetTop(_aimAssistOuter, cy - AimAssistIndicatorSize / 2);
+
+            double innerSize = AimAssistIndicatorSize * 0.5;
+            Canvas.SetLeft(_aimAssistInner, cx - innerSize / 2);
+            Canvas.SetTop(_aimAssistInner, cy - innerSize / 2);
         }
 
         private static string ResolveVideoPath(string clipPath)

@@ -69,6 +69,10 @@ namespace _3dTesting.MainWindowClasses
         private readonly Rectangle _thrBarFill;
         private readonly Rectangle _bioBarFill;
 
+        // Highscore display (between center area and right panel)
+        private readonly TextBlock _highscoreLabel;
+        private readonly TextBlock _highscoreValue;
+
         // ----------------------------
         // SLOT LAYOUT (DESIGN COORDS)
         // Tune these numbers to match your PNG precisely.
@@ -127,6 +131,10 @@ namespace _3dTesting.MainWindowClasses
         // Bar dimensions (must match the track width inside PNG)
         private const double BarW = 400;   // slightly wider than before; adjust if your PNG track is shorter/longer
         private const double BarH = 16;
+
+        // Highscore text (centered between center area and right panel)
+        private const double HighscoreX = 1440;
+        private const double HighscoreY = 130;
 
         // Visual style for bar fill
         private static readonly Brush BarFillBrush = new SolidColorBrush(Color.FromArgb(220, 0, 255, 255));
@@ -235,6 +243,29 @@ namespace _3dTesting.MainWindowClasses
             _thrBarFill = CreateBarFill(RightBarX, RightThrY);
             _bioBarFill = CreateBarFill(RightBarX, RightBioY);
 
+            // ----- Highscore -----
+            _highscoreLabel = new TextBlock
+            {
+                Text = "HIGHSCORE",
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 22,
+                Foreground = Brushes.White,
+                FontWeight = FontWeights.SemiBold
+            };
+            Canvas.SetLeft(_highscoreLabel, HighscoreX);
+            Canvas.SetTop(_highscoreLabel, HighscoreY);
+
+            _highscoreValue = new TextBlock
+            {
+                Text = "0",
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 28,
+                Foreground = new SolidColorBrush(Color.FromArgb(220, 0, 255, 255)),
+                FontWeight = FontWeights.Bold
+            };
+            Canvas.SetLeft(_highscoreValue, HighscoreX);
+            Canvas.SetTop(_highscoreValue, HighscoreY + 30);
+
             // Compose
             _hudRoot.Children.Add(_frameImage);
             _hudRoot.Children.Add(_canvas);
@@ -251,6 +282,9 @@ namespace _3dTesting.MainWindowClasses
             _canvas.Children.Add(_altBarFill);
             _canvas.Children.Add(_thrBarFill);
             _canvas.Children.Add(_bioBarFill);
+
+            _canvas.Children.Add(_highscoreLabel);
+            _canvas.Children.Add(_highscoreValue);
 
             _canvas.Children.Add(_droneIcon);
             _canvas.Children.Add(_droneBarFill);
@@ -348,6 +382,8 @@ namespace _3dTesting.MainWindowClasses
                 : 0f;
             SetBarFill(_droneBarFill, dronePct, EnemyBarW);
             SetBarFill(_seederBarFill, seederPct, EnemyBarW);
+
+            _highscoreValue.Text = gameplay.Score.ToString("N0");
 
             UpdateViewportRect();
         }

@@ -5,6 +5,7 @@ using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.Persistence;
 using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.SeederControls;
@@ -238,69 +239,37 @@ namespace _3dTesting.MainWindowClasses.Loops
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             CleanupExplodedObjects(world);
+
+            // Scene director: centralizes drone activation, mothership activation,
+            // victory/defeat conditions, and checkpoint logic per scene.
+            var director = activeScene?.Director;
+            if (!_deathSequenceStarted && !_victorySequenceStarted && director != null)
+            {
+                director.Update();
+            }
+
             UpdateHudState(world);
 
-            // Activate KamikazeDrones when Decoy weapon is unlocked (first PowerUp collected)
-            if (!_deathSequenceStarted && !_victorySequenceStarted &&
-                activeScene != null && activeScene.SceneType == SceneTypes.Game)
+            // Victory: the director signals when all scene objectives are met
+            if (!_deathSequenceStarted && !_victorySequenceStarted && director != null && director.IsVictory)
             {
-                if (GameState.GamePlayState.IsDecoyUnlocked)
-                {
-                    var aiObjs = GameState.SurfaceState.AiObjects;
-                    for (int i = 0; i < aiObjs.Count; i++)
-                    {
-                        if (aiObjs[i].ObjectName == "KamikazeDrone" && !aiObjs[i].IsActive)
-                        {
-                            aiObjs[i].IsActive = true;
-                        }
-                    }
-                }
-            }
+                _victorySequenceStarted = true;
+                _victoryStartTicks = Stopwatch.GetTimestamp();
 
-            // Activate MotherShipSmall when all seeders are eliminated
-            if (!_deathSequenceStarted && !_victorySequenceStarted &&
-                activeScene != null && activeScene.SceneType == SceneTypes.Game)
-            {
-                var gps2 = GameState.GamePlayState;
-                if (gps2.InitialSeeders > 0 && gps2.SeedersRemaining == 0)
-                {
-                    var aiObjs = GameState.SurfaceState.AiObjects;
-                    for (int i = 0; i < aiObjs.Count; i++)
-                    {
-                        if (aiObjs[i].ObjectName == "MotherShipSmall" && !aiObjs[i].IsActive)
-                        {
-                            aiObjs[i].IsActive = true;
-                        }
-                    }
-                }
-            }
-
-            // Victory detection: all enemies eliminated
-            if (!_deathSequenceStarted && !_victorySequenceStarted &&
-                activeScene != null && activeScene.SceneType == SceneTypes.Game)
-            {
-                var gps = GameState.GamePlayState;
-                if ((gps.InitialDrones > 0 || gps.InitialSeeders > 0) &&
-                    gps.DronesRemaining == 0 && gps.SeedersRemaining == 0 && gps.MotherShipsRemaining == 0)
-                {
-                    _victorySequenceStarted = true;
-                    _victoryStartTicks = Stopwatch.GetTimestamp();
-
-                    var o = GameState.ScreenOverlayState;
-                    o.ResetToDefaults();
-                    o.Type = ScreenOverlayType.Game;
-                    o.Anchor = ScreenOverlayAnchor.Center;
-                    o.Header = "PLANET SECURED";
-                    o.Title = "ALL THREATS ELIMINATED";
-                    o.Body = "Proceeding to next sector...";
-                    o.Footer = "";
-                    o.DimStrength = 0.50f;
-                    o.PanelWidthRatio = 0.60f;
-                    o.PanelHeightRatio = 0.22f;
-                    o.ShowOverlay = true;
-                    o.AutoHide = false;
-                    o.ShowDebugOverlay = false;
-                }
+                var o = GameState.ScreenOverlayState;
+                o.ResetToDefaults();
+                o.Type = ScreenOverlayType.Game;
+                o.Anchor = ScreenOverlayAnchor.Center;
+                o.Header = "PLANET SECURED";
+                o.Title = "ALL THREATS ELIMINATED";
+                o.Body = "Proceeding to next sector...";
+                o.Footer = "";
+                o.DimStrength = 0.50f;
+                o.PanelWidthRatio = 0.60f;
+                o.PanelHeightRatio = 0.22f;
+                o.ShowOverlay = true;
+                o.AutoHide = false;
+                o.ShowDebugOverlay = false;
             }
 
             // Victory timer: show overlay briefly then trigger scene transition
@@ -349,10 +318,34 @@ namespace _3dTesting.MainWindowClasses.Loops
                 }
 
                 // Spawn PowerUp objects at the location of exploded objects that have the flag
+                // and award score for enemy kills / trigger checkpoints
+                var gps = GameState.GamePlayState;
+                bool checkpointTriggered = false;
+
                 foreach (var obj in explodedObjects)
                 {
+                    if (EnemySetup.IsEnemyTypeValid(obj.ObjectName))
+                    {
+                        gps.RecordKill(obj.ObjectName);
+
+                        if (GameSetup.IsCheckpointEnemy(obj.ObjectName, obj.HasPowerUp))
+                            checkpointTriggered = true;
+                    }
+
                     if (obj.HasPowerUp && obj.WorldPosition != null)
                     {
+                        // Only one PowerUp at a time — skip if one already exists
+                        bool alreadyExists = false;
+                        for (int i = 0; i < inhabitants.Count; i++)
+                        {
+                            if (inhabitants[i].ObjectName == "PowerUp")
+                            {
+                                alreadyExists = true;
+                                break;
+                            }
+                        }
+                        if (alreadyExists) continue;
+
                         var powerup = PowerUp.CreatePowerup(obj.ParentSurface);
                         powerup.WorldPosition = new Vector3
                         {
@@ -392,6 +385,28 @@ namespace _3dTesting.MainWindowClasses.Loops
                     {
                         aiObjects.RemoveAt(i);
                     }
+                }
+
+                if (checkpointTriggered)
+                {
+                    // Recount remaining enemies after removal so the checkpoint
+                    // reflects the actual state, not the stale previous-frame values.
+                    int seedersLeft = 0, dronesLeft = 0, motherShipsLeft = 0;
+                    for (int i = 0; i < aiObjects.Count; i++)
+                    {
+                        var o = aiObjects[i];
+                        if (o.ImpactStatus?.HasExploded == true) continue;
+                        if (o.ObjectName == "Seeder") seedersLeft++;
+                        else if (o.ObjectName == "KamikazeDrone" && o.IsActive) dronesLeft++;
+                        else if (o.ObjectName == "MotherShipSmall" && o.IsActive) motherShipsLeft++;
+                    }
+                    gps.SeedersRemaining = seedersLeft;
+                    gps.DronesRemaining = dronesLeft;
+                    gps.MotherShipsRemaining = motherShipsLeft;
+
+                    gps.SaveCheckpoint();
+                    try { GameStatePersistence.SaveGameState(); } catch { }
+                    try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
                 }
 
                 var bestCandidateStates = GameState.ShipState.BestCandidateStates;

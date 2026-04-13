@@ -58,5 +58,13 @@ namespace Domain
         /// 0 or negative = no range limit.
         /// </summary>
         float LocalInfectionSpreadRadius => 10000f;
+
+        /// <summary>
+        /// Optional per-scene gameplay director that centralizes phase
+        /// transitions, enemy activation, victory/defeat conditions, and
+        /// checkpoint logic. Scenes without a director return null and
+        /// rely on the default game-loop behaviour.
+        /// </summary>
+        ISceneDirector? Director => null;
     }
 }

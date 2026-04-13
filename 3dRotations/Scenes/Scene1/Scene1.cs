@@ -8,6 +8,7 @@ using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Controls.SeederControls;
+using GameAiAndControls.Controls.SpaceSwanControls;
 using System;
 using System.Collections.Generic;
 using System.Runtime.Intrinsics.Arm;
@@ -21,6 +22,7 @@ namespace _3dRotations.Scene.Scene1
 
         public string SceneMusic { get; } = "music_flight";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
+        public ISceneDirector Director { get; } = new Scene1Director();
 
         public GameModes GameMode { get; } = GameModes.Playback;
         //How much of the surface needs to be infected for the player to lose, as a percentage of total bio tiles
@@ -60,7 +62,7 @@ namespace _3dRotations.Scene.Scene1
             world.WorldInhabitants.Add(guidanceArrow);
 
             //Add drones that will be waiting until the player has a Decoy powerup
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 4; i++)
             {
                 var rmd = new Random();
 
@@ -114,17 +116,35 @@ namespace _3dRotations.Scene.Scene1
             //Mothership for this Scene — spawns inactive, enters when all seeders are destroyed
             var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
             motherShip.Rotation = new Vector3 { };
-            motherShip.WorldPosition = new Vector3 { x = 95100, y = 0, z = 94200 };
+            motherShip.WorldPosition = new Vector3 { x = 95100, y = 0, z = 93700 };
             motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
             motherShip.ObjectName = "MotherShipSmall";
             motherShip.Movement = new MotherShipSmallControls();
             motherShip.CrashBoxDebugMode = false;
             motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
-            motherShip.HasPowerUp = true;
+            motherShip.HasPowerUp = false;
             motherShip.IsActive = false;
             motherShip.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(motherShip);
             GameState.SurfaceState.AiObjects.Add(motherShip);
+
+            // SpaceSwans — passive wildlife, 50 points each, don't block scene progression
+            for (int s = 0; s < 50; s++)
+            {
+                var rmdSwan = new Random();
+                var spaceSwan = SpaceSwan.CreateSpaceSwan(Surface);
+                spaceSwan.Rotation = new Vector3 { };
+                spaceSwan.WorldPosition = new Vector3 { x = 95700 + rmdSwan.Next(-40000, 40000), y = 0, z = 92000 + rmdSwan.Next(-40000, 40000) };
+                spaceSwan.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                spaceSwan.ObjectName = "SpaceSwan";
+                spaceSwan.Movement = new SpaceSwanControls();
+                spaceSwan.CrashBoxDebugMode = false;
+                spaceSwan.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.SpaceSwanHealth };
+                spaceSwan.HasPowerUp = false;
+                spaceSwan.IsActive = true;
+                world.WorldInhabitants.Add(spaceSwan);
+                GameState.SurfaceState.AiObjects.Add(spaceSwan);
+            }
 
             //Add more seeders upper left side of the map
             for (int i = 0; i < 3; i++)
