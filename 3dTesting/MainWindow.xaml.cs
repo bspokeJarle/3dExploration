@@ -104,8 +104,6 @@ namespace _3dTesting
             Logger.ClearLog();
             GameState.SurfaceState.RecordingFps = ScreenSetup.targetFps;
 
-            PersistenceSetup.SupabaseUrl = "https://tzzydggvjdpcipbpqmsz.supabase.co";
-            PersistenceSetup.SupabaseAnonKey = "sb_publishable_nepdOJnAgCyE9YXRdEFXfw_zR2hpiWm";
             PersistenceSetup.Initialize();
             GameState.GamePlayState.PlayerName = PersistenceSetup.LoadLastPlayerName();
 

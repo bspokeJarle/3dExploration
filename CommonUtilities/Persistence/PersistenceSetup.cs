@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text.Json;
 
 namespace CommonUtilities.Persistence
 {
@@ -131,14 +132,49 @@ namespace CommonUtilities.Persistence
         // Initialization
         // -----------------------------------------------------------------
 
+        private const string SecretsFileName = "secrets.json";
+
         /// <summary>
-        /// Creates local data folder and ensures key files exist.
+        /// Full path to the local secrets file in the app data folder.
+        /// </summary>
+        public static string SecretsFilePath => Path.Combine(LocalFolder, SecretsFileName);
+
+        /// <summary>
+        /// Creates local data folder, loads secrets, and ensures key files exist.
         /// Call once at application startup.
         /// </summary>
         public static void Initialize()
         {
             Directory.CreateDirectory(LocalFolder);
+            LoadSecrets();
             EncryptionHelper.EnsureKeyFile(LocalKeyFilePath);
+        }
+
+        /// <summary>
+        /// Reads Supabase credentials from the local secrets.json file.
+        /// If the file does not exist, the app runs in offline-only mode.
+        /// The file is stored in %APPDATA%/OmegaStrain and is never committed to source control.
+        /// </summary>
+        private static void LoadSecrets()
+        {
+            try
+            {
+                if (!File.Exists(SecretsFilePath)) return;
+
+                var json = File.ReadAllText(SecretsFilePath);
+                var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("SupabaseUrl", out var urlProp))
+                    SupabaseUrl = urlProp.GetString();
+
+                if (root.TryGetProperty("SupabaseAnonKey", out var keyProp))
+                    SupabaseAnonKey = keyProp.GetString();
+            }
+            catch
+            {
+                // Secrets file missing or malformed — run offline
+            }
         }
     }
 }
