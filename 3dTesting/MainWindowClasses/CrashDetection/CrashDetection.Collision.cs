@@ -257,6 +257,54 @@ namespace _3dTesting.Helpers
             }
         }
 
+        private static void HandleBomberBombBlastDamage(List<_3dObject> activeWorld)
+        {
+            float blastRadius = CommonUtilities.CommonSetup.GameSetup.BomberBombBlastRadius;
+            float blastDamage = CommonUtilities.CommonSetup.GameSetup.BomberBombBlastDamage;
+            int count = activeWorld.Count;
+
+            for (int i = 0; i < count; i++)
+            {
+                var bomb = activeWorld[i];
+                if (bomb == null) continue;
+                if (bomb.ObjectName != "BomberBomb") continue;
+                if (bomb.ImpactStatus?.HasExploded == true) continue;
+                // Bomb is exploding when its crashboxes have been cleared
+                if (bomb.CrashBoxes != null && bomb.CrashBoxes.Count > 0) continue;
+                if (bomb.ObjectParts == null || bomb.ObjectParts.Count == 0) continue;
+
+                if (!_processedBombBlasts.Add(bomb.ObjectId)) continue;
+
+                var blastCenter = bomb.WorldPosition as Vector3;
+                if (blastCenter == null) continue;
+
+                // Find the ship and check blast distance using ObjectOffsets
+                // (ship WorldPosition is 0,0,0; bombs use world-synced offsets)
+                for (int j = 0; j < count; j++)
+                {
+                    if (j == i) continue;
+                    var target = activeWorld[j];
+                    if (target == null) continue;
+                    if (target.ObjectName != "Ship") continue;
+
+                    // Use the ship's crash center world position for distance
+                    var shipPosRaw = CommonUtilities.CommonGlobalState.GameState.ShipState?.ShipCrashCenterWorldPosition;
+                    if (shipPosRaw == null) continue;
+                    var shipPos = new Vector3 { x = shipPosRaw.x, y = shipPosRaw.y, z = shipPosRaw.z };
+
+                    float distance = (float)_3dObjectHelpers.GetDistance(blastCenter, shipPos);
+
+                    if (distance <= blastRadius)
+                    {
+                        CommonUtilities.CommonGlobalState.GameState.GamePlayState?.ApplyDamage(blastDamage);
+
+                        LogCollision(bomb, target,
+                            $"[FRAME:{numFrame}] [BOMB BLAST] {bomb.ObjectName} -> {target.ObjectName} | Distance:{distance:0.##} | BlastRadius:{blastRadius:0.##} | Damage:{blastDamage:0.##}");
+                    }
+                }
+            }
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static Vector3 GetCenterOfBox(List<Vector3> points)
         {

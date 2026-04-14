@@ -182,11 +182,26 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
 
         private void HandleCrash(I3dObject theObject)
         {
-            if (theObject.ImpactStatus?.ObjectHealth > 0)
+            if (theObject.ImpactStatus == null) return;
+
+            int currentHealth = theObject.ImpactStatus.ObjectHealth ?? EnemySetup.ZeppelinBomberHealth;
+            int damage = theObject.ImpactStatus.ObjectName switch
+            {
+                "Ship" => currentHealth,
+                string name when WeaponSetup.IsWeaponTypeValid(name) => WeaponSetup.GetWeaponDamage(name),
+                _ => currentHealth
+            };
+
+            theObject.ImpactStatus.ObjectHealth = currentHealth - damage;
+
+            if (theObject.ImpactStatus.ObjectHealth > 0)
             {
                 theObject.ImpactStatus.HasCrashed = false;
                 return;
             }
+
+            // Release tracker slot when destroyed
+            ZeppelinBomberAi.ReleaseTracker(_aiState);
 
             // Play explosion sound
             if (_audio != null && _explosionSound != null)

@@ -170,6 +170,7 @@ namespace _3dTesting.Helpers
             }
 
             HandleDecoyBlastDamage(activeWorld);
+            HandleBomberBombBlastDamage(activeWorld);
 
             if (ShouldLogAny && !LogOnlyCollisions)
             {

@@ -18,6 +18,10 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
         private const float DirectionChangeCooldownSeconds = 5f;
         private const float RetargetCooldownSeconds = 20f;
 
+        // Only one bomber may track the ship at a time
+        private static BomberState? _activeTracker = null;
+        private static readonly object _trackerLock = new();
+
         internal sealed class BomberState
         {
             public bool IsInitialized;
@@ -28,6 +32,7 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
             public DateTime LastRetarget = DateTime.MinValue;
             public float BombTimer;
             public bool IsBombing;
+            public bool IsTrackingShip;
         }
 
         internal static void Initialize(BomberState state)
@@ -56,7 +61,30 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
                 distanceToShip = MathF.Sqrt(dx * dx + dz * dz);
             }
 
+            // Check if this bomber can track the ship (only one at a time)
+            bool canTrack = false;
             if (shipPos != null && distanceToShip < ApproachRadius)
+            {
+                lock (_trackerLock)
+                {
+                    if (state.IsTrackingShip)
+                    {
+                        canTrack = true;
+                    }
+                    else if (_activeTracker == null || !_activeTracker.IsTrackingShip)
+                    {
+                        _activeTracker = state;
+                        state.IsTrackingShip = true;
+                        canTrack = true;
+                    }
+                }
+            }
+            else if (state.IsTrackingShip)
+            {
+                ReleaseTracker(state);
+            }
+
+            if (canTrack)
             {
                 state.CurrentSpeed = ApproachSpeed;
 
@@ -114,8 +142,19 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
             return false;
         }
 
+        internal static void ReleaseTracker(BomberState state)
+        {
+            lock (_trackerLock)
+            {
+                state.IsTrackingShip = false;
+                if (ReferenceEquals(_activeTracker, state))
+                    _activeTracker = null;
+            }
+        }
+
         internal static void ResetState(BomberState state)
         {
+            ReleaseTracker(state);
             state.IsInitialized = false;
             state.DirectionX = 0f;
             state.DirectionZ = 0f;

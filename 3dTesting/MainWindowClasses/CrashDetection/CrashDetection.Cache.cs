@@ -21,6 +21,7 @@ namespace _3dTesting.Helpers
         private static int SkippedByDistance = 0;
         private static int numFrame = 0;
         private static readonly HashSet<int> _processedDecoyBlasts = new();
+        private static readonly HashSet<int> _processedBombBlasts = new();
 
         private readonly struct ObjectTypeFlags
         {

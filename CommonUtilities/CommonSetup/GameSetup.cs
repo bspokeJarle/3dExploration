@@ -18,6 +18,10 @@ namespace CommonUtilities.CommonSetup
         // Viewport diagonal is ~960 world units; 850 covers most of the visible screen.
         public static float DecoyBlastRadius { get; set; } = 850f;
 
+        // BomberBomb blast radius: exploding bombs damage the ship within this distance.
+        public static float BomberBombBlastRadius { get; set; } = 600f;
+        public static float BomberBombBlastDamage { get; set; } = 35f;
+
         // Scoring: base points awarded per enemy kill
         public static int SeederKillScore { get; set; } = 100;
         public static int KamikazeDroneKillScore { get; set; } = 50;

@@ -11,8 +11,8 @@ namespace _3dRotations.World.Objects
 {
     public class ZeppelinBomber
     {
-        private const float ZoomRatio = 2.4f;
-        private const float CrashboxSize = 1.08f;
+        private const float ZoomRatio = 4.0f;
+        private const float CrashboxSize = 1.5f;
 
         // ----------------------------------------------------
         //  HULL / BODY

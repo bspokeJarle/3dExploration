@@ -53,6 +53,11 @@ namespace _3DWorld.Scene
                 throw new InvalidOperationException($"Failed to create a new instance of scene type {GetActiveScene().GetType()}.");
 
             var gps = GameState.GamePlayState;
+
+            // Submit highscore and save progress before the state is reset
+            try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
+            try { GameStatePersistence.SaveGameState(); } catch { }
+
             bool hadCheckpoint = gps.HasCheckpoint;
             var snapshot = hadCheckpoint ? gps.CaptureCheckpointSnapshot() : default;
 
