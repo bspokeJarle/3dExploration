@@ -64,6 +64,14 @@ namespace _3DWorld.Scene
             bool hadCheckpoint = gps.HasCheckpoint;
             var snapshot = hadCheckpoint ? gps.CaptureCheckpointSnapshot() : default;
 
+            // Capture cumulative stats before reset so they survive when there is no checkpoint
+            long prevScore = gps.Score;
+            int prevLives = gps.Lives;
+            int prevKills = gps.TotalKills;
+            int prevShots = gps.TotalShotsFired;
+            int prevDeaths = gps.TotalDeaths;
+            int prevPowerUps = gps.PowerUpsCollected;
+
             ClearVideoOverlay();
             gps.ResetForNewGame();
             ResetSurfaceState();
@@ -82,6 +90,18 @@ namespace _3DWorld.Scene
                 gps.ApplyCheckpointRestart(snapshot);
 
                 if (enableLogging) Logger.Log($"Scenehandler: Checkpoint restored. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
+            }
+            else
+            {
+                // No checkpoint — preserve accumulated stats with death penalty
+                gps.Score = prevScore;
+                gps.Lives = Math.Max(0, prevLives - 1);
+                gps.TotalKills = prevKills;
+                gps.TotalShotsFired = prevShots;
+                gps.TotalDeaths = prevDeaths + 1;
+                gps.PowerUpsCollected = prevPowerUps;
+
+                if (enableLogging) Logger.Log($"Scenehandler: No checkpoint — stats preserved. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
             }
         }
 
@@ -116,7 +136,10 @@ namespace _3DWorld.Scene
 
             // Persist scene progress so the player can resume from here
             gps.SceneIndex = currentSceneIndex;
-            try { GameStatePersistence.SaveGameState(); } catch { }
+            if (currentSceneIndex != 0)
+            {
+                try { GameStatePersistence.SaveGameState(); } catch { }
+            }
 
             ClearVideoOverlay();
             gps.ResetForNewGame();

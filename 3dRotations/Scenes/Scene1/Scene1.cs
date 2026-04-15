@@ -71,7 +71,7 @@ namespace _3dRotations.Scene.Scene1
                 var bomber = ZeppelinBomber.CreateZeppelinBomber(Surface);
                 bomber.Rotation = new Vector3 { };
                 bomber.WorldPosition = new Vector3 { x = (95700 + rmdBomber.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmdBomber.Next(-40000, 40000)) * ws };
-                bomber.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
+                bomber.ObjectOffsets = new Vector3 { x = 0, y = -50, z = 400 };
                 bomber.ObjectName = "ZeppelinBomber";
                 bomber.Movement = new ZeppelinBomberControls();
                 bomber.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.ZeppelinBomberHealth };
@@ -190,7 +190,7 @@ namespace _3dRotations.Scene.Scene1
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
-            surfaceObject.ObjectOffsets = new Vector3 { x = 70 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 300 };
+            surfaceObject.ObjectOffsets = new Vector3 { x = 70 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 400 };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Crashboxes are added n the GetSurfaceViewPort method

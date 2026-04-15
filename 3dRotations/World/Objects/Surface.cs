@@ -138,6 +138,14 @@ namespace _3dRotations.World.Objects
                         }
                     }
 
+                    // Fade-in: first 3 rows gradually brighten, full brightness from row 4
+                    if (i <= 3)
+                    {
+                        float fadeFactor = i / 4f; // i=1 → 0.25, i=2 → 0.50, i=3 → 0.75
+                        color1 = DarkenHexColor(color1, fadeFactor);
+                        color2 = color1;
+                    }
+
                     var triangle1 = new TriangleMeshWithColor
                     {
                         Color = color1,

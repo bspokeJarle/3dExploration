@@ -61,7 +61,7 @@ namespace _3dRotations.Scene.Scene5
                 var bomber = ZeppelinBomber.CreateZeppelinBomber(Surface);
                 bomber.Rotation = new Vector3 { };
                 bomber.WorldPosition = new Vector3 { x = (95700 + rmdBomber.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmdBomber.Next(-40000, 40000)) * ws };
-                bomber.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
+                bomber.ObjectOffsets = new Vector3 { x = 0, y = -50, z = 400 };
                 bomber.ObjectName = "ZeppelinBomber";
                 bomber.Movement = new ZeppelinBomberControls();
                 bomber.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.ZeppelinBomberHealth };
@@ -178,7 +178,7 @@ namespace _3dRotations.Scene.Scene5
             // Surface
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
-            surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 300 };
+            surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 400 };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             surfaceObject.Movement = new GroundControls();

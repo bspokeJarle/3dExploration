@@ -269,7 +269,7 @@ public class SceneHandlerTests
     }
 
     [TestMethod]
-    public void ResetActiveScene_WithoutCheckpoint_StartsClean()
+    public void ResetActiveScene_WithoutCheckpoint_PreservesAccumulatedStats()
     {
         var handler = new SceneHandler();
         var world = CreateWorld(handler);
@@ -277,12 +277,24 @@ public class SceneHandlerTests
         // Advance to Scene1
         AdvanceScene(handler, world);
 
-        // Set score without saving checkpoint
-        GameState.GamePlayState.Score = 5000;
+        // Set stats without saving checkpoint
+        var gps = GameState.GamePlayState;
+        gps.Score = 5000;
+        gps.TotalKills = 3;
+        gps.TotalShotsFired = 20;
+        gps.TotalDeaths = 0;
+        gps.PowerUpsCollected = 1;
+        gps.Lives = 3;
 
         handler.ResetActiveScene(world);
 
-        Assert.AreEqual(0L, GameState.GamePlayState.Score, "Without checkpoint, score should reset to 0.");
+        gps = GameState.GamePlayState;
+        Assert.AreEqual(5000L, gps.Score, "Without checkpoint, score should be preserved.");
+        Assert.AreEqual(3, gps.TotalKills, "Without checkpoint, kills should be preserved.");
+        Assert.AreEqual(20, gps.TotalShotsFired, "Without checkpoint, shots should be preserved.");
+        Assert.AreEqual(1, gps.TotalDeaths, "Without checkpoint, deaths should be incremented by 1.");
+        Assert.AreEqual(1, gps.PowerUpsCollected, "Without checkpoint, powerups should be preserved.");
+        Assert.AreEqual(2, gps.Lives, "Without checkpoint, lives should be decremented by 1.");
     }
 
     // -----------------------------------------------------------------
