@@ -13,8 +13,8 @@ namespace _3dTesting._3dRotation
     public class _3dTo2d
     {
         private readonly bool enableLogging = false;
-        private const int screenCenterX = ScreenSetup.screenSizeX / 2;
-        private const int screenCenterY = ScreenSetup.screenSizeY / 2;
+        private static int screenCenterX => ScreenSetup.screenSizeX / 2;
+        private static int screenCenterY => ScreenSetup.screenSizeY / 2;
         private long CurrentFrame = 0;
 
         public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, long? currentFrame)

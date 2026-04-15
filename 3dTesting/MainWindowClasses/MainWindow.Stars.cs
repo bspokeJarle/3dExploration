@@ -1,5 +1,6 @@
 ﻿using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -18,13 +19,13 @@ namespace _3dTesting.MainWindowClasses
         private const int maxStarCount = 150;
 
         // Stars that move outside this world radius are recycled.
-        private const float despawnRadius = 1500f;
+        private static float despawnRadius => ScreenSetup.screenSizeX * 1.0f;
 
         // Local visible spawn area around camera (relative offsets).
-        private const float SpawnXMin = -1200f;
-        private const float SpawnXMax = 1200f;
-        private const float SpawnYMin = -750f;
-        private const float SpawnYMax = 750f;
+        private static float SpawnXMin => ScreenSetup.screenSizeX * -0.8f;
+        private static float SpawnXMax => ScreenSetup.screenSizeX * 0.8f;
+        private static float SpawnYMin => ScreenSetup.screenSizeY * -0.73f;
+        private static float SpawnYMax => ScreenSetup.screenSizeY * 0.73f;
 
         // Do not spawn new stars if surface is closer than this to the "camera" on Y.
         private const int GroundDistanceY = 250;

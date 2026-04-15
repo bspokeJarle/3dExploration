@@ -46,7 +46,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                 state.RamTargetLocked = true;
                 var gmp = GameState.SurfaceState.GlobalMapPosition;
                 state.RamTargetWorldPosition = new Vector3 { x = gmp.x, y = gmp.y, z = gmp.z };
-                state.RamTargetShipOffsetsY = GameState.ShipState?.ShipObjectOffsets?.y ?? 200f;
+                state.RamTargetShipOffsetsY = GameState.ShipState?.ShipObjectOffsets?.y ?? (ScreenSetup.screenSizeY * 0.195f);
             }
 
             float warningStart = RamLockOnSecond;

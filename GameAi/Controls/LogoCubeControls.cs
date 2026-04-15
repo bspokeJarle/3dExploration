@@ -1,5 +1,6 @@
 ﻿using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System;
 using System.IO;
@@ -42,7 +43,7 @@ namespace GameAiAndControls.Controls
                 }
 
                 // Start outside right
-                theObject.ObjectOffsets.x = 600f;
+                theObject.ObjectOffsets.x = ScreenSetup.screenSizeX * 0.4f;
                 theObject.ObjectOffsets.z = 0f;
             }
 
@@ -52,7 +53,7 @@ namespace GameAiAndControls.Controls
             // -------------------------
             // CONFIG (tweak these live)
             // -------------------------
-            const float EnterStartX = 600f;
+            float EnterStartX = ScreenSetup.screenSizeX * 0.4f;
             const float EnterEndX = 0f;
 
             const float ZoomStartZ = 0f;

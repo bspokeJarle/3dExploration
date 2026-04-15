@@ -156,14 +156,14 @@ namespace _3dTesting.Helpers
                         a.ImpactStatus.HasCrashed = true;
                         b.ImpactStatus.HasCrashed = true;
 
-                        if (!aWasAlreadyCrashed)
+                        if (!aWasAlreadyCrashed || !IsCombatCollisionName(a.ImpactStatus.ObjectName))
                         {
                             a.ImpactStatus.ObjectName = b.ObjectName;
                             a.ImpactStatus.ImpactDirection = EstimateDirection(centerA, centerB);
                             a.ImpactStatus.CrashBoxName = a.CrashBoxNames != null && ai < a.CrashBoxNames.Count ? a.CrashBoxNames[ai] : null;
                         }
 
-                        if (!bWasAlreadyCrashed)
+                        if (!bWasAlreadyCrashed || !IsCombatCollisionName(b.ImpactStatus.ObjectName))
                         {
                             b.ImpactStatus.ObjectName = a.ObjectName;
                             b.ImpactStatus.ImpactDirection = EstimateDirection(centerB, centerA);
@@ -370,5 +370,11 @@ namespace _3dTesting.Helpers
             else
                 return ImpactDirection.Center;
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsCombatCollisionName(string objectName) =>
+            objectName == "Ship" ||
+            EnemySetup.IsEnemyTypeValid(objectName) ||
+            WeaponSetup.IsWeaponTypeValid(objectName);
     }
 }

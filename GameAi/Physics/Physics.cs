@@ -6,6 +6,7 @@ using CommonUtilities._3DHelpers;
 using Domain;
 using GameAiAndControls.Helpers;
 using static Domain._3dSpecificsImplementations;
+using CommonUtilities.CommonSetup;
 using static GameAiAndControls.Helpers.PhysicsHelpers;
 
 namespace GameAiAndControls.Physics
@@ -54,7 +55,13 @@ namespace GameAiAndControls.Physics
         // ── Height limits ────────────────────────────────────────────
         public float CeilingHeight { get; set; } = 1000f;
         public float FloorHeight { get; set; } = -100f;
-        public float MaxScreenDrop { get; set; } = 450f;
+        // Computed from current screen size so the value stays correct even
+        // when Physics is constructed before ScreenSetup.Initialize().
+        public float MaxScreenDrop
+        {
+            get => ScreenSetup.screenSizeY * 0.44f;
+            set { }
+        }
 
         // ── Hover/float after thrust release ─────────────────────────
         // When thrust stops, gravity stays at HoverMinGravityScale for
@@ -68,7 +75,16 @@ namespace GameAiAndControls.Physics
         // ── Airborne settle (return-to-rest while not thrusting) ─────
         // Gentle spring rate that pulls the surface back toward its
         // resting screen position and zero altitude when airborne.
-        public float AirborneSettleRate { get; set; } = 2.0f;
+        // Scaled by 1/ScreenScaleY so the gravity-settle equilibrium
+        // distance stays proportional to the screen height, ensuring
+        // the ship can always reach the surface crash box.
+        // Computed from current screen size so the value stays correct even
+        // when Physics is constructed before ScreenSetup.Initialize().
+        public float AirborneSettleRate
+        {
+            get => 2.0f / ScreenSetup.ScreenScaleY;
+            set { }
+        }
 
         // Applies drag and clamps inertia to [-MaxInertia, MaxInertia]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

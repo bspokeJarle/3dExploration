@@ -26,7 +26,7 @@ namespace GameAiAndControls.Controls
         private const float MaxRotationSpeed = 160f;
         private const float RotationDrag = 0.90f;
         private const float DEG2RAD = MathF.PI / 180f;
-        private const float ShipRestingScreenY = 200f;
+        private static float ShipRestingScreenY => ScreenSetup.screenSizeY * 0.195f;
 
         // Engine glow colors: idle (dark red) when no thrust, active (yellow) at full thrust.
         private static readonly (int r, int g, int b) EngineActiveRgb = (0xFF, 0xFF, 0x00);
@@ -682,7 +682,8 @@ namespace GameAiAndControls.Controls
                     theObject.ImpactStatus.ObjectHealth -= weaponDamage;
                     if (logging) Logger.Log($"[ShipCrash] Weapon hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
-                else if (theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
+                else if (crashedWith == "Surface" ||
+                         theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
                 {
                     // Surface/terrain landing — stop falling and let the settle
@@ -840,7 +841,9 @@ namespace GameAiAndControls.Controls
             // Apply vertical inertia to screen position (positive InertiaY = up = ObjectOffsets.y decreases)
             ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia));
             // Apply vertical inertia to altitude (positive InertiaY = up = altitude increases)
-            GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia);
+            // Ceiling-only clamp: FloorHeight must not cap gmpY or the gravity-settle
+            // equilibrium oscillates against the clamp, causing surface vibration.
+            GameState.SurfaceState.GlobalMapPosition.y = MathF.Min(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia, Physics.CeilingHeight);
         }
 
         public void ApplyGravity(float deltaTime)
@@ -882,7 +885,9 @@ namespace GameAiAndControls.Controls
 
             float verticalInertia = Physics.ApplyFallGravity(rotationX, deltaTime);
             ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia));
-            GameState.SurfaceState.GlobalMapPosition.y = Physics.ClampToHeightRange(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia);
+            // Ceiling-only clamp: FloorHeight must not cap gmpY or the gravity-settle
+            // equilibrium oscillates against the clamp, causing surface vibration.
+            GameState.SurfaceState.GlobalMapPosition.y = MathF.Min(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia, Physics.CeilingHeight);
 
             // Gently pull screen position and altitude back toward resting values
             const float MaxAirSettleSpeed = 300f;

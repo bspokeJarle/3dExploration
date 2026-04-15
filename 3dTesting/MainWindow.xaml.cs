@@ -61,6 +61,7 @@ namespace _3dTesting
         private DateTime fadeOutTrigged = DateTime.MinValue;
         private int _updateInProgress = 0;
         private long _lastTickTimestamp = 0;
+        private int _minimapFrameSkip = 0;
 
         // Overlay handlers
         private OverlayManager _overlayManager;
@@ -110,6 +111,7 @@ namespace _3dTesting
             InitializeComponent();
             this.PreviewKeyDown += new KeyEventHandler(HandleKeys);
             Closing += MainWindow_Closing;
+            Loaded += Window_Loaded;
 
             mainGrid = new Grid();
             Content = mainGrid;
@@ -258,6 +260,14 @@ namespace _3dTesting
         {
         }
 
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            int w = (int)ActualWidth;
+            int h = (int)ActualHeight;
+            if (w > 0 && h > 0)
+                ScreenSetup.Initialize(w, h);
+        }
+
         private void HandleKeys(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
@@ -344,7 +354,7 @@ namespace _3dTesting
                 return;
 
             int steps = (int)Math.Floor(_tickAccumulatorMs / targetFrameIntervalMs);
-            if (steps > 5) steps = 5;
+            if (steps > 3) steps = 3;
 
             _tickAccumulatorMs -= steps * targetFrameIntervalMs;
 
@@ -441,17 +451,16 @@ namespace _3dTesting
             if (stopwatch.ElapsedMilliseconds >= 1000)
             {
                 Fps = frameCount;
-                Dispatcher.Invoke(() =>
-                    FpsText.Text = $"FPS: {frameCount} Triangles:{worldRenderer.GetRenderingTriangleCount()} {gameWorldManager.DebugMessage}"
-                );
+                FpsText.Text = $"FPS: {frameCount} Triangles:{worldRenderer.GetRenderingTriangleCount()} {gameWorldManager.DebugMessage}";
                 frameCount = 0;
                 stopwatch.Restart();
             }
 
             // Minimap -> HUD slot only
-            if (!isFading && world.WorldInhabitants.Count > 50)
+            if (!isFading && world.WorldInhabitants.Count > 50 && ++_minimapFrameSkip >= 3)
             {
-                 if (GameState.SurfaceState.GlobalMapPosition != null)
+                _minimapFrameSkip = 0;
+                if (GameState.SurfaceState.GlobalMapPosition != null)
                 {
                     GameHelpers.UpdateDirtyTilesInMap(GameState.SurfaceState.GlobalMapBitmap);
 
@@ -580,7 +589,7 @@ namespace _3dTesting
 
             // Position the bar to the right of the mothership's screen center
             double barX = gameplay.MotherShipScreenX + MotherShipBarOffsetX;
-            double maxBarY = ScreenSetup.screenSizeY - 175 - MotherShipBarHeight / 2;
+            double maxBarY = ScreenSetup.screenSizeY * 0.83 - MotherShipBarHeight / 2;
             double barY = Math.Min(gameplay.MotherShipScreenY - MotherShipBarHeight / 2, maxBarY);
 
             Canvas.SetLeft(_motherShipHealthBarBg, barX);

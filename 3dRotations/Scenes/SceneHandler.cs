@@ -156,6 +156,7 @@ namespace _3DWorld.Scene
             }
 
             GameState.GamePlayState.SceneIndex = currentSceneIndex;
+            ResetSurfaceState();
             SetupActiveScene(world);
 
             // Restore score and combat stats from saved game so the player builds upon them

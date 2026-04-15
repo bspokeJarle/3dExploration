@@ -38,7 +38,9 @@ namespace _3dRotations.Scene.Scene1
         public float LocalInfectionSpreadRadius { get; } = 3500f;
 
         public void SetupScene(I3dWorld world)
-        {          
+        {
+            var ws = SurfaceSetup.WorldScale;
+
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
@@ -68,7 +70,7 @@ namespace _3dRotations.Scene.Scene1
                 var rmdBomber = new Random();
                 var bomber = ZeppelinBomber.CreateZeppelinBomber(Surface);
                 bomber.Rotation = new Vector3 { };
-                bomber.WorldPosition = new Vector3 { x = 95700 + rmdBomber.Next(-40000, 40000), y = 0, z = 92000 + rmdBomber.Next(-40000, 40000) };
+                bomber.WorldPosition = new Vector3 { x = (95700 + rmdBomber.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmdBomber.Next(-40000, 40000)) * ws };
                 bomber.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
                 bomber.ObjectName = "ZeppelinBomber";
                 bomber.Movement = new ZeppelinBomberControls();
@@ -86,7 +88,7 @@ namespace _3dRotations.Scene.Scene1
 
                 //Add Kamikaze drones
                 var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
-                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-25000, 25000), y = 0, z = 92000 + rmd.Next(-25000, 25000) };
+                kamikaze.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-25000, 25000)) * ws, y = 0, z = (92000 + rmd.Next(-25000, 25000)) * ws };
                 kamikaze.Rotation = new Vector3 { };
                 kamikaze.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
                 kamikaze.ObjectName = "KamikazeDrone";
@@ -107,7 +109,7 @@ namespace _3dRotations.Scene.Scene1
                 var seeder = Seeder.CreateSeeder(Surface);
                 //Initialize the seeder rotation
                 seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-10000, 10000), y = 0, z = 92000 + rmd.Next(-10000, 10000)};
+                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-10000, 10000)) * ws, y = 0, z = (92000 + rmd.Next(-10000, 10000)) * ws };
                 seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seeder.ObjectName = "Seeder";
                 seeder.Movement = new SeederControls();
@@ -121,7 +123,7 @@ namespace _3dRotations.Scene.Scene1
             //Special Seeder that has a powerup hidden
             var seederPowerup = Seeder.CreateSeeder(Surface);
             seederPowerup.Rotation = new Vector3 { };
-            seederPowerup.WorldPosition = new Vector3 { x = 95700 + -10000, y = 0, z = 92000 + -10000 };
+            seederPowerup.WorldPosition = new Vector3 { x = (95700 + -10000) * ws, y = 0, z = (92000 + -10000) * ws };
             seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
             seederPowerup.ObjectName = "Seeder";
             seederPowerup.Movement = new SeederControls();
@@ -134,7 +136,7 @@ namespace _3dRotations.Scene.Scene1
             //Mothership for this Scene — spawns inactive, enters when all seeders are destroyed
             var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
             motherShip.Rotation = new Vector3 { };
-            motherShip.WorldPosition = new Vector3 { x = 95100, y = 0, z = 93700 };
+            motherShip.WorldPosition = new Vector3 { x = 95100 * ws, y = 0, z = 93700 * ws };
             motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
             motherShip.ObjectName = "MotherShipSmall";
             motherShip.Movement = new MotherShipSmallControls();
@@ -152,7 +154,7 @@ namespace _3dRotations.Scene.Scene1
                 var rmdSwan = new Random();
                 var spaceSwan = SpaceSwan.CreateSpaceSwan(Surface);
                 spaceSwan.Rotation = new Vector3 { };
-                spaceSwan.WorldPosition = new Vector3 { x = 95700 + rmdSwan.Next(-40000, 40000), y = 0, z = 92000 + rmdSwan.Next(-40000, 40000) };
+                spaceSwan.WorldPosition = new Vector3 { x = (95700 + rmdSwan.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmdSwan.Next(-40000, 40000)) * ws };
                 spaceSwan.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 spaceSwan.ObjectName = "SpaceSwan";
                 spaceSwan.Movement = new SpaceSwanControls();
@@ -172,7 +174,7 @@ namespace _3dRotations.Scene.Scene1
                 var seeder = Seeder.CreateSeeder(Surface);
                 //Initialize the seeder rotation
                 seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-20000, 5000), y = 0, z = 92000 + rmd.Next(-20000, 5000) };
+                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-20000, 5000)) * ws, y = 0, z = (92000 + rmd.Next(-20000, 5000)) * ws };
                 seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seeder.ObjectName = "Seeder";
                 seeder.Movement = new SeederControls();
@@ -188,7 +190,7 @@ namespace _3dRotations.Scene.Scene1
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
-            surfaceObject.ObjectOffsets = new Vector3 { x = 40, y = 500, z = 300 };
+            surfaceObject.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 300 };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Crashboxes are added n the GetSurfaceViewPort method
@@ -223,7 +225,7 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
 
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tower.ObjectOffsets = new Vector3 { x = 40, y =280, z = 300 };
+                tower.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 280 * ScreenSetup.ScreenScaleY, z = 300 };
                 tower.ObjectName = "Tower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
@@ -246,7 +248,7 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
 
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tree.ObjectOffsets = new Vector3 { x = 40, y = 430, z = 300 };
+                tree.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 430 * ScreenSetup.ScreenScaleY, z = 300 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
@@ -267,7 +269,7 @@ namespace _3dRotations.Scene.Scene1
                 house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
 
-                house.ObjectOffsets = new Vector3 { x = 40, y = 450, z = 300 };
+                house.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 300 };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };

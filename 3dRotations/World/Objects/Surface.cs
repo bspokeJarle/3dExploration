@@ -70,9 +70,9 @@ namespace _3dRotations.World.Objects
                 int currentMapY = (mapZIndex + i) % mapSize;
                 int nextMapY = (currentMapY + 1) % mapSize;
                 YPosition += TileSize();
-                var XPosition = -(tileSize * viewPortSize / 2);
+                var XPosition = -(tileSize * viewPortSize / 2) - tileSize;
 
-                for (int j = 1; j < viewPortSize - 1; j++)
+                for (int j = 0; j < viewPortSize - 1; j++)
                 {
                     int currentMapX = (mapXIndex + j) % mapSize;
                     int nextMapX = (currentMapX + 1) % mapSize;

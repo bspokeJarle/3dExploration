@@ -10,12 +10,13 @@ namespace CommonUtilities.CommonSetup
     //TODO: Expand this as needed, common map properties can go here
     public static class MapSetup
     {
-        public const int globalMapSize = 2500 + (SurfaceSetup.surfaceWidth / tileSize);
-        public const int tileSize = 75;
+        private const float OriginalTileSize = 75f;
+        public const int globalMapSize = 2500 + SurfaceSetup.DefaultViewPortSize;
+        public static int tileSize => SurfaceSetup.tileSize;
         public static int maxHeight = 75; //Height elevation for the map
-        public const int bitmapMapCenterOffsetX = 4700; //Offset to center the bitmap on the map position
-        public const int bitmapMapCenterOffsetY = 1750; //Offset to center the bitmap on the map position
+        public static int bitmapMapCenterOffsetX => (int)(4700f / OriginalTileSize * SurfaceSetup.tileSize);
+        public static int bitmapMapCenterOffsetY => (int)(1750f / OriginalTileSize * SurfaceSetup.tileSize);
         public const int bitmapSize = 72; //Size of the bitmap on screen
-        public static int screensPrMap = (MapSetup.globalMapSize / SurfaceSetup.viewPortSize);
+        public static int screensPrMap => globalMapSize / SurfaceSetup.DefaultViewPortSize;
     }
 }
