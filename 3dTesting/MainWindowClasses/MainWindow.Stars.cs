@@ -28,7 +28,8 @@ namespace _3dTesting.MainWindowClasses
         private static float SpawnYMax => ScreenSetup.screenSizeY * 0.73f;
 
         // Do not spawn new stars if surface is closer than this to the "camera" on Y.
-        private const int GroundDistanceY = 250;
+        // Scales with screen height so stars appear at the same relative altitude on any resolution.
+        private static float GroundDistanceY => 250f * ScreenSetup.ScreenScaleY;
 
         // Z: in front of camera (into the screen) = NEGATIVE Z.
         private const float SpawnZFar = -700f; // furthest away

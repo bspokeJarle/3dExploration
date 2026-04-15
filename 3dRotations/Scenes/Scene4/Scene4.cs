@@ -178,7 +178,7 @@ namespace _3dRotations.Scene.Scene4
             // Surface
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
-            surfaceObject.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 300 };
+            surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 300 };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             surfaceObject.Movement = new GroundControls();

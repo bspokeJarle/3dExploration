@@ -166,7 +166,7 @@ namespace _3dRotations.Scene.Scene1
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
-            surfaceObject.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 300 };
+            surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 300 };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Crashboxes are added n the GetSurfaceViewPort method
