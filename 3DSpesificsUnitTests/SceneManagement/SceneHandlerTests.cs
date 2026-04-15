@@ -54,7 +54,22 @@ public class SceneHandlerTests
         Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
         Assert.AreEqual("Scene2", handler.GetActiveScene().GetType().Name);
 
-        // Scene 3: Outro (SceneType is Intro)
+        // Scene 3: Game (Scene3)
+        AdvanceScene(handler, world);
+        Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
+        Assert.AreEqual("Scene3", handler.GetActiveScene().GetType().Name);
+
+        // Scene 4: Game (Scene4)
+        AdvanceScene(handler, world);
+        Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
+        Assert.AreEqual("Scene4", handler.GetActiveScene().GetType().Name);
+
+        // Scene 5: Game (Scene5)
+        AdvanceScene(handler, world);
+        Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
+        Assert.AreEqual("Scene5", handler.GetActiveScene().GetType().Name);
+
+        // Scene 6: Outro (SceneType is Intro)
         AdvanceScene(handler, world);
         Assert.AreEqual(SceneTypes.Intro, handler.GetActiveScene().SceneType);
         Assert.AreEqual("Outro", handler.GetActiveScene().GetType().Name);
@@ -66,9 +81,12 @@ public class SceneHandlerTests
         var handler = new SceneHandler();
         var world = CreateWorld(handler);
 
-        // Advance through all 4 scenes
+        // Advance through all 7 scenes
         AdvanceScene(handler, world); // -> Scene1
         AdvanceScene(handler, world); // -> Scene2
+        AdvanceScene(handler, world); // -> Scene3
+        AdvanceScene(handler, world); // -> Scene4
+        AdvanceScene(handler, world); // -> Scene5
         AdvanceScene(handler, world); // -> Outro
         AdvanceScene(handler, world); // -> Intro (wrap)
 
@@ -164,9 +182,12 @@ public class SceneHandlerTests
         var handler = new SceneHandler();
         var world = CreateWorld(handler);
 
-        // Advance to Scene2
+        // Advance to Scene5 (last Game scene)
         AdvanceScene(handler, world); // -> Scene1
         AdvanceScene(handler, world); // -> Scene2
+        AdvanceScene(handler, world); // -> Scene3
+        AdvanceScene(handler, world); // -> Scene4
+        AdvanceScene(handler, world); // -> Scene5
 
         // Set stats
         var gps = GameState.GamePlayState;
@@ -206,6 +227,9 @@ public class SceneHandlerTests
 
         AdvanceScene(handler, world); // -> Scene1
         AdvanceScene(handler, world); // -> Scene2
+        AdvanceScene(handler, world); // -> Scene3
+        AdvanceScene(handler, world); // -> Scene4
+        AdvanceScene(handler, world); // -> Scene5
         AdvanceScene(handler, world); // -> Outro
         AdvanceScene(handler, world); // -> Intro (wrap)
 
@@ -315,6 +339,9 @@ public class SceneHandlerTests
 
         AdvanceScene(handler, world); // -> Scene1
         AdvanceScene(handler, world); // -> Scene2
+        AdvanceScene(handler, world); // -> Scene3
+        AdvanceScene(handler, world); // -> Scene4
+        AdvanceScene(handler, world); // -> Scene5
         AdvanceScene(handler, world); // -> Outro
 
         Assert.IsNull(handler.GetActiveScene().Director, "Outro should not have a director.");
@@ -328,6 +355,9 @@ public class SceneHandlerTests
 
         AdvanceScene(handler, world); // -> Scene1
         AdvanceScene(handler, world); // -> Scene2
+        AdvanceScene(handler, world); // -> Scene3
+        AdvanceScene(handler, world); // -> Scene4
+        AdvanceScene(handler, world); // -> Scene5
         AdvanceScene(handler, world); // -> Outro
 
         var scene = handler.GetActiveScene();
@@ -550,7 +580,7 @@ public class SceneHandlerTests
         int s2Drones = totalDrones - s1Drones;
         int s2MotherShips = totalMotherShips - s1MotherShips;
 
-        Assert.AreEqual(8, s2Seeders, "Scene2 should add 8 seeders (4 + 3 + 1 powerup).");
+        Assert.AreEqual(10, s2Seeders, "Scene2 should add 10 seeders (5 + 3 + 2 powerup).");
         Assert.AreEqual(6, s2Drones, "Scene2 should add 6 kamikaze drones.");
         Assert.AreEqual(1, s2MotherShips, "Scene2 should add 1 mothership.");
     }

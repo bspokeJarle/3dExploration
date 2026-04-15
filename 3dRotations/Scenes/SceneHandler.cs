@@ -1,4 +1,7 @@
 ﻿using _3dRotations.Scene.Scene1;
+using _3dRotations.Scene.Scene3;
+using _3dRotations.Scene.Scene4;
+using _3dRotations.Scene.Scene5;
 using _3dRotations.Scenes.Intro;
 using _3dRotations.Scenes.Outro;
 using _3dTesting._3dWorld;
@@ -17,7 +20,7 @@ namespace _3DWorld.Scene
 {
     public class SceneHandler : ISceneHandler
     {
-        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Outro() };
+        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Scene3(), new Scene4(), new Scene5(), new Outro() };
         private int currentSceneIndex = 0;
         private const bool enableLogging = false;
         private const int SceneAdvanceDelayFrames = 5;

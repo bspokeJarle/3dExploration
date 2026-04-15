@@ -1,4 +1,3 @@
-﻿
 using _3dRotations.Helpers;
 using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
@@ -6,6 +5,7 @@ using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
+using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Controls.SeederControls;
@@ -14,30 +14,28 @@ using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
 
-namespace _3dRotations.Scene.Scene1
+namespace _3dRotations.Scene.Scene3
 {
-    public class Scene2:IScene
+    public class Scene3 : IScene
     {
         Surface Surface = new();
 
         public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
-        public ISceneDirector Director { get; } = new Scene2Director();
-        public GameModes GameMode { get; } = GameModes.Playback;
-        public float InfectionThresholdPercent { get; } = 10f;
-        public int InfectionSpreadRate { get; } = 75;
-        public int SeederOffscreenSpeedFactor { get; } = 10;
-        public float LocalInfectionSpreadDelaySec { get; } = 8.0f;
-        public float LocalInfectionSpreadRadius { get; } = 3500f;
+        public ISceneDirector Director { get; } = new Scene3Director();
+        public GameModes GameMode { get; } = GameModes.Live;
+        public float InfectionThresholdPercent { get; } = 8f;
+        public int InfectionSpreadRate { get; } = 100;
+        public int SeederOffscreenSpeedFactor { get; } = 12;
+        public float LocalInfectionSpreadDelaySec { get; } = 6.0f;
+        public float LocalInfectionSpreadRadius { get; } = 4000f;
 
         public void SetupScene(I3dWorld world)
         {
             var ws = SurfaceSetup.WorldScale;
 
-            //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
-            //Generate 2D map for the surface, maxtrees and maxhouses set
-            Surface.Create2DMap(30000,15000,GameMode, "Scene2SurfaceRecording.retro");
+            Surface.Create2DMap(30000, 15000, GameMode, null);
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -47,7 +45,6 @@ namespace _3dRotations.Scene.Scene1
             ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
             world.WorldInhabitants.Add(ship);
 
-            // Guidance arrow — on-screen indicator pointing toward closest seeder
             var guidanceArrow = SeederGuidanceArrow.CreateSeederGuidanceArrow(Surface);
             guidanceArrow.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 200 };
             guidanceArrow.Rotation = new Vector3 { x = 70, y = 0, z = 90 };
@@ -57,8 +54,25 @@ namespace _3dRotations.Scene.Scene1
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
 
+            // ZeppelinBombers — 2 bombers introduced this scene
+            for (int b = 0; b < 2; b++)
+            {
+                var rmdBomber = new Random();
+                var bomber = ZeppelinBomber.CreateZeppelinBomber(Surface);
+                bomber.Rotation = new Vector3 { };
+                bomber.WorldPosition = new Vector3 { x = (95700 + rmdBomber.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmdBomber.Next(-40000, 40000)) * ws };
+                bomber.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
+                bomber.ObjectName = "ZeppelinBomber";
+                bomber.Movement = new ZeppelinBomberControls();
+                bomber.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.ZeppelinBomberHealth };
+                bomber.CrashBoxDebugMode = false;
+                bomber.IsActive = true;
+                world.WorldInhabitants.Add(bomber);
+                GameState.SurfaceState.AiObjects.Add(bomber);
+            }
+
             // Drones — waiting until the player has a Decoy powerup
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 8; i++)
             {
                 var rmd = new Random();
 
@@ -77,7 +91,7 @@ namespace _3dRotations.Scene.Scene1
             }
 
             // Seeders close to the player for immediate pressure
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 6; i++)
             {
                 var rmd = new Random();
 
@@ -95,13 +109,13 @@ namespace _3dRotations.Scene.Scene1
             }
 
             // Seeders spread further across the map
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 4; i++)
             {
                 var rmd = new Random();
 
                 var seeder = Seeder.CreateSeeder(Surface);
                 seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-25000, 5000)) * ws, y = 0, z = (92000 + rmd.Next(-25000, 5000)) * ws };
+                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-30000, 10000)) * ws, y = 0, z = (92000 + rmd.Next(-30000, 10000)) * ws };
                 seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seeder.ObjectName = "Seeder";
                 seeder.Movement = new SeederControls();
@@ -112,13 +126,13 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.AiObjects.Add(seeder);
             }
 
-            // Powerup seeders — unlock decoy and lazer
+            // Powerup seeders
             for (int i = 0; i < 2; i++)
             {
                 var rmd = new Random();
                 var seederPowerup = Seeder.CreateSeeder(Surface);
                 seederPowerup.Rotation = new Vector3 { };
-                seederPowerup.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-15000, 15000)) * ws, y = 0, z = (92000 + rmd.Next(-15000, 15000)) * ws };
+                seederPowerup.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-20000, 20000)) * ws, y = 0, z = (92000 + rmd.Next(-20000, 20000)) * ws };
                 seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seederPowerup.ObjectName = "Seeder";
                 seederPowerup.Movement = new SeederControls();
@@ -161,15 +175,12 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.AiObjects.Add(spaceSwan);
             }
 
-            //Get the surface viewport based on the global Map Position
-            //Important: In a Scene, Surface should be amongst the first objects added to the world
+            // Surface
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
-            //This position and rotation is for the onscreen object, not the map position
             surfaceObject.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 300 };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
-            //Crashboxes are added n the GetSurfaceViewPort method
             surfaceObject.Movement = new GroundControls();
             surfaceObject.ParentSurface = Surface;
             surfaceObject.ImpactStatus = new ImpactStatus { };
@@ -205,49 +216,36 @@ namespace _3dRotations.Scene.Scene1
                 world.WorldInhabitants.Add(tower);
             }
 
-            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight(), 30000);
+            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
             var treeIndex = 0;
             foreach (var treePlacement in treePlacements)
             {
                 treeIndex++;
-                //Debug.WriteLine($"Tree placement: {treePlacement.x} {treePlacement.y}");
-                //TODO: We need design more trees
                 var tree = Tree.CreateTree(Surface);
-                //The tree don't need a world position, it's a surface based object
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tree.SurfaceBasedId = GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
-                //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
                 tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 300 };
-                //Crashbox offsets for Tree, counteract the object offsets
-                //tree.CrashboxOffsets = new Vector3 { };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
                 tree.CrashBoxDebugMode = false;
-                if (tree.SurfaceBasedId>0) world.WorldInhabitants.Add(tree);
+                if (tree.SurfaceBasedId > 0) world.WorldInhabitants.Add(tree);
             }
 
             var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
             foreach (var housePlacement in housePlacements)
             {
-                //Debug.WriteLine($"House placement: {housePlacement.x} {housePlacement.y}");
-
                 var house = House.CreateHouse(Surface);
-                //Initialize the house rotation
-                //The tree don't need a world position, it's a surface based object
                 house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-                //Find the surface based id for the tree
                 house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
                 house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 300 };
-                //TODO need to find the right offsets for house
-                //house.CrashboxOffsets = new Vector3 { };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };
                 house.CrashBoxDebugMode = false;
-                if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
+                if (house.SurfaceBasedId > 0) world.WorldInhabitants.Add(house);
             }
         }
 
@@ -260,18 +258,18 @@ namespace _3dRotations.Scene.Scene1
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "THE OMEGA STRAIN — PHASE II";
+            o.Title = "THE OMEGA STRAIN — PHASE III";
 
             o.Body =
-                "NEREID outer colony TRITON-7 has gone dark.\n\n" +
-                "Long-range telemetry confirms Omega Strain\n" +
-                "has breached the quarantine perimeter.\n" +
-                "Seeder count: TEN. Escort drones: SIX.\n" +
-                "Infection spread rate: ACCELERATED.\n" +
-                "Terrain: unknown — no prior survey data.\n\n" +
-                "Bio-contamination tolerance: 10%.\n\n" +
-                "REVISED DIRECTIVE:\n" +
-                "Sterilize TRITON-7. Leave nothing behind.";
+                "Deep-space relay CYGNUS-9 is under siege.\n\n" +
+                "Seeder activity has doubled. Twelve confirmed.\n" +
+                "Escort drones: EIGHT. Heavily armed.\n" +
+                "New threat detected: ZEPPELIN BOMBERS.\n" +
+                "Two bomber units patrol the upper atmosphere.\n" +
+                "Infection spread rate: CRITICAL.\n\n" +
+                "Bio-contamination tolerance: 8%.\n\n" +
+                "DIRECTIVE:\n" +
+                "Neutralize all threats. Watch the skies.";
 
             o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";
 
@@ -285,6 +283,7 @@ namespace _3dRotations.Scene.Scene1
 
             o.ShowDebugOverlay = false;
         }
+
         public void SetupGameOverlay()
         {
             GameState.ScreenOverlayState.ResetToDefaults();
