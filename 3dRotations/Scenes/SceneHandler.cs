@@ -194,6 +194,42 @@ namespace _3DWorld.Scene
                 gps.TotalShotsFired = _pendingSavedState.TotalShotsFired;
                 gps.TotalDeaths = _pendingSavedState.TotalDeaths;
                 gps.PowerUpsCollected = _pendingSavedState.PowerUpsCollected;
+
+                // If there's a checkpoint, trim enemies and restore full checkpoint state
+                if (_pendingSavedState.HasCheckpoint)
+                {
+                    GameStatePersistence.RestoreToGamePlayState(_pendingSavedState);
+
+                    var snapshot = gps.CaptureCheckpointSnapshot();
+
+                    TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
+                    TrimEnemies(world, "KamikazeDrone", snapshot.DronesRemaining);
+                    TrimEnemies(world, "MotherShipSmall", snapshot.MotherShipsRemaining);
+
+                    // Activate enemies that should already be active at this checkpoint
+                    var aiObjs = GameState.SurfaceState.AiObjects;
+                    if (snapshot.SeedersRemaining == 0 && snapshot.DronesRemaining == 0)
+                    {
+                        for (int i = 0; i < aiObjs.Count; i++)
+                        {
+                            if (aiObjs[i].ObjectName == "MotherShipSmall" && !aiObjs[i].IsActive)
+                                aiObjs[i].IsActive = true;
+                        }
+                    }
+                    if (gps.IsDecoyUnlocked)
+                    {
+                        for (int i = 0; i < aiObjs.Count; i++)
+                        {
+                            if (aiObjs[i].ObjectName == "KamikazeDrone" && !aiObjs[i].IsActive)
+                                aiObjs[i].IsActive = true;
+                        }
+                    }
+
+                    // Re-initialize director so it sees the trimmed enemy state
+                    var scene = GetActiveScene();
+                    scene.Director?.Initialize(world.EventBus!, world);
+                }
+
                 _pendingSavedState = null;
             }
         }

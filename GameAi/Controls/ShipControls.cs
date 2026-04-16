@@ -48,7 +48,8 @@ namespace GameAiAndControls.Controls
         private SoundDefinition? _releaseDecoySound;
         private SoundDefinition? _changeWeaponSound;
         private SoundDefinition? _bulletSound;
-        private SoundDefinition? _powerupSound;
+            private SoundDefinition? _powerupSound;
+            private SoundDefinition? _impactThudSound;
         private IAudioInstance? _rocketInstance;
         private IAudioInstance? _bulletInstance;
 
@@ -106,7 +107,7 @@ namespace GameAiAndControls.Controls
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             // Already configured, so nothing else is required.
-            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null && _powerupSound != null)
+            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null && _powerupSound != null && _impactThudSound != null)
                 return;
 
             if (audioPlayer == null || soundRegistry == null)
@@ -119,6 +120,7 @@ namespace GameAiAndControls.Controls
             _changeWeaponSound = soundRegistry.Get("change_weapon");
             _bulletSound = soundRegistry.Get("bullet_main");
             _powerupSound = soundRegistry.Get("powerup_collect");
+            _impactThudSound = soundRegistry.Get("lazer_thud");
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
@@ -295,38 +297,122 @@ namespace GameAiAndControls.Controls
             }
         }
 
+        // Mouse-as-virtual-joystick state (Zarch/Virus-inspired).
+        // Mouse displacement from screen center sets desired yaw/pitch rate;
+        // the further from center, the faster the turn. The ship responds
+        // through the same acceleration/drag system as keyboard controls.
+        private bool _mouseActive = false;
+        private int _screenCenterX;
+        private int _screenCenterY;
+        private const float MouseDeadZone = 0.05f;
+        private const float MouseSensitivity = 1.6f;
+
         public void GlobalHookMouseMovement(object sender, MouseEventArgs e)
         {
-            var deltaX = e.X - FormerMouseX;
-            var deltaY = e.Y - FormerMouseY;
-
-            if (FormerMouseX > 0 && FormerMouseY > 0)
+            if (!_mouseActive)
             {
-                rotationX += (int)(deltaY / 3 * MathF.Cos(rotationZ * DEG2RAD));
-                rotationY += (int)(deltaY / 3 * MathF.Sin(rotationZ * DEG2RAD));
-                rotationZ += deltaX / 3;
-                rotationX %= 360;
-                rotationY %= 360;
-                rotationZ %= 360;
+                // First mouse event — capture screen center reference
+                _screenCenterX = (int)(ScreenSetup.screenSizeX / 2);
+                _screenCenterY = (int)(ScreenSetup.screenSizeY / 2);
+                _mouseActive = true;
             }
 
-            FormerMouseX = e.X;
-            FormerMouseY = e.Y;
+            float halfWidth = ScreenSetup.screenSizeX / 2f;
+            float halfHeight = ScreenSetup.screenSizeY / 2f;
+
+            // Normalized displacement from center: -1..+1
+            float nx = (e.X - _screenCenterX) / halfWidth;
+            float ny = (e.Y - _screenCenterY) / halfHeight;
+
+            // Apply dead zone
+            if (MathF.Abs(nx) < MouseDeadZone) nx = 0f;
+            if (MathF.Abs(ny) < MouseDeadZone) ny = 0f;
+
+            // Clamp to -1..+1
+            nx = MathF.Max(-1f, MathF.Min(1f, nx));
+            ny = MathF.Max(-1f, MathF.Min(1f, ny));
+
+            // Set desired turn rates — feeds into the same velocity system as keyboard
+            _mouseYawInput = nx * MouseSensitivity;
+            _mousePitchInput = ny * MouseSensitivity;
         }
 
-        private void GlobalHookMouseDown(object sender, MouseEventArgs e) => ThrustOn = true;
+        private float _mouseYawInput = 0f;
+        private float _mousePitchInput = 0f;
+
+        private void GlobalHookMouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                if (!ThrustOn)
+                {
+                    if (_rocketInstance != null)
+                    {
+                        _rocketInstance.Stop(playEndSegment: false);
+                        _rocketInstance = null;
+                    }
+
+                    if (_audio != null && _rocketSound != null)
+                    {
+                        var audioPosition = ((_3dObject)ParentObject).GetAudioPosition();
+                        _rocketInstance = _audio.Play(
+                            _rocketSound,
+                            AudioPlayMode.SegmentedLoop,
+                            new AudioPlayOptions
+                            {
+                                WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                            });
+                    }
+                }
+                ThrustOn = true;
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                _fireKeyHeld = true;
+
+                if (GameState.GamePlayState.SelectedWeapon == WeaponType.Bullet
+                    && !string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase)
+                    && _bulletInstance == null
+                    && _audio != null && _bulletSound != null)
+                {
+                    var audioPosition = ((_3dObject)ParentObject).GetAudioPosition();
+                    _bulletInstance = _audio.Play(
+                        _bulletSound,
+                        AudioPlayMode.SegmentedLoop,
+                        new AudioPlayOptions
+                        {
+                            WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                        });
+                }
+
+                FireWeapon();
+            }
+        }
 
         private void GlobalHookMouseUp(object sender, MouseEventArgs e)
         {
-            ThrustOn = false;
-            Thrust = 0;
-            Physics.ThrustEffect = 0f;
-            Physics.VerticalLiftFactor = 0f;
-
-            if (_rocketInstance != null)
+            if (e.Button == MouseButtons.Left)
             {
-                _rocketInstance.Stop(playEndSegment: true);
-                _rocketInstance = null;
+                ThrustOn = false;
+                Thrust = 0;
+                Physics.ThrustEffect = 0f;
+                Physics.VerticalLiftFactor = 0f;
+
+                if (_rocketInstance != null)
+                {
+                    _rocketInstance.Stop(playEndSegment: true);
+                    _rocketInstance = null;
+                }
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                _fireKeyHeld = false;
+
+                if (_bulletInstance != null)
+                {
+                    _bulletInstance.Stop(playEndSegment: true);
+                    _bulletInstance = null;
+                }
             }
         }
 
@@ -559,6 +645,12 @@ namespace GameAiAndControls.Controls
             if (_upHeld) _pitchVelocity += RotationAcceleration * deltaTime;
             if (_downHeld) _pitchVelocity -= RotationAcceleration * deltaTime;
 
+            // Mouse virtual-joystick: displacement from center sets target turn rate
+            if (_mouseYawInput != 0f)
+                _yawVelocity += _mouseYawInput * RotationAcceleration * deltaTime;
+            if (_mousePitchInput != 0f)
+                _pitchVelocity += _mousePitchInput * RotationAcceleration * deltaTime;
+
             _yawVelocity = MathF.Max(-MaxRotationSpeed, MathF.Min(MaxRotationSpeed, _yawVelocity)) * RotationDrag;
             _pitchVelocity = MathF.Max(-MaxRotationSpeed, MathF.Min(MaxRotationSpeed, _pitchVelocity)) * RotationDrag;
 
@@ -569,6 +661,20 @@ namespace GameAiAndControls.Controls
             int pitchStep = (int)_pitchAccumulator;
             if (yawStep != 0) { rotationZ += yawStep; _yawAccumulator -= yawStep; }
             if (pitchStep != 0) { tilt += pitchStep; _pitchAccumulator -= pitchStep; }
+
+            // Gently return tilt toward level-flight angle when no pitch input is held.
+            // LevelFlightTilt gives a slight forward lean so the ship cruises naturally
+            // rather than stopping dead in a hover.
+            // Disabled: needs playtesting before enabling.
+            //const int LevelFlightTilt = 8;
+            //const float TiltReturnRate = 0.04f;
+            //if (!_upHeld && !_downHeld && tilt != LevelFlightTilt)
+            //{
+            //    int diff = tilt - LevelFlightTilt;
+            //    int step = (int)(diff * TiltReturnRate);
+            //    if (step == 0 && diff != 0) step = Math.Sign(diff);
+            //    tilt -= step;
+            //}
 
             if (_cannonRecoilOffset > 0f)
             {
@@ -587,7 +693,7 @@ namespace GameAiAndControls.Controls
                 HandleThrust(deltaTime);
             }
 
-            if (Thrust == 0)
+            if (Thrust == 0 && !isExploding)
                 ApplyGravity(deltaTime);
 
             if (ParentObject.Particles?.Particles.Count > 0)
@@ -650,6 +756,8 @@ namespace GameAiAndControls.Controls
 
                 if (logging) Logger.Log($"[ShipCrash] HasCrashed=true, ObjectName='{crashedWith}', Health={theObject.ImpactStatus.ObjectHealth}, Direction={theObject.ImpactStatus.ImpactDirection}");
 
+                int healthBeforeCrash = theObject.ImpactStatus.ObjectHealth ?? 0;
+
                 // Apply damage from any enemy or weapon collision
                 if (crashedWith == "PowerUp")
                 {
@@ -691,6 +799,8 @@ namespace GameAiAndControls.Controls
                         // position and altitude to their resting values.
                         landed = true;
                         Physics.InertiaY = 0f;
+                        Physics.InertiaX *= 0.3f;
+                        Physics.InertiaZ *= 0.3f;
 
                     if (landingSpeed > 5f)
                     {
@@ -702,6 +812,10 @@ namespace GameAiAndControls.Controls
                 {
                     if (logging) Logger.Log($"[ShipCrash] NO DAMAGE APPLIED! crashedWith='{crashedWith}' did not match any category.");
                 }
+
+                // Play impact thud for non-fatal collisions that actually dealt damage
+                if (theObject.ImpactStatus.ObjectHealth > 0 && theObject.ImpactStatus.ObjectHealth < healthBeforeCrash)
+                    PlayImpactThud(theObject);
 
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
                 {
@@ -1004,6 +1118,20 @@ namespace GameAiAndControls.Controls
         public void ReleaseParticles(I3dObject theObject)
         {
             throw new NotImplementedException();
+        }
+
+        private void PlayImpactThud(I3dObject theObject)
+        {
+            if (_audio == null || _impactThudSound == null) return;
+
+            var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+            _audio.PlayOneShot(
+                _impactThudSound,
+                new AudioPlayOptions
+                {
+                    VolumeOverride = 1.0f,
+                    WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                });
         }
 
         private void CollectPowerUp(I3dObject ship)

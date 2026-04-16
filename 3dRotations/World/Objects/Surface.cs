@@ -22,6 +22,16 @@ namespace _3dRotations.World.Objects
         private const float ShipShadowRadius = 105f;
         private const float ShipShadowDarkenFactor = 0.5f;
 
+        // Pre-parsed crater colors (R, G, B) to avoid per-tile string allocation
+        private static readonly (int r, int g, int b)[] CraterColorsRgb =
+        [
+            (0x2B, 0x1D, 0x0E),
+            (0x1A, 0x1A, 0x1A),
+            (0x3A, 0x3A, 0x3A),
+            (0x2E, 0x2E, 0x2E),
+            (0x3D, 0x2B, 0x1D)
+        ];
+
         const bool debugSurfaceBasedObjects = false; // Set to true to debug surface based objects
 
         public int SurfaceWidth() {  return SurfaceSetup.surfaceWidth; }
@@ -69,8 +79,11 @@ namespace _3dRotations.World.Objects
             {
                 int currentMapY = (mapZIndex + i) % mapSize;
                 int nextMapY = (currentMapY + 1) % mapSize;
-                YPosition += TileSize();
+                YPosition += tileSize;
                 var XPosition = -(tileSize * viewPortSize / 2) - tileSize;
+
+                // Pre-compute fade factor for this row (only first 3 rows)
+                float fadeFactor = i <= 3 ? i / 4f : 1f;
 
                 for (int j = 0; j < viewPortSize - 1; j++)
                 {
@@ -87,19 +100,23 @@ namespace _3dRotations.World.Objects
                     var ZPostition3 = global2DMap[nextMapY, nextMapX].mapDepth;
                     var ZPostition4 = global2DMap[nextMapY, currentMapX].mapDepth;
 
-                    var color1 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, maxHeight);
-                    var color2 = color1;
+                    // Work with RGB ints to avoid hex string parse/format roundtrips
+                    GetTileColorGradientRgb((ZPostition1 + ZPostition2) / 2, maxHeight, out int cr, out int cg, out int cb);
+
+                    if (currentTile.isCratered)
+                    {
+                        var cc = CraterColorsRgb[(currentMapY * 7 + currentMapX * 13) % CraterColorsRgb.Length];
+                        cr = cc.r; cg = cc.g; cb = cc.b;
+                    }
+
                     if (currentTile.isInfected)
                     {
-                        color1 = "FF0000"; // Red for infected tiles
-                        color2 = "FF0000"; // Red for infected tiles
+                        cr = 255; cg = 0; cb = 0;
                     }
 
                     if (currentTile.hasLandbasedObject && debugSurfaceBasedObjects)
                     {
-                        //Just for debugging, tiles with trees or houses need a different color
-                        color1 = "FF0000"; // Red for land-based tiles
-                        color2 = "FF0000"; // Red for land-based tiles
+                        cr = 255; cg = 0; cb = 0;
                     }
 
                     // Create SurfaceCrashbox directly here if needed
@@ -133,22 +150,25 @@ namespace _3dRotations.World.Objects
                         if (shadowFactor > 0f)
                         {
                             float darkenFactor = 1f - ((1f - ShipShadowDarkenFactor) * shadowFactor);
-                            color1 = DarkenHexColor(color1, darkenFactor);
-                            color2 = color1;
+                            cr = (int)(cr * darkenFactor);
+                            cg = (int)(cg * darkenFactor);
+                            cb = (int)(cb * darkenFactor);
                         }
                     }
 
                     // Fade-in: first 3 rows gradually brighten, full brightness from row 4
-                    if (i <= 3)
+                    if (fadeFactor < 1f)
                     {
-                        float fadeFactor = i / 4f; // i=1 → 0.25, i=2 → 0.50, i=3 → 0.75
-                        color1 = DarkenHexColor(color1, fadeFactor);
-                        color2 = color1;
+                        cr = (int)(cr * fadeFactor);
+                        cg = (int)(cg * fadeFactor);
+                        cb = (int)(cb * fadeFactor);
                     }
+
+                    var color = $"{cr:X2}{cg:X2}{cb:X2}";
 
                     var triangle1 = new TriangleMeshWithColor
                     {
-                        Color = color1,
+                        Color = color,
                         landBasedPosition = surfaceId,
                         vert1 = { x = XPosition - XRemainer, y = YPosition - ZRemainer, z = ZPostition1 - YRemainer },
                         vert2 = { x = XPosition + tileSize - XRemainer, y = YPosition - ZRemainer, z = ZPostition2 - YRemainer },
@@ -157,7 +177,7 @@ namespace _3dRotations.World.Objects
 
                     var triangle2 = new TriangleMeshWithColor
                     {
-                        Color = color2,
+                        Color = color,
                         landBasedPosition = surfaceId,
                         vert1 = { x = XPosition - XRemainer, y = YPosition - ZRemainer, z = ZPostition1 - YRemainer },
                         vert2 = { x = XPosition + tileSize - XRemainer, y = YPosition + tileSize - ZRemainer, z = ZPostition3 - YRemainer },
@@ -192,7 +212,12 @@ namespace _3dRotations.World.Objects
 
         private static string GetTileColorGradient(int height, int maxHeight)
         {
-            int red, green, blue;
+            GetTileColorGradientRgb(height, maxHeight, out int r, out int g, out int b);
+            return $"{r:X2}{g:X2}{b:X2}";
+        }
+
+        private static void GetTileColorGradientRgb(int height, int maxHeight, out int red, out int green, out int blue)
+        {
 
             if (height < maxHeight * 0.05) // Deep Ocean (Very Dark Blue)
             {
@@ -225,7 +250,9 @@ namespace _3dRotations.World.Objects
                 blue = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
             }
 
-            return $"{Math.Clamp(red, 0, 255):X2}{Math.Clamp(green, 0, 255):X2}{Math.Clamp(blue, 0, 255):X2}";
+            red = Math.Clamp(red, 0, 255);
+            green = Math.Clamp(green, 0, 255);
+            blue = Math.Clamp(blue, 0, 255);
         }
 
         public void Create2DMap(int? maxTrees, int? maxHouses, GameModes gameMode,string? surfaceFile)
