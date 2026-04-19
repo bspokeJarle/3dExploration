@@ -34,6 +34,7 @@ namespace _3dTesting.MainWindowClasses.Loops
         private readonly _3dRotationCommon Rotate3d = new();
         private readonly ParticleManager particleManager = new();
         private readonly WeaponsManager weaponsManager = new();
+        private readonly ObjectShadowManager objectShadowManager = new();
         private StarFieldHandler StarFieldHandler { get; set; }
 
         private readonly IAudioPlayer audioPlayer = new NAudioAudioPlayer(AudioSetup.AudioBasePath);
@@ -102,6 +103,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             var particleObjectList = new List<_3dObject>();
             var weaponObjectList = new List<_3dObject>();
+            var shadowObjectList = new List<_3dObject>();
             var renderedList = new List<_3dObject>(deepCopiedWorld.Count);
             DebugMessage = string.Empty;
 
@@ -162,10 +164,15 @@ namespace _3dTesting.MainWindowClasses.Loops
 
                 particleManager.HandleParticles(inhabitant, particleObjectList);
                 weaponsManager.HandleWeapons(inhabitant, weaponObjectList);
+                objectShadowManager.HandleObjectShadow(inhabitant, shadowObjectList);
                 renderedList.Add(inhabitant);
 
             }
 
+            if (shadowObjectList.Count > 0)
+            {
+                renderedList.InsertRange(0, shadowObjectList);
+            }
             if (particleObjectList.Count > 0)
             {
                 renderedList.AddRange(particleObjectList);

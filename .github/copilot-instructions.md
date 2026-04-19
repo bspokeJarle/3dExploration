@@ -29,8 +29,9 @@
 ## Coordinate System and Rotation Conventions
 - The project uses a custom 3D engine with `Vector3` having x, y, z fields.
 - X axis: lateral (left/right on screen)
-- Y axis: depth/forward (into the screen, -Y is forward for weapons/projectiles)
+- Y axis: depth/forward (into the screen, -Y is forward for weapons/projectiles; note that in the particle physics system, positive Y is downward and negative Y is upward).
 - Z axis: vertical (up/down on screen, +Z is up; note that for `ObjectOffsets.y` and `WorldPosition.y`, + is down (lower on screen), - is up (higher on screen / higher altitude))
+- Movement uses `position -= velocity`, so positive `Velocity.y` moves position upward (subtracting positive = going up on screen, which is negative Y direction).
 - Base rotation for objects facing the camera: X=70 (camera tilt), Y=0, Z=90
 - Rotation around Z axis controls yaw/heading in the screen plane (turning left/right)
 - Rotation around X axis controls pitch (tilting forward/back relative to camera)

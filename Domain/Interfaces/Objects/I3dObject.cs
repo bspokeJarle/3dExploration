@@ -27,6 +27,7 @@ namespace Domain
         IVector3? CalculatedCrashOffset { get; set; }
         bool IsOnScreen { get; set; }
         bool HasShadow { get; set; }
+        IVector3? ShadowOffset { get; set; }
         bool HasPowerUp { get; set; }
         bool IsActive { get; set; }
     }

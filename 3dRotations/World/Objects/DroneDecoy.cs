@@ -88,6 +88,8 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.ApplyScaleToObject(decoy, ZoomRatio);
 
+            _3dObjectHelpers.AddSimplifiedShadowPart(decoy, useFlatQuad: true);
+
             return decoy;
         }
 

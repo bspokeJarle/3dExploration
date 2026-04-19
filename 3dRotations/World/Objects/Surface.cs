@@ -19,8 +19,6 @@ namespace _3dRotations.World.Objects
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = 0, y = 0, z = 0 };
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
         public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();
-        private const float ShipShadowRadius = 105f;
-        private const float ShipShadowDarkenFactor = 0.5f;
 
         // Pre-parsed crater colors (R, G, B) to avoid per-tile string allocation
         private static readonly (int r, int g, int b)[] CraterColorsRgb =
@@ -70,9 +68,6 @@ namespace _3dRotations.World.Objects
             var ZRemainer = globalMapPosition.z % tileSize;
             var XRemainer = globalMapPosition.x % tileSize;
             var YRemainer = globalMapPosition.y;
-            var shadowCasters = GetShadowCasters();
-            bool hasShadowCasters = shadowCasters.Count > 0;
-            float halfTileSize = tileSize * 0.5f;
 
             var YPosition = -(tileSize * viewPortSize / 2);
             for (int i = 1; i < rowLimit; i++)
@@ -140,20 +135,6 @@ namespace _3dRotations.World.Objects
 
                         var crashBoxCorners = _3dObjectHelpers.GenerateCrashBoxCorners(min, max);
                         viewPortCrashBoxes.Add(crashBoxCorners);
-                    }
-
-                    if (hasShadowCasters)
-                    {
-                        float tileCenterX = (XPosition + halfTileSize) - XRemainer;
-                        float tileCenterY = (YPosition + halfTileSize) - ZRemainer;
-                        float shadowFactor = GetShadowFactor(tileCenterX, tileCenterY, shadowCasters);
-                        if (shadowFactor > 0f)
-                        {
-                            float darkenFactor = 1f - ((1f - ShipShadowDarkenFactor) * shadowFactor);
-                            cr = (int)(cr * darkenFactor);
-                            cg = (int)(cg * darkenFactor);
-                            cb = (int)(cb * darkenFactor);
-                        }
                     }
 
                     // Fade-in: first 3 rows gradually brighten, full brightness from row 4
@@ -395,74 +376,6 @@ namespace _3dRotations.World.Objects
             blue = (int)(blue * factor);
 
             return $"{Math.Clamp(red, 0, 255):X2}{Math.Clamp(green, 0, 255):X2}{Math.Clamp(blue, 0, 255):X2}";
-        }
-
-        private static List<(float x, float y)> GetShadowCasters()
-        {
-            var globalMapPosition = GameState.SurfaceState.GlobalMapPosition;
-            var surfaceOffsets = GameState.SurfaceState.SurfaceViewportObject?.ObjectOffsets;
-            var shipOffsets = GameState.ShipState?.ShipObjectOffsets;
-            var aiObjects = GameState.SurfaceState?.AiObjects;
-            var shadowCasters = new List<(float x, float y)>(1 + (aiObjects?.Count ?? 0));
-
-            if (shipOffsets != null && surfaceOffsets != null)
-            {
-                shadowCasters.Add((shipOffsets.x - surfaceOffsets.x, shipOffsets.z - surfaceOffsets.z));
-            }
-
-            if (aiObjects == null)
-            {
-                return shadowCasters;
-            }
-
-            for (int i = 0; i < aiObjects.Count; i++)
-            {
-                var aiObject = aiObjects[i];
-                if (aiObject == null || !aiObject.HasShadow || aiObject.ImpactStatus?.HasExploded == true)
-                {
-                    continue;
-                }
-
-                var alignedWorldPosition = SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(aiObject);
-                shadowCasters.Add((
-                    alignedWorldPosition.x - globalMapPosition.x,
-                    alignedWorldPosition.z - globalMapPosition.z));
-            }
-
-            return shadowCasters;
-        }
-
-        private static float GetShadowFactor(float tileCenterX, float tileCenterY, List<(float x, float y)> shadowCasters)
-        {
-            float strongestShadow = 0f;
-
-            for (int i = 0; i < shadowCasters.Count; i++)
-            {
-                var shadowCaster = shadowCasters[i];
-                float shadowFactor = GetTileShadowFactor(tileCenterX, tileCenterY, shadowCaster.x, shadowCaster.y, ShipShadowRadius);
-                if (shadowFactor > strongestShadow)
-                {
-                    strongestShadow = shadowFactor;
-                }
-            }
-
-            return strongestShadow;
-        }
-
-        private static float GetTileShadowFactor(float tileCenterX, float tileCenterY, float shadowCenterX, float shadowCenterY, float shadowRadius)
-        {
-            float dx = tileCenterX - shadowCenterX;
-            float dy = tileCenterY - shadowCenterY;
-            float distanceSquared = (dx * dx) + (dy * dy);
-            float shadowRadiusSquared = shadowRadius * shadowRadius;
-            if (distanceSquared >= shadowRadiusSquared)
-            {
-                return 0f;
-            }
-
-            float distance = MathF.Sqrt(distanceSquared);
-            float normalized = 1f - (distance / shadowRadius);
-            return Math.Clamp(normalized, 0f, 1f);
         }
 
         private static float GetDistanceSquared(Vector3 a, Vector3 b)

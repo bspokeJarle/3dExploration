@@ -119,6 +119,7 @@ namespace _3dRotations.World.Objects
             var crashBoxes = TowerCrashBoxes();
 
             var tower = new _3dObject{ ObjectId = GameState.ObjectIdCounter++ };
+            tower.HasShadow = true;
 
             AddPart(tower, "TowerBase", baseBlock, true);
             AddPart(tower, "TowerBaseDecals", baseDecals, true); // keep after base for stable sorting
@@ -135,6 +136,9 @@ namespace _3dRotations.World.Objects
                 tower.CrashBoxes = crashBoxes;
 
             tower.ParentSurface = parentSurface;
+
+            _3dObjectHelpers.AddSimplifiedShadowPart(tower, useFlatQuad: false);
+
             return tower;
         }
 

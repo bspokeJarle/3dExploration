@@ -140,6 +140,8 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.ApplyScaleToObject(drone, ZoomRatio);
 
+            _3dObjectHelpers.AddSimplifiedShadowPart(drone, useFlatQuad: true);
+
             return drone;
         }
 

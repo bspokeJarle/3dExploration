@@ -165,6 +165,8 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.ApplyScaleToObject(bomber, ZoomRatio);
 
+            _3dObjectHelpers.AddSimplifiedShadowPart(bomber, useFlatQuad: true);
+
             return bomber;
         }
 
