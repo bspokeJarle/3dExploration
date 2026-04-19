@@ -104,6 +104,8 @@ namespace CommonUtilities.Persistence
             int totalDeaths = 0,
             float accuracy = 0f)
         {
+            if (string.IsNullOrWhiteSpace(playerName)) return false;
+
             var entry = new HighscoreEntry
             {
                 PlayerName = playerName,

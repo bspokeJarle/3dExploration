@@ -19,6 +19,7 @@ namespace _3dTesting.Rendering
         private readonly Dictionary<(float, string), Color> colorCache = new();
         private readonly Dictionary<Color, SolidColorBrush> brushCache = new();
         private readonly Dictionary<Color, Pen> penCache = new();
+        private readonly Dictionary<string, string> _normalizedColorCache = new();
 
         private readonly List<StreamGeometry> geometryPool = new();
         private int geometryPoolIndex = 0;
@@ -121,8 +122,7 @@ namespace _3dTesting.Rendering
         public void RenderTriangles(List<_2dTriangleMesh> screenCoordinates)
         {
             renderingTriangleCount = screenCoordinates.Count;
-            var triangleArray = screenCoordinates.ToArray();
-            Array.Sort(triangleArray, (a, b) => a.CalculatedZ.CompareTo(b.CalculatedZ));
+            screenCoordinates.Sort((a, b) => a.CalculatedZ.CompareTo(b.CalculatedZ));
 
             geometryPoolIndex = 0;
 
@@ -133,9 +133,9 @@ namespace _3dTesting.Rendering
 
             using (var dc = visual.RenderOpen())
             {
-                dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, 1920, 1080));
+                dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, ScreenSetup.screenSizeX, ScreenSetup.screenSizeY));
 
-                foreach (var triangle in triangleArray)
+                foreach (var triangle in screenCoordinates)
                 {
                     if (triangle.CalculatedZ > FarZ || triangle.CalculatedZ < NearZ)
                         continue;
@@ -153,18 +153,7 @@ namespace _3dTesting.Rendering
 
                     float shadeKey = (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
 
-                    string? baseColor = triangle.Color;
-                    if (string.IsNullOrWhiteSpace(baseColor))
-                    {
-                        baseColor = "000000";
-                    }
-                    else
-                    {
-                        baseColor = baseColor.Trim();
-                        if (baseColor.Length > 0 && baseColor[0] == '#')
-                            baseColor = baseColor.Substring(1);
-                        baseColor = baseColor.ToLowerInvariant();
-                    }
+                    string baseColor = NormalizeColorCached(triangle.Color);
 
                     if (!colorCache.TryGetValue((shadeKey, baseColor), out Color color))
                     {
@@ -343,6 +332,20 @@ namespace _3dTesting.Rendering
                 // Normal rendering
                 dc.DrawGeometry(brush, pen, geometry);
             }
+        }
+
+        private string NormalizeColorCached(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return "000000";
+            if (_normalizedColorCache.TryGetValue(raw, out var cached))
+                return cached;
+            var normalized = raw.Trim();
+            if (normalized.Length > 0 && normalized[0] == '#')
+                normalized = normalized.Substring(1);
+            normalized = normalized.ToLowerInvariant();
+            _normalizedColorCache[raw] = normalized;
+            return normalized;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

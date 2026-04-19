@@ -137,6 +137,9 @@ namespace CommonUtilities.Persistence
             state.CheckpointTotalDeaths = saved.CheckpointTotalDeaths;
             state.CheckpointInfectionLevel = saved.CheckpointInfectionLevel;
             state.CheckpointWaveNumber = saved.CheckpointWaveNumber;
+            state.CheckpointInitialSeeders = saved.CheckpointInitialSeeders;
+            state.CheckpointInitialDrones = saved.CheckpointInitialDrones;
+            state.CheckpointInitialMotherShips = saved.CheckpointInitialMotherShips;
         }
 
         /// <summary>

@@ -174,6 +174,8 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.ApplyScaleToObject(seeder, ZoomRatio);
 
+            _3dObjectHelpers.AddSimplifiedShadowPart(seeder, useFlatQuad: true);
+
             return seeder;
         }
 

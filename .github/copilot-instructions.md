@@ -15,6 +15,7 @@
 - When the scene GameMode is Playback, do not run surface generation; load the surface from a recording file. During loading, calculate `TotalBioTiles` since `SurfaceGeneration.ReturnPseudoRandomMap` (which normally counts them) is not called.
 - When creating a new scene in Playback mode, always pass explicit override values to `FindTreePlacementAreas` and `FindHousePlacementAreas` (e.g., 30000 for trees, 15000 for houses). In Playback mode, `ReturnPseudoRandomMap` is not called, so the static `SurfaceGeneration.maxTrees` and `maxHouses` fields stay at 0. Without explicit overrides, no trees/houses are placed, and `WorldInhabitants.Count` stays below 50 — which is the gate for minimap rendering.
 - If an object has an unnatural crash, check the size of the object (geometry/scale), not the offset or anything else. The size of the actual object coordinates is very important to make a natural hit — if the object is too small in coordinates, the crash seems unnatural since it appears the object is far away.
+- Objects that should crash/collide with each other must share compatible `ObjectOffsets` — specifically, the Z offset must match (e.g., both use z=400 to match the ship's zoom value) and the Y offset should be close enough for crash boxes to overlap. Enemies that need direct collision with the ship should use `ObjectOffsets` similar to the KamikazeDrone pattern {x=0, y=150, z=400}, matching the ship's coordinate layer (z=zoom=400, y≈ShipRestingScreenY=200). Using incompatible offsets (e.g., z=-400 vs ship's z=400) places crash boxes in completely different coordinate layers, making AABB collision impossible regardless of `CrashboxSize`.
 
 ## Control Class Pattern
 - Control classes implement `IObjectMovement` and are assigned to objects via the `Movement` property.
@@ -28,8 +29,9 @@
 ## Coordinate System and Rotation Conventions
 - The project uses a custom 3D engine with `Vector3` having x, y, z fields.
 - X axis: lateral (left/right on screen)
-- Y axis: depth/forward (into the screen, -Y is forward for weapons/projectiles)
+- Y axis: depth/forward (into the screen, -Y is forward for weapons/projectiles; note that in the particle physics system, positive Y is downward and negative Y is upward).
 - Z axis: vertical (up/down on screen, +Z is up; note that for `ObjectOffsets.y` and `WorldPosition.y`, + is down (lower on screen), - is up (higher on screen / higher altitude))
+- Movement uses `position -= velocity`, so positive `Velocity.y` moves position upward (subtracting positive = going up on screen, which is negative Y direction).
 - Base rotation for objects facing the camera: X=70 (camera tilt), Y=0, Z=90
 - Rotation around Z axis controls yaw/heading in the screen plane (turning left/right)
 - Rotation around X axis controls pitch (tilting forward/back relative to camera)

@@ -8,6 +8,7 @@ namespace Domain
         public int mapId;
         public bool hasLandbasedObject;
         public required bool isInfected;
+        public bool isCratered;
 
         public CrashBoxData? crashBox;
         public struct CrashBoxData

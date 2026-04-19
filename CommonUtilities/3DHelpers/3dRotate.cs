@@ -6,7 +6,19 @@ namespace CommonUtilities._3DHelpers
 {
     public class _3dRotationCommon
     {
-        private static readonly System.Numerics.Vector3 LightVector = new System.Numerics.Vector3(0, 0, 250);
+        // Scene-wide light source — kept in sync with the shadow projection in
+        // ObjectShadowManager (ShadowSlopeX = -0.15, ShadowSlopeY = -0.55).
+        //
+        // Projection travel direction (photons moving): (-0.15, -0.55, -1),
+        // surface-local pre-tilt. The shading LightVector points the OPPOSITE way
+        // — from the surface TOWARD the light source — so a dot product with a
+        // triangle's outward normal gives a positive value for lit faces:
+        //     LightVector = -travel = (0.15, 0.55, 1), scaled to preserve the
+        // previous magnitude (~250) for any legacy callers reading length.
+        // The light sits above, behind the camera, slightly to the right of the
+        // player, shining forward and down — consistent with shadows that fall
+        // BEHIND objects and lean slightly to the left.
+        private static readonly System.Numerics.Vector3 LightVector = new System.Numerics.Vector3(37.5f, 137.5f, 250f);
         private static readonly System.Numerics.Vector3 LightDir = System.Numerics.Vector3.Normalize(LightVector);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

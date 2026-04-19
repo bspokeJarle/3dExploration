@@ -6,6 +6,7 @@ using CommonUtilities._3DHelpers;
 using Domain;
 using GameAiAndControls.Helpers;
 using static Domain._3dSpecificsImplementations;
+using CommonUtilities.CommonSetup;
 using static GameAiAndControls.Helpers.PhysicsHelpers;
 
 namespace GameAiAndControls.Physics
@@ -40,7 +41,7 @@ namespace GameAiAndControls.Physics
         public float VerticalLiftFactor { get; set; } = 0f;
 
         // ── Flight tuning constants ──────────────────────────────────
-        public float GravityAcceleration { get; set; } = 2.8f;
+        public float GravityAcceleration { get; set; } = 3.6f;
         public float TerminalFallSpeed { get; set; } = 35f;
         public float GravityPullMultiplier { get; set; } = 9.0f;
         public float ThrustSpeedMultiplier { get; set; } = 9.6f;
@@ -54,7 +55,13 @@ namespace GameAiAndControls.Physics
         // ── Height limits ────────────────────────────────────────────
         public float CeilingHeight { get; set; } = 1000f;
         public float FloorHeight { get; set; } = -100f;
-        public float MaxScreenDrop { get; set; } = 450f;
+        // Computed from current screen size so the value stays correct even
+        // when Physics is constructed before ScreenSetup.Initialize().
+        public float MaxScreenDrop
+        {
+            get => ScreenSetup.screenSizeY * 0.44f;
+            set { }
+        }
 
         // ── Hover/float after thrust release ─────────────────────────
         // When thrust stops, gravity stays at HoverMinGravityScale for
@@ -68,11 +75,29 @@ namespace GameAiAndControls.Physics
         // ── Airborne settle (return-to-rest while not thrusting) ─────
         // Gentle spring rate that pulls the surface back toward its
         // resting screen position and zero altitude when airborne.
-        public float AirborneSettleRate { get; set; } = 2.0f;
+        // Scaled by 1/ScreenScaleY so the gravity-settle equilibrium
+        // distance stays proportional to the screen height, ensuring
+        // the ship can always reach the surface crash box.
+        // Computed from current screen size so the value stays correct even
+        // when Physics is constructed before ScreenSetup.Initialize().
+        public float AirborneSettleRate
+        {
+            get => 2.0f / ScreenSetup.ScreenScaleY;
+            set { }
+        }
 
-        // Applies drag and clamps inertia to [-MaxInertia, MaxInertia]
+        // Applies speed-dependent drag (Aviator-inspired v² scaling) and clamps inertia.
+        // At low speeds the drag factor is close to InertiaDrag (0.92); at MaxInertia the
+        // effective multiplier drops to ~0.85, giving a natural top-speed feel.
+        private const float DragSpeedScaling = 0.08f;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private float ApplyDragAndClamp(float inertia) => Math.Clamp(inertia * InertiaDrag, -MaxInertia, MaxInertia);
+        private float ApplyDragAndClamp(float inertia)
+        {
+            float speedRatio = MathF.Abs(inertia) / MaxInertia;
+            float drag = InertiaDrag - DragSpeedScaling * speedRatio * speedRatio;
+            return Math.Clamp(inertia * drag, -MaxInertia, MaxInertia);
+        }
 
         // Applies drag to the current velocity and returns the updated position
         public IVector3 ApplyDragForce(IVector3 currentPosition, float deltaTime)
@@ -200,9 +225,27 @@ namespace GameAiAndControls.Physics
         }
 
 
-        // Not yet implemented — retained for IPhysics contract
-        public IVector3 ApplyRotationDragForce(IVector3 rotationVector) => null;
-        public void TiltStabilization(ref IVector3 tiltState) { }
+        // Applies rotational damping proportional to current rotation rates (Aviator-inspired).
+        // Returns a damped copy of the input rotation vector.
+        public IVector3 ApplyRotationDragForce(IVector3 rotationVector)
+        {
+            const float RotationalDamping = 0.94f;
+            return new Vector3
+            {
+                x = rotationVector.x * RotationalDamping,
+                y = rotationVector.y * RotationalDamping,
+                z = rotationVector.z * RotationalDamping
+            };
+        }
+
+        // Gently returns tilt toward neutral (x→0) when no pitch input is applied.
+        // StabilizationRate controls how quickly the tilt decays per call.
+        private const float StabilizationRate = 0.03f;
+
+        public void TiltStabilization(ref IVector3 tiltState)
+        {
+            tiltState.x -= tiltState.x * StabilizationRate;
+        }
 
         // Applies gravity when falling (no thrust). Returns updated InertiaY.
         // Gravity is scaled by the hover ramp: near-zero during float, then gradually increasing.

@@ -496,6 +496,58 @@
         "min": 1.0,
         "max": 1.0
       }
+    },
+    {
+      "id": "zeppelin_propeller",
+      "usage": "ZeppelinPropeller",
+      "file": "OmegaStrain_zeppelin_propeller.wav",
+
+      "segments": {
+        "start": 4.0,
+        "loopStart": 6.0,
+        "loopEnd": 18.0,
+        "end": 20.0
+      },
+
+      "settings": {
+        "volume": 0.9,
+        "maxVoices": 2,
+        "is3D": true,
+        "priority": 85
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.04, 0.04 ],
+        "min": 0.9,
+        "max": 1.1
+      }
+    },
+    {
+      "id": "diving_bomb",
+      "usage": "DivingBomb",
+      "file": "OmegaStrain_diving_bomb.wav",
+
+      "segments": {
+        "start": 6.0,
+        "loopStart": 6.0,
+        "loopEnd": 38.0,
+        "end": 38.0
+      },
+
+      "settings": {
+        "volume": 1.0,
+        "maxVoices": 4,
+        "is3D": true,
+        "priority": 110
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 0.5,
+        "max": 8.0
+      }
     }
   ]
 }

@@ -14,12 +14,14 @@ namespace CommonUtilities.CommonSetup
         public const int MotherShipSmallHealth = 550;
         public const int MotherShipSmallCollisionDamage = 80;
         public const int SpaceSwanHealth = 300;
+        public const int ZeppelinBomberHealth = 105;
 
         public static List<string> EnemyTypes = new List<string>
         {
             "Seeder",
             "KamikazeDrone",
-            "Bomber",
+            "ZeppelinBomber",
+            "BomberBomb",
             "AttackShip",
             "Endboss1",
             "Endboss2",

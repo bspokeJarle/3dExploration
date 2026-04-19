@@ -145,7 +145,7 @@ namespace _3dTesting.MainWindowClasses
 
             _hudRoot = new Grid
             {
-                HorizontalAlignment = HorizontalAlignment.Left,
+                HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Top,
                 Visibility = Visibility.Collapsed,
                 IsHitTestVisible = false

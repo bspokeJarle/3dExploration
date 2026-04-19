@@ -1,4 +1,7 @@
 ﻿using _3dRotations.Scene.Scene1;
+using _3dRotations.Scene.Scene3;
+using _3dRotations.Scene.Scene4;
+using _3dRotations.Scene.Scene5;
 using _3dRotations.Scenes.Intro;
 using _3dRotations.Scenes.Outro;
 using _3dTesting._3dWorld;
@@ -17,7 +20,7 @@ namespace _3DWorld.Scene
 {
     public class SceneHandler : ISceneHandler
     {
-        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Outro() };
+        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Scene3(), new Scene4(), new Scene5(), new Outro() };
         private int currentSceneIndex = 0;
         private const bool enableLogging = false;
         private const int SceneAdvanceDelayFrames = 5;
@@ -53,8 +56,21 @@ namespace _3DWorld.Scene
                 throw new InvalidOperationException($"Failed to create a new instance of scene type {GetActiveScene().GetType()}.");
 
             var gps = GameState.GamePlayState;
+
+            // Submit highscore and save progress before the state is reset
+            try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
+            try { GameStatePersistence.SaveGameState(); } catch { }
+
             bool hadCheckpoint = gps.HasCheckpoint;
             var snapshot = hadCheckpoint ? gps.CaptureCheckpointSnapshot() : default;
+
+            // Capture cumulative stats before reset so they survive when there is no checkpoint
+            long prevScore = gps.Score;
+            int prevLives = gps.Lives;
+            int prevKills = gps.TotalKills;
+            int prevShots = gps.TotalShotsFired;
+            int prevDeaths = gps.TotalDeaths;
+            int prevPowerUps = gps.PowerUpsCollected;
 
             ClearVideoOverlay();
             gps.ResetForNewGame();
@@ -74,6 +90,18 @@ namespace _3DWorld.Scene
                 gps.ApplyCheckpointRestart(snapshot);
 
                 if (enableLogging) Logger.Log($"Scenehandler: Checkpoint restored. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
+            }
+            else
+            {
+                // No checkpoint — preserve accumulated stats with death penalty
+                gps.Score = prevScore;
+                gps.Lives = Math.Max(0, prevLives - 1);
+                gps.TotalKills = prevKills;
+                gps.TotalShotsFired = prevShots;
+                gps.TotalDeaths = prevDeaths + 1;
+                gps.PowerUpsCollected = prevPowerUps;
+
+                if (enableLogging) Logger.Log($"Scenehandler: No checkpoint — stats preserved. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
             }
         }
 
@@ -108,7 +136,10 @@ namespace _3DWorld.Scene
 
             // Persist scene progress so the player can resume from here
             gps.SceneIndex = currentSceneIndex;
-            try { GameStatePersistence.SaveGameState(); } catch { }
+            if (currentSceneIndex != 0)
+            {
+                try { GameStatePersistence.SaveGameState(); } catch { }
+            }
 
             ClearVideoOverlay();
             gps.ResetForNewGame();
@@ -151,6 +182,7 @@ namespace _3DWorld.Scene
             }
 
             GameState.GamePlayState.SceneIndex = currentSceneIndex;
+            ResetSurfaceState();
             SetupActiveScene(world);
 
             // Restore score and combat stats from saved game so the player builds upon them
@@ -162,6 +194,42 @@ namespace _3DWorld.Scene
                 gps.TotalShotsFired = _pendingSavedState.TotalShotsFired;
                 gps.TotalDeaths = _pendingSavedState.TotalDeaths;
                 gps.PowerUpsCollected = _pendingSavedState.PowerUpsCollected;
+
+                // If there's a checkpoint, trim enemies and restore full checkpoint state
+                if (_pendingSavedState.HasCheckpoint)
+                {
+                    GameStatePersistence.RestoreToGamePlayState(_pendingSavedState);
+
+                    var snapshot = gps.CaptureCheckpointSnapshot();
+
+                    TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
+                    TrimEnemies(world, "KamikazeDrone", snapshot.DronesRemaining);
+                    TrimEnemies(world, "MotherShipSmall", snapshot.MotherShipsRemaining);
+
+                    // Activate enemies that should already be active at this checkpoint
+                    var aiObjs = GameState.SurfaceState.AiObjects;
+                    if (snapshot.SeedersRemaining == 0 && snapshot.DronesRemaining == 0)
+                    {
+                        for (int i = 0; i < aiObjs.Count; i++)
+                        {
+                            if (aiObjs[i].ObjectName == "MotherShipSmall" && !aiObjs[i].IsActive)
+                                aiObjs[i].IsActive = true;
+                        }
+                    }
+                    if (gps.IsDecoyUnlocked)
+                    {
+                        for (int i = 0; i < aiObjs.Count; i++)
+                        {
+                            if (aiObjs[i].ObjectName == "KamikazeDrone" && !aiObjs[i].IsActive)
+                                aiObjs[i].IsActive = true;
+                        }
+                    }
+
+                    // Re-initialize director so it sees the trimmed enemy state
+                    var scene = GetActiveScene();
+                    scene.Director?.Initialize(world.EventBus!, world);
+                }
+
                 _pendingSavedState = null;
             }
         }

@@ -16,10 +16,10 @@ namespace GameAiAndControls.Controls
         private static bool enableLogging = false;
         private static readonly int maxZ = 1200;
         private static readonly int minZ = -2500;
-        private static readonly int maxX = 1200;
-        private static readonly int minX = -1200;
-        private static readonly int maxY = 1200;
-        private static readonly int minY = -1200;
+        private static int maxX => (int)(ScreenSetup.screenSizeX * 0.8f);
+        private static int minX => (int)(ScreenSetup.screenSizeX * -0.8f);
+        private static int maxY => (int)(ScreenSetup.screenSizeY * 1.17f);
+        private static int minY => (int)(ScreenSetup.screenSizeY * -1.17f);
 
         // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;

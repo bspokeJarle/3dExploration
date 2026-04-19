@@ -31,6 +31,7 @@ namespace _3dRotations.World.Objects
             var houseCrashBox = HouseCrashBoxes();
 
             var house = new _3dObject{ ObjectId = GameState.ObjectIdCounter++ };
+            house.HasShadow = true;
 
             if (houseWalls != null)
                 house.ObjectParts.Add(new _3dObjectPart { PartName = "HouseWalls", Triangles = houseWalls, IsVisible = true });
@@ -63,6 +64,57 @@ namespace _3dRotations.World.Objects
             house.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             house.ParentSurface = parentSurface;
             if (houseCrashBox != null) house.CrashBoxes = houseCrashBox;
+
+            // Hand-authored low-poly shadow silhouette. Side-on profile in the
+            // X–Z plane (Y = 0) that the shadow projector skews along the
+            // ground. Use as many triangles as the outline needs — no hard
+            // limit. House here = 7 tris: main body + overhanging roof +
+            // garage + chimney.
+            var shadowTris = new List<ITriangleMeshWithColor>(7);
+            const string sc = _3dObjectHelpers.ShadowColorHex;
+
+            // --- Main house box (2 tris) ---
+            var hA = new Vector3 { x = -15f, y = 0f, z = 0f };
+            var hB = new Vector3 { x = 15f, y = 0f, z = 0f };
+            var hC = new Vector3 { x = 15f, y = 0f, z = 22f };
+            var hD = new Vector3 { x = -15f, y = 0f, z = 22f };
+            shadowTris.Add(new TriangleMeshWithColor { Color = sc, vert1 = hA, vert2 = hB, vert3 = hC });
+            shadowTris.Add(new TriangleMeshWithColor { Color = sc, vert1 = hA, vert2 = hC, vert3 = hD });
+
+            // --- Pitched roof with slight eave overhang (2 tris forming a
+            // wide shallow triangle + small spacer tri so the ridge is
+            // pronounced) ---
+            var rL = new Vector3 { x = -18f, y = 0f, z = 22f };   // left eave (overhangs body)
+            var rR = new Vector3 { x = 18f, y = 0f, z = 22f };    // right eave
+            var rPk = new Vector3 { x = 0f, y = 0f, z = 30f };    // ridge
+            shadowTris.Add(new TriangleMeshWithColor { Color = sc, vert1 = rL, vert2 = rR, vert3 = rPk });
+            // Extra gable tri for a sharper roof silhouette under strong light.
+            shadowTris.Add(new TriangleMeshWithColor
+            {
+                Color = sc,
+                vert1 = new Vector3 { x = -8f, y = 0f, z = 22f },
+                vert2 = new Vector3 { x = 8f, y = 0f, z = 22f },
+                vert3 = rPk
+            });
+
+            // --- Garage box on the right side (2 tris) ---
+            var gA = new Vector3 { x = 15f, y = 0f, z = 0f };
+            var gB = new Vector3 { x = 27f, y = 0f, z = 0f };
+            var gC = new Vector3 { x = 27f, y = 0f, z = 8f };
+            var gD = new Vector3 { x = 15f, y = 0f, z = 8f };
+            shadowTris.Add(new TriangleMeshWithColor { Color = sc, vert1 = gA, vert2 = gB, vert3 = gC });
+            shadowTris.Add(new TriangleMeshWithColor { Color = sc, vert1 = gA, vert2 = gC, vert3 = gD });
+
+            // --- Chimney (1 tri) ---
+            shadowTris.Add(new TriangleMeshWithColor
+            {
+                Color = sc,
+                vert1 = new Vector3 { x = 6f, y = 0f, z = 26f },
+                vert2 = new Vector3 { x = 10f, y = 0f, z = 26f },
+                vert3 = new Vector3 { x = 8f, y = 0f, z = 34f }
+            });
+
+            _3dObjectHelpers.AddCustomShadowPart(house, shadowTris);
 
             return house;
         }

@@ -19,8 +19,16 @@ namespace _3dRotations.World.Objects
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = 0, y = 0, z = 0 };
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
         public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();
-        private const float ShipShadowRadius = 105f;
-        private const float ShipShadowDarkenFactor = 0.5f;
+
+        // Pre-parsed crater colors (R, G, B) to avoid per-tile string allocation
+        private static readonly (int r, int g, int b)[] CraterColorsRgb =
+        [
+            (0x2B, 0x1D, 0x0E),
+            (0x1A, 0x1A, 0x1A),
+            (0x3A, 0x3A, 0x3A),
+            (0x2E, 0x2E, 0x2E),
+            (0x3D, 0x2B, 0x1D)
+        ];
 
         const bool debugSurfaceBasedObjects = false; // Set to true to debug surface based objects
 
@@ -60,19 +68,19 @@ namespace _3dRotations.World.Objects
             var ZRemainer = globalMapPosition.z % tileSize;
             var XRemainer = globalMapPosition.x % tileSize;
             var YRemainer = globalMapPosition.y;
-            var shadowCasters = GetShadowCasters();
-            bool hasShadowCasters = shadowCasters.Count > 0;
-            float halfTileSize = tileSize * 0.5f;
 
             var YPosition = -(tileSize * viewPortSize / 2);
             for (int i = 1; i < rowLimit; i++)
             {
                 int currentMapY = (mapZIndex + i) % mapSize;
                 int nextMapY = (currentMapY + 1) % mapSize;
-                YPosition += TileSize();
-                var XPosition = -(tileSize * viewPortSize / 2);
+                YPosition += tileSize;
+                var XPosition = -(tileSize * viewPortSize / 2) - tileSize;
 
-                for (int j = 1; j < viewPortSize - 1; j++)
+                // Pre-compute fade factor for this row (only first 3 rows)
+                float fadeFactor = i <= 3 ? i / 4f : 1f;
+
+                for (int j = 0; j < viewPortSize - 1; j++)
                 {
                     int currentMapX = (mapXIndex + j) % mapSize;
                     int nextMapX = (currentMapX + 1) % mapSize;
@@ -87,19 +95,23 @@ namespace _3dRotations.World.Objects
                     var ZPostition3 = global2DMap[nextMapY, nextMapX].mapDepth;
                     var ZPostition4 = global2DMap[nextMapY, currentMapX].mapDepth;
 
-                    var color1 = GetTileColorGradient((ZPostition1 + ZPostition2) / 2, maxHeight);
-                    var color2 = color1;
+                    // Work with RGB ints to avoid hex string parse/format roundtrips
+                    GetTileColorGradientRgb((ZPostition1 + ZPostition2) / 2, maxHeight, out int cr, out int cg, out int cb);
+
+                    if (currentTile.isCratered)
+                    {
+                        var cc = CraterColorsRgb[(currentMapY * 7 + currentMapX * 13) % CraterColorsRgb.Length];
+                        cr = cc.r; cg = cc.g; cb = cc.b;
+                    }
+
                     if (currentTile.isInfected)
                     {
-                        color1 = "FF0000"; // Red for infected tiles
-                        color2 = "FF0000"; // Red for infected tiles
+                        cr = 255; cg = 0; cb = 0;
                     }
 
                     if (currentTile.hasLandbasedObject && debugSurfaceBasedObjects)
                     {
-                        //Just for debugging, tiles with trees or houses need a different color
-                        color1 = "FF0000"; // Red for land-based tiles
-                        color2 = "FF0000"; // Red for land-based tiles
+                        cr = 255; cg = 0; cb = 0;
                     }
 
                     // Create SurfaceCrashbox directly here if needed
@@ -125,22 +137,19 @@ namespace _3dRotations.World.Objects
                         viewPortCrashBoxes.Add(crashBoxCorners);
                     }
 
-                    if (hasShadowCasters)
+                    // Fade-in: first 3 rows gradually brighten, full brightness from row 4
+                    if (fadeFactor < 1f)
                     {
-                        float tileCenterX = (XPosition + halfTileSize) - XRemainer;
-                        float tileCenterY = (YPosition + halfTileSize) - ZRemainer;
-                        float shadowFactor = GetShadowFactor(tileCenterX, tileCenterY, shadowCasters);
-                        if (shadowFactor > 0f)
-                        {
-                            float darkenFactor = 1f - ((1f - ShipShadowDarkenFactor) * shadowFactor);
-                            color1 = DarkenHexColor(color1, darkenFactor);
-                            color2 = color1;
-                        }
+                        cr = (int)(cr * fadeFactor);
+                        cg = (int)(cg * fadeFactor);
+                        cb = (int)(cb * fadeFactor);
                     }
+
+                    var color = $"{cr:X2}{cg:X2}{cb:X2}";
 
                     var triangle1 = new TriangleMeshWithColor
                     {
-                        Color = color1,
+                        Color = color,
                         landBasedPosition = surfaceId,
                         vert1 = { x = XPosition - XRemainer, y = YPosition - ZRemainer, z = ZPostition1 - YRemainer },
                         vert2 = { x = XPosition + tileSize - XRemainer, y = YPosition - ZRemainer, z = ZPostition2 - YRemainer },
@@ -149,7 +158,7 @@ namespace _3dRotations.World.Objects
 
                     var triangle2 = new TriangleMeshWithColor
                     {
-                        Color = color2,
+                        Color = color,
                         landBasedPosition = surfaceId,
                         vert1 = { x = XPosition - XRemainer, y = YPosition - ZRemainer, z = ZPostition1 - YRemainer },
                         vert2 = { x = XPosition + tileSize - XRemainer, y = YPosition + tileSize - ZRemainer, z = ZPostition3 - YRemainer },
@@ -184,7 +193,12 @@ namespace _3dRotations.World.Objects
 
         private static string GetTileColorGradient(int height, int maxHeight)
         {
-            int red, green, blue;
+            GetTileColorGradientRgb(height, maxHeight, out int r, out int g, out int b);
+            return $"{r:X2}{g:X2}{b:X2}";
+        }
+
+        private static void GetTileColorGradientRgb(int height, int maxHeight, out int red, out int green, out int blue)
+        {
 
             if (height < maxHeight * 0.05) // Deep Ocean (Very Dark Blue)
             {
@@ -217,7 +231,9 @@ namespace _3dRotations.World.Objects
                 blue = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
             }
 
-            return $"{Math.Clamp(red, 0, 255):X2}{Math.Clamp(green, 0, 255):X2}{Math.Clamp(blue, 0, 255):X2}";
+            red = Math.Clamp(red, 0, 255);
+            green = Math.Clamp(green, 0, 255);
+            blue = Math.Clamp(blue, 0, 255);
         }
 
         public void Create2DMap(int? maxTrees, int? maxHouses, GameModes gameMode,string? surfaceFile)
@@ -360,74 +376,6 @@ namespace _3dRotations.World.Objects
             blue = (int)(blue * factor);
 
             return $"{Math.Clamp(red, 0, 255):X2}{Math.Clamp(green, 0, 255):X2}{Math.Clamp(blue, 0, 255):X2}";
-        }
-
-        private static List<(float x, float y)> GetShadowCasters()
-        {
-            var globalMapPosition = GameState.SurfaceState.GlobalMapPosition;
-            var surfaceOffsets = GameState.SurfaceState.SurfaceViewportObject?.ObjectOffsets;
-            var shipOffsets = GameState.ShipState?.ShipObjectOffsets;
-            var aiObjects = GameState.SurfaceState?.AiObjects;
-            var shadowCasters = new List<(float x, float y)>(1 + (aiObjects?.Count ?? 0));
-
-            if (shipOffsets != null && surfaceOffsets != null)
-            {
-                shadowCasters.Add((shipOffsets.x - surfaceOffsets.x, shipOffsets.z - surfaceOffsets.z));
-            }
-
-            if (aiObjects == null)
-            {
-                return shadowCasters;
-            }
-
-            for (int i = 0; i < aiObjects.Count; i++)
-            {
-                var aiObject = aiObjects[i];
-                if (aiObject == null || !aiObject.HasShadow || aiObject.ImpactStatus?.HasExploded == true)
-                {
-                    continue;
-                }
-
-                var alignedWorldPosition = SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(aiObject);
-                shadowCasters.Add((
-                    alignedWorldPosition.x - globalMapPosition.x,
-                    alignedWorldPosition.z - globalMapPosition.z));
-            }
-
-            return shadowCasters;
-        }
-
-        private static float GetShadowFactor(float tileCenterX, float tileCenterY, List<(float x, float y)> shadowCasters)
-        {
-            float strongestShadow = 0f;
-
-            for (int i = 0; i < shadowCasters.Count; i++)
-            {
-                var shadowCaster = shadowCasters[i];
-                float shadowFactor = GetTileShadowFactor(tileCenterX, tileCenterY, shadowCaster.x, shadowCaster.y, ShipShadowRadius);
-                if (shadowFactor > strongestShadow)
-                {
-                    strongestShadow = shadowFactor;
-                }
-            }
-
-            return strongestShadow;
-        }
-
-        private static float GetTileShadowFactor(float tileCenterX, float tileCenterY, float shadowCenterX, float shadowCenterY, float shadowRadius)
-        {
-            float dx = tileCenterX - shadowCenterX;
-            float dy = tileCenterY - shadowCenterY;
-            float distanceSquared = (dx * dx) + (dy * dy);
-            float shadowRadiusSquared = shadowRadius * shadowRadius;
-            if (distanceSquared >= shadowRadiusSquared)
-            {
-                return 0f;
-            }
-
-            float distance = MathF.Sqrt(distanceSquared);
-            float normalized = 1f - (distance / shadowRadius);
-            return Math.Clamp(normalized, 0f, 1f);
         }
 
         private static float GetDistanceSquared(Vector3 a, Vector3 b)

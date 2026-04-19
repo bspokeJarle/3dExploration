@@ -86,7 +86,23 @@ public class ParticlesAI : IParticles
                             Logger.Log($"   Velocity Before    : x={particle.Physics.Velocity.x:F2}, y={particle.Physics.Velocity.y:F2}, z={particle.Physics.Velocity.z:F2}");
                         }
 
+                        // Capture pre-bounce velocity for position correction
+                        float preBounceVelY = particle.Physics.Velocity.y;
+
                         particle.Physics.Bounce(new Vector3(0, 0, 0), particle.ImpactStatus.ImpactDirection);
+
+                        // Surface hits must always bounce upward (+Y position = down, -Y = up;
+                        // but position -= velocity, so positive velocity.y decreases position.y = moves up)
+                        if (particle.Physics.Velocity.y < 0)
+                            particle.Physics.Velocity.y = -particle.Physics.Velocity.y;
+
+                        // Correct penetration: undo the last frame's downward movement that
+                        // pushed the particle inside the crashbox. The previous frame moved
+                        // position.y -= preBounceVelY, which was negative (downward), so
+                        // position increased. Undo by adding the pre-bounce velocity back.
+                        if (particle.Position != null)
+                            particle.Position.y += preBounceVelY;
+
                         particle.Life *= 0.8f;
                         particle.ImpactStatus.HasCrashed = false;
 

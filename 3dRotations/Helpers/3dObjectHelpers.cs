@@ -61,6 +61,371 @@ namespace _3dTesting.Helpers
                 }
             }
         }
+
+        // ----------------------------------------------------
+        //  SIMPLIFIED SHADOW PART
+        // ----------------------------------------------------
+        // Adds a low-poly "Shadow" part used by ObjectShadowManager instead of
+        // projecting the full mesh (hundreds of triangles -> 10..30).
+        // Coordinate convention: X lateral, Y depth, Z vertical.
+        //
+        // The shadow is a real silhouette — the 2D convex hull of the object's
+        // top-down (XY) footprint, fan-triangulated. Two modes:
+        //
+        // - useFlatQuad = true  -> single flat hull at z = 0 (free-flying objects:
+        //                          ships, drones, swans, bombers...).
+        //                          Triangle count = hull vertex count (<= ~16).
+        //
+        // - useFlatQuad = false -> N-layer stacked silhouette: the Z range is
+        //                          sliced into `layers` horizontal bands, a convex
+        //                          hull is built from the verts in each band, and
+        //                          adjacent rings are connected by side quads. This
+        //                          preserves the object's real vertical profile so
+        //                          projected shadows actually look like the object:
+        //                            layers = 2  -> tower trunk + head (default)
+        //                            layers = 5+ -> tree (trunk -> foliage -> tip),
+        //                                           houses with roofs, etc.
+        //
+        // Call AFTER ApplyScaleToObject so the silhouette matches the final scaled
+        // geometry. The part is added with IsVisible = false; only the shadow
+        // renderer reads it.
+        public static void AddSimplifiedShadowPart(I3dObject actualObject, bool useFlatQuad = false, int layers = 2)
+        {
+            if (actualObject == null || actualObject.ObjectParts == null || actualObject.ObjectParts.Count == 0)
+                return;
+
+            // Idempotent
+            for (int i = 0; i < actualObject.ObjectParts.Count; i++)
+            {
+                if (actualObject.ObjectParts[i].PartName == "Shadow")
+                    return;
+            }
+
+            // Collect all visible verts. Skip guide / helper parts.
+            var verts = new List<Vector3>(256);
+            float minZ = float.MaxValue, maxZ = float.MinValue;
+
+            foreach (var part in actualObject.ObjectParts)
+            {
+                if (!part.IsVisible || part.Triangles == null || part.Triangles.Count == 0)
+                    continue;
+
+                for (int t = 0; t < part.Triangles.Count; t++)
+                {
+                    var tri = part.Triangles[t];
+                    AddVert(verts, tri.vert1, ref minZ, ref maxZ);
+                    AddVert(verts, tri.vert2, ref minZ, ref maxZ);
+                    AddVert(verts, tri.vert3, ref minZ, ref maxZ);
+                }
+            }
+
+            if (verts.Count < 3) return;
+
+            const string ShadowColor = "000000";
+
+            if (useFlatQuad)
+            {
+                // Top-down silhouette in XY, laid flat at z = 0.
+                var hull = ConvexHullXY(verts);
+                hull = SimplifyHullEvenly(hull, maxVerts: 16);
+                if (hull.Count < 3) return;
+
+                var tris = FanTriangulate(hull, z: 0f, ShadowColor);
+                AddShadowPart(actualObject, tris);
+            }
+            else
+            {
+                // N-layer stacked silhouette. Slice the Z range into `layers`
+                // horizontal bands, build a convex hull from the verts in each
+                // band, resample all rings to the same vertex count (so side
+                // quads connect cleanly), and stitch them together with cap +
+                // side triangles. Captures true profiles like tree
+                // (narrow trunk -> wide foliage -> narrow tip) or house
+                // (rectangular walls -> pitched roof).
+                int layerCount = Math.Max(2, layers);
+                float zRange = maxZ - minZ;
+                if (zRange <= 1e-4f)
+                {
+                    // Degenerate flat object — fall back to a single flat hull.
+                    var flatHull = SimplifyHullEvenly(ConvexHullXY(verts), maxVerts: 16);
+                    if (flatHull.Count < 3) return;
+                    AddShadowPart(actualObject, FanTriangulate(flatHull, z: minZ, ShadowColor));
+                    return;
+                }
+
+                // Bucket verts into layer bands. Each band has a small overlap
+                // (20% of band height) so rings built from thin geometry
+                // (e.g. a single ring of foliage tris at exactly z=H) still
+                // capture enough points.
+                float bandH = zRange / layerCount;
+                float overlap = bandH * 0.20f;
+                var buckets = new List<Vector3>[layerCount];
+                for (int i = 0; i < layerCount; i++) buckets[i] = new List<Vector3>(32);
+
+                for (int i = 0; i < verts.Count; i++)
+                {
+                    var v = verts[i];
+                    for (int b = 0; b < layerCount; b++)
+                    {
+                        float zLo = minZ + b * bandH - overlap;
+                        float zHi = minZ + (b + 1) * bandH + overlap;
+                        if (v.z >= zLo && v.z <= zHi) buckets[b].Add(v);
+                    }
+                }
+
+                // Build a hull per band. Empty / degenerate bands inherit the
+                // nearest non-empty neighbour so the silhouette stays closed.
+                var rings = new List<(float x, float y)>[layerCount];
+                for (int b = 0; b < layerCount; b++)
+                {
+                    if (buckets[b].Count >= 3)
+                        rings[b] = SimplifyHullEvenly(ConvexHullXY(buckets[b]), maxVerts: 12);
+                    else
+                        rings[b] = null;
+                }
+                // Forward fill, then backward fill, so no null rings remain.
+                for (int b = 1; b < layerCount; b++)
+                    if (rings[b] == null || rings[b].Count < 3) rings[b] = rings[b - 1];
+                for (int b = layerCount - 2; b >= 0; b--)
+                    if (rings[b] == null || rings[b].Count < 3) rings[b] = rings[b + 1];
+                if (rings[0] == null || rings[0].Count < 3) return;
+
+                // Resample every ring to the same vertex count so side quads
+                // connect index-aligned points between adjacent levels.
+                int sideCount = 10;
+                for (int b = 0; b < layerCount; b++) sideCount = Math.Min(sideCount, Math.Max(3, rings[b].Count));
+                var resampled = new List<(float x, float y)>[layerCount];
+                for (int b = 0; b < layerCount; b++) resampled[b] = ResampleHullByAngle(rings[b], sideCount);
+
+                // Band centre Z values — use the midpoint of each band rather
+                // than the band edge so the shadow silhouette reflects where the
+                // bulk of each layer actually sits.
+                var ringZ = new float[layerCount];
+                for (int b = 0; b < layerCount; b++)
+                    ringZ[b] = minZ + (b + 0.5f) * bandH;
+                // Pin the first/last rings to the real min/max so the shadow
+                // base is at z=0 and the tip reaches the true object top.
+                ringZ[0] = minZ;
+                ringZ[layerCount - 1] = maxZ;
+
+                var tris = new List<ITriangleMeshWithColor>(sideCount * 2 * (layerCount - 1) + sideCount * 2);
+
+                // Bottom cap
+                tris.AddRange(FanTriangulateXY(resampled[0], z: ringZ[0], ShadowColor));
+                // Top cap
+                tris.AddRange(FanTriangulateXY(resampled[layerCount - 1], z: ringZ[layerCount - 1], ShadowColor));
+
+                // Side quads between adjacent rings.
+                for (int b = 0; b < layerCount - 1; b++)
+                {
+                    var lower = resampled[b];
+                    var upper = resampled[b + 1];
+                    float zLo = ringZ[b];
+                    float zHi = ringZ[b + 1];
+                    for (int i = 0; i < sideCount; i++)
+                    {
+                        int next = (i + 1) % sideCount;
+                        var bl = new Vector3 { x = lower[i].x, y = lower[i].y, z = zLo };
+                        var br = new Vector3 { x = lower[next].x, y = lower[next].y, z = zLo };
+                        var tr = new Vector3 { x = upper[next].x, y = upper[next].y, z = zHi };
+                        var tl = new Vector3 { x = upper[i].x, y = upper[i].y, z = zHi };
+                        tris.Add(MakeShadowTri(bl, br, tr, ShadowColor));
+                        tris.Add(MakeShadowTri(bl, tr, tl, ShadowColor));
+                    }
+                }
+
+                AddShadowPart(actualObject, tris);
+            }
+        }
+
+        // Caller-supplied shadow geometry. Use this when a handful of hand-
+        // placed triangles produce a better silhouette than the auto-generated
+        // convex-hull stack (e.g. tree = 5 tris, house = 5 tris). Saves
+        // hundreds of triangles per object.
+        //
+        // Conventions for the supplied triangles:
+        //   - Model-space coordinates (same as the object's ObjectParts).
+        //   - z = 0 verts stay pinned to the ground; z > 0 verts are projected
+        //     along the light direction by ObjectShadowManager.
+        //   - Use ShadowColorHex (or any value — renderer overrides per-frame).
+        public const string ShadowColorHex = "000000";
+        public static void AddCustomShadowPart(I3dObject actualObject, List<ITriangleMeshWithColor> triangles)
+        {
+            if (actualObject == null || actualObject.ObjectParts == null) return;
+            if (triangles == null || triangles.Count == 0) return;
+
+            for (int i = 0; i < actualObject.ObjectParts.Count; i++)
+            {
+                if (actualObject.ObjectParts[i].PartName == "Shadow") return; // idempotent
+            }
+            AddShadowPart(actualObject, triangles);
+        }
+
+        private static void AddShadowPart(I3dObject obj, List<ITriangleMeshWithColor> tris)
+        {
+            obj.ObjectParts.Add(new _3dObjectPart
+            {
+                PartName = "Shadow",
+                Triangles = tris,
+                IsVisible = false
+            });
+        }
+
+        private static void AddVert(List<Vector3> sink, IVector3 v, ref float minZ, ref float maxZ)
+        {
+            sink.Add(new Vector3 { x = v.x, y = v.y, z = v.z });
+            if (v.z < minZ) minZ = v.z;
+            if (v.z > maxZ) maxZ = v.z;
+        }
+
+        // Andrew's monotone chain convex hull in XY plane. O(n log n).
+        private static List<(float x, float y)> ConvexHullXY(List<Vector3> pts)
+        {
+            int n = pts.Count;
+            if (n < 3) return new List<(float, float)>();
+
+            var arr = new (float x, float y)[n];
+            for (int i = 0; i < n; i++) arr[i] = (pts[i].x, pts[i].y);
+
+            Array.Sort(arr, (a, b) =>
+            {
+                int c = a.x.CompareTo(b.x);
+                return c != 0 ? c : a.y.CompareTo(b.y);
+            });
+
+            var hull = new (float x, float y)[2 * n];
+            int k = 0;
+
+            // Lower hull
+            for (int i = 0; i < n; i++)
+            {
+                while (k >= 2 && Cross2D(hull[k - 2], hull[k - 1], arr[i]) <= 0) k--;
+                hull[k++] = arr[i];
+            }
+            // Upper hull
+            int t = k + 1;
+            for (int i = n - 2; i >= 0; i--)
+            {
+                while (k >= t && Cross2D(hull[k - 2], hull[k - 1], arr[i]) <= 0) k--;
+                hull[k++] = arr[i];
+            }
+
+            var result = new List<(float, float)>(k - 1);
+            for (int i = 0; i < k - 1; i++) result.Add(hull[i]);
+            return result;
+        }
+
+        private static float Cross2D((float x, float y) o, (float x, float y) a, (float x, float y) b)
+        {
+            return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+        }
+
+        // If the hull has more verts than maxVerts, walk it and keep evenly spaced ones
+        // along the perimeter. Cheap and preserves overall shape.
+        private static List<(float x, float y)> SimplifyHullEvenly(List<(float x, float y)> hull, int maxVerts)
+        {
+            if (hull.Count <= maxVerts) return hull;
+            var simplified = new List<(float, float)>(maxVerts);
+            float step = (float)hull.Count / maxVerts;
+            for (int i = 0; i < maxVerts; i++)
+            {
+                int idx = (int)(i * step);
+                if (idx >= hull.Count) idx = hull.Count - 1;
+                simplified.Add(hull[idx]);
+            }
+            return simplified;
+        }
+
+        // Resample a closed polygon into exactly `count` points spaced evenly
+        // along its perimeter. Preserves the original corners because, when a
+        // sample lands on an edge, we interpolate between the two endpoints.
+        // Used to give the lower/upper tower hulls matching index-aligned rings
+        // so side quads connect cleanly.
+        private static List<(float x, float y)> ResampleHullByAngle(List<(float x, float y)> hull, int count)
+        {
+            if (hull.Count == 0 || count <= 0) return hull;
+            if (hull.Count == count) return hull;
+
+            // Edge lengths + total perimeter
+            var edgeLen = new float[hull.Count];
+            float perimeter = 0f;
+            for (int i = 0; i < hull.Count; i++)
+            {
+                int n = (i + 1) % hull.Count;
+                float dx = hull[n].x - hull[i].x;
+                float dy = hull[n].y - hull[i].y;
+                edgeLen[i] = MathF.Sqrt(dx * dx + dy * dy);
+                perimeter += edgeLen[i];
+            }
+            if (perimeter <= 1e-6f) return hull;
+
+            float step = perimeter / count;
+            var result = new List<(float, float)>(count);
+
+            int edge = 0;
+            float edgeStart = 0f; // cumulative distance at start of current edge
+
+            for (int i = 0; i < count; i++)
+            {
+                float target = i * step;
+                // Advance to the edge containing `target`
+                while (edge < hull.Count && edgeStart + edgeLen[edge] < target)
+                {
+                    edgeStart += edgeLen[edge];
+                    edge++;
+                }
+                if (edge >= hull.Count) { result.Add(hull[hull.Count - 1]); continue; }
+
+                float localT = edgeLen[edge] > 1e-6f ? (target - edgeStart) / edgeLen[edge] : 0f;
+                int next = (edge + 1) % hull.Count;
+                float x = hull[edge].x + (hull[next].x - hull[edge].x) * localT;
+                float y = hull[edge].y + (hull[next].y - hull[edge].y) * localT;
+                result.Add((x, y));
+            }
+            return result;
+        }
+
+        private static float NormalizeAngle(float a)
+        {
+            while (a > Math.PI) a -= (float)(2 * Math.PI);
+            while (a < -Math.PI) a += (float)(2 * Math.PI);
+            return a;
+        }
+
+        private static List<ITriangleMeshWithColor> FanTriangulate(List<(float x, float y)> hull, float z, string color)
+        {
+            return FanTriangulateXY(hull, z, color);
+        }
+
+        private static List<ITriangleMeshWithColor> FanTriangulateXY(List<(float x, float y)> hull, float z, string color)
+        {
+            var tris = new List<ITriangleMeshWithColor>(hull.Count);
+            float cx = 0, cy = 0;
+            for (int i = 0; i < hull.Count; i++) { cx += hull[i].x; cy += hull[i].y; }
+            cx /= hull.Count; cy /= hull.Count;
+
+            var center = new Vector3 { x = cx, y = cy, z = z };
+            for (int i = 0; i < hull.Count; i++)
+            {
+                int next = (i + 1) % hull.Count;
+                var a = new Vector3 { x = hull[i].x, y = hull[i].y, z = z };
+                var b = new Vector3 { x = hull[next].x, y = hull[next].y, z = z };
+                tris.Add(MakeShadowTri(center, a, b, color));
+            }
+            return tris;
+        }
+
+        private static TriangleMeshWithColor MakeShadowTri(Vector3 a, Vector3 b, Vector3 c, string color)
+        {
+            return new TriangleMeshWithColor
+            {
+                Color = color,
+                vert1 = a,
+                vert2 = b,
+                vert3 = c,
+                noHidden = true
+            };
+        }
         public static List<IVector3> GenerateAabbCrashBoxFromRotated(List<IVector3> rotatedPoints)
         {
             if (rotatedPoints == null || rotatedPoints.Count < 2)

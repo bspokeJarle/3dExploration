@@ -24,14 +24,16 @@ namespace _3dRotations.Scene.Scene1
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public ISceneDirector Director { get; } = new Scene2Director();
         public GameModes GameMode { get; } = GameModes.Playback;
-        public float InfectionThresholdPercent { get; } = 8f;
+        public float InfectionThresholdPercent { get; } = 10f;
         public int InfectionSpreadRate { get; } = 75;
         public int SeederOffscreenSpeedFactor { get; } = 10;
         public float LocalInfectionSpreadDelaySec { get; } = 8.0f;
         public float LocalInfectionSpreadRadius { get; } = 3500f;
 
         public void SetupScene(I3dWorld world)
-        {            
+        {
+            var ws = SurfaceSetup.WorldScale;
+
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
@@ -55,31 +57,13 @@ namespace _3dRotations.Scene.Scene1
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
 
-            // SpaceSwans
-            for (int s = 0; s < 50; s++)
-            {
-                var rmdSwan = new Random();
-                var spaceSwan = SpaceSwan.CreateSpaceSwan(Surface);
-                spaceSwan.Rotation = new Vector3 { };
-                spaceSwan.WorldPosition = new Vector3 { x = 95700 + rmdSwan.Next(-40000, 40000), y = 0, z = 92000 + rmdSwan.Next(-40000, 40000) };
-                spaceSwan.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                spaceSwan.ObjectName = "SpaceSwan";
-                spaceSwan.Movement = new SpaceSwanControls();
-                spaceSwan.CrashBoxDebugMode = false;
-                spaceSwan.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.SpaceSwanHealth };
-                spaceSwan.HasPowerUp = false;
-                spaceSwan.IsActive = true;
-                world.WorldInhabitants.Add(spaceSwan);
-                GameState.SurfaceState.AiObjects.Add(spaceSwan);
-            }
-
-            //Add drones that will be waiting until the player has a Decoy powerup
+            // Drones — waiting until the player has a Decoy powerup
             for (int i = 0; i < 6; i++)
             {
                 var rmd = new Random();
 
                 var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
-                kamikaze.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-55000, 55000), y = 0, z = 92000 + rmd.Next(-55000, 55000) };
+                kamikaze.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-55000, 55000)) * ws, y = 0, z = (92000 + rmd.Next(-55000, 55000)) * ws };
                 kamikaze.Rotation = new Vector3 { };
                 kamikaze.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
                 kamikaze.ObjectName = "KamikazeDrone";
@@ -92,14 +76,14 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-            //Add seeders close to the player for immediate pressure
-            for (int i = 0; i < 4; i++)
+            // Seeders close to the player for immediate pressure
+            for (int i = 0; i < 5; i++)
             {
                 var rmd = new Random();
 
                 var seeder = Seeder.CreateSeeder(Surface);
                 seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-12000, 12000), y = 0, z = 92000 + rmd.Next(-12000, 12000) };
+                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-12000, 12000)) * ws, y = 0, z = (92000 + rmd.Next(-12000, 12000)) * ws };
                 seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seeder.ObjectName = "Seeder";
                 seeder.Movement = new SeederControls();
@@ -110,14 +94,14 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.AiObjects.Add(seeder);
             }
 
-            //Add more seeders spread further across the map
+            // Seeders spread further across the map
             for (int i = 0; i < 3; i++)
             {
                 var rmd = new Random();
 
                 var seeder = Seeder.CreateSeeder(Surface);
                 seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = 95700 + rmd.Next(-25000, 5000), y = 0, z = 92000 + rmd.Next(-25000, 5000) };
+                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-25000, 5000)) * ws, y = 0, z = (92000 + rmd.Next(-25000, 5000)) * ws };
                 seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seeder.ObjectName = "Seeder";
                 seeder.Movement = new SeederControls();
@@ -128,23 +112,27 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.AiObjects.Add(seeder);
             }
 
-            //Late powerup seeder — this seeder is to unlock the lazer, the lazer takes out the mothership sooner
-            var seederPowerup = Seeder.CreateSeeder(Surface);
-            seederPowerup.Rotation = new Vector3 { };
-            seederPowerup.WorldPosition = new Vector3 { x = 95700 + 20000, y = 0, z = 92000 + 20000 };
-            seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-            seederPowerup.ObjectName = "Seeder";
-            seederPowerup.Movement = new SeederControls();
-            seederPowerup.CrashBoxDebugMode = false;
-            seederPowerup.ImpactStatus = new ImpactStatus { };
-            seederPowerup.HasPowerUp = true;
-            world.WorldInhabitants.Add(seederPowerup);
-            GameState.SurfaceState.AiObjects.Add(seederPowerup);
+            // Powerup seeders — unlock decoy and lazer
+            for (int i = 0; i < 2; i++)
+            {
+                var rmd = new Random();
+                var seederPowerup = Seeder.CreateSeeder(Surface);
+                seederPowerup.Rotation = new Vector3 { };
+                seederPowerup.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-15000, 15000)) * ws, y = 0, z = (92000 + rmd.Next(-15000, 15000)) * ws };
+                seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                seederPowerup.ObjectName = "Seeder";
+                seederPowerup.Movement = new SeederControls();
+                seederPowerup.CrashBoxDebugMode = false;
+                seederPowerup.ImpactStatus = new ImpactStatus { };
+                seederPowerup.HasPowerUp = true;
+                world.WorldInhabitants.Add(seederPowerup);
+                GameState.SurfaceState.AiObjects.Add(seederPowerup);
+            }
 
-            //Mothership — spawns inactive, enters when all seeders and drones are destroyed
+            // Mothership — spawns inactive, enters when all seeders and drones are destroyed
             var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
             motherShip.Rotation = new Vector3 { };
-            motherShip.WorldPosition = new Vector3 { x = 95700, y = 0, z = 92000 };
+            motherShip.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 92000 * ws };
             motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
             motherShip.ObjectName = "MotherShipSmall";
             motherShip.Movement = new MotherShipSmallControls();
@@ -155,12 +143,30 @@ namespace _3dRotations.Scene.Scene1
             world.WorldInhabitants.Add(motherShip);
             GameState.SurfaceState.AiObjects.Add(motherShip);
 
+            // SpaceSwans — passive wildlife
+            for (int s = 0; s < 50; s++)
+            {
+                var rmdSwan = new Random();
+                var spaceSwan = SpaceSwan.CreateSpaceSwan(Surface);
+                spaceSwan.Rotation = new Vector3 { };
+                spaceSwan.WorldPosition = new Vector3 { x = (95700 + rmdSwan.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmdSwan.Next(-40000, 40000)) * ws };
+                spaceSwan.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                spaceSwan.ObjectName = "SpaceSwan";
+                spaceSwan.Movement = new SpaceSwanControls();
+                spaceSwan.CrashBoxDebugMode = false;
+                spaceSwan.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.SpaceSwanHealth };
+                spaceSwan.HasPowerUp = false;
+                spaceSwan.IsActive = true;
+                world.WorldInhabitants.Add(spaceSwan);
+                GameState.SurfaceState.AiObjects.Add(spaceSwan);
+            }
+
             //Get the surface viewport based on the global Map Position
             //Important: In a Scene, Surface should be amongst the first objects added to the world
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
-            surfaceObject.ObjectOffsets = new Vector3 { x = 75, y = 500, z = 300 };
+            surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 400 };
             surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Crashboxes are added n the GetSurfaceViewPort method
@@ -191,7 +197,7 @@ namespace _3dRotations.Scene.Scene1
                 tower.WorldPosition = new Vector3 { };
                 tower.SurfaceBasedId = GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
-                tower.ObjectOffsets = new Vector3 { x = 75, y = 280, z = 300 };
+                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
                 tower.ObjectName = "Tower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
@@ -212,7 +218,7 @@ namespace _3dRotations.Scene.Scene1
                 tree.SurfaceBasedId = GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tree.ObjectOffsets = new Vector3 { x = 75, y = 425, z = 300 };
+                tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
                 //Crashbox offsets for Tree, counteract the object offsets
                 //tree.CrashboxOffsets = new Vector3 { };
                 tree.ObjectName = "Tree";
@@ -234,7 +240,7 @@ namespace _3dRotations.Scene.Scene1
                 //Find the surface based id for the tree
                 house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
-                house.ObjectOffsets = new Vector3 { x = 75, y = 450, z = 300 };
+                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 400 };
                 //TODO need to find the right offsets for house
                 //house.CrashboxOffsets = new Vector3 { };
                 house.ObjectName = "House";
@@ -260,10 +266,10 @@ namespace _3dRotations.Scene.Scene1
                 "NEREID outer colony TRITON-7 has gone dark.\n\n" +
                 "Long-range telemetry confirms Omega Strain\n" +
                 "has breached the quarantine perimeter.\n" +
-                "Seeder count: EIGHT. Escort drones: SIX.\n" +
+                "Seeder count: TEN. Escort drones: SIX.\n" +
                 "Infection spread rate: ACCELERATED.\n" +
                 "Terrain: unknown — no prior survey data.\n\n" +
-                "Bio-contamination tolerance: 8%.\n\n" +
+                "Bio-contamination tolerance: 10%.\n\n" +
                 "REVISED DIRECTIVE:\n" +
                 "Sterilize TRITON-7. Leave nothing behind.";
 

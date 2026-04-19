@@ -71,6 +71,8 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.ApplyScaleToObject(ship, ZoomRatio);
 
+            _3dObjectHelpers.AddSimplifiedShadowPart(ship, useFlatQuad: true);
+
             return ship;
         }
 

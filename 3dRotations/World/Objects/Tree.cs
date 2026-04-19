@@ -21,6 +21,7 @@ namespace _3dRotations.World.Objects
             var foliageTriangles = FoliageTriangles();
             var treeCrashBox = TreeCrashBoxes();
             var tree = new _3dObject{ ObjectId = GameState.ObjectIdCounter++ };
+            tree.HasShadow = true;
 
             if (trunkTriangles != null)
                 tree.ObjectParts.Add(new _3dObjectPart { PartName = "TreeTrunk", Triangles = trunkTriangles, IsVisible = true });
@@ -32,7 +33,63 @@ namespace _3dRotations.World.Objects
             tree.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             tree.ParentSurface = parentSurface;
 
+            // Shadow fine-tuning: nudge shadow 10 units to the left and 10 units
+            // closer to the camera so it sits tight against the trunk base.
+            tree.ShadowOffset = new Vector3 { x = -10, y = 0, z = -10 };
+
             tree.CrashBoxes = treeCrashBox;
+
+            // Hand-authored low-poly shadow silhouette.
+            // Side-on profile (X–Z plane, Y = 0) that the shadow projector
+            // skews along the ground. Use as many triangles as needed to make
+            // the outline read — no hard limit. Tree here = 8 tris: a narrow
+            // trunk + a rounded, slightly asymmetric crown.
+            var shadowTris = new List<ITriangleMeshWithColor>(8);
+            const string sc = _3dObjectHelpers.ShadowColorHex;
+
+            // --- Trunk (2 tris) ---
+            var tA = new Vector3 { x = -4f, y = 0f, z = 0f };
+            var tB = new Vector3 { x = 4f, y = 0f, z = 0f };
+            var tC = new Vector3 { x = 4f, y = 0f, z = 16f };
+            var tD = new Vector3 { x = -4f, y = 0f, z = 16f };
+            shadowTris.Add(new TriangleMeshWithColor { Color = sc, vert1 = tA, vert2 = tB, vert3 = tC });
+            shadowTris.Add(new TriangleMeshWithColor { Color = sc, vert1 = tA, vert2 = tC, vert3 = tD });
+
+            // --- Canopy (6 tris, fan-ish around a central axis) ---
+            // Central "core" of the crown — tall slim diamond.
+            var cBot = new Vector3 { x = 0f, y = 0f, z = 14f };
+            var cTop = new Vector3 { x = 0f, y = 0f, z = 55f };
+            var cL1 = new Vector3 { x = -22f, y = 0f, z = 22f };  // lower-left shoulder
+            var cL2 = new Vector3 { x = -17f, y = 0f, z = 38f };  // upper-left shoulder
+            var cR1 = new Vector3 { x = 24f, y = 0f, z = 20f };   // lower-right (slightly wider — asymmetric)
+            var cR2 = new Vector3 { x = 15f, y = 0f, z = 40f };   // upper-right shoulder
+
+            // Left side: 2 tris
+            shadowTris.Add(new TriangleMeshWithColor { Color = sc, vert1 = cBot, vert2 = cL1, vert3 = cL2 });
+            shadowTris.Add(new TriangleMeshWithColor { Color = sc, vert1 = cBot, vert2 = cL2, vert3 = cTop });
+            // Right side: 2 tris
+            shadowTris.Add(new TriangleMeshWithColor { Color = sc, vert1 = cBot, vert2 = cR2, vert3 = cR1 });
+            shadowTris.Add(new TriangleMeshWithColor { Color = sc, vert1 = cBot, vert2 = cTop, vert3 = cR2 });
+
+            // Small lower "bulge" to round out the crown base.
+            shadowTris.Add(new TriangleMeshWithColor
+            {
+                Color = sc,
+                vert1 = new Vector3 { x = -18f, y = 0f, z = 16f },
+                vert2 = new Vector3 { x = 20f, y = 0f, z = 16f },
+                vert3 = new Vector3 { x = 0f, y = 0f, z = 26f }
+            });
+            // Mid crown connector so the profile reads as one blob, not spokes.
+            shadowTris.Add(new TriangleMeshWithColor
+            {
+                Color = sc,
+                vert1 = cL1,
+                vert2 = cR1,
+                vert3 = new Vector3 { x = 0f, y = 0f, z = 32f }
+            });
+
+            _3dObjectHelpers.AddCustomShadowPart(tree, shadowTris);
+
             return tree;
         }
 

@@ -203,6 +203,8 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.ApplyScaleToObject(swan, ZoomRatio);
 
+            _3dObjectHelpers.AddSimplifiedShadowPart(swan, useFlatQuad: true);
+
             return swan;
         }
 

@@ -201,6 +201,7 @@ namespace _3dTesting.Helpers
             byte[] orangePx  = { 0, 140, 255, 255 };   // Decoy
             byte[] powerupPx = { 255, 140, 30, 255 };  // PowerUp (strong blue)
             byte[] swanPx    = { 240, 240, 240, 255 }; // SpaceSwan (white)
+            byte[] zeppelinPx = { 0, 200, 200, 255 };   // ZeppelinBomber (yellow-green, BGRA)
 
             // Mothership — large marker flashing red/black independently
             bool mothershipFlashRed = (_markerFrame % 20) < 10;
@@ -293,9 +294,19 @@ namespace _3dTesting.Helpers
                             "KamikazeDrone" => bluePx,
                             "DroneDecoy" => orangePx,
                             "SpaceSwan" => swanPx,
+                            "ZeppelinBomber" => null,
                             _ => null
                         };
-                        if (color == null) continue;
+                        if (color == null)
+                        {
+                            if (obj.ObjectName == "ZeppelinBomber")
+                            {
+                                int bxZ = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
+                                int bzZ = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                                StampMarkerLarge(pixels, cropW, cropH, stride, bxZ, bzZ, zeppelinPx);
+                            }
+                            continue;
+                        }
 
                         int bx2 = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
                         int bz2 = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
