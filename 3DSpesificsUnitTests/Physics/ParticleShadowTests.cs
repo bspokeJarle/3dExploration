@@ -6,25 +6,65 @@ using static Domain._3dSpecificsImplementations;
 
 namespace _3DSpesificsUnitTests.Physics;
 
+// These tests MIRROR the particle-shadow projection math in
+// 3dTesting\MainWindowClasses\MainWindow.Particles.cs (ParticleManager.HandleParticles).
+// Because the test project cannot reference the WPF Frontend project, the
+// formula is duplicated here; if the production math changes, update these
+// constants/functions to keep parity.
+//
+// The tests exist primarily to catch REGRESSIONS of the bug that caused
+// particle shadows to vanish:
+//   * If the altitude-to-projection factor becomes too large, the projected
+//     (x, y) offset grows huge (hundreds of units) and the shadow ends up
+//     far away from the particle's ground point — often off-screen.
+//   * If MaxParticleAltitudeForProjection is not applied, very-high particles
+//     never produce a readable shadow near themselves.
+//   * If scale drops to zero the shadow becomes a degenerate zero-area
+//     triangle and is invisible.
 [TestClass]
-public class ParticleSurfaceProjectionTests
+public class ParticleShadowProjectionTests
 {
-    // Mirrors the surface-projection scale formula from ParticleManager.HandleParticles
-    private const float BaseProjectedScale = 1.5f;
-    private const float AltitudeShrinkFactor = 0.003f;
+    // Mirror of ParticleManager constants/knobs at the time of writing.
+    private const float ParticleShadowSize = 6.0f;
+    private const float BaseProjectedScale = 1.0f;
     private const float MinProjectedScale = 0.3f;
-    private const float SurfaceFlattenY = 0.3f;
+    private const float AltitudeShrinkFactor = 0.003f;
+    private const float ParticleAltitudeProjection = 0.15f;
+    private const float MaxParticleAltitudeForProjection = 120f;
+    private const float ShadowSlopeX = -0.15f;   // ObjectShadowManager.ShadowSlopeX
+    private const float ShadowSlopeY = -0.55f;   // ObjectShadowManager.ShadowSlopeY
 
-    private static float CalculateProjectedScale(float particlePositionY)
-    {
-        float altitude = MathF.Max(0f, particlePositionY * -1f);
-        return MathF.Max(MinProjectedScale, BaseProjectedScale - altitude * AltitudeShrinkFactor);
-    }
+    private const float SurfaceTiltDegrees = 70f;
+    private static readonly float SurfaceTiltCos = MathF.Cos(SurfaceTiltDegrees * MathF.PI / 180f);
+    private static readonly float SurfaceTiltSin = MathF.Sin(SurfaceTiltDegrees * MathF.PI / 180f);
 
-    // Mirrors the projected Y formula — shadow at same screen Y as particle
-    private static float CalculateProjectedY(float inhabitantOffsetY, float particlePositionY)
+    private readonly record struct ShadowVerts(Vector3 V1, Vector3 V2, Vector3 V3, float Scale);
+
+    private static ShadowVerts ProjectShadow(float particleScreenY, float surfaceScreenY,
+        float groundLocalX, float groundLocalY, float groundLocalZ)
     {
-        return inhabitantOffsetY + particlePositionY;
+        float altitudeRaw = MathF.Max(0f, surfaceScreenY - particleScreenY);
+        float altitude = MathF.Min(altitudeRaw, MaxParticleAltitudeForProjection);
+        float scale = MathF.Max(MinProjectedScale, BaseProjectedScale - altitudeRaw * AltitudeShrinkFactor);
+
+        float projX = altitude * ShadowSlopeX * ParticleAltitudeProjection;
+        float projY = altitude * ShadowSlopeY * ParticleAltitudeProjection;
+
+        float anchorX = groundLocalX + projX;
+        float anchorY = groundLocalY + projY * SurfaceTiltCos;
+        float anchorZ = groundLocalZ + projY * SurfaceTiltSin;
+
+        float s = ParticleShadowSize * scale;
+
+        var v1 = new Vector3 { x = anchorX - s, y = anchorY, z = anchorZ };
+        var v2 = new Vector3 { x = anchorX + s, y = anchorY, z = anchorZ };
+        var v3 = new Vector3
+        {
+            x = anchorX,
+            y = anchorY + s * SurfaceTiltCos,
+            z = anchorZ + s * SurfaceTiltSin
+        };
+        return new ShadowVerts(v1, v2, v3, scale);
     }
 
     [TestInitialize]
@@ -37,139 +77,144 @@ public class ParticleSurfaceProjectionTests
         ScreenSetup.Initialize(1500, 1024);
     }
 
-    [TestCleanup]
-    public void Cleanup()
-    {
-        ScreenSetup.Initialize(1500, 1024);
-    }
-
     // ---------------------------------------------------------------
-    // Shadow scale tests
+    // Visibility: the shadow must have non-zero area and stay near the
+    // ground point the particle is above. If either of these fails, the
+    // shadow effectively disappears on-screen.
     // ---------------------------------------------------------------
 
     [TestMethod]
-    public void ProjectedScale_AtSurfaceLevel_IsBaseScale()
+    public void Shadow_NearSurface_HasNonZeroAreaAndSitsAtGroundPoint()
     {
-        float scale = CalculateProjectedScale(0f);
-        Assert.AreEqual(1.5f, scale, 0.01f,
-            "Projected scale at surface should be the base 1.5x");
+        var s = ProjectShadow(particleScreenY: 500f, surfaceScreenY: 500f,
+            groundLocalX: 0f, groundLocalY: 0f, groundLocalZ: 0f);
+
+        // Altitude == 0 -> no projection offset.
+        Assert.AreEqual(0f, (s.V1.x + s.V2.x) / 2f, 0.01f,
+            "Centre X should equal ground point when particle is on the surface.");
+        Assert.IsTrue(s.Scale >= MinProjectedScale, "Scale must be at least MinProjectedScale.");
+        // Non-degenerate triangle (positive spread)
+        Assert.IsTrue(MathF.Abs(s.V2.x - s.V1.x) > 1f,
+            "Shadow silhouette must have a visible on-screen width.");
     }
 
     [TestMethod]
-    public void ProjectedScale_BelowSurface_StaysAtBase()
+    public void Shadow_HighParticle_ProjectsButStaysCloseToGround()
     {
-        float scale = CalculateProjectedScale(100f);
-        Assert.AreEqual(1.5f, scale, 0.01f,
-            "Projected scale should stay at base 1.5x when particle is below surface");
+        // Particle 300px above surface on screen.
+        var s = ProjectShadow(particleScreenY: 200f, surfaceScreenY: 500f,
+            groundLocalX: 0f, groundLocalY: 0f, groundLocalZ: 0f);
+
+        // With clamp 120 + slope -0.55 + factor 0.15 the X displacement is
+        // 120 * -0.15 * 0.15 ≈ -2.7. Y displacement is 120 * -0.55 * 0.15 ≈ -9.9,
+        // then * cos(70°) ≈ -3.4. Both MUST be tiny compared to screen extents.
+        float centerX = (s.V1.x + s.V2.x) / 2f;
+        Assert.IsTrue(MathF.Abs(centerX) < 10f,
+            $"Projected centre X ({centerX:F2}) must stay within ~10 units of ground; " +
+            "otherwise the shadow flies off-screen (regression of the bug where " +
+            "the altitude factor was too large).");
+        Assert.IsTrue(MathF.Abs(s.V1.y) < 10f && MathF.Abs(s.V2.y) < 10f,
+            "Projected shadow must not wander far from the ground point on Y.");
     }
 
     [TestMethod]
-    public void ProjectedScale_HighAboveSurface_ShrinksWithAltitude()
+    public void Shadow_VeryHighParticle_IsClampedByMaxAltitude()
     {
-        float scale = CalculateProjectedScale(-200f);
-        float expected = MathF.Max(MinProjectedScale, BaseProjectedScale - 200f * AltitudeShrinkFactor);
-        Assert.AreEqual(expected, scale, 0.01f,
-            "Projected mark should shrink when particle is high above surface");
-    }
+        // Particle 1000px above surface — without clamp, projX would be
+        // 1000 * -0.15 * 0.15 = -22.5 on X and -82.5 on Y (before tilt).
+        var sClamped = ProjectShadow(particleScreenY: -500f, surfaceScreenY: 500f,
+            groundLocalX: 0f, groundLocalY: 0f, groundLocalZ: 0f);
+        var sAtCap = ProjectShadow(particleScreenY: 500f - MaxParticleAltitudeForProjection,
+            surfaceScreenY: 500f, groundLocalX: 0f, groundLocalY: 0f, groundLocalZ: 0f);
 
-    [TestMethod]
-    public void ProjectedScale_FartherIsSmallerThanNearer()
-    {
-        float scaleNear = CalculateProjectedScale(-50f);
-        float scaleFar = CalculateProjectedScale(-200f);
-        Assert.IsTrue(scaleFar < scaleNear,
-            $"Mark at -200 ({scaleFar:F2}) should be smaller than at -50 ({scaleNear:F2})");
-    }
-
-    // ---------------------------------------------------------------
-    // Shadow Y placement tests
-    // ---------------------------------------------------------------
-
-    [TestMethod]
-    public void ProjectedY_MatchesParticleScreenY()
-    {
-        float projY = CalculateProjectedY(200f, -50f);
-        Assert.AreEqual(150f, projY, 0.01f,
-            "Shadow Y should match particle's screen Y (inhabitant offset + particle position)");
-    }
-
-    [TestMethod]
-    public void ProjectedY_AtSurface_EqualsInhabitantOffset()
-    {
-        float projY = CalculateProjectedY(200f, 0f);
-        Assert.AreEqual(200f, projY, 0.01f,
-            "Shadow Y at surface level should equal inhabitant offset Y");
+        float clampedCenterX = (sClamped.V1.x + sClamped.V2.x) / 2f;
+        float capCenterX = (sAtCap.V1.x + sAtCap.V2.x) / 2f;
+        Assert.AreEqual(capCenterX, clampedCenterX, 0.01f,
+            "Altitudes above MaxParticleAltitudeForProjection must project identically " +
+            "to the clamp altitude (otherwise high-flying particles' shadows fly off-screen).");
     }
 
     // ---------------------------------------------------------------
-    // Shadow triangle geometry tests
+    // Directionality: shadow must cast in the same direction as the light.
     // ---------------------------------------------------------------
 
     [TestMethod]
-    public void ProjectedTriangle_ZComponentsFlattenedToZero()
+    public void Shadow_CastsInLightDirection()
     {
-        var particleTriangle = new TriangleMeshWithColor
-        {
-            vert1 = new Vector3 { x = -5, y = -5, z = 3 },
-            vert2 = new Vector3 { x = 5, y = -5, z = -2 },
-            vert3 = new Vector3 { x = 0, y = 5, z = 1 }
-        };
+        // Surface light in this project leans slightly LEFT (slopeX = -0.15)
+        // and BEHIND the camera (slopeY = -0.55). A raised particle must
+        // therefore cast its shadow to the left of (and further up-screen
+        // than) the ground point.
+        var sGround = ProjectShadow(particleScreenY: 500f, surfaceScreenY: 500f,
+            groundLocalX: 0f, groundLocalY: 0f, groundLocalZ: 0f);
+        var sHigh = ProjectShadow(particleScreenY: 400f, surfaceScreenY: 500f,
+            groundLocalX: 0f, groundLocalY: 0f, groundLocalZ: 0f);
 
-        float scale = CalculateProjectedScale(0f);
-        var proj1 = new Vector3 { x = particleTriangle.vert1.x * scale, y = particleTriangle.vert1.y * scale * SurfaceFlattenY, z = 0 };
-        var proj2 = new Vector3 { x = particleTriangle.vert2.x * scale, y = particleTriangle.vert2.y * scale * SurfaceFlattenY, z = 0 };
-        var proj3 = new Vector3 { x = particleTriangle.vert3.x * scale, y = particleTriangle.vert3.y * scale * SurfaceFlattenY, z = 0 };
-
-        Assert.AreEqual(0f, proj1.z, "Projected vert1 z should be 0");
-        Assert.AreEqual(0f, proj2.z, "Projected vert2 z should be 0");
-        Assert.AreEqual(0f, proj3.z, "Projected vert3 z should be 0");
-    }
-
-    [TestMethod]
-    public void ProjectedTriangle_ScaledLargerThanParticle()
-    {
-        float size = 10f;
-        var particleTriangle = new TriangleMeshWithColor
-        {
-            vert1 = new Vector3 { x = -size / 2, y = -size / 2, z = 0 },
-            vert2 = new Vector3 { x = size / 2, y = -size / 2, z = 0 },
-            vert3 = new Vector3 { x = 0, y = size / 2, z = 0 }
-        };
-
-        float scale = CalculateProjectedScale(0f);
-        float projExtent = MathF.Abs(particleTriangle.vert2.x * scale);
-        float particleExtent = MathF.Abs(particleTriangle.vert2.x);
-
-        Assert.IsTrue(projExtent > particleExtent,
-            $"Projected extent ({projExtent:F2}) should be larger than particle ({particleExtent:F2})");
-        Assert.AreEqual(particleExtent * 1.5f, projExtent, 0.01f,
-            "Projected mark should be 1.5x the particle size at surface level");
+        float groundCenterX = (sGround.V1.x + sGround.V2.x) / 2f;
+        float highCenterX = (sHigh.V1.x + sHigh.V2.x) / 2f;
+        Assert.IsTrue(highCenterX < groundCenterX,
+            $"Raised-particle shadow centre X ({highCenterX:F2}) should be LEFT of " +
+            $"the on-surface shadow ({groundCenterX:F2}) because ShadowSlopeX < 0.");
     }
 
     // ---------------------------------------------------------------
-    // Shadow X offset matches particle X offset
+    // Scale shrinks with altitude, but never below MinProjectedScale.
     // ---------------------------------------------------------------
 
     [TestMethod]
-    public void ProjectedOffset_XMatchesParticle()
+    public void Shadow_ScaleShrinksWithAltitudeButHasFloor()
     {
-        float inhabitantX = 100f;
-        float particleX = 25f;
-        float expectedX = inhabitantX + particleX;
-        Assert.AreEqual(expectedX, inhabitantX + particleX,
-            "Projected X offset should equal inhabitant X + particle X");
+        var low = ProjectShadow(particleScreenY: 490f, surfaceScreenY: 500f,
+            groundLocalX: 0, groundLocalY: 0, groundLocalZ: 0);
+        var mid = ProjectShadow(particleScreenY: 300f, surfaceScreenY: 500f,
+            groundLocalX: 0, groundLocalY: 0, groundLocalZ: 0);
+        var veryHigh = ProjectShadow(particleScreenY: -5000f, surfaceScreenY: 500f,
+            groundLocalX: 0, groundLocalY: 0, groundLocalZ: 0);
+
+        Assert.IsTrue(mid.Scale < low.Scale,
+            $"Shadow at altitude should be smaller ({mid.Scale:F2}) than one at the surface ({low.Scale:F2}).");
+        Assert.IsTrue(veryHigh.Scale >= MinProjectedScale,
+            $"Shadow scale ({veryHigh.Scale:F2}) must never fall below MinProjectedScale ({MinProjectedScale}).");
     }
 
     // ---------------------------------------------------------------
-    // Integration-style: shadow visibility on platform vs flat terrain
+    // Tilt baking: the shadow vertex that points "forward" on the surface
+    // must move into the ground plane (positive Z) and up-screen (negative
+    // Y delta because +Y is down on screen).
     // ---------------------------------------------------------------
 
     [TestMethod]
-    public void ProjectedY_ShadowTracksParticleDepth()
+    public void Shadow_TiltIsBakedIntoVertices()
     {
-        float projHigh = CalculateProjectedY(200f, -100f);
-        float projLow = CalculateProjectedY(200f, -10f);
-        Assert.IsTrue(projLow > projHigh,
-            "Shadow should be lower on screen when particle is closer to surface");
+        var s = ProjectShadow(particleScreenY: 500f, surfaceScreenY: 500f,
+            groundLocalX: 0f, groundLocalY: 0f, groundLocalZ: 0f);
+
+        // v3 is the "front" vertex — offset by +s along the forward Y of the
+        // silhouette, which after 70° tilt should yield:
+        //   y = s * cos(70°), z = s * sin(70°)
+        float expectedY = ParticleShadowSize * s.Scale * SurfaceTiltCos;
+        float expectedZ = ParticleShadowSize * s.Scale * SurfaceTiltSin;
+        Assert.AreEqual(expectedY, s.V3.y, 0.01f,
+            "V3 y must equal size * cos(tilt) — surface tilt baked into the vertex.");
+        Assert.AreEqual(expectedZ, s.V3.z, 0.01f,
+            "V3 z must equal size * sin(tilt) — surface tilt baked into the vertex.");
+    }
+
+    // ---------------------------------------------------------------
+    // Ground anchor: shadow follows the particle's X, not a global origin.
+    // ---------------------------------------------------------------
+
+    [TestMethod]
+    public void Shadow_FollowsGroundAnchorX()
+    {
+        var sLeft = ProjectShadow(particleScreenY: 500f, surfaceScreenY: 500f,
+            groundLocalX: -200f, groundLocalY: 0, groundLocalZ: 0);
+        var sRight = ProjectShadow(particleScreenY: 500f, surfaceScreenY: 500f,
+            groundLocalX: 200f, groundLocalY: 0, groundLocalZ: 0);
+
+        float leftCenterX = (sLeft.V1.x + sLeft.V2.x) / 2f;
+        float rightCenterX = (sRight.V1.x + sRight.V2.x) / 2f;
+        Assert.IsTrue(rightCenterX - leftCenterX > 399f,
+            "Shadow must move with the ground anchor (delta 400) — else it detaches from the particle.");
     }
 }

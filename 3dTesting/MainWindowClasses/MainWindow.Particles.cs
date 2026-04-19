@@ -14,14 +14,39 @@ namespace _3dTesting.MainWindowClasses
     {
         private readonly _3dRotationCommon Rotate3d = new();
 
-        private const string ShadowColor = "000000";
+        // =====================================================================
+        // PARTICLE SHADOW TUNING KNOBS — mirrors the pattern used by
+        // ObjectShadowManager. `public static` so you can tweak live from the
+        // debugger / Immediate window without rebuilding.
+        //
+        //   ParticleShadowSize       - half-extent of the flat shadow blob
+        //                              (model-space units, at ground z=0)
+        //   BaseProjectedScale       - overall size multiplier
+        //   MinProjectedScale        - lower clamp as altitude grows
+        //   AltitudeShrinkFactor     - how fast shadow shrinks with altitude
+        //   ParticleShadowLift       - tiny -Y lift so blob sits above the
+        //                              tile and doesn't z-fight with it
+        // =====================================================================
+        public static string ShadowColor = "000000";
+        public static float ParticleShadowSize = 6.0f;
+        public static float BaseProjectedScale = 1.0f;
+        public static float MinProjectedScale = 0.3f;
+        public static float AltitudeShrinkFactor = 0.003f;
+        public static float ParticleShadowLift = 2f;
 
-        // Surface-projection constants for shadows
-        private const float BaseProjectedScale = 2.4f;
-        private const float AltitudeShrinkFactor = 0.003f;
-        private const float MinProjectedScale = 0.6f;
-        private const float SurfaceFlattenY = 0.3f;
-        private const float ShadowOffsetX = -20f;
+        // How strongly altitude displaces the shadow along the light direction.
+        // Kept intentionally small (and clamped) because particle altitude is
+        // measured in screen units, which is ~10x the magnitude of a model-
+        // space vertex z used by ObjectShadowManager. A full 1.0 here would
+        // launch the shadow hundreds of units off the ground point.
+        public static float ParticleAltitudeProjection = 0.15f;
+        public static float MaxParticleAltitudeForProjection = 120f;
+
+        // Cached surface-tilt trig — mirrors ObjectShadowManager so particle
+        // shadows rotate onto the ground plane the same way.
+        private const float SurfaceTiltDegrees = 70f;
+        private static readonly float SurfaceTiltCos = MathF.Cos(SurfaceTiltDegrees * MathF.PI / 180f);
+        private static readonly float SurfaceTiltSin = MathF.Sin(SurfaceTiltDegrees * MathF.PI / 180f);
 
         public void HandleParticles(_3dObject inhabitant, List<_3dObject> particleObjectList)
         {
@@ -35,12 +60,21 @@ namespace _3dTesting.MainWindowClasses
             }
 
             var surfaceObj = GameState.SurfaceState.SurfaceViewportObject;
-            float surfaceY = surfaceObj?.ObjectOffsets?.y ?? 500f;
-            float surfaceZ = surfaceObj?.ObjectOffsets?.z ?? 400f;
-            float surfaceX = surfaceObj?.ObjectOffsets?.x ?? 0f;
+            if (surfaceObj?.ObjectOffsets == null) return;
 
-            // Tile cache for ground projection (same approach as ObjectShadowManager free-flying path)
+            float surfaceY = surfaceObj.ObjectOffsets.y;
+            float surfaceX = surfaceObj.ObjectOffsets.x;
+
+            // Tile cache for ground projection.
             var rotatedTiles = inhabitant.ParentSurface?.RotatedSurfaceTriangles;
+
+            // Pull the same light direction used by ObjectShadowManager so all
+            // shadows (objects + particles) cast in one consistent direction.
+            // We intentionally do NOT multiply by VertexStretchBoost here —
+            // that boost is tuned for model-space vertex z values (~10–60),
+            // whereas particle altitude is a much larger screen-space number.
+            float slopeX = ObjectShadowManager.ShadowSlopeX;
+            float slopeY = ObjectShadowManager.ShadowSlopeY;
 
             foreach (var particle in particles)
             {
@@ -72,69 +106,98 @@ namespace _3dTesting.MainWindowClasses
                     Rotation = particle.Rotation
                 });
 
-                // Black shadow — surface-projected flattened mark on the ground.
-                // The shadow belongs to the GROUND (parented to the surface's ObjectOffsets),
-                // not to the particle. Geometry is placed in surface-local space at the
-                // ground tile under the particle's X position. Y here = depth (forward into screen).
-                float altitude = MathF.Max(0f, particle.Position.y * -1f);
-                float projScale = MathF.Max(MinProjectedScale, BaseProjectedScale - altitude * AltitudeShrinkFactor);
+                // ---------------------------------------------------------
+                // GROUND-PARENTED PARTICLE SHADOW
+                //
+                // The shadow belongs to the GROUND, not the particle.
+                // Approach mirrors ObjectShadowManager:
+                //   1. Find the ground tile under the particle's X.
+                //   2. Compute an "altitude" = how high above the surface
+                //      the particle is on screen (surfaceY - particleY).
+                //   3. Project along the global light direction, using
+                //      altitude as the effective Z-displacement. Taller
+                //      particles cast further away from their ground point.
+                //   4. Rotate the projected offset through the surface tilt
+                //      so the shadow lies in the tilted ground plane.
+                //   5. Bake result into model-space verts (with a small
+                //      fixed silhouette, NOT the rotated particle tri), set
+                //      Rotation=(0,0,0), parent to surface.ObjectOffsets.
+                // ---------------------------------------------------------
 
-                var shadowTriangle = new TriangleMeshWithColor
-                {
-                    Color = ShadowColor,
-                    vert1 = new Vector3 { x = particleTriangle.vert1.x * projScale, y = particleTriangle.vert1.y * projScale * SurfaceFlattenY, z = 0 },
-                    vert2 = new Vector3 { x = particleTriangle.vert2.x * projScale, y = particleTriangle.vert2.y * projScale * SurfaceFlattenY, z = 0 },
-                    vert3 = new Vector3 { x = particleTriangle.vert3.x * projScale, y = particleTriangle.vert3.y * projScale * SurfaceFlattenY, z = 0 },
-                    noHidden = true
-                };
-
-                // Find the ground Y (depth) and Z (vertical) under this particle in surface-local space,
-                // by interpolating between the two tile centers bracketing the particle's X.
+                // Find the ground tile under the particle. Mirrors the
+                // free-flying branch in ObjectShadowManager: after the X=70°
+                // surface tilt, tile centers are laid out primarily in the
+                // X-Z plane (X = lateral, Z = scroll axis), while Y is the
+                // small ground-depth component. So we match tiles by
+                // (X, Z), not (X, Y) — matching by Y would snap shadows to
+                // whatever tile has a Y near the particle's screen-Y and
+                // spread them across the bottom of the screen.
+                //   - X from the PARTICLE (continuous, not snapped)
+                //   - Z from the PARTICLE (continuous, not snapped)
+                //   - Y from the nearest TILE (ground surface depth below)
                 float targetX = particleOffsetX - surfaceX;
+                float targetZ = particleOffsetZ - surfaceObj.ObjectOffsets.z;
                 float groundLocalX = targetX;
                 float groundLocalY = 0f;
-                float groundLocalZ = 0f;
+                float groundLocalZ = targetZ;
                 bool grounded = false;
+
                 if (rotatedTiles != null && rotatedTiles.Count > 0)
                 {
-                    float leftX = float.MinValue, rightX = float.MaxValue;
-                    float leftY = 0, rightY = 0;
-                    float leftZ = 0, rightZ = 0;
+                    float bestDistSq = float.MaxValue;
                     for (int i = 0; i < rotatedTiles.Count; i++)
                     {
                         var tile = rotatedTiles[i];
                         float cx = (tile.vert1.x + tile.vert2.x + tile.vert3.x) / 3f;
-                        float cy = (tile.vert1.y + tile.vert2.y + tile.vert3.y) / 3f;
                         float cz = (tile.vert1.z + tile.vert2.z + tile.vert3.z) / 3f;
-                        if (cx <= targetX && cx > leftX) { leftX = cx; leftY = cy; leftZ = cz; }
-                        if (cx >= targetX && cx < rightX) { rightX = cx; rightY = cy; rightZ = cz; }
-                    }
-                    if (!(leftX == float.MinValue && rightX == float.MaxValue))
-                    {
-                        if (leftX == float.MinValue) { leftX = rightX; leftY = rightY; leftZ = rightZ; }
-                        if (rightX == float.MaxValue) { rightX = leftX; rightY = leftY; rightZ = leftZ; }
-                        float t = (rightX - leftX) != 0 ? (targetX - leftX) / (rightX - leftX) : 0f;
-                        groundLocalY = leftY + (rightY - leftY) * t;
-                        groundLocalZ = leftZ + (rightZ - leftZ) * t;
-                        grounded = true;
+                        float dx = cx - targetX;
+                        float dz = cz - targetZ;
+                        float d2 = dx * dx + dz * dz;
+                        if (d2 < bestDistSq)
+                        {
+                            bestDistSq = d2;
+                            groundLocalY = (tile.vert1.y + tile.vert2.y + tile.vert3.y) / 3f;
+                            grounded = true;
+                        }
                     }
                 }
 
-                // Bake ground anchor into the shadow geometry (surface-local space).
-                // The shadow object is then parented to the surface's ObjectOffsets so it
-                // scrolls with the terrain instead of following the particle.
-                shadowTriangle.vert1.x += groundLocalX + ShadowOffsetX;
-                shadowTriangle.vert2.x += groundLocalX + ShadowOffsetX;
-                shadowTriangle.vert3.x += groundLocalX + ShadowOffsetX;
-                shadowTriangle.vert1.y += groundLocalY;
-                shadowTriangle.vert2.y += groundLocalY;
-                shadowTriangle.vert3.y += groundLocalY;
-                shadowTriangle.vert1.z += groundLocalZ;
-                shadowTriangle.vert2.z += groundLocalZ;
-                shadowTriangle.vert3.z += groundLocalZ;
+                if (!grounded) continue;
 
-                if (!grounded)
-                    continue;
+                // Altitude = how far the particle is ABOVE the surface on screen.
+                // (In this project +Y is down-screen, so higher = smaller Y.)
+                // Clamped so very-high particles (e.g. bombers, explosions) still
+                // produce visible shadows near their ground point.
+                float altitudeRaw = MathF.Max(0f, surfaceY - particleOffsetY);
+                float altitude = MathF.Min(altitudeRaw, MaxParticleAltitudeForProjection);
+                float scale = MathF.Max(MinProjectedScale, BaseProjectedScale - altitudeRaw * AltitudeShrinkFactor);
+
+                // Projection offset in MODEL space. Altitude is scaled down by
+                // ParticleAltitudeProjection because particle altitude is in
+                // screen-space units (much larger than object vertex z).
+                float projX = altitude * slopeX * ParticleAltitudeProjection;
+                float projY = altitude * slopeY * ParticleAltitudeProjection;
+
+                // Rotate the flat (projX, projY) offset through the surface
+                // tilt (X=70°) so it lies on the tilted ground plane.
+                //   (x, y, 0) rotated about X -> (x, y*cos, y*sin)
+                float anchorX = groundLocalX + projX;
+                float anchorY = groundLocalY + projY * SurfaceTiltCos - ParticleShadowLift;
+                float anchorZ = groundLocalZ + projY * SurfaceTiltSin;
+
+                // Small fixed silhouette — a flat triangle at z=0 in model
+                // space, sized by `scale`. We DO NOT use the rotated
+                // particle triangle: a tumbling particle would produce a
+                // wildly flickering shadow. The silhouette is a tiny blob.
+                float s = ParticleShadowSize * scale;
+                var shadowTriangle = new TriangleMeshWithColor
+                {
+                    Color = ShadowColor,
+                    vert1 = new Vector3 { x = anchorX - s, y = anchorY, z = anchorZ },
+                    vert2 = new Vector3 { x = anchorX + s, y = anchorY, z = anchorZ },
+                    vert3 = new Vector3 { x = anchorX, y = anchorY + s * SurfaceTiltCos, z = anchorZ + s * SurfaceTiltSin },
+                    noHidden = true
+                };
 
                 particleObjectList.Add(new _3dObject
                 {
@@ -152,7 +215,9 @@ namespace _3dTesting.MainWindowClasses
                         y = surfaceObj.ObjectOffsets.y,
                         z = surfaceObj.ObjectOffsets.z
                     },
-                    Rotation = new Vector3 { x = 70, y = 0, z = 0 }
+                    // Tilt is already baked into the verts — keep Rotation
+                    // at zero so LiveGameLoop doesn't rotate them AGAIN.
+                    Rotation = new Vector3 { x = 0, y = 0, z = 0 }
                 });
             }
         }
