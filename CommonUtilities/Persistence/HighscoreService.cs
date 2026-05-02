@@ -235,22 +235,43 @@ namespace CommonUtilities.Persistence
         // -----------------------------------------------------------------
 
         /// <summary>
-        /// Merges two lists, de-duplicates by (PlayerName + DateUtc),
-        /// sorts descending by score, and trims to max entries.
+        /// Merges two lists and keeps a single best entry per player name
+        /// (case-insensitive). If score ties, the most recent DateUtc wins.
+        /// Then sorts descending by score and trims to max entries.
         /// </summary>
         private static List<HighscoreEntry> MergeLists(
             List<HighscoreEntry> listA,
             List<HighscoreEntry> listB)
         {
-            var seen = new HashSet<string>();
-            var merged = new List<HighscoreEntry>();
+            var byPlayer = new Dictionary<string, HighscoreEntry>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var entry in listA.Concat(listB))
             {
-                var key = $"{entry.PlayerName}|{entry.DateUtc}";
-                if (seen.Add(key))
-                    merged.Add(entry);
+                var key = entry.PlayerName?.Trim() ?? string.Empty;
+                if (string.IsNullOrEmpty(key))
+                    continue;
+
+                if (!byPlayer.TryGetValue(key, out var existing))
+                {
+                    byPlayer[key] = entry;
+                    continue;
+                }
+
+                bool replace = entry.Score > existing.Score;
+                if (!replace && entry.Score == existing.Score)
+                {
+                    if (DateTime.TryParse(entry.DateUtc, out var newDt) &&
+                        DateTime.TryParse(existing.DateUtc, out var oldDt))
+                    {
+                        replace = newDt > oldDt;
+                    }
+                }
+
+                if (replace)
+                    byPlayer[key] = entry;
             }
+
+            var merged = byPlayer.Values.ToList();
 
             merged.Sort((a, b) => b.Score.CompareTo(a.Score));
 

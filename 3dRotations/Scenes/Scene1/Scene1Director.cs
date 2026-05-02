@@ -69,9 +69,11 @@ namespace _3dRotations.Scene.Scene1
             int liveDrones = 0;
             for (int i = 0; i < aiObjs.Count; i++)
             {
+                if (aiObjs[i].ImpactStatus?.HasExploded == true) continue;
+
                 if (aiObjs[i].ObjectName == "Seeder")
                     liveSeeders++;
-                else if (aiObjs[i].ObjectName == "KamikazeDrone")
+                else if (aiObjs[i].ObjectName == "KamikazeDrone" && aiObjs[i].IsActive)
                     liveDrones++;
             }
 

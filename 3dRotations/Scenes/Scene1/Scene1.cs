@@ -36,6 +36,7 @@ namespace _3dRotations.Scene.Scene1
         public float LocalInfectionSpreadDelaySec { get; } = 12.0f;
         //Killing a seeder will stop the cascade of infections from spreading to its neighbors. If there is a seeder within this radius the infection will go on until it is killed
         public float LocalInfectionSpreadRadius { get; } = 3500f;
+        public float MotherShipSmallAggression { get; } = 0.90f;
 
         public void SetupScene(I3dWorld world)
         {

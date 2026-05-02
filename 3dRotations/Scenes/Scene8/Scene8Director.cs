@@ -2,9 +2,9 @@ using CommonUtilities.CommonGlobalState;
 using CommonUtilities.Persistence;
 using Domain;
 
-namespace _3dRotations.Scene.Scene5
+namespace _3dRotations.Scene.Scene8
 {
-    public class Scene5Director : ISceneDirector
+    public class Scene8Director : ISceneDirector
     {
         private IGameEventBus? _eventBus;
         private I3dWorld? _world;

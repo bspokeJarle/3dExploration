@@ -533,10 +533,11 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
         // which locks its charging target position and releases after the ram.
         private void UpdateFacingBetweenShots(I3dObject theObject)
         {
+            float fireIntervalSeconds = GetFireIntervalSeconds();
             // Within the charge window (the last ChargeWindowSeconds before firing) keep
             // the previously locked heading — this is the "waiting until the shot is finished"
             // behaviour the user asked for.
-            bool inChargeWindow = (FireIntervalSeconds - _fireTimer) <= ChargeWindowSeconds;
+            bool inChargeWindow = (fireIntervalSeconds - _fireTimer) <= ChargeWindowSeconds;
             if (_headingLocked && inChargeWindow) return;
 
             var wp = theObject.WorldPosition;
@@ -1046,11 +1047,12 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
         // -------------------------------------------------------
         private void UpdateFire(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            float fireIntervalSeconds = GetFireIntervalSeconds();
             _fireTimer += GameState.DeltaTime;
 
             UpdateChargeRings(theObject);
 
-            if (_fireTimer < FireIntervalSeconds)
+            if (_fireTimer < fireIntervalSeconds)
                 return;
 
             // Only fire when guide geometry is available
@@ -1107,7 +1109,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
             var ring2 = theObject.ObjectParts.Find(p => p.PartName == "CannonChargeRing2");
             var ring3 = theObject.ObjectParts.Find(p => p.PartName == "CannonChargeRing3");
 
-            float timeUntilFire = FireIntervalSeconds - _fireTimer;
+            float timeUntilFire = GetFireIntervalSeconds() - _fireTimer;
             float step = ChargeWindowSeconds / 3f;
 
             bool r1 = timeUntilFire <= ChargeWindowSeconds;
@@ -1138,6 +1140,13 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
                             WorldPosition = System.Numerics.Vector3.Zero
                         });
             }
+
+        }
+
+        private static float GetFireIntervalSeconds()
+        {
+            float aggression = MathF.Max(0.25f, GameState.GamePlayState.MotherShipMediumAggression);
+            return FireIntervalSeconds / aggression;
         }
 
         public void Dispose()

@@ -2,6 +2,9 @@
 using _3dRotations.Scene.Scene3;
 using _3dRotations.Scene.Scene4;
 using _3dRotations.Scene.Scene5;
+using _3dRotations.Scene.Scene6;
+using _3dRotations.Scene.Scene7;
+using _3dRotations.Scene.Scene8;
 using _3dRotations.Scenes.Intro;
 using _3dRotations.Scenes.Outro;
 using _3dTesting._3dWorld;
@@ -20,7 +23,7 @@ namespace _3DWorld.Scene
 {
     public class SceneHandler : ISceneHandler
     {
-        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Scene3(), new Scene4(), new Scene5(), new Outro() };
+        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Scene3(), new Scene4(), new Scene5(), new Scene6(), new Scene7(), new Scene8(), new Outro() };
         private int currentSceneIndex = 0;
         private const bool enableLogging = false;
         private const int SceneAdvanceDelayFrames = 5;
@@ -87,6 +90,8 @@ namespace _3DWorld.Scene
                 TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
                 TrimEnemies(world, "KamikazeDrone", snapshot.DronesRemaining);
                 TrimEnemies(world, "MotherShipSmall", snapshot.MotherShipsRemaining);
+                TrimEnemies(world, "MotherShipMedium", snapshot.MotherShipsRemaining);
+                TrimEnemies(world, "MotherShipLarge", snapshot.MotherShipsRemaining);
                 gps.ApplyCheckpointRestart(snapshot);
 
                 if (enableLogging) Logger.Log($"Scenehandler: Checkpoint restored. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
@@ -212,15 +217,7 @@ namespace _3DWorld.Scene
                     {
                         for (int i = 0; i < aiObjs.Count; i++)
                         {
-                            if (aiObjs[i].ObjectName == "MotherShipSmall" && !aiObjs[i].IsActive)
-                                aiObjs[i].IsActive = true;
-                        }
-                    }
-                    if (gps.IsDecoyUnlocked)
-                    {
-                        for (int i = 0; i < aiObjs.Count; i++)
-                        {
-                            if (aiObjs[i].ObjectName == "KamikazeDrone" && !aiObjs[i].IsActive)
+                            if ((aiObjs[i].ObjectName == "MotherShipSmall" || aiObjs[i].ObjectName == "MotherShipMedium" || aiObjs[i].ObjectName == "MotherShipLarge") && !aiObjs[i].IsActive)
                                 aiObjs[i].IsActive = true;
                         }
                     }
@@ -228,6 +225,18 @@ namespace _3DWorld.Scene
                     // Re-initialize director so it sees the trimmed enemy state
                     var scene = GetActiveScene();
                     scene.Director?.Initialize(world.EventBus!, world);
+                }
+
+                // Always apply decoy-driven drone activation when loading a saved game,
+                // even when there is no checkpoint snapshot.
+                if (gps.IsDecoyUnlocked)
+                {
+                    var aiObjs = GameState.SurfaceState.AiObjects;
+                    for (int i = 0; i < aiObjs.Count; i++)
+                    {
+                        if (aiObjs[i].ObjectName == "KamikazeDrone" && !aiObjs[i].IsActive)
+                            aiObjs[i].IsActive = true;
+                    }
                 }
 
                 _pendingSavedState = null;
@@ -429,6 +438,9 @@ namespace _3DWorld.Scene
             gps.SeederOffscreenSpeedFactor = scene.SeederOffscreenSpeedFactor;
             gps.LocalInfectionSpreadDelaySec = scene.LocalInfectionSpreadDelaySec;
             gps.LocalInfectionSpreadRadius = scene.LocalInfectionSpreadRadius;
+            gps.MotherShipSmallAggression = scene.MotherShipSmallAggression;
+            gps.MotherShipMediumAggression = scene.MotherShipMediumAggression;
+            gps.MotherShipLargeAggression = scene.MotherShipLargeAggression;
         }
 
         private void InitializeDirector(IScene scene, I3dWorld world)

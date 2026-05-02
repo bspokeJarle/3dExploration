@@ -39,7 +39,8 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
             if (state.RamCycleStart == DateTime.MinValue)
                 state.RamCycleStart = now;
 
-            float elapsed = (float)(now - state.RamCycleStart).TotalSeconds;
+            float aggression = MathF.Max(0.25f, GameState.GamePlayState.MotherShipSmallAggression);
+            float elapsed = (float)(now - state.RamCycleStart).TotalSeconds * aggression;
 
             if (elapsed >= RamLockOnSecond && !state.RamTargetLocked)
             {
@@ -78,7 +79,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                     float dx = state.RamTargetWorldPosition.x - wp.x;
                     float dz = state.RamTargetWorldPosition.z - wp.z;
                     float dist = MathF.Sqrt(dx * dx + dz * dz);
-                    float step = RamChargeSpeed * deltaSeconds;
+                    float step = RamChargeSpeed * aggression * deltaSeconds;
 
                     if (dist > step)
                     {

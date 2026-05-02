@@ -66,5 +66,23 @@ namespace Domain
         /// rely on the default game-loop behaviour.
         /// </summary>
         ISceneDirector? Director => null;
+
+        /// <summary>
+        /// Per-scene aggression multiplier for MotherShipSmall behavior.
+        /// 1.0 = baseline, higher = more aggressive.
+        /// </summary>
+        float MotherShipSmallAggression => 1.0f;
+
+        /// <summary>
+        /// Per-scene aggression multiplier for MotherShipMedium behavior.
+        /// 1.0 = baseline, higher = more aggressive.
+        /// </summary>
+        float MotherShipMediumAggression => 1.0f;
+
+        /// <summary>
+        /// Per-scene aggression multiplier for MotherShipLarge behavior.
+        /// 1.0 = baseline, higher = more aggressive.
+        /// </summary>
+        float MotherShipLargeAggression => 1.0f;
     }
 }

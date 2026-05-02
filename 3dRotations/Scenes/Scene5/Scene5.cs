@@ -7,7 +7,6 @@ using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
-using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Controls.SeederControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using System;
@@ -30,6 +29,7 @@ namespace _3dRotations.Scene.Scene5
         public int SeederOffscreenSpeedFactor { get; } = 16;
         public float LocalInfectionSpreadDelaySec { get; } = 2.5f;
         public float LocalInfectionSpreadRadius { get; } = 5000f;
+        public float MotherShipMediumAggression { get; } = 1.20f;
 
         public void SetupScene(I3dWorld world)
         {
@@ -145,43 +145,6 @@ namespace _3dRotations.Scene.Scene5
             }
 
             // Mothership — spawns inactive, enters when all seeders and drones are destroyed
-            var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
-            motherShip.Rotation = new Vector3 { };
-            motherShip.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 92000 * ws };
-            motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
-            motherShip.ObjectName = "MotherShipSmall";
-            motherShip.Movement = new MotherShipSmallControls();
-            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
-            motherShip.CrashBoxDebugMode = false;
-            motherShip.HasPowerUp = false;
-            motherShip.IsActive = false;
-            world.WorldInhabitants.Add(motherShip);
-            GameState.SurfaceState.AiObjects.Add(motherShip);
-
-            // Testing large mothership
-            var motherShipLarge = MotherShipLarge.CreateMotherShipLarge(Surface);
-            motherShipLarge.Rotation = new Vector3 { };
-            motherShipLarge.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 88000 * ws };
-            motherShipLarge.ObjectOffsets = new Vector3 { x = 0, y = -1500, z = 400 };
-            motherShipLarge.ObjectName = "MotherShipLarge";
-            motherShipLarge.Movement = new MotherShipLargeControls();
-            var motherShipLargeLazer = Lazer.CreateLazer(Surface, scaleMultiplier: 2.5f);
-            motherShipLargeLazer.CrashBoxDebugMode = false;
-            var motherShipLargeWeapons = new List<I3dObject> { motherShipLargeLazer };
-            motherShipLarge.WeaponSystems = new Weapons(motherShipLargeWeapons, motherShipLarge.Movement!, (_3dObject)motherShipLarge)
-            {
-                ShowAimAssist = false,
-                FireAsEnemyWeapon = true,
-                EnemyLazerName = "EnemyLazerLarge"
-            };
-            motherShipLarge.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipLargeHealth };
-            motherShipLarge.CrashBoxDebugMode = false;
-            motherShipLarge.HasPowerUp = false;
-            motherShipLarge.IsActive = true;
-            world.WorldInhabitants.Add(motherShipLarge);
-            GameState.SurfaceState.AiObjects.Add(motherShipLarge);
-
-            // Testing medium mothership
             var motherShipMedium = MotherShipMedium.CreateMotherShipMedium(Surface);
             motherShipMedium.Rotation = new Vector3 { };
             motherShipMedium.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 90000 * ws };
@@ -204,7 +167,7 @@ namespace _3dRotations.Scene.Scene5
             world.WorldInhabitants.Add(motherShipMedium);
             GameState.SurfaceState.AiObjects.Add(motherShipMedium);
 
-            // SpaceSwans
+            // SpaceSwans — passive wildlife
             for (int s = 0; s < 50; s++)
             {
                 var rmdSwan = new Random();

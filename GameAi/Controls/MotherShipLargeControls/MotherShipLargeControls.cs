@@ -1110,9 +1110,10 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
         // -------------------------------------------------------
         private void UpdateFire(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            float fireIntervalSeconds = GetFireIntervalSeconds();
             _fireTimer += GameState.DeltaTime;
 
-            if (_fireTimer < FireIntervalSeconds)
+            if (_fireTimer < fireIntervalSeconds)
                 return;
 
             // Only fire when guide geometry is available
@@ -1144,7 +1145,13 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
                 theObject,
                 0);
 
-            }
+        }
+
+        private static float GetFireIntervalSeconds()
+        {
+            float aggression = MathF.Max(0.25f, GameState.GamePlayState.MotherShipLargeAggression);
+            return FireIntervalSeconds / aggression;
+        }
 
         public void Dispose()
         {
