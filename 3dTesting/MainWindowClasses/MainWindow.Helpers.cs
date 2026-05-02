@@ -234,7 +234,7 @@ namespace _3dTesting.Helpers
                     for (int i = 0; i < msSnapshot.Length; i++)
                     {
                         var obj = msSnapshot[i];
-                        if (obj == null || obj.ObjectName != "MotherShipSmall") continue;
+                        if (obj == null || (obj.ObjectName != "MotherShipSmall" && obj.ObjectName != "MotherShipMedium")) continue;
                         if (!obj.IsActive) continue;
                         if (obj.ImpactStatus?.HasExploded == true) continue;
                         if (obj.ObjectParts == null || obj.ObjectParts.Count == 0) continue;
@@ -286,7 +286,7 @@ namespace _3dTesting.Helpers
                         }
 
                         // Mothership drawn separately below with its own flash cycle
-                        if (obj.ObjectName == "MotherShipSmall") continue;
+                        if (obj.ObjectName == "MotherShipSmall" || obj.ObjectName == "MotherShipMedium") continue;
 
                         byte[]? color = obj.ObjectName switch
                         {

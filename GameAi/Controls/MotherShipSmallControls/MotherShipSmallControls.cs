@@ -330,9 +330,6 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
         private void SyncMovement(I3dObject theObject)
         {
-            // Don't sync to surface during descent animation
-            if (_isDescending) return;
-
             if (!_syncInitialized)
             {
                 _syncInitialized = true;

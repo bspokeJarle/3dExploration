@@ -55,6 +55,16 @@ namespace _3dTesting.Helpers
                     bool isWeaponShipPair =
                         (flagsA.IsWeapon && flagsB.IsShip) ||
                         (flagsB.IsWeapon && flagsA.IsShip);
+                    // Enemy lazers should only hit the player Ship; never collide with any enemy
+                    // (including their own firing mothership, which would cause the beam to vanish
+                    // on frame 1 because it spawns overlapping the parent's crashbox).
+                    bool isLazerEnemyPair =
+                        (flagsA.IsLazer && flagsB.IsEnemy) ||
+                        (flagsB.IsLazer && flagsA.IsEnemy);
+                    // Enemy lazers must not hit the ground/surface — only the player Ship.
+                    bool isEnemyLazerSurfacePair =
+                        ((flagsA.Name == "EnemyLazer" || flagsA.Name == "EnemyLazerMedium") && flagsB.IsSurface) ||
+                        ((flagsB.Name == "EnemyLazer" || flagsB.Name == "EnemyLazerMedium") && flagsA.IsSurface);
                     bool isBothParticles = isInhabitantParticle && isOtherParticle;
                     bool isShip = flagsA.IsShip || flagsB.IsShip;
                     bool isSurface = flagsA.IsSurface || flagsB.IsSurface;
@@ -85,6 +95,7 @@ namespace _3dTesting.Helpers
                     if (isInhabitantStatic && isOtherStatic) continue;
                     if ((isInhabitantStatic || isOtherStatic) && !shouldCheckStaticObjects) continue;
                     if (isParticle && isShip) continue;
+                    if (isParticle && (flagsA.IsEnemy || flagsB.IsEnemy)) continue;
                     if (isBothParticles) continue;
                     if (isParticle && _skipParticles) continue;
                     if (isEnemySurfacePair && !isBomberBombSurfacePair) continue;
@@ -93,6 +104,8 @@ namespace _3dTesting.Helpers
                     if (isDecoyShipPair) continue;
                     if (isPowerUp && !isPowerUpShipPair) continue;
                     if (isWeaponShipPair) continue;
+                    if (isLazerEnemyPair) continue;
+                    if (isEnemyLazerSurfacePair) continue;
                     if (isLazer && isParticle || isSeeder && isParticle) continue;
 
                     if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;

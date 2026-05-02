@@ -13,6 +13,7 @@ using GameAiAndControls.Controls.SpaceSwanControls;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
+using GameAiAndControls.Controls.MotherShipMediumControls;
 
 namespace _3dRotations.Scene.Scene5
 {
@@ -157,7 +158,53 @@ namespace _3dRotations.Scene.Scene5
             world.WorldInhabitants.Add(motherShip);
             GameState.SurfaceState.AiObjects.Add(motherShip);
 
-            // SpaceSwans — passive wildlife
+            // Testing large mothership
+            var motherShipLarge = MotherShipLarge.CreateMotherShipLarge(Surface);
+            motherShipLarge.Rotation = new Vector3 { };
+            motherShipLarge.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 88000 * ws };
+            motherShipLarge.ObjectOffsets = new Vector3 { x = 0, y = -1500, z = 400 };
+            motherShipLarge.ObjectName = "MotherShipLarge";
+            motherShipLarge.Movement = new MotherShipLargeControls();
+            var motherShipLargeLazer = Lazer.CreateLazer(Surface, scaleMultiplier: 2.5f);
+            motherShipLargeLazer.CrashBoxDebugMode = false;
+            var motherShipLargeWeapons = new List<I3dObject> { motherShipLargeLazer };
+            motherShipLarge.WeaponSystems = new Weapons(motherShipLargeWeapons, motherShipLarge.Movement!, (_3dObject)motherShipLarge)
+            {
+                ShowAimAssist = false,
+                FireAsEnemyWeapon = true,
+                EnemyLazerName = "EnemyLazerLarge"
+            };
+            motherShipLarge.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipLargeHealth };
+            motherShipLarge.CrashBoxDebugMode = false;
+            motherShipLarge.HasPowerUp = false;
+            motherShipLarge.IsActive = true;
+            world.WorldInhabitants.Add(motherShipLarge);
+            GameState.SurfaceState.AiObjects.Add(motherShipLarge);
+
+            // Testing medium mothership
+            var motherShipMedium = MotherShipMedium.CreateMotherShipMedium(Surface);
+            motherShipMedium.Rotation = new Vector3 { };
+            motherShipMedium.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 90000 * ws };
+            motherShipMedium.ObjectOffsets = new Vector3 { x = 0, y = -1500, z = 400 };
+            motherShipMedium.ObjectName = "MotherShipMedium";
+            motherShipMedium.Movement = new MotherShipMediumControls();
+            var motherShipMediumLazer = Lazer.CreateLazer(Surface, scaleMultiplier: 2.0f);
+            motherShipMediumLazer.CrashBoxDebugMode = false;
+            var motherShipMediumWeapons = new List<I3dObject> { motherShipMediumLazer };
+            motherShipMedium.WeaponSystems = new Weapons(motherShipMediumWeapons, motherShipMedium.Movement!, (_3dObject)motherShipMedium)
+            {
+                ShowAimAssist = false,
+                FireAsEnemyWeapon = true,
+                EnemyLazerName = "EnemyLazerMedium"
+            };
+            motherShipMedium.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipMediumHealth };
+            motherShipMedium.CrashBoxDebugMode = false;
+            motherShipMedium.HasPowerUp = false;
+            motherShipMedium.IsActive = false;
+            world.WorldInhabitants.Add(motherShipMedium);
+            GameState.SurfaceState.AiObjects.Add(motherShipMedium);
+
+            // SpaceSwans
             for (int s = 0; s < 50; s++)
             {
                 var rmdSwan = new Random();

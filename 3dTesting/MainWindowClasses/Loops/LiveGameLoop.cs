@@ -511,7 +511,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                     drones++;
                 else if (obj.ObjectName == "Seeder")
                     seeders++;
-                else if (obj.ObjectName == "MotherShipSmall" && obj.IsActive)
+                else if ((obj.ObjectName == "MotherShipSmall" || obj.ObjectName == "MotherShipMedium" || obj.ObjectName == "MotherShipLarge") && obj.IsActive)
                     motherShips++;
             }
 
@@ -532,18 +532,22 @@ namespace _3dTesting.MainWindowClasses.Loops
             for (int i = 0; i < aiObjects.Count; i++)
             {
                 var obj = aiObjects[i];
-                if (obj.ObjectName != "MotherShipSmall" || !obj.IsActive)
-                    continue;
-                if (obj.ImpactStatus?.HasExploded == true)
-                    continue;
+                if ((obj.ObjectName != "MotherShipSmall" && obj.ObjectName != "MotherShipMedium" && obj.ObjectName != "MotherShipLarge") || !obj.IsActive)
+                        continue;
+                    if (obj.ImpactStatus?.HasExploded == true)
+                        continue;
 
-                foundMotherShip = true;
-                int maxHealth = EnemySetup.MotherShipSmallHealth;
-                int currentHealth = obj.ImpactStatus?.ObjectHealth ?? maxHealth;
+                    foundMotherShip = true;
+                    int maxHealth = obj.ObjectName switch
+                    {
+                        "MotherShipLarge" => EnemySetup.MotherShipLargeHealth,
+                        "MotherShipMedium" => EnemySetup.MotherShipMediumHealth,
+                        _ => EnemySetup.MotherShipSmallHealth
+                    };
+                    int currentHealth = obj.ImpactStatus?.ObjectHealth ?? maxHealth;
                 float healthPct = (float)currentHealth / maxHealth;
 
-                if (healthPct < 1f)
-                    gps.ShowMotherShipHealthBar = true;
+                gps.ShowMotherShipHealthBar = true;
 
                 gps.MotherShipHealthPercent = healthPct;
 
@@ -677,6 +681,12 @@ namespace _3dTesting.MainWindowClasses.Loops
                 case "WeaponStartGuide":
                     inhabitant.Movement.SetWeaponGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
                     break;
+                case "LaserDirectionGuide":
+                    inhabitant.Movement.SetWeaponGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
+                    break;
+                case "LaserStartGuide":
+                    inhabitant.Movement.SetWeaponGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    break;
                 case "JetMotorDirectionGuide":
                     if (enableLocalLogging) Logger.Log($"MainLoop Set Guide after rotation: {rotatedMesh.First().vert1.x + ", " + rotatedMesh.First().vert1.y + ", " + rotatedMesh.First().vert1.z} Inhabitant:{inhabitant.ObjectName} ");
                     inhabitant.Movement.SetParticleGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
@@ -685,6 +695,18 @@ namespace _3dTesting.MainWindowClasses.Loops
                     inhabitant.Movement.SetRearEngineGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
                     break;
                 case "RearEngineDirectionGuide":
+                    inhabitant.Movement.SetRearEngineGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
+                    break;
+                case "LeftWingEngineStart":
+                    inhabitant.Movement.SetParticleGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    break;
+                case "LeftWingEngineGuide":
+                    inhabitant.Movement.SetParticleGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
+                    break;
+                case "RightWingEngineStart":
+                    inhabitant.Movement.SetRearEngineGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    break;
+                case "RightWingEngineGuide":
                     inhabitant.Movement.SetRearEngineGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
                     break;
                 case "BomberBombDropStart":

@@ -40,7 +40,7 @@ namespace _3dTesting.Helpers
                 Name = name;
                 IsStatic = IsStaticName(name);
                 IsParticle = name == "Particle";
-                IsLazer = name == "Lazer";
+                IsLazer = name == "Lazer" || name == "EnemyLazer" || name == "EnemyLazerMedium";
                 IsWeapon = CommonUtilities.CommonSetup.WeaponSetup.IsWeaponTypeValid(name);
                 IsSeeder = name == "Seeder";
                 IsShip = name == "Ship";

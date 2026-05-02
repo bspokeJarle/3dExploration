@@ -13,7 +13,7 @@ namespace _3dRotations.World.Objects
     {
         private const float ZoomRatio = 1f;
 
-        public static _3dObject CreateLazer(ISurface parentSurface)
+        public static _3dObject CreateLazer(ISurface parentSurface, float scaleMultiplier = 1f)
         {
             var seg1 = LazerSegment1(); // longest, bright
             var seg2 = LazerSegment2(); // medium, darker
@@ -38,7 +38,7 @@ namespace _3dRotations.World.Objects
             beam.ImpactStatus = new ImpactStatus { ObjectName = "Lazer" };
             if (crash != null) beam.CrashBoxes = crash;
 
-            _3dObjectHelpers.ApplyScaleToObject(beam, ZoomRatio);
+            _3dObjectHelpers.ApplyScaleToObject(beam, ZoomRatio * scaleMultiplier);
 
             return beam;
         }
