@@ -241,8 +241,8 @@ namespace _3dTesting.Helpers
                         if (obj.WorldPosition == null) continue;
                         if (obj.WorldPosition.x == 0 && obj.WorldPosition.z == 0) continue;
 
-                        int mx = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
-                        int mz = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                        int mx = (int)Math.Floor((obj.WorldPosition.x / tileSize) + 0.5f) - cropOriginX;
+                        int mz = (int)Math.Floor((obj.WorldPosition.z / tileSize) + 0.5f) - cropOriginZ;
                         StampMarkerBoss(pixels, cropW, cropH, stride, mx, mz, mothershipPx);
                     }
                 }
@@ -279,8 +279,8 @@ namespace _3dTesting.Helpers
                         if (isPowerUp)
                         {
                             if (!powerupVisible) continue;
-                            int bx = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
-                            int bz = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                            int bx = (int)Math.Floor((obj.WorldPosition.x / tileSize) + 0.5f) - cropOriginX;
+                            int bz = (int)Math.Floor((obj.WorldPosition.z / tileSize) + 0.5f) - cropOriginZ;
                             StampMarkerLarge(pixels, cropW, cropH, stride, bx, bz, powerupPx);
                             continue;
                         }
@@ -301,15 +301,15 @@ namespace _3dTesting.Helpers
                         {
                             if (obj.ObjectName == "ZeppelinBomber")
                             {
-                                int bxZ = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
-                                int bzZ = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                                int bxZ = (int)Math.Floor((obj.WorldPosition.x / tileSize) + 0.5f) - cropOriginX;
+                                int bzZ = (int)Math.Floor((obj.WorldPosition.z / tileSize) + 0.5f) - cropOriginZ;
                                 StampMarkerLarge(pixels, cropW, cropH, stride, bxZ, bzZ, zeppelinPx);
                             }
                             continue;
                         }
 
-                        int bx2 = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
-                        int bz2 = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                        int bx2 = (int)Math.Floor((obj.WorldPosition.x / tileSize) + 0.5f) - cropOriginX;
+                        int bz2 = (int)Math.Floor((obj.WorldPosition.z / tileSize) + 0.5f) - cropOriginZ;
                         StampMarker(pixels, cropW, cropH, stride, bx2, bz2, color);
                     }
                 }

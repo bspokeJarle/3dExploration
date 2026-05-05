@@ -23,4 +23,8 @@
     <ProjectReference Include="..\GameAi\GameAiAndControls.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="MapAndOverlay\" />
+  </ItemGroup>
+
 </Project>

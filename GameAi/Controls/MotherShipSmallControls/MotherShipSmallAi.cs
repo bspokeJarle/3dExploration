@@ -132,6 +132,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
             state.RamTargetWorldPosition = new Vector3();
             state.RamTargetShipOffsetsY = 0f;
             state.IsCharging = false;
+            GameState.GamePlayState.MotherShipRamWarningActive = false;
         }
     }
 }

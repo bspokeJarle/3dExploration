@@ -48,6 +48,7 @@ namespace GameAiAndControls.Controls.SeederControls
         // - RoamTiles: Random roam distance in tiles when no good screen is found.
         private const int SmellRadiusScreens = 5;
         private const int RoamTiles = 10;
+        private const float TargetArrivalDistance = 0.25f;
 
         // -------------------------
         // AI State (per object)
@@ -197,8 +198,10 @@ namespace GameAiAndControls.Controls.SeederControls
             // Global2DMap (which are indexed by globalTile = worldCoord / tileSize).
             // Do NOT use GetSurfaceAlignedWorldPosition here — it adds visual
             // offsets (surfOO − seederOO) that shift the lookup by several tiles.
-            int tileX = (int)s.AuthWorldPos.x / SurfaceSetup.tileSize;
-            int tileZ = (int)s.AuthWorldPos.z / SurfaceSetup.tileSize;
+            // Use nearest tile center (not truncation) to keep infection tile
+            // aligned with where the seeder visually stalls.
+            int tileX = (int)MathF.Floor((s.AuthWorldPos.x / SurfaceSetup.tileSize) + 0.5f);
+            int tileZ = (int)MathF.Floor((s.AuthWorldPos.z / SurfaceSetup.tileSize) + 0.5f);
             // Bounds
             if (tileZ < 0 || tileX < 0 ||
                 tileZ >= surfaceState.Global2DMap.GetLength(0) ||
@@ -240,6 +243,7 @@ namespace GameAiAndControls.Controls.SeederControls
                     surfaceState.Global2DMap[tz, tx] = t;
                     surfaceState.DirtyTiles.Add(new Vector3 { x = tx, y = 0, z = tz });
                     var cnt = SeederMovementHelpers.DecrementBioCountForTile(surfaceState, tz, tx);
+                    s.SeededAtCurrentStall = true;
 
                     // Remove from the screen's BioTiles list so seeders skip this tile
                     int scrY = tz / tilesPerScreen;
@@ -292,7 +296,6 @@ namespace GameAiAndControls.Controls.SeederControls
                 {
                     if (TryInfectTile(tileX, tileZ, "INFECT"))
                     {
-                        s.SeededAtCurrentStall = true;
                         // Spread to additional edge tiles based on InfectionSpreadRate
                         int extraSpread = GameState.GamePlayState.InfectionSpreadRate - 1;
                         if (extraSpread > 0)
@@ -503,6 +506,10 @@ namespace GameAiAndControls.Controls.SeederControls
             int dec = Math.Max(1, (int)Math.Round(baseDec * dtScale));
             s.StepsRemaining -= dec;
 
+            bool reachedTarget = DistanceXZ(next, s.TargetWorld) <= TargetArrivalDistance;
+            if (!reachedTarget && s.StepsRemaining <= 0)
+                s.StepsRemaining = 1;
+
             SafeLog(
                 $"AI:MOVE({(isOnScreen ? "onscreen" : "offscreen")}) " +
                 $"localTarget={s.TargetIsLocalBio} step={actualStep:0.00} dec={dec} stepsLeft={s.StepsRemaining} " +
@@ -511,8 +518,8 @@ namespace GameAiAndControls.Controls.SeederControls
 
             s.AuthWorldPos = next;
 
-            // ARRIVAL: purely by step count
-            if (s.StepsRemaining <= 0)
+            // ARRIVAL: switch modes only after movement actually reaches the target.
+            if (reachedTarget)
             {
                 s.AuthWorldPos = s.TargetWorld; // snap exactly
                 next = s.AuthWorldPos;
@@ -540,7 +547,13 @@ namespace GameAiAndControls.Controls.SeederControls
                     SafeLog($"AI:LOCAL_COOLDOWN set={SeedingStallSeconds:0.00}s particles={ParticleBurstSeconds:0.00}s onScreen={isOnScreen} ObjectId:{id}");
 
                     // Do a stall tick straight away (same as before)
-                    _ = HandleStallSeeding(id, s, dt, isOnScreen, moveThisObject);
+                    bool retargetImmediately = HandleStallSeeding(id, s, dt, isOnScreen, moveThisObject);
+                    if (retargetImmediately || !s.SeededAtCurrentStall)
+                    {
+                        s.NextLocalRetargetTicks = nowTicks;
+                        s.ParticleEmitUntilTicks = nowTicks;
+                        SafeLog($"AI:LOCAL_COOLDOWN skipped, target no longer seedable onScreen={isOnScreen} ObjectId:{id}");
+                    }
                 }
             }
 
@@ -632,11 +645,11 @@ namespace GameAiAndControls.Controls.SeederControls
 
                 if (!s.HasMovementTarget && s.TargetIsLocalBio)
                 {
-                    bool alreadyInfected = HandleStallSeeding(id, s, 0f, isOnScreen, moveThisObject);
-                    if (alreadyInfected && !s.SeededAtCurrentStall)
+                    bool retargetImmediately = HandleStallSeeding(id, s, 0f, isOnScreen, moveThisObject);
+                    if ((retargetImmediately || !s.SeededAtCurrentStall) && !s.HasMovementTarget && s.TargetIsLocalBio)
                     {
                         s.NextLocalRetargetTicks = nowTicks;
-                        SafeLog($"AI:STALL_SKIP_COOLDOWN tile already infected, retargeting immediately ObjectId:{id}");
+                        SafeLog($"AI:STALL_SKIP_COOLDOWN no valid seeding this stall, retargeting immediately ObjectId:{id}");
                     }
                 }
 

@@ -105,7 +105,9 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
             if (theObject.ImpactStatus?.HasExploded == true)
                 return theObject;
 
-            TerrainAvoidanceHelpers.TryStartTerrainRecovery(theObject);
+            bool terrainRecoveryStarted = TerrainAvoidanceHelpers.TryStartTerrainRecovery(theObject);
+            if (terrainRecoveryStarted)
+                MotherShipSmallAi.ResetState(_ramState);
 
             if (theObject.ImpactStatus?.HasCrashed == true && !_isExploding)
             {
@@ -244,7 +246,8 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                     _isDescending = false;
             }
 
-            if (!_isDescending)
+            bool terrainRecoveryActive = TerrainAvoidanceHelpers.IsTerrainRecoveryActive(theObject);
+            if (!_isDescending && !terrainRecoveryActive)
                 MotherShipSmallAi.UpdateRamCycle(_ramState, theObject, now, (float)deltaSeconds);
 
             // Play warning sound when ram warning starts

@@ -1,5 +1,6 @@
 ﻿using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
 using Domain;
 using Gma.System.MouseKeyHook;
 using System;
@@ -77,8 +78,10 @@ namespace GameAiAndControls.Controls
                 var wp = obj.WorldPosition;
                 if (wp == null) continue;
 
-                int centerX = (int)(wp.x / tileSize) % mapSize;
-                int centerZ = (int)(wp.z / tileSize) % mapSize;
+                // Use nearest tile center (not truncation toward zero) to avoid
+                // a systematic half-tile drift in crater placement.
+                int centerX = (int)MathF.Floor((wp.x / tileSize) + 0.5f) % mapSize;
+                int centerZ = (int)MathF.Floor((wp.z / tileSize) + 0.5f) % mapSize;
                 if (centerX < 0) centerX += mapSize;
                 if (centerZ < 0) centerZ += mapSize;
 
@@ -91,10 +94,10 @@ namespace GameAiAndControls.Controls
                         int tileX = (centerX + dx + mapSize) % mapSize;
 
                         ref var tile = ref global2DMap[tileZ, tileX];
-                        if (!tile.isCratered)
+                        if (!tile.isCratered && IsCraterableTerrain(tile.mapDepth))
                         {
                             tile.isCratered = true;
-                            tile.mapDepth -= rnd.Next(10, 21);
+                            tile.mapDepth = Math.Max(GetMinimumDryCraterDepth(), tile.mapDepth - rnd.Next(10, 21));
                         }
                     }
                 }
@@ -102,6 +105,19 @@ namespace GameAiAndControls.Controls
                 if (enableLogging && Logger.EnableFileLogging)
                     Logger.Log($"GroundControls: Bomb crater at tile x={centerX}; z={centerZ}");
             }
+        }
+
+        private static bool IsCraterableTerrain(int mapDepth)
+        {
+            var terrain = GamePlayHelpers.GetTerrainType(mapDepth, MapSetup.maxHeight);
+            return terrain == GamePlayHelpers.TerrainType.Grassland ||
+                   terrain == GamePlayHelpers.TerrainType.Highlands ||
+                   terrain == GamePlayHelpers.TerrainType.Mountains;
+        }
+
+        private static int GetMinimumDryCraterDepth()
+        {
+            return (int)Math.Ceiling(MapSetup.maxHeight * 0.15f);
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)

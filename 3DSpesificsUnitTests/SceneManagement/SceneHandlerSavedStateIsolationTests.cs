@@ -90,6 +90,37 @@ public class SceneHandlerSavedStateIsolationTests
         Assert.AreEqual("Scene1", handler.GetActiveScene().GetType().Name);
     }
 
+    [TestMethod]
+    public void NextScene_DoesNotPersistPreviousSceneCheckpointUnderNewSceneIndex()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Jarle";
+        gps.SceneIndex = 0;
+        gps.Score = 1234;
+        gps.PowerUpsCollected = 2;
+        gps.SeedersRemaining = 0;
+        gps.DronesRemaining = 0;
+        gps.MotherShipsRemaining = 1;
+        gps.InitialSeeders = 7;
+        gps.InitialDrones = 4;
+        gps.InitialMotherShips = 1;
+        gps.SaveCheckpoint();
+
+        handler.NextScene(world);
+
+        var saved = GameStatePersistence.LoadGameState("Jarle");
+
+        Assert.IsNotNull(saved);
+        Assert.AreEqual(1, saved!.SceneIndex);
+        Assert.IsFalse(saved.HasCheckpoint,
+            "Entering a new scene should save fresh scene progress, not the previous scene's checkpoint.");
+        Assert.AreEqual(1234, saved.Score);
+        Assert.AreEqual(2, saved.PowerUpsCollected);
+    }
+
     private static _3dWorld CreateWorld(SceneHandler handler)
     {
         var world = new _3dWorld();

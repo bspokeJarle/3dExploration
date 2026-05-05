@@ -91,7 +91,6 @@ namespace _3dTesting.Helpers
                     bool isTerrainAvoidanceAiObstaclePair =
                         (IsTerrainAvoidanceAiObject(inhabitant, flagsA) && IsTerrainObstacle(flagsB)) ||
                         (IsTerrainAvoidanceAiObject(otherInhabitant, flagsB) && IsTerrainObstacle(flagsA));
-                    bool isTerrainAvoidanceAiSurfacePair = isTerrainAvoidanceAiObstaclePair && isSurface;
                     bool isBothEnemies = flagsA.IsEnemy && flagsB.IsEnemy;
 
                     if (string.IsNullOrEmpty(flagsA.Name) || string.IsNullOrEmpty(flagsB.Name)) continue;
@@ -102,7 +101,7 @@ namespace _3dTesting.Helpers
                     if (isParticle && (flagsA.IsEnemy || flagsB.IsEnemy)) continue;
                     if (isBothParticles) continue;
                     if (isParticle && _skipParticles) continue;
-                    if (isEnemySurfacePair && !isBomberBombSurfacePair && !isTerrainAvoidanceAiSurfacePair) continue;
+                    if (isEnemySurfacePair && !isBomberBombSurfacePair && !isTerrainAvoidanceAiObstaclePair) continue;
                     if (isBothEnemies) continue;
                     if (isDecoySurfacePair) continue;
                     if (isDecoyShipPair) continue;
@@ -167,7 +166,7 @@ namespace _3dTesting.Helpers
                     // Same for BomberBomb↔Surface: the Surface center is far from
                     // any individual bomb, so let box-vs-box decide.
                     bool isShipEnemyPair = isShip && !isSurface && !isParticle && !isLazer;
-                    if (!isShipEnemyPair && !isBomberBombSurfacePair && !isTerrainAvoidanceAiSurfacePair && distance > effectiveMaxCrashDistance)
+                    if (!isShipEnemyPair && !isBomberBombSurfacePair && !isTerrainAvoidanceAiObstaclePair && distance > effectiveMaxCrashDistance)
                     {
                         SkippedByDistance++;
                         continue;

@@ -4,6 +4,7 @@ using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Helpers;
+using System.Reflection;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3DSpesificsUnitTests.Controls;
@@ -42,16 +43,29 @@ public class TerrainAvoidanceTests
         Assert.AreNotEqual(originalX, aiObject.WorldPosition.x, "Recovery should also steer horizontally away from terrain.");
     }
 
-    [TestMethod]
-    public void TryStartTerrainRecovery_WhenAiObjectHitsTower_UsesTowerAsTerrainObstacle()
+    [DataTestMethod]
+    [DataRow("Seeder", 2010)]
+    [DataRow("KamikazeDrone", 2011)]
+    [DataRow("ZeppelinBomber", 2012)]
+    [DataRow("MotherShipSmall", 2013)]
+    [DataRow("MotherShipMedium", 2014)]
+    [DataRow("MotherShipLarge", 2015)]
+    [DataRow("SpaceSwan", 2016)]
+    public void TryStartTerrainRecovery_WhenAvoidanceCapableAiHitsTower_UsesTowerAsTerrainObstacle(string objectName, int objectId)
     {
-        var aiObject = CreateAiObject(1002, "ZeppelinBomber", "Tower");
+        var aiObject = CreateAiObject(objectId, objectName, "Tower");
         GameState.SurfaceState.AiObjects.Add(aiObject);
+        var originalY = aiObject.ObjectOffsets!.y;
+        var originalX = aiObject.WorldPosition!.x;
 
         var started = TerrainAvoidanceHelpers.TryStartTerrainRecovery(aiObject);
+        var applied = TerrainAvoidanceHelpers.ApplyTerrainRecovery(aiObject, 0.1f);
 
-        Assert.IsTrue(started, "Towers should be treated as passive terrain obstacles for AI avoidance.");
+        Assert.IsTrue(started, $"{objectName} should treat towers as passive terrain obstacles for AI avoidance.");
+        Assert.IsTrue(applied, $"{objectName} should apply tower recovery movement.");
         Assert.IsFalse(aiObject.ImpactStatus!.HasCrashed);
+        Assert.IsTrue(aiObject.ObjectOffsets.y < originalY, $"{objectName} should lift away from the tower contact.");
+        Assert.AreNotEqual(originalX, aiObject.WorldPosition.x, $"{objectName} should steer horizontally away from the tower.");
     }
 
     [TestMethod]
@@ -94,6 +108,34 @@ public class TerrainAvoidanceTests
         Assert.IsFalse(motherShip.ImpactStatus.HasCrashed, "MotherShip should consume terrain contact as avoidance, not damage.");
         Assert.AreEqual(EnemySetup.MotherShipSmallHealth, motherShip.ImpactStatus.ObjectHealth);
         Assert.IsTrue(motherShip.ObjectOffsets!.y < 75f, "MotherShip recovery should lift it away from the terrain.");
+    }
+
+    [TestMethod]
+    public void MotherShipSmall_MoveObject_WhenChargingIntoTower_CancelsRamAndSteersAway()
+    {
+        var motherShip = CreateAiObject(1006, "MotherShipSmall", "Tower");
+        motherShip.ImpactStatus!.ObjectHealth = EnemySetup.MotherShipSmallHealth;
+        motherShip.WorldPosition = new Vector3 { x = 1000f, y = 0f, z = 0f };
+        motherShip.ObjectOffsets = new Vector3 { x = 0f, y = 75f, z = 400f };
+        GameState.SurfaceState.AiObjects.Add(motherShip);
+
+        var controls = new MotherShipSmallControls();
+        SetPrivateField(controls, "_syncInitialized", true);
+        SetPrivateField(controls, "_syncY", 75f);
+        SetPrivateField(controls, "_lastMovementTime", DateTime.Now.AddSeconds(-0.1));
+
+        var ramState = GetPrivateField(controls, "_ramState");
+        SetRamStateField(ramState, "RamCycleStart", DateTime.Now.AddSeconds(-7));
+        SetRamStateField(ramState, "RamTargetLocked", true);
+        SetRamStateField(ramState, "RamTargetWorldPosition", new Vector3 { x = 0f, y = 0f, z = 0f });
+        SetRamStateField(ramState, "IsCharging", true);
+
+        controls.MoveObject(motherShip, null, null);
+
+        Assert.IsFalse(motherShip.ImpactStatus.HasCrashed, "Tower contact should be consumed as avoidance, not damage.");
+        Assert.AreEqual(EnemySetup.MotherShipSmallHealth, motherShip.ImpactStatus.ObjectHealth);
+        Assert.IsTrue(motherShip.WorldPosition!.x > 1000f, "An active ram should be cancelled so recovery can steer the MotherShip away from the tower.");
+        Assert.IsTrue(motherShip.ObjectOffsets!.y < 75f, "Recovery should still lift the MotherShip away from terrain.");
     }
 
     private static _3dObject CreateAiObject(int objectId, string objectName, string contactName)
@@ -139,5 +181,26 @@ public class TerrainAvoidanceTests
                 }
             }
         };
+    }
+
+    private static object GetPrivateField(object target, string fieldName)
+    {
+        var field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(field, $"Expected private field '{fieldName}' to exist.");
+        return field.GetValue(target)!;
+    }
+
+    private static void SetPrivateField(object target, string fieldName, object value)
+    {
+        var field = target.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(field, $"Expected private field '{fieldName}' to exist.");
+        field.SetValue(target, value);
+    }
+
+    private static void SetRamStateField(object state, string fieldName, object value)
+    {
+        var field = state.GetType().GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+        Assert.IsNotNull(field, $"Expected ram state field '{fieldName}' to exist.");
+        field.SetValue(state, value);
     }
 }

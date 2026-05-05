@@ -22,6 +22,7 @@ namespace _3dRotations.World.Objects
         private static float bottomDomeHeight = 12f;   // Lower dome bottom below center (z)
         private static float centerModuleRadius = 10f;   // Radius of the center module under the saucer
         private static float centerModuleHeight = 7f;    // Height of the center module
+        private static float particleGuideDistance = 100f;
 
         private static int mainSegments = 12;    // Segments around the main circle
         private static int centerSegments = 8;     // Segments for the center module
@@ -506,34 +507,36 @@ namespace _3dRotations.World.Objects
 
         public static List<ITriangleMeshWithColor>? ParticlesDirectionGuide()
         {
+            float guideZ = -seederThickness - centerModuleHeight - particleGuideDistance;
             var direction = new List<ITriangleMeshWithColor>
             {
-                CreateTriangleOutward(
-                    new Vector3 { x =  12, y = -10, z = -120 },
-                    new Vector3 { x = -12, y = -10, z = -120 },
-                    new Vector3 { x =   0, y = -20, z = -120 },
-                    BodyCenter,
-                    "ffffff",
-                    noHidden: true
-                )
+                CreateParticleGuidePoint(guideZ)
             };
             return direction;
         }
 
         public static List<ITriangleMeshWithColor>? ParticlesStartGuide()
         {
+            float startZ = -seederThickness - centerModuleHeight;
             var direction = new List<ITriangleMeshWithColor>
             {
-                CreateTriangleOutward(
-                    new Vector3 { x =  12, y = -10, z = -20 },
-                    new Vector3 { x = -12, y = -10, z = -20 },
-                    new Vector3 { x =   0, y = -20, z = -20 },
-                    BodyCenter,
-                    "ffffff",
-                    noHidden: true
-                )
+                CreateParticleGuidePoint(startZ)
             };
             return direction;
+        }
+
+        private static TriangleMeshWithColor CreateParticleGuidePoint(float z)
+        {
+            var point = new Vector3 { x = 0, y = 0, z = z };
+
+            return CreateTriangleOutward(
+                point,
+                new Vector3 { x = point.x, y = point.y, z = point.z },
+                new Vector3 { x = point.x, y = point.y, z = point.z },
+                BodyCenter,
+                "ffffff",
+                noHidden: true
+            );
         }
 
         // ----------------------------------------------------

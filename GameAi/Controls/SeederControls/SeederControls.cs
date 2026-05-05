@@ -343,16 +343,17 @@ namespace GameAiAndControls.Controls.SeederControls
         {
             if (StartCoordinates == null || GuideCoordinates == null) return;
 
-            // Align emission origin with surface-centered position used by AI
-            var obj3d = theObject as _3dObject;
-            var alignedWorld = obj3d != null
-                ? CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceAlignedWorldPosition(obj3d)
-                : (Vector3)theObject.WorldPosition;
+            var worldPosition = new Vector3
+            {
+                x = theObject.WorldPosition?.x ?? 0f,
+                y = theObject.WorldPosition?.y ?? 0f,
+                z = theObject.WorldPosition?.z ?? 0f
+            };
 
             ParentObject?.Particles?.ReleaseParticles(
                 GuideCoordinates,
                 StartCoordinates,
-                alignedWorld,
+                worldPosition,
                 this,
                 3,
                 null);

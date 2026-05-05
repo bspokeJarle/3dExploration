@@ -170,15 +170,9 @@ namespace _3DWorld.Scene
                 try { GameStatePersistence.DeleteSave(gps.PlayerName); } catch { }
             }
 
-            // Persist scene progress so the player can resume from here
-            gps.SceneIndex = currentSceneIndex;
-            if (currentSceneIndex != 0)
-            {
-                try { GameStatePersistence.SaveGameState(); } catch { }
-            }
-
             ClearVideoOverlay();
             gps.ResetForNewGame();
+            gps.SceneIndex = currentSceneIndex;
             ResetSurfaceState();
             SetupActiveScene(world);
 
@@ -191,6 +185,13 @@ namespace _3DWorld.Scene
                 gps.TotalShotsFired = prevShots;
                 gps.TotalDeaths = prevDeaths;
                 gps.PowerUpsCollected = prevPowerUps;
+            }
+
+            // Persist the freshly-entered scene after ResetForNewGame so an old
+            // scene checkpoint is not saved under the new scene index.
+            if (currentSceneIndex != 0)
+            {
+                try { GameStatePersistence.SaveGameState(); } catch { }
             }
         }
 
@@ -232,7 +233,11 @@ namespace _3DWorld.Scene
                 gps.PowerUpsCollected = _pendingSavedState.PowerUpsCollected;
 
                 // If there's a checkpoint, trim enemies and restore full checkpoint state
-                if (_pendingSavedState.HasCheckpoint)
+                bool shouldRestoreCheckpoint =
+                    _pendingSavedState.HasCheckpoint &&
+                    SavedCheckpointMatchesActiveScene(_pendingSavedState);
+
+                if (shouldRestoreCheckpoint)
                 {
                     GameStatePersistence.RestoreToGamePlayState(_pendingSavedState);
 
@@ -261,6 +266,11 @@ namespace _3DWorld.Scene
                     // Re-initialize director so it sees the trimmed enemy state
                     var scene = GetActiveScene();
                     scene.Director?.Initialize(world.EventBus!, world);
+                }
+                else if (_pendingSavedState.HasCheckpoint)
+                {
+                    ClearCheckpointState(gps);
+                    try { GameStatePersistence.SaveGameState(); } catch { }
                 }
 
                 // Always apply decoy-driven drone activation when loading a saved game,
@@ -548,6 +558,95 @@ namespace _3DWorld.Scene
                     break;
                 }
             }
+        }
+
+        private static bool SavedCheckpointMatchesActiveScene(SavedGameState saved)
+        {
+            int sceneSeeders = CountSceneAi("Seeder");
+            int sceneDrones = CountSceneAi("KamikazeDrone");
+            int sceneMotherShips = CountSceneMotherShips();
+
+            if (!CheckpointInitialMatchesScene(saved.CheckpointInitialSeeders, sceneSeeders))
+                return false;
+            if (!CheckpointInitialMatchesScene(saved.CheckpointInitialDrones, sceneDrones))
+                return false;
+            if (!CheckpointInitialMatchesScene(saved.CheckpointInitialMotherShips, sceneMotherShips))
+                return false;
+
+            if (saved.CheckpointSeedersRemaining == 0 && saved.CheckpointDronesRemaining == 0)
+            {
+                int initialSeeders = saved.CheckpointInitialSeeders > 0
+                    ? saved.CheckpointInitialSeeders
+                    : sceneSeeders;
+                int initialDrones = saved.CheckpointInitialDrones > 0
+                    ? saved.CheckpointInitialDrones
+                    : sceneDrones;
+                int expectedKillsForMothershipPhase = initialSeeders + initialDrones;
+
+                if (expectedKillsForMothershipPhase > 0 &&
+                    saved.CheckpointTotalKills < expectedKillsForMothershipPhase)
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool CheckpointInitialMatchesScene(int checkpointInitial, int sceneInitial)
+        {
+            return checkpointInitial <= 0 || sceneInitial <= 0 || checkpointInitial == sceneInitial;
+        }
+
+        private static int CountSceneAi(string objectName)
+        {
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null) return 0;
+
+            int count = 0;
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                if (aiObjects[i].ObjectName == objectName)
+                    count++;
+            }
+
+            return count;
+        }
+
+        private static int CountSceneMotherShips()
+        {
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null) return 0;
+
+            int count = 0;
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var objectName = aiObjects[i].ObjectName;
+                if (objectName == "MotherShipSmall" ||
+                    objectName == "MotherShipMedium" ||
+                    objectName == "MotherShipLarge")
+                    count++;
+            }
+
+            return count;
+        }
+
+        private static void ClearCheckpointState(GamePlayState gps)
+        {
+            gps.HasCheckpoint = false;
+            gps.CheckpointScore = 0;
+            gps.CheckpointLives = 3;
+            gps.CheckpointHealth = 100f;
+            gps.CheckpointPowerUpsCollected = 0;
+            gps.CheckpointSeedersRemaining = 0;
+            gps.CheckpointDronesRemaining = 0;
+            gps.CheckpointMotherShipsRemaining = 0;
+            gps.CheckpointTotalShotsFired = 0;
+            gps.CheckpointTotalKills = 0;
+            gps.CheckpointTotalDeaths = 0;
+            gps.CheckpointInfectionLevel = 0f;
+            gps.CheckpointWaveNumber = 1;
+            gps.CheckpointInitialSeeders = 0;
+            gps.CheckpointInitialDrones = 0;
+            gps.CheckpointInitialMotherShips = 0;
         }
 
         // -----------------------------------------------------------------

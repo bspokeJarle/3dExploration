@@ -20,6 +20,11 @@ namespace GameAiAndControls.Helpers
 
         private static readonly Dictionary<int, RecoveryState> RecoveryStates = new();
 
+        public static bool IsTerrainRecoveryActive(I3dObject obj)
+        {
+            return obj != null && RecoveryStates.ContainsKey(obj.ObjectId);
+        }
+
         public static bool TryStartTerrainRecovery(I3dObject obj)
         {
             if (obj?.ImpactStatus?.HasCrashed != true)
