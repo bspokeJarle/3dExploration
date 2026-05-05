@@ -22,7 +22,8 @@ namespace GameAiAndControls.Controls
         private const bool enableLogging = false;
         private const string WheelPartName = "DecoyFrontPulsePanel";
         private const float WheelRotationDegreesPerSecond = 540f;
-        private const float DeployedDecoyLifetimeSeconds = 5f;
+        // Deployed decoy fuse: it must stay alive for the full delay before exploding.
+        private const float DeployedDecoyLifetimeSeconds = 3f;
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
@@ -488,14 +489,16 @@ namespace GameAiAndControls.Controls
                 SyncMovement(theObject);
             }
 
-            if (theObject.ImpactStatus?.HasCrashed == true && !_isExploding)
+            var now = DateTime.Now;
+            bool fuseElapsed = !_isDeployedDecoy || (now - _deployedAt).TotalSeconds >= DeployedDecoyLifetimeSeconds;
+
+            // Crash-triggered explosion should also respect the deployed fuse time.
+            if (theObject.ImpactStatus?.HasCrashed == true && !_isExploding && fuseElapsed)
             {
                 HandleCrash(theObject);
             }
 
-            var now = DateTime.Now;
-
-            if (_isDeployedDecoy && !_isExploding && (now - _deployedAt).TotalSeconds >= DeployedDecoyLifetimeSeconds)
+            if (_isDeployedDecoy && !_isExploding && fuseElapsed)
             {
                 StartExplosion(theObject);
             }

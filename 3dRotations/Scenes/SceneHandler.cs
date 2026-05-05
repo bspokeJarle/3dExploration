@@ -87,12 +87,41 @@ namespace _3DWorld.Scene
 
             if (hadCheckpoint)
             {
+                int restoredMotherShips = snapshot.MotherShipsRemaining;
+                // If the checkpoint was captured at the exact transition to mothership phase,
+                // mothership count can be zero even though a mothership should be present.
+                if (snapshot.SeedersRemaining == 0 && snapshot.DronesRemaining == 0 && restoredMotherShips == 0)
+                    restoredMotherShips = 1;
+
                 TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
                 TrimEnemies(world, "KamikazeDrone", snapshot.DronesRemaining);
-                TrimEnemies(world, "MotherShipSmall", snapshot.MotherShipsRemaining);
-                TrimEnemies(world, "MotherShipMedium", snapshot.MotherShipsRemaining);
-                TrimEnemies(world, "MotherShipLarge", snapshot.MotherShipsRemaining);
+                TrimEnemies(world, "MotherShipSmall", restoredMotherShips);
+                TrimEnemies(world, "MotherShipMedium", restoredMotherShips);
+                TrimEnemies(world, "MotherShipLarge", restoredMotherShips);
                 gps.ApplyCheckpointRestart(snapshot);
+
+                var aiObjs = GameState.SurfaceState.AiObjects;
+
+                // If checkpoint was taken during mothership phase (all seeders/drones cleared),
+                // restore mothership combat immediately after reset.
+                if (snapshot.SeedersRemaining == 0 && snapshot.DronesRemaining == 0)
+                {
+                    for (int i = 0; i < aiObjs.Count; i++)
+                    {
+                        if ((aiObjs[i].ObjectName == "MotherShipSmall" || aiObjs[i].ObjectName == "MotherShipMedium" || aiObjs[i].ObjectName == "MotherShipLarge") && !aiObjs[i].IsActive)
+                            aiObjs[i].IsActive = true;
+                    }
+                }
+
+                // If decoy was unlocked at checkpoint time, restore active drone phase too.
+                if (gps.IsDecoyUnlocked)
+                {
+                    for (int i = 0; i < aiObjs.Count; i++)
+                    {
+                        if (aiObjs[i].ObjectName == "KamikazeDrone" && !aiObjs[i].IsActive)
+                            aiObjs[i].IsActive = true;
+                    }
+                }
 
                 if (enableLogging) Logger.Log($"Scenehandler: Checkpoint restored. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
             }
@@ -108,6 +137,8 @@ namespace _3DWorld.Scene
 
                 if (enableLogging) Logger.Log($"Scenehandler: No checkpoint — stats preserved. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
             }
+
+            InitializeDirector(newScene, world);
         }
 
         public void NextScene(I3dWorld world)
@@ -206,10 +237,15 @@ namespace _3DWorld.Scene
                     GameStatePersistence.RestoreToGamePlayState(_pendingSavedState);
 
                     var snapshot = gps.CaptureCheckpointSnapshot();
+                    int restoredMotherShips = snapshot.MotherShipsRemaining;
+                    if (snapshot.SeedersRemaining == 0 && snapshot.DronesRemaining == 0 && restoredMotherShips == 0)
+                        restoredMotherShips = 1;
 
                     TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
                     TrimEnemies(world, "KamikazeDrone", snapshot.DronesRemaining);
-                    TrimEnemies(world, "MotherShipSmall", snapshot.MotherShipsRemaining);
+                    TrimEnemies(world, "MotherShipSmall", restoredMotherShips);
+                    TrimEnemies(world, "MotherShipMedium", restoredMotherShips);
+                    TrimEnemies(world, "MotherShipLarge", restoredMotherShips);
 
                     // Activate enemies that should already be active at this checkpoint
                     var aiObjs = GameState.SurfaceState.AiObjects;

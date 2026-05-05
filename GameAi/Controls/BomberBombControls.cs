@@ -85,6 +85,12 @@ namespace GameAiAndControls.Controls
                 if (theObject.ImpactStatus?.HasExploded == true)
                 {
                     theObject.ObjectParts = new List<I3dObjectPart>();
+                    if (theObject.ImpactStatus != null)
+                    {
+                        // Keep crash source for crater detection after explosion completes.
+                        if (string.IsNullOrEmpty(theObject.ImpactStatus.ObjectName))
+                            theObject.ImpactStatus.ObjectName = "Surface";
+                    }
                 }
                 SyncToOriginal(theObject);
                 return theObject;
@@ -178,6 +184,14 @@ namespace GameAiAndControls.Controls
             _explosionDeltaTime = DateTime.Now;
             _explosionWorldPosition = theObject.WorldPosition as Vector3 ?? ToVector3(theObject.WorldPosition);
             _explosionObjectOffsets = theObject.ObjectOffsets as Vector3 ?? ToVector3(theObject.ObjectOffsets);
+
+            if (theObject.ImpactStatus == null)
+                theObject.ImpactStatus = new ImpactStatus();
+
+            // Mark surface impact immediately so GroundControls crater detection can process
+            // the bomb even after the visual explosion animation completes.
+            theObject.ImpactStatus.HasCrashed = true;
+            theObject.ImpactStatus.ObjectName = "Surface";
 
             Physics.ExplodeObject(theObject, 150f);
             theObject.CrashBoxes = new List<List<IVector3>>();

@@ -1,6 +1,7 @@
 ﻿using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.Persistence;
 using Domain;
 using GameAiAndControls.Input;
 using System;
@@ -1172,6 +1173,32 @@ namespace GameAiAndControls.Controls
                 {
                     GameState.GamePlayState.PowerUpsCollected++;
                     GameState.GamePlayState.Score += GameSetup.PowerUpCollectScore;
+
+                    // Snapshot current remaining objective enemies before saving checkpoint
+                    // so reset/load does not restore an already-cleared wave state by mistake.
+                    int seedersLeft = 0;
+                    int dronesLeft = 0;
+                    int motherShipsLeft = 0;
+                    for (int j = 0; j < aiObjects.Count; j++)
+                    {
+                        var enemy = aiObjects[j];
+                        if (enemy.ImpactStatus?.HasExploded == true)
+                            continue;
+
+                        if (enemy.ObjectName == "Seeder")
+                            seedersLeft++;
+                        else if (enemy.ObjectName == "KamikazeDrone" && enemy.IsActive)
+                            dronesLeft++;
+                        else if ((enemy.ObjectName == "MotherShipSmall" || enemy.ObjectName == "MotherShipMedium" || enemy.ObjectName == "MotherShipLarge") && enemy.IsActive)
+                            motherShipsLeft++;
+                    }
+
+                    GameState.GamePlayState.SeedersRemaining = seedersLeft;
+                    GameState.GamePlayState.DronesRemaining = dronesLeft;
+                    GameState.GamePlayState.MotherShipsRemaining = motherShipsLeft;
+                    GameState.GamePlayState.SaveCheckpoint();
+
+                    try { GameStatePersistence.SaveGameState(); } catch { }
 
                     if (_audio != null && _powerupSound != null)
                         _audio.Play(_powerupSound, AudioPlayMode.OneShot, new AudioPlayOptions());
