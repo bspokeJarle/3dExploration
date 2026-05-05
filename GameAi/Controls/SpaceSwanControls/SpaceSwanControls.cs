@@ -2,6 +2,7 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Helpers;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -114,6 +115,8 @@ namespace GameAiAndControls.Controls.SpaceSwanControls
             _lastFrameTime = now;
             if (deltaSeconds > 1f) deltaSeconds = 0f;
 
+            TerrainAvoidanceHelpers.TryStartTerrainRecovery(theObject);
+
             // AI movement
             if (!_isExploding && theObject.ImpactStatus?.HasCrashed != true)
             {
@@ -202,6 +205,15 @@ namespace GameAiAndControls.Controls.SpaceSwanControls
 
             // Surface sync
             SyncMovement(theObject);
+            if (TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, deltaSeconds) && theObject.WorldPosition != null)
+            {
+                _trackedWorldPosition = new Vector3
+                {
+                    x = theObject.WorldPosition.x,
+                    y = theObject.WorldPosition.y,
+                    z = theObject.WorldPosition.z
+                };
+            }
             SyncToOriginal(theObject);
 
             return theObject;

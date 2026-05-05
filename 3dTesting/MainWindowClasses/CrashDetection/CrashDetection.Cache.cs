@@ -83,6 +83,29 @@ namespace _3dTesting.Helpers
             objectName == "Tree" || objectName == "Surface" || objectName == "House";
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsTerrainObstacle(ObjectTypeFlags flags) =>
+            CommonUtilities.CommonSetup.TerrainAvoidanceSetup.IsTerrainObstacle(flags.Name);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool IsTerrainAvoidanceAiObject(_3dObject obj, ObjectTypeFlags flags)
+        {
+            if (!CommonUtilities.CommonSetup.TerrainAvoidanceSetup.IsAvoidanceCapableAi(flags.Name))
+                return false;
+
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null)
+                return false;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                if (aiObjects[i].ObjectId == obj.ObjectId)
+                    return true;
+            }
+
+            return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Vector3 GetOffsetCached(_3dObject obj)
         {
             if (OffsetCache.TryGetValue(obj, out var offset))

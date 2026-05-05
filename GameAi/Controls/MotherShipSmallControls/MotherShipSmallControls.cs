@@ -2,6 +2,7 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Helpers;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -103,6 +104,8 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
             if (theObject.ImpactStatus?.HasExploded == true)
                 return theObject;
+
+            TerrainAvoidanceHelpers.TryStartTerrainRecovery(theObject);
 
             if (theObject.ImpactStatus?.HasCrashed == true && !_isExploding)
             {
@@ -285,6 +288,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
             UpdateFlash(theObject);
 
             SyncMovement(theObject);
+            TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, (float)deltaSeconds);
             SyncToOriginal(theObject);
 
             return theObject;

@@ -88,17 +88,21 @@ namespace _3dTesting.Helpers
                     bool isBomberBombSurfacePair =
                         (flagsA.Name == "BomberBomb" && flagsB.IsSurface) ||
                         (flagsB.Name == "BomberBomb" && flagsA.IsSurface);
+                    bool isTerrainAvoidanceAiObstaclePair =
+                        (IsTerrainAvoidanceAiObject(inhabitant, flagsA) && IsTerrainObstacle(flagsB)) ||
+                        (IsTerrainAvoidanceAiObject(otherInhabitant, flagsB) && IsTerrainObstacle(flagsA));
+                    bool isTerrainAvoidanceAiSurfacePair = isTerrainAvoidanceAiObstaclePair && isSurface;
                     bool isBothEnemies = flagsA.IsEnemy && flagsB.IsEnemy;
 
                     if (string.IsNullOrEmpty(flagsA.Name) || string.IsNullOrEmpty(flagsB.Name)) continue;
                     if (flagsA.Name == flagsB.Name) continue;
                     if (isInhabitantStatic && isOtherStatic) continue;
-                    if ((isInhabitantStatic || isOtherStatic) && !shouldCheckStaticObjects) continue;
+                    if ((isInhabitantStatic || isOtherStatic) && !shouldCheckStaticObjects && !isTerrainAvoidanceAiObstaclePair) continue;
                     if (isParticle && isShip) continue;
                     if (isParticle && (flagsA.IsEnemy || flagsB.IsEnemy)) continue;
                     if (isBothParticles) continue;
                     if (isParticle && _skipParticles) continue;
-                    if (isEnemySurfacePair && !isBomberBombSurfacePair) continue;
+                    if (isEnemySurfacePair && !isBomberBombSurfacePair && !isTerrainAvoidanceAiSurfacePair) continue;
                     if (isBothEnemies) continue;
                     if (isDecoySurfacePair) continue;
                     if (isDecoyShipPair) continue;
@@ -163,7 +167,7 @@ namespace _3dTesting.Helpers
                     // Same for BomberBomb↔Surface: the Surface center is far from
                     // any individual bomb, so let box-vs-box decide.
                     bool isShipEnemyPair = isShip && !isSurface && !isParticle && !isLazer;
-                    if (!isShipEnemyPair && !isBomberBombSurfacePair && distance > effectiveMaxCrashDistance)
+                    if (!isShipEnemyPair && !isBomberBombSurfacePair && !isTerrainAvoidanceAiSurfacePair && distance > effectiveMaxCrashDistance)
                     {
                         SkippedByDistance++;
                         continue;

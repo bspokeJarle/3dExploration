@@ -82,6 +82,7 @@ namespace GameAiAndControls.Controls.SeederControls
         {
             // Lazily initialize audio the first time MoveObject runs.
             ConfigureAudio(audioPlayer, soundRegistry);
+            TerrainAvoidanceHelpers.TryStartTerrainRecovery(theObject);
 
             // Skip AI movement when a crash is pending or already exploding,
             // so the explosion stays anchored at the position where the hit occurred.
@@ -263,6 +264,15 @@ namespace GameAiAndControls.Controls.SeederControls
             // to the terrain position as the surface scrolls (SyncMovement
             // only adjusts ObjectOffsets.y; x/z stay frozen from the explosion anchor).
             SyncMovement(theObject);
+            if (TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, 1f / ScreenSetup.targetFps) && theObject.WorldPosition != null)
+            {
+                _trackedWorldPosition = new Vector3
+                {
+                    x = theObject.WorldPosition.x,
+                    y = theObject.WorldPosition.y,
+                    z = theObject.WorldPosition.z
+                };
+            }
 
             // Push the deep copy's authoritative positions back to the original
             // object so shadow casting and other systems that read from AiObjects

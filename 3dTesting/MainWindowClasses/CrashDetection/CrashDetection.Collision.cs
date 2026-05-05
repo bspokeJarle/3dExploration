@@ -153,6 +153,11 @@ namespace _3dTesting.Helpers
                             continue;
                         }
 
+                        if (TryMarkTerrainAvoidanceContact(a, b, ai, bi, centerA, centerB, centerDistance))
+                        {
+                            return true;
+                        }
+
                         a.ImpactStatus.HasCrashed = true;
                         b.ImpactStatus.HasCrashed = true;
 
@@ -203,6 +208,48 @@ namespace _3dTesting.Helpers
             }
 
             return false;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static bool TryMarkTerrainAvoidanceContact(
+            _3dObject a,
+            _3dObject b,
+            int boxIndexA,
+            int boxIndexB,
+            Vector3 centerA,
+            Vector3 centerB,
+            float centerDistance)
+        {
+            var flagsA = GetTypeFlagsCached(a);
+            var flagsB = GetTypeFlagsCached(b);
+
+            bool aIsAvoidingAi = IsTerrainAvoidanceAiObject(a, flagsA);
+            bool bIsAvoidingAi = IsTerrainAvoidanceAiObject(b, flagsB);
+            bool aIsObstacle = IsTerrainObstacle(flagsA);
+            bool bIsObstacle = IsTerrainObstacle(flagsB);
+
+            if (!(aIsAvoidingAi && bIsObstacle) && !(bIsAvoidingAi && aIsObstacle))
+                return false;
+
+            var ai = aIsAvoidingAi ? a : b;
+            var obstacle = aIsAvoidingAi ? b : a;
+            var aiCenter = aIsAvoidingAi ? centerA : centerB;
+            var obstacleCenter = aIsAvoidingAi ? centerB : centerA;
+            int aiBoxIndex = aIsAvoidingAi ? boxIndexA : boxIndexB;
+
+            if (ai.ImpactStatus != null &&
+                (ai.ImpactStatus.HasCrashed != true || !IsCombatCollisionName(ai.ImpactStatus.ObjectName)))
+            {
+                ai.ImpactStatus.HasCrashed = true;
+                ai.ImpactStatus.ObjectName = obstacle.ObjectName;
+                ai.ImpactStatus.ImpactDirection = EstimateDirection(aiCenter, obstacleCenter);
+                ai.ImpactStatus.CrashBoxName = ai.CrashBoxNames != null && aiBoxIndex < ai.CrashBoxNames.Count ? ai.CrashBoxNames[aiBoxIndex] : null;
+            }
+
+            LogCollision(ai, obstacle,
+                $"[FRAME:{numFrame}] [AI TERRAIN CONTACT] {ai.ObjectName} -> {obstacle.ObjectName} | CenterDistance:{centerDistance:0.##}");
+
+            return true;
         }
 
         private static void HandleDecoyBlastDamage(List<_3dObject> activeWorld)

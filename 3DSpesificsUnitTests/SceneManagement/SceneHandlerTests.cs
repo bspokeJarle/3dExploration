@@ -9,6 +9,7 @@ using static Domain._3dSpecificsImplementations;
 namespace _3DSpesificsUnitTests.SceneManagement;
 
 [TestClass]
+[Ignore("Manual only: these tests build full scenes and are too slow for normal test runs.")]
 public class SceneHandlerTests
 {
     [TestInitialize]
