@@ -1,6 +1,7 @@
 ﻿using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -151,22 +152,17 @@ namespace _3dTesting.Helpers
                 int srcW = surfaceMapBitmap.PixelWidth;
                 int srcH = surfaceMapBitmap.PixelHeight;
 
-                // Clamp crop to source bounds
-                if (cropX < 0) cropX = 0;
-                if (cropZ < 0) cropZ = 0;
-                if (cropX + cropW > srcW) cropW = srcW - cropX;
-                if (cropZ + cropH > srcH) cropH = srcH - cropZ;
+                cropW = Math.Min(cropW, srcW);
+                cropH = Math.Min(cropH, srcH);
                 if (cropW <= 0 || cropH <= 0) return;
 
-                // 2. Copy crop pixels into a writable bitmap
+                // 2. Copy crop pixels into a writable bitmap, wrapping around the
+                // planet map instead of clamping at bitmap edges.
                 int stride = cropW * 4; // Bgra32 = 4 bytes per pixel
-                byte[] pixels = new byte[stride * cropH];
-                surfaceMapBitmap.CopyPixels(
-                    new Int32Rect(cropX, cropZ, cropW, cropH),
-                    pixels, stride, 0);
+                byte[] pixels = CopyWrappedPixels(surfaceMapBitmap, cropX, cropZ, cropW, cropH, stride);
 
                 // 3. Draw markers onto the pixel buffer (positions relative to crop)
-                DrawMarkersOnBuffer(pixels, cropW, cropH, stride, cropX, cropZ);
+                DrawMarkersOnBuffer(pixels, cropW, cropH, stride, cropX, cropZ, srcW, srcH);
 
                 // 4. Write into a WriteableBitmap and set as source
                 var wb = new WriteableBitmap(cropW, cropH, 96, 96,
@@ -187,7 +183,8 @@ namespace _3dTesting.Helpers
         /// </summary>
         private static void DrawMarkersOnBuffer(
             byte[] pixels, int cropW, int cropH, int stride,
-            int cropOriginX, int cropOriginZ)
+            int cropOriginX, int cropOriginZ,
+            int mapWidth, int mapHeight)
         {
             int tileSize = MapSetup.tileSize;
 
@@ -216,8 +213,10 @@ namespace _3dTesting.Helpers
             if (mapPos != null)
             {
                 int viewportCenterOffset = (SurfaceSetup.viewPortSize * tileSize) / 2;
-                int shipBx = (int)((mapPos.x + viewportCenterOffset) / tileSize) - cropOriginX;
-                int shipBz = (int)((mapPos.z + viewportCenterOffset) / tileSize) - cropOriginZ;
+                int shipMapX = MapCoordinateHelpers.WorldToTileIndex(mapPos.x + viewportCenterOffset, tileSize, mapWidth);
+                int shipMapZ = MapCoordinateHelpers.WorldToTileIndex(mapPos.z + viewportCenterOffset, tileSize, mapHeight);
+                int shipBx = MapCoordinateHelpers.GetWrappedRelativeIndex(shipMapX, cropOriginX, mapWidth);
+                int shipBz = MapCoordinateHelpers.GetWrappedRelativeIndex(shipMapZ, cropOriginZ, mapHeight);
                 StampMarker(pixels, cropW, cropH, stride, shipBx, shipBz, greyPx);
             }
 
@@ -234,15 +233,17 @@ namespace _3dTesting.Helpers
                     for (int i = 0; i < msSnapshot.Length; i++)
                     {
                         var obj = msSnapshot[i];
-                        if (obj == null || obj.ObjectName != "MotherShipSmall") continue;
+                        if (obj == null || (obj.ObjectName != "MotherShipSmall" && obj.ObjectName != "MotherShipMedium")) continue;
                         if (!obj.IsActive) continue;
                         if (obj.ImpactStatus?.HasExploded == true) continue;
                         if (obj.ObjectParts == null || obj.ObjectParts.Count == 0) continue;
                         if (obj.WorldPosition == null) continue;
                         if (obj.WorldPosition.x == 0 && obj.WorldPosition.z == 0) continue;
 
-                        int mx = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
-                        int mz = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                        int markerX = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
+                        int markerZ = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
+                        int mx = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX, cropOriginX, mapWidth);
+                        int mz = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ, cropOriginZ, mapHeight);
                         StampMarkerBoss(pixels, cropW, cropH, stride, mx, mz, mothershipPx);
                     }
                 }
@@ -279,14 +280,16 @@ namespace _3dTesting.Helpers
                         if (isPowerUp)
                         {
                             if (!powerupVisible) continue;
-                            int bx = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
-                            int bz = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                            int markerX = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
+                            int markerZ = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
+                            int bx = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX, cropOriginX, mapWidth);
+                            int bz = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ, cropOriginZ, mapHeight);
                             StampMarkerLarge(pixels, cropW, cropH, stride, bx, bz, powerupPx);
                             continue;
                         }
 
                         // Mothership drawn separately below with its own flash cycle
-                        if (obj.ObjectName == "MotherShipSmall") continue;
+                        if (obj.ObjectName == "MotherShipSmall" || obj.ObjectName == "MotherShipMedium") continue;
 
                         byte[]? color = obj.ObjectName switch
                         {
@@ -301,19 +304,67 @@ namespace _3dTesting.Helpers
                         {
                             if (obj.ObjectName == "ZeppelinBomber")
                             {
-                                int bxZ = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
-                                int bzZ = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                                int markerX = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
+                                int markerZ = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
+                                int bxZ = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX, cropOriginX, mapWidth);
+                                int bzZ = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ, cropOriginZ, mapHeight);
                                 StampMarkerLarge(pixels, cropW, cropH, stride, bxZ, bzZ, zeppelinPx);
                             }
                             continue;
                         }
 
-                        int bx2 = (int)(obj.WorldPosition.x / tileSize) - cropOriginX;
-                        int bz2 = (int)(obj.WorldPosition.z / tileSize) - cropOriginZ;
+                        int markerX2 = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
+                        int markerZ2 = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
+                        int bx2 = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX2, cropOriginX, mapWidth);
+                        int bz2 = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ2, cropOriginZ, mapHeight);
                         StampMarker(pixels, cropW, cropH, stride, bx2, bz2, color);
                     }
                 }
             }
+        }
+
+        private static byte[] CopyWrappedPixels(
+            BitmapSource source,
+            int cropX,
+            int cropZ,
+            int cropW,
+            int cropH,
+            int stride)
+        {
+            int srcW = source.PixelWidth;
+            int srcH = source.PixelHeight;
+            byte[] pixels = new byte[stride * cropH];
+
+            if (cropX >= 0 && cropZ >= 0 && cropX + cropW <= srcW && cropZ + cropH <= srcH)
+            {
+                source.CopyPixels(new Int32Rect(cropX, cropZ, cropW, cropH), pixels, stride, 0);
+                return pixels;
+            }
+
+            for (int z = 0; z < cropH; z++)
+            {
+                int srcZ = MapCoordinateHelpers.WrapIndex(cropZ + z, srcH);
+                int targetRow = z * stride;
+                int remaining = cropW;
+                int targetX = 0;
+                int srcX = MapCoordinateHelpers.WrapIndex(cropX, srcW);
+
+                while (remaining > 0)
+                {
+                    int width = Math.Min(remaining, srcW - srcX);
+                    source.CopyPixels(
+                        new Int32Rect(srcX, srcZ, width, 1),
+                        pixels,
+                        stride,
+                        targetRow + (targetX * 4));
+
+                    targetX += width;
+                    remaining -= width;
+                    srcX = 0;
+                }
+            }
+
+            return pixels;
         }
 
         /// <summary>

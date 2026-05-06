@@ -1,5 +1,6 @@
 ﻿using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
 using Domain;
 using Gma.System.MouseKeyHook;
 using System;
@@ -60,8 +61,8 @@ namespace GameAiAndControls.Controls
             var global2DMap = GameState.SurfaceState?.Global2DMap;
             if (aiObjects == null || global2DMap == null) return;
 
-            int mapSize = global2DMap.GetLength(0);
-            int tileSize = SurfaceSetup.tileSize;
+            int mapHeight = global2DMap.GetLength(0);
+            int mapWidth = global2DMap.GetLength(1);
             var rnd = new Random();
 
             for (int i = 0; i < aiObjects.Count; i++)
@@ -77,24 +78,22 @@ namespace GameAiAndControls.Controls
                 var wp = obj.WorldPosition;
                 if (wp == null) continue;
 
-                int centerX = (int)(wp.x / tileSize) % mapSize;
-                int centerZ = (int)(wp.z / tileSize) % mapSize;
-                if (centerX < 0) centerX += mapSize;
-                if (centerZ < 0) centerZ += mapSize;
+                int centerX = MapCoordinateHelpers.WorldXToTileIndex(wp.x, global2DMap);
+                int centerZ = MapCoordinateHelpers.WorldZToTileIndex(wp.z, global2DMap);
 
                 // Apply crater to 3x3 area around impact
                 for (int dz = -1; dz <= 1; dz++)
                 {
                     for (int dx = -1; dx <= 1; dx++)
                     {
-                        int tileZ = (centerZ + dz + mapSize) % mapSize;
-                        int tileX = (centerX + dx + mapSize) % mapSize;
+                        int tileZ = MapCoordinateHelpers.WrapIndex(centerZ + dz, mapHeight);
+                        int tileX = MapCoordinateHelpers.WrapIndex(centerX + dx, mapWidth);
 
                         ref var tile = ref global2DMap[tileZ, tileX];
-                        if (!tile.isCratered)
+                        if (!tile.isCratered && IsCraterableTerrain(tile.mapDepth))
                         {
                             tile.isCratered = true;
-                            tile.mapDepth -= rnd.Next(10, 21);
+                            tile.mapDepth = Math.Max(GetMinimumDryCraterDepth(), tile.mapDepth - rnd.Next(10, 21));
                         }
                     }
                 }
@@ -102,6 +101,19 @@ namespace GameAiAndControls.Controls
                 if (enableLogging && Logger.EnableFileLogging)
                     Logger.Log($"GroundControls: Bomb crater at tile x={centerX}; z={centerZ}");
             }
+        }
+
+        private static bool IsCraterableTerrain(int mapDepth)
+        {
+            var terrain = GamePlayHelpers.GetTerrainType(mapDepth, MapSetup.maxHeight);
+            return terrain == GamePlayHelpers.TerrainType.Grassland ||
+                   terrain == GamePlayHelpers.TerrainType.Highlands ||
+                   terrain == GamePlayHelpers.TerrainType.Mountains;
+        }
+
+        private static int GetMinimumDryCraterDepth()
+        {
+            return (int)Math.Ceiling(MapSetup.maxHeight * 0.15f);
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)

@@ -44,8 +44,11 @@ namespace CommonUtilities.Persistence
                 var json = EncryptionHelper.DecryptFromFile(path, keyPath);
                 if (json == null) return new HighscoreList();
 
-                return JsonSerializer.Deserialize<HighscoreList>(json, JsonOptions)
+                var list = JsonSerializer.Deserialize<HighscoreList>(json, JsonOptions)
                     ?? new HighscoreList();
+
+                list.Entries = NormalizeEntriesByPlayer(list.Entries);
+                return list;
             }
             catch
             {
@@ -58,6 +61,8 @@ namespace CommonUtilities.Persistence
         /// </summary>
         public static void SaveLocalHighscores(HighscoreList list)
         {
+            list.Entries = NormalizeEntriesByPlayer(list.Entries);
+
             var path = PersistenceSetup.LocalHighscoreFilePath;
             var keyPath = PersistenceSetup.LocalKeyFilePath;
 
@@ -106,6 +111,8 @@ namespace CommonUtilities.Persistence
         {
             if (string.IsNullOrWhiteSpace(playerName)) return false;
 
+            playerName = playerName.Trim();
+
             var entry = new HighscoreEntry
             {
                 PlayerName = playerName,
@@ -138,6 +145,7 @@ namespace CommonUtilities.Persistence
             try
             {
                 var list = LoadLocalHighscores();
+                list.Entries = NormalizeEntriesByPlayer(list.Entries);
                 int max = PersistenceSetup.MaxHighscoreEntries;
 
                 var existing = list.Entries.Find(e =>
@@ -235,22 +243,43 @@ namespace CommonUtilities.Persistence
         // -----------------------------------------------------------------
 
         /// <summary>
-        /// Merges two lists, de-duplicates by (PlayerName + DateUtc),
-        /// sorts descending by score, and trims to max entries.
+        /// Merges two lists and keeps a single best entry per player name
+        /// (case-insensitive). If score ties, the most recent DateUtc wins.
+        /// Then sorts descending by score and trims to max entries.
         /// </summary>
         private static List<HighscoreEntry> MergeLists(
             List<HighscoreEntry> listA,
             List<HighscoreEntry> listB)
         {
-            var seen = new HashSet<string>();
-            var merged = new List<HighscoreEntry>();
+            var byPlayer = new Dictionary<string, HighscoreEntry>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var entry in listA.Concat(listB))
             {
-                var key = $"{entry.PlayerName}|{entry.DateUtc}";
-                if (seen.Add(key))
-                    merged.Add(entry);
+                var key = entry.PlayerName?.Trim() ?? string.Empty;
+                if (string.IsNullOrEmpty(key))
+                    continue;
+
+                if (!byPlayer.TryGetValue(key, out var existing))
+                {
+                    byPlayer[key] = entry;
+                    continue;
+                }
+
+                bool replace = entry.Score > existing.Score;
+                if (!replace && entry.Score == existing.Score)
+                {
+                    if (DateTime.TryParse(entry.DateUtc, out var newDt) &&
+                        DateTime.TryParse(existing.DateUtc, out var oldDt))
+                    {
+                        replace = newDt > oldDt;
+                    }
+                }
+
+                if (replace)
+                    byPlayer[key] = entry;
             }
+
+            var merged = byPlayer.Values.ToList();
 
             merged.Sort((a, b) => b.Score.CompareTo(a.Score));
 
@@ -259,6 +288,47 @@ namespace CommonUtilities.Persistence
                 merged.RemoveRange(max, merged.Count - max);
 
             return merged;
+        }
+
+        /// <summary>
+        /// Ensures a single highscore row per player (case-insensitive, trimmed name).
+        /// Keeps best score; if tied, keeps most recent DateUtc.
+        /// </summary>
+        private static List<HighscoreEntry> NormalizeEntriesByPlayer(List<HighscoreEntry> entries)
+        {
+            var byPlayer = new Dictionary<string, HighscoreEntry>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var e in entries)
+            {
+                var key = e.PlayerName?.Trim() ?? string.Empty;
+                if (string.IsNullOrEmpty(key))
+                    continue;
+
+                e.PlayerName = key;
+
+                if (!byPlayer.TryGetValue(key, out var existing))
+                {
+                    byPlayer[key] = e;
+                    continue;
+                }
+
+                bool replace = e.Score > existing.Score;
+                if (!replace && e.Score == existing.Score)
+                {
+                    if (DateTime.TryParse(e.DateUtc, out var newDt) &&
+                        DateTime.TryParse(existing.DateUtc, out var oldDt))
+                    {
+                        replace = newDt > oldDt;
+                    }
+                }
+
+                if (replace)
+                    byPlayer[key] = e;
+            }
+
+            var normalized = byPlayer.Values.ToList();
+            normalized.Sort((a, b) => b.Score.CompareTo(a.Score));
+            return normalized;
         }
     }
 }

@@ -20,5 +20,6 @@ namespace CommonUtilities.CommonGlobalState
         public static List<_3dSpecificsImplementations._3dObject> PendingWorldObjects { get; } = new();
         public static long FrameCount { get; set; } = 0;
         public static int ObjectIdCounter { get; set; } = 0;
+        public static float DeltaTime { get; set; }
     }
 }

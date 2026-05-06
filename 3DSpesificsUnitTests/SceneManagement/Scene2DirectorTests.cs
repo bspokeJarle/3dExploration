@@ -163,12 +163,14 @@ public class Scene2DirectorTests
     public void Update_DoesNotActivateMotherShip_WhenInitialSeedersIsZero()
     {
         var motherShip = CreateAiObject("MotherShipSmall", isActive: false);
+        var seeder = CreateAiObject("Seeder", isActive: true);
+        GameState.SurfaceState.AiObjects.Add(seeder);
         GameState.SurfaceState.AiObjects.Add(motherShip);
         GameState.GamePlayState.InitialSeeders = 0;
 
         _director.Update();
 
-        Assert.IsFalse(motherShip.IsActive);
+        Assert.IsFalse(motherShip.IsActive, "MotherShip should not activate while live seeders remain.");
     }
 
     // -----------------------------------------------------------------
@@ -183,7 +185,10 @@ public class Scene2DirectorTests
         gps.InitialDrones = 3;
         gps.SeedersRemaining = 0;
         gps.DronesRemaining = 0;
-        gps.MotherShipsRemaining = 0;
+        gps.MotherShipsRemaining = 1;
+
+        var activeMs = CreateAiObject("MotherShipSmall", isActive: true);
+        GameState.SurfaceState.AiObjects.Add(activeMs);
 
         // Only non-enemy or exploded objects in AiObjects
         var exploded = CreateAiObject("MotherShipSmall");
@@ -191,6 +196,9 @@ public class Scene2DirectorTests
         GameState.SurfaceState.AiObjects.Add(exploded);
         GameState.SurfaceState.AiObjects.Add(CreateAiObject("SpaceSwan"));
 
+        _director.Update();
+        activeMs.ImpactStatus = new ImpactStatus { HasExploded = true };
+        gps.MotherShipsRemaining = 0;
         _director.Update();
 
         Assert.IsTrue(_director.IsVictory);
@@ -256,8 +264,16 @@ public class Scene2DirectorTests
         gps.InitialDrones = 1;
         gps.SeedersRemaining = 0;
         gps.DronesRemaining = 0;
+        gps.MotherShipsRemaining = 1;
+        var motherShip = CreateAiObject("MotherShipSmall", isActive: true);
+        GameState.SurfaceState.AiObjects.Add(motherShip);
+
+        _director.Update();
+
+        motherShip.ImpactStatus = new ImpactStatus { HasExploded = true };
         gps.MotherShipsRemaining = 0;
         _director.Update();
+
         Assert.IsTrue(_director.IsVictory);
 
         // Adding enemies after victory should not change the result
@@ -280,8 +296,16 @@ public class Scene2DirectorTests
         gps.InitialDrones = 1;
         gps.SeedersRemaining = 0;
         gps.DronesRemaining = 0;
+        gps.MotherShipsRemaining = 1;
+        var motherShip = CreateAiObject("MotherShipSmall", isActive: true);
+        GameState.SurfaceState.AiObjects.Add(motherShip);
+
+        _director.Update();
+
+        motherShip.ImpactStatus = new ImpactStatus { HasExploded = true };
         gps.MotherShipsRemaining = 0;
         _director.Update();
+
         Assert.IsTrue(_director.IsVictory);
 
         _director.Dispose();
@@ -457,12 +481,19 @@ public class Scene2DirectorTests
         gps.InitialDrones = 1;
         gps.SeedersRemaining = 0;
         gps.DronesRemaining = 0;
-        gps.MotherShipsRemaining = 0;
+        gps.MotherShipsRemaining = 1;
+
+        var motherShip = CreateAiObject("MotherShipSmall", isActive: true);
+        GameState.SurfaceState.AiObjects.Add(motherShip);
 
         GameState.SurfaceState.AiObjects.Add(CreateAiObject("Tree"));
         GameState.SurfaceState.AiObjects.Add(CreateAiObject("SpaceSwan"));
         GameState.SurfaceState.AiObjects.Add(CreateAiObject("Tower"));
 
+        _director.Update();
+
+        motherShip.ImpactStatus = new ImpactStatus { HasExploded = true };
+        gps.MotherShipsRemaining = 0;
         _director.Update();
 
         Assert.IsTrue(_director.IsVictory);

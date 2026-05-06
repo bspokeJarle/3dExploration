@@ -1,6 +1,7 @@
 ﻿using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
 using Domain;
 using System;
 using static CommonUtilities.GamePlayHelpers.GamePlayHelpers;
@@ -214,11 +215,11 @@ namespace GameAiAndControls.Helpers
                     continue;
                 }
 
-                // Convert WORLD -> tile indices for map validation
-                int tileX = tile.X / TileSize;
-                int tileY = tile.Y / TileSize;
+                // Convert WORLD -> tile indices for map validation.
+                int tileX = MapCoordinateHelpers.WorldXToTileIndex(tile.X, map);
+                int tileY = MapCoordinateHelpers.WorldZToTileIndex(tile.Y, map);
 
-                if ((uint)tileX >= (uint)MapSetup.globalMapSize || (uint)tileY >= (uint)MapSetup.globalMapSize)
+                if ((uint)tileX >= (uint)map.GetLength(1) || (uint)tileY >= (uint)map.GetLength(0))
                 {
                     skippedOutOfRange++;
                     continue;
@@ -388,9 +389,8 @@ namespace GameAiAndControls.Helpers
                 // Spread to 8 neighbors
                 foreach (var d in SpreadNeighbors)
                 {
-                    int nx = tx + d[0];
-                    int nz = tz + d[1];
-                    if (nx < 0 || nz < 0 || nx >= mapWidth || nz >= mapHeight) continue;
+                    int nx = MapCoordinateHelpers.WrapIndex(tx + d[0], mapWidth);
+                    int nz = MapCoordinateHelpers.WrapIndex(tz + d[1], mapHeight);
 
                     var t = map[nz, nx];
                     if (t.isInfected) continue;

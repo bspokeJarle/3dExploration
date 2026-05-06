@@ -7,12 +7,12 @@ using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
-using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Controls.SeederControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
+using GameAiAndControls.Controls.MotherShipMediumControls;
 
 namespace _3dRotations.Scene.Scene5
 {
@@ -29,6 +29,7 @@ namespace _3dRotations.Scene.Scene5
         public int SeederOffscreenSpeedFactor { get; } = 16;
         public float LocalInfectionSpreadDelaySec { get; } = 2.5f;
         public float LocalInfectionSpreadRadius { get; } = 5000f;
+        public float MotherShipMediumAggression { get; } = 1.20f;
 
         public void SetupScene(I3dWorld world)
         {
@@ -144,18 +145,27 @@ namespace _3dRotations.Scene.Scene5
             }
 
             // Mothership — spawns inactive, enters when all seeders and drones are destroyed
-            var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
-            motherShip.Rotation = new Vector3 { };
-            motherShip.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 92000 * ws };
-            motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
-            motherShip.ObjectName = "MotherShipSmall";
-            motherShip.Movement = new MotherShipSmallControls();
-            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
-            motherShip.CrashBoxDebugMode = false;
-            motherShip.HasPowerUp = false;
-            motherShip.IsActive = false;
-            world.WorldInhabitants.Add(motherShip);
-            GameState.SurfaceState.AiObjects.Add(motherShip);
+            var motherShipMedium = MotherShipMedium.CreateMotherShipMedium(Surface);
+            motherShipMedium.Rotation = new Vector3 { };
+            motherShipMedium.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 90000 * ws };
+            motherShipMedium.ObjectOffsets = new Vector3 { x = 0, y = -1500, z = 400 };
+            motherShipMedium.ObjectName = "MotherShipMedium";
+            motherShipMedium.Movement = new MotherShipMediumControls();
+            var motherShipMediumLazer = Lazer.CreateLazer(Surface, scaleMultiplier: 2.0f);
+            motherShipMediumLazer.CrashBoxDebugMode = false;
+            var motherShipMediumWeapons = new List<I3dObject> { motherShipMediumLazer };
+            motherShipMedium.WeaponSystems = new Weapons(motherShipMediumWeapons, motherShipMedium.Movement!, (_3dObject)motherShipMedium)
+            {
+                ShowAimAssist = false,
+                FireAsEnemyWeapon = true,
+                EnemyLazerName = "EnemyLazerMedium"
+            };
+            motherShipMedium.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipMediumHealth };
+            motherShipMedium.CrashBoxDebugMode = false;
+            motherShipMedium.HasPowerUp = false;
+            motherShipMedium.IsActive = false;
+            world.WorldInhabitants.Add(motherShipMedium);
+            GameState.SurfaceState.AiObjects.Add(motherShipMedium);
 
             // SpaceSwans — passive wildlife
             for (int s = 0; s < 50; s++)

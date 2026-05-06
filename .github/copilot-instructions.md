@@ -1,6 +1,7 @@
 # Copilot Instructions
 
 ## Project Guidelines
+- Always follow existing patterns in the codebase (weapons follow guides, particles follow guides, enemy health/damage/flash/explosion follow the MotherShipSmall pattern, world position vs ObjectOffsets usage, etc.). Never invent new approaches without checking for and using existing helpers, patterns, or methods first.
 - During playback runs, include logging of the needed playback data for validation. Logging must be gated by both the local `enableLogging` flag and the global `Logger.EnableFileLogging`; do not auto-enable global logging from local code.
 - When logging `Vector3` coordinates in this project, use a clearer format such as labeled components or semicolon-separated values instead of a comma as the coordinate delimiter.
 - For enemy movement, surface synchronization should be a shared reusable pattern for all enemies, not implemented ad hoc per enemy control.
@@ -16,6 +17,8 @@
 - When creating a new scene in Playback mode, always pass explicit override values to `FindTreePlacementAreas` and `FindHousePlacementAreas` (e.g., 30000 for trees, 15000 for houses). In Playback mode, `ReturnPseudoRandomMap` is not called, so the static `SurfaceGeneration.maxTrees` and `maxHouses` fields stay at 0. Without explicit overrides, no trees/houses are placed, and `WorldInhabitants.Count` stays below 50 — which is the gate for minimap rendering.
 - If an object has an unnatural crash, check the size of the object (geometry/scale), not the offset or anything else. The size of the actual object coordinates is very important to make a natural hit — if the object is too small in coordinates, the crash seems unnatural since it appears the object is far away.
 - Objects that should crash/collide with each other must share compatible `ObjectOffsets` — specifically, the Z offset must match (e.g., both use z=400 to match the ship's zoom value) and the Y offset should be close enough for crash boxes to overlap. Enemies that need direct collision with the ship should use `ObjectOffsets` similar to the KamikazeDrone pattern {x=0, y=150, z=400}, matching the ship's coordinate layer (z=zoom=400, y≈ShipRestingScreenY=200). Using incompatible offsets (e.g., z=-400 vs ship's z=400) places crash boxes in completely different coordinate layers, making AABB collision impossible regardless of `CrashboxSize`.
+- For mothership particle guides, each wing engine must have its own start at that engine center/edge, and the guide must extend straight out from that same engine (no shared/merged origin).
+- Revert optimization changes that do not produce measurable benchmark improvements; keep only proven wins.
 
 ## Control Class Pattern
 - Control classes implement `IObjectMovement` and are assigned to objects via the `Movement` property.

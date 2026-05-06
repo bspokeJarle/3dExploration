@@ -378,6 +378,7 @@ namespace _3dTesting
             }
 
             float dt = (float)dtSeconds;
+            GameState.DeltaTime = dt;
 
             if (GameState.ScreenOverlayState.ShowDebugOverlay == false)
                 FpsText.Visibility = Visibility.Collapsed;

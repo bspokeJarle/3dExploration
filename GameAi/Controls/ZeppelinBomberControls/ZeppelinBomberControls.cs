@@ -2,6 +2,7 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Helpers;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -104,6 +105,8 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
             }
             _lastFrameTime = DateTime.Now;
 
+            TerrainAvoidanceHelpers.TryStartTerrainRecovery(theObject);
+
             // AI movement
             if (!_isExploding && theObject.ImpactStatus?.HasCrashed != true)
             {
@@ -164,6 +167,15 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
             }
 
             SyncMovement(theObject);
+            if (TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, deltaSeconds) && theObject.WorldPosition != null)
+            {
+                _trackedWorldPosition = new Vector3
+                {
+                    x = theObject.WorldPosition.x,
+                    y = theObject.WorldPosition.y,
+                    z = theObject.WorldPosition.z
+                };
+            }
 
             AnimatePropeller(deltaSeconds);
             AnimateHatch(deltaSeconds);

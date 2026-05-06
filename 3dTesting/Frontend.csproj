@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows7.0</TargetFramework>
@@ -97,6 +97,9 @@
     <None Update="Soundeffects\OmegaStrain_Mothership_Engine.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Soundeffects\OmegaStrain_mothership_lazer.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\OmegaStrain_Music_Battle.flac">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -127,6 +130,9 @@
     <None Update="Soundeffects\OmegaStrain_Seeder_Seeding.mp3">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Soundeffects\OmegaStrain_ship_thud.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\OmegaStrain_Thud_Heavy.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
@@ -134,6 +140,9 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Soundeffects\OmegaStrain_zeppelin_propeller.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegeStrain_large_lazer_charge.mp3">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Soundeffects\OmegeStrain_Ship_CollisionWarning.wav">

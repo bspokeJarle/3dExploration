@@ -75,8 +75,9 @@ namespace GameAiAndControls.Controls
         }
 
         /// <summary>
-        /// Finds the world position of the closest living seeder to the ship.
-        /// Falls back to the closest living drone if no seeders remain.
+        /// Finds the world position of the closest objective enemy to the ship.
+        /// Priority: living seeders first; when no seeders remain, any living
+        /// scene-completion enemy (mothership, active drones, zeppelin bombers).
         /// Returns null if no targets are alive.
         /// </summary>
         private static Vector3? FindClosestSeederWorldPosition()
@@ -90,6 +91,8 @@ namespace GameAiAndControls.Controls
             Vector3? bestSeederPos = null;
             float bestDroneDistSq = float.MaxValue;
             Vector3? bestDronePos = null;
+            float bestBomberDistSq = float.MaxValue;
+            Vector3? bestBomberPos = null;
             float bestMotherShipDistSq = float.MaxValue;
             Vector3? bestMotherShipPos = null;
 
@@ -102,8 +105,11 @@ namespace GameAiAndControls.Controls
 
                 bool isSeeder = obj.ObjectName == "Seeder";
                 bool isDrone = obj.ObjectName == "KamikazeDrone";
-                bool isMotherShip = obj.ObjectName == "MotherShipSmall";
-                if (!isSeeder && !isDrone && !isMotherShip)
+                bool isBomber = obj.ObjectName == "ZeppelinBomber";
+                bool isMotherShip = obj.ObjectName == "MotherShipSmall"
+                    || obj.ObjectName == "MotherShipMedium"
+                    || obj.ObjectName == "MotherShipLarge";
+                if (!isSeeder && !isDrone && !isMotherShip && !isBomber)
                     continue;
 
                 var pos = obj.WorldPosition;
@@ -124,6 +130,11 @@ namespace GameAiAndControls.Controls
                     bestMotherShipDistSq = distSq;
                     bestMotherShipPos = new Vector3 { x = pos.x, y = pos.y, z = pos.z };
                 }
+                else if (isBomber && distSq < bestBomberDistSq)
+                {
+                    bestBomberDistSq = distSq;
+                    bestBomberPos = new Vector3 { x = pos.x, y = pos.y, z = pos.z };
+                }
                 else if (isDrone && distSq < bestDroneDistSq)
                 {
                     bestDroneDistSq = distSq;
@@ -131,8 +142,9 @@ namespace GameAiAndControls.Controls
                 }
             }
 
-            // Seeders first, then MotherShipSmall, then drones
-            return bestSeederPos ?? bestMotherShipPos ?? bestDronePos;
+            // As long as seeders remain, always point to seeders.
+            // After seeders are gone, point at any remaining objective enemy.
+            return bestSeederPos ?? bestMotherShipPos ?? bestDronePos ?? bestBomberPos;
         }
 
         private static Vector3 GetShipWorldPosition()

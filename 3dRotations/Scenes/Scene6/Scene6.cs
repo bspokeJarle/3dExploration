@@ -1,0 +1,283 @@
+using _3dRotations.World.Objects;
+using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
+using Domain;
+using GameAiAndControls.Controls.MotherShipMediumControls;
+using System.Collections.Generic;
+using static Domain._3dSpecificsImplementations;
+using _3dRotations.Helpers;
+using GameAiAndControls.Controls;
+using GameAiAndControls.Controls.ZeppelinBomberControls;
+using GameAiAndControls.Controls.KamikazeDroneControls;
+using GameAiAndControls.Controls.SeederControls;
+using GameAiAndControls.Controls.SpaceSwanControls;
+using System;
+
+namespace _3dRotations.Scene.Scene6
+{
+    public class Scene6 : IScene
+    {
+        Surface Surface = new();
+
+        public string SceneMusic { get; } = "music_battle";
+        public SceneTypes SceneType { get; } = SceneTypes.Game;
+        public ISceneDirector Director { get; } = new Scene6Director();
+        public GameModes GameMode { get; } = GameModes.Live;
+
+        public float InfectionThresholdPercent { get; } = 3.5f;
+        public int InfectionSpreadRate { get; } = 230;
+        public int SeederOffscreenSpeedFactor { get; } = 18;
+        public float LocalInfectionSpreadDelaySec { get; } = 2.2f;
+        public float LocalInfectionSpreadRadius { get; } = 5200f;
+        public float MotherShipMediumAggression { get; } = 1.35f;
+
+        public void SetupScene(I3dWorld world)
+        {
+            var ws = SurfaceSetup.WorldScale;
+
+            var ship = Ship.CreateShip(Surface);
+            Surface.Create2DMap(30000, 15000, GameMode, null);
+            var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
+            ship.Rotation = new Vector3 { };
+            ship.WorldPosition = new Vector3 { };
+            ship.ObjectName = "Ship";
+            ship.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+            ship.CrashBoxDebugMode = false;
+            ship.WeaponSystems = new Weapons(weapons, ship.Movement!, ship);
+            world.WorldInhabitants.Add(ship);
+
+            var guidanceArrow = SeederGuidanceArrow.CreateSeederGuidanceArrow(Surface);
+            guidanceArrow.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 200 };
+            guidanceArrow.Rotation = new Vector3 { x = 70, y = 0, z = 90 };
+            guidanceArrow.WorldPosition = new Vector3 { };
+            guidanceArrow.ObjectName = "SeederGuidanceArrow";
+            guidanceArrow.ImpactStatus = new ImpactStatus { };
+            guidanceArrow.CrashBoxDebugMode = false;
+            world.WorldInhabitants.Add(guidanceArrow);
+
+            for (int b = 0; b < 6; b++)
+            {
+                var rmdBomber = new Random();
+                var bomber = ZeppelinBomber.CreateZeppelinBomber(Surface);
+                bomber.Rotation = new Vector3 { };
+                bomber.WorldPosition = new Vector3 { x = (95700 + rmdBomber.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmdBomber.Next(-40000, 40000)) * ws };
+                bomber.ObjectOffsets = new Vector3 { x = 0, y = -50, z = 400 };
+                bomber.ObjectName = "ZeppelinBomber";
+                bomber.Movement = new ZeppelinBomberControls();
+                bomber.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.ZeppelinBomberHealth };
+                bomber.CrashBoxDebugMode = false;
+                bomber.IsActive = true;
+                world.WorldInhabitants.Add(bomber);
+                GameState.SurfaceState.AiObjects.Add(bomber);
+            }
+
+            for (int i = 0; i < 14; i++)
+            {
+                var rmd = new Random();
+                var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
+                kamikaze.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-55000, 55000)) * ws, y = 0, z = (92000 + rmd.Next(-55000, 55000)) * ws };
+                kamikaze.Rotation = new Vector3 { };
+                kamikaze.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
+                kamikaze.ObjectName = "KamikazeDrone";
+                kamikaze.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.KamikazeDroneHealth };
+                kamikaze.CrashBoxDebugMode = false;
+                kamikaze.WeaponSystems = null;
+                kamikaze.HasPowerUp = false;
+                kamikaze.IsActive = false;
+                world.WorldInhabitants.Add(kamikaze);
+                GameState.SurfaceState.AiObjects.Add(kamikaze);
+            }
+
+            for (int i = 0; i < 9; i++)
+            {
+                var rmd = new Random();
+                var seeder = Seeder.CreateSeeder(Surface);
+                seeder.Rotation = new Vector3 { };
+                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-20000, 20000)) * ws, y = 0, z = (92000 + rmd.Next(-20000, 20000)) * ws };
+                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                seeder.ObjectName = "Seeder";
+                seeder.Movement = new SeederControls();
+                seeder.CrashBoxDebugMode = false;
+                seeder.ImpactStatus = new ImpactStatus { };
+                seeder.HasPowerUp = false;
+                world.WorldInhabitants.Add(seeder);
+                GameState.SurfaceState.AiObjects.Add(seeder);
+            }
+
+            for (int i = 0; i < 8; i++)
+            {
+                var rmd = new Random();
+                var seeder = Seeder.CreateSeeder(Surface);
+                seeder.Rotation = new Vector3 { };
+                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-42000, 24000)) * ws, y = 0, z = (92000 + rmd.Next(-42000, 24000)) * ws };
+                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                seeder.ObjectName = "Seeder";
+                seeder.Movement = new SeederControls();
+                seeder.CrashBoxDebugMode = false;
+                seeder.ImpactStatus = new ImpactStatus { };
+                seeder.HasPowerUp = false;
+                world.WorldInhabitants.Add(seeder);
+                GameState.SurfaceState.AiObjects.Add(seeder);
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                var rmd = new Random();
+                var seederPowerup = Seeder.CreateSeeder(Surface);
+                seederPowerup.Rotation = new Vector3 { };
+                seederPowerup.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-32000, 32000)) * ws, y = 0, z = (92000 + rmd.Next(-32000, 32000)) * ws };
+                seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                seederPowerup.ObjectName = "Seeder";
+                seederPowerup.Movement = new SeederControls();
+                seederPowerup.CrashBoxDebugMode = false;
+                seederPowerup.ImpactStatus = new ImpactStatus { };
+                seederPowerup.HasPowerUp = true;
+                world.WorldInhabitants.Add(seederPowerup);
+                GameState.SurfaceState.AiObjects.Add(seederPowerup);
+            }
+
+            var motherShipMedium = MotherShipMedium.CreateMotherShipMedium(Surface);
+            motherShipMedium.Rotation = new Vector3 { };
+            motherShipMedium.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 90000 * ws };
+            motherShipMedium.ObjectOffsets = new Vector3 { x = 0, y = -1500, z = 400 };
+            motherShipMedium.ObjectName = "MotherShipMedium";
+            motherShipMedium.Movement = new MotherShipMediumControls();
+            var motherShipMediumLazer = Lazer.CreateLazer(Surface, scaleMultiplier: 2.0f);
+            motherShipMediumLazer.CrashBoxDebugMode = false;
+            var motherShipMediumWeapons = new List<I3dObject> { motherShipMediumLazer };
+            motherShipMedium.WeaponSystems = new Weapons(motherShipMediumWeapons, motherShipMedium.Movement!, (_3dObject)motherShipMedium)
+            {
+                ShowAimAssist = false,
+                FireAsEnemyWeapon = true,
+                EnemyLazerName = "EnemyLazerMedium"
+            };
+            motherShipMedium.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipMediumHealth };
+            motherShipMedium.CrashBoxDebugMode = false;
+            motherShipMedium.HasPowerUp = false;
+            motherShipMedium.IsActive = false;
+            world.WorldInhabitants.Add(motherShipMedium);
+            GameState.SurfaceState.AiObjects.Add(motherShipMedium);
+
+            for (int s = 0; s < 50; s++)
+            {
+                var rmdSwan = new Random();
+                var spaceSwan = SpaceSwan.CreateSpaceSwan(Surface);
+                spaceSwan.Rotation = new Vector3 { };
+                spaceSwan.WorldPosition = new Vector3 { x = (95700 + rmdSwan.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmdSwan.Next(-40000, 40000)) * ws };
+                spaceSwan.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                spaceSwan.ObjectName = "SpaceSwan";
+                spaceSwan.Movement = new SpaceSwanControls();
+                spaceSwan.CrashBoxDebugMode = false;
+                spaceSwan.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.SpaceSwanHealth };
+                spaceSwan.HasPowerUp = false;
+                spaceSwan.IsActive = true;
+                world.WorldInhabitants.Add(spaceSwan);
+                GameState.SurfaceState.AiObjects.Add(spaceSwan);
+            }
+
+            var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
+            surfaceObject.ObjectName = "Surface";
+            surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 400 };
+            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            surfaceObject.WorldPosition = new Vector3 { };
+            surfaceObject.Movement = new GroundControls();
+            surfaceObject.ParentSurface = Surface;
+            surfaceObject.ImpactStatus = new ImpactStatus { };
+            surfaceObject.CrashBoxDebugMode = false;
+            surfaceObject.CrashBoxesFollowRotation = false;
+            world.WorldInhabitants.Add(surfaceObject);
+            GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
+
+            var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
+            SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
+                GameState.SurfaceState.Global2DMap,
+                Surface.MaxHeight(),
+                towerPlacements,
+                writeDebugLogs: false
+            );
+
+            foreach (var towerPlacement in towerPlacements)
+            {
+                var tower = Tower.CreateTower(Surface);
+                tower.Rotation = new Vector3 { };
+                tower.WorldPosition = new Vector3 { };
+                tower.SurfaceBasedId = GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
+                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
+                tower.ObjectName = "Tower";
+                tower.Movement = new TowerControls();
+                tower.CrashBoxDebugMode = false;
+                tower.ImpactStatus = new ImpactStatus { };
+                world.WorldInhabitants.Add(tower);
+            }
+
+            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
+            foreach (var treePlacement in treePlacements)
+            {
+                var tree = Tree.CreateTree(Surface);
+                tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                tree.SurfaceBasedId = GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
+                tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
+                tree.ObjectName = "Tree";
+                tree.Movement = new TreeControls();
+                tree.ImpactStatus = new ImpactStatus { };
+                tree.CrashBoxDebugMode = false;
+                if (tree.SurfaceBasedId > 0) world.WorldInhabitants.Add(tree);
+            }
+
+            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
+            foreach (var housePlacement in housePlacements)
+            {
+                var house = House.CreateHouse(Surface);
+                house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
+                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 400 };
+                house.ObjectName = "House";
+                house.Movement = new HouseControls();
+                house.ImpactStatus = new ImpactStatus { };
+                house.CrashBoxDebugMode = false;
+                if (house.SurfaceBasedId > 0) world.WorldInhabitants.Add(house);
+            }
+        }
+
+        public void SetupSceneOverlay()
+        {
+            GameState.ScreenOverlayState.ResetToDefaults();
+            var o = GameState.ScreenOverlayState;
+
+            o.Type = ScreenOverlayType.Intro;
+            o.Anchor = ScreenOverlayAnchor.Top;
+            o.Header = "RETROMESH // SECTOR BRIEFING";
+            o.Title = "THE OMEGA STRAIN — PHASE VI";
+            o.Body =
+                "Medium-class carrier detected.\n\n" +
+                "Objective: purge seeders, survive drones, destroy the medium carrier.\n" +
+                "Threat index: high. Infection window narrows.";
+            o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";
+            o.ShowOverlay = true;
+            o.AutoHide = false;
+            o.AutoHideSeconds = 0f;
+            o.DimStrength = 0.60f;
+            o.PanelWidthRatio = 0.74f;
+            o.PanelHeightRatio = 0.34f;
+            o.ShowDebugOverlay = false;
+        }
+
+        public void SetupGameOverlay()
+        {
+            GameState.ScreenOverlayState.ResetToDefaults();
+            GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
+            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "Medium Mothership Hunt", "", "");
+            GameState.ScreenOverlayState.ShowOverlay = false;
+            GameState.ScreenOverlayState.ShowDebugOverlay = false;
+        }
+
+        public void SetupVideoOverlay(string fileName)
+        {
+            throw new NotImplementedException();
+        }
+    }
+}

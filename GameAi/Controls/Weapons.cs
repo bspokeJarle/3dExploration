@@ -16,10 +16,10 @@ namespace GameAiAndControls.Controls
         private static bool enableLogging = false;
         private static readonly int maxZ = 1200;
         private static readonly int minZ = -2500;
-        private static int maxX => (int)(ScreenSetup.screenSizeX * 0.8f);
-        private static int minX => (int)(ScreenSetup.screenSizeX * -0.8f);
-        private static int maxY => (int)(ScreenSetup.screenSizeY * 1.17f);
-        private static int minY => (int)(ScreenSetup.screenSizeY * -1.17f);
+        private static int maxX => (int)(ScreenSetup.screenSizeX * 1.5f);
+        private static int minX => (int)(ScreenSetup.screenSizeX * -1.5f);
+        private static int maxY => (int)(ScreenSetup.screenSizeY * 4.0f);
+        private static int minY => (int)(ScreenSetup.screenSizeY * -4.0f);
 
         // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
@@ -38,6 +38,13 @@ namespace GameAiAndControls.Controls
         public List<IActiveWeapon> ActiveWeapons { get; set; } = new List<IActiveWeapon>();
 
         private _3dObject? _aimAssistLockedTarget;
+
+        public bool ShowAimAssist { get; set; } = true;
+        public bool FireAsEnemyWeapon { get; set; } = false;
+        public string EnemyLazerName { get; set; } = "EnemyLazer";
+        public float? LazerVelocityOverride { get; set; } = null;
+        public float? LazerMaxRangeOverride { get; set; } = null;
+        public float? LazerLifetimeSecondsOverride { get; set; } = null;
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
@@ -91,6 +98,7 @@ namespace GameAiAndControls.Controls
                     : new _3dObject { ObjectName = "Lazer", ObjectId = GameState.ObjectIdCounter++ };
 
                 I3dObject instance = Common3dObjectHelpers.DeepCopySingleObject(template);
+                if (FireAsEnemyWeapon) instance.ObjectName = EnemyLazerName;
                 instance.ImpactStatus = new ImpactStatus
                 {
                     HasExploded = false,
@@ -129,11 +137,11 @@ namespace GameAiAndControls.Controls
                     WeaponType = weaponType,
                     WeaponObject = instance,
                     FiredTime = DateTime.UtcNow,
-                    Velocity = 3500f,
+                    Velocity = LazerVelocityOverride ?? 3500f,
                     Acceleration = 0f,
                     Trajectory = dir,
-                    MaxRange = 6000f,
-                    LifetimeSeconds = 3f,
+                    MaxRange = LazerMaxRangeOverride ?? 6000f,
+                    LifetimeSeconds = LazerLifetimeSecondsOverride ?? 3f,
                     DistanceTraveled = 0f,
                     LastUpdateUtc = default(DateTime)
                 };
@@ -141,8 +149,14 @@ namespace GameAiAndControls.Controls
                 ActiveWeapons.Add(weapon);
 
                 if (enableLogging) Logger.Log(
-                    $"[WeaponSystem] Fired {weaponType} from {startPosition} " +
-                    $"with dir={dir} globalmapposition={worldPosition} at {DateTime.UtcNow}"
+                    $"[WeaponSystem] Fired {weaponType} name={instance.ObjectName} parent={parentShip.ObjectName} " +
+                    $"start=(x={startPosition.x:F2}; y={startPosition.y:F2}; z={startPosition.z:F2}) " +
+                    $"dir=(x={dir.x:F4}; y={dir.y:F4}; z={dir.z:F4}) " +
+                    $"spawnOffsets=(x={lazerStart.x:F2}; y={lazerStart.y:F2}; z={lazerStart.z:F2}) " +
+                    $"parentOffsets=(x={shipOffsets.x:F2}; y={shipOffsets.y:F2}; z={shipOffsets.z:F2}) " +
+                    $"worldPos=(x={worldPosition.x:F2}; y={worldPosition.y:F2}; z={worldPosition.z:F2}) " +
+                    $"vel={weapon.Velocity:F1} range={weapon.MaxRange:F1} life={weapon.LifetimeSeconds:F2}s",
+                    "LazerFire"
                 );
             }
 
@@ -241,6 +255,7 @@ namespace GameAiAndControls.Controls
             float bestDot = coneDot;
             IVector3? bestEnemyDir = null;
             _3dObject? bestEnemy = null;
+            float bestDist = float.MaxValue;
 
             for (int i = 0; i < aiObjects.Count; i++)
             {
@@ -269,9 +284,11 @@ namespace GameAiAndControls.Controls
                 IVector3 toEnemyDir = Normalize(toEnemy);
                 float dot = firingDir.x * toEnemyDir.x + firingDir.y * toEnemyDir.y + firingDir.z * toEnemyDir.z;
 
-                if (dot > bestDot)
+                // Must be within the aim cone, then prefer closest
+                if (dot > bestDot && dist < bestDist)
                 {
                     bestDot = dot;
+                    bestDist = dist;
                     bestEnemyDir = toEnemyDir;
                     bestEnemy = obj;
                 }
@@ -440,7 +457,7 @@ namespace GameAiAndControls.Controls
         {
             if (audioPlayer != null && soundRegistry != null) ConfigureAudio(audioPlayer, soundRegistry);
 
-            UpdateAimAssistTarget();
+            if (ShowAimAssist) UpdateAimAssistTarget();
 
             DateTime now = DateTime.UtcNow;
 
@@ -475,8 +492,11 @@ namespace GameAiAndControls.Controls
                     w.DistanceTraveled += Magnitude(deltaProj);
 
                     if (enableLogging) Logger.Log(
-                        $"[WeaponSystem] {w.WeaponType} moved Δ=({deltaProj.x:F2},{deltaProj.y:F2},{deltaProj.z:F2}) " +
-                        $"| LocalPos=({newLocal.x:F2},{newLocal.y:F2},{newLocal.z:F2}) | Range={w.DistanceTraveled:F2}"
+                        $"[WeaponSystem] {w.WeaponType} name={w.WeaponObject.ObjectName} " +
+                        $"Δ=(x={deltaProj.x:F2}; y={deltaProj.y:F2}; z={deltaProj.z:F2}) " +
+                        $"LocalPos=(x={newLocal.x:F2}; y={newLocal.y:F2}; z={newLocal.z:F2}) " +
+                        $"Range={w.DistanceTraveled:F2} vel={w.Velocity:F1} dt={dt:F4}",
+                        "LazerMove"
                     );
 
                     ActiveWeapons[i] = w;
@@ -489,7 +509,11 @@ namespace GameAiAndControls.Controls
                 if (w != null && Expired(w) || OutOfBounds(w.WeaponObject.ObjectOffsets) || w.WeaponObject.ImpactStatus.HasCrashed)
                 {
                     if (enableLogging) Logger.Log(
-                        $"[WeaponSystem] {w.WeaponType} expired\\out\\crashed of bounds after {w.DistanceTraveled:F2} units. Current Z={w.WeaponObject.ObjectOffsets.z:F2}"
+                        $"[WeaponSystem] {w.WeaponType} name={w.WeaponObject.ObjectName} expired/out/crashed " +
+                        $"after {w.DistanceTraveled:F2} units. " +
+                        $"LocalPos=(x={w.WeaponObject.ObjectOffsets.x:F2}; y={w.WeaponObject.ObjectOffsets.y:F2}; z={w.WeaponObject.ObjectOffsets.z:F2}) " +
+                        $"hasCrashed={w.WeaponObject.ImpactStatus.HasCrashed}",
+                        "LazerEnd"
                     );
                     ActiveWeapons.RemoveAt(i);
                 }

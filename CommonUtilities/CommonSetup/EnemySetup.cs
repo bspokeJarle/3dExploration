@@ -13,6 +13,10 @@ namespace CommonUtilities.CommonSetup
         public const int KamikazeDroneCollisionDamage = 50;
         public const int MotherShipSmallHealth = 550;
         public const int MotherShipSmallCollisionDamage = 80;
+        public const int MotherShipMediumHealth = 1100;
+        public const int MotherShipMediumCollisionDamage = 150;
+        public const int MotherShipLargeHealth = 1500;
+        public const int MotherShipLargeCollisionDamage = 250;
         public const int SpaceSwanHealth = 300;
         public const int ZeppelinBomberHealth = 105;
 
@@ -26,8 +30,11 @@ namespace CommonUtilities.CommonSetup
             "Endboss1",
             "Endboss2",
             "MotherShipSmall",
+            "MotherShipMedium",
+            "MotherShipLarge",
             "SpaceSwan"
         };
+
         public static bool IsEnemyTypeValid(string objectName)
         {
             return EnemyTypes.Contains(objectName);

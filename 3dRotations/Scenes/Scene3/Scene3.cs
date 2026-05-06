@@ -29,6 +29,7 @@ namespace _3dRotations.Scene.Scene3
         public int SeederOffscreenSpeedFactor { get; } = 12;
         public float LocalInfectionSpreadDelaySec { get; } = 6.0f;
         public float LocalInfectionSpreadRadius { get; } = 4000f;
+        public float MotherShipSmallAggression { get; } = 1.10f;
 
         public void SetupScene(I3dWorld world)
         {

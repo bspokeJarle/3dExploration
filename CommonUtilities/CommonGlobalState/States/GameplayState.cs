@@ -205,6 +205,11 @@ namespace Domain
         /// </summary>
         public float LocalInfectionSpreadRadius { get; set; } = 10000f;
 
+        // Per-scene mothership aggression tuning
+        public float MotherShipSmallAggression { get; set; } = 1.0f;
+        public float MotherShipMediumAggression { get; set; } = 1.0f;
+        public float MotherShipLargeAggression { get; set; } = 1.0f;
+
         // -----------------------------
         // Weapons (simple, but practical)
         // -----------------------------
@@ -406,6 +411,9 @@ namespace Domain
             SeederOffscreenSpeedFactor = 6;
             LocalInfectionSpreadDelaySec = 1.0f;
             LocalInfectionSpreadRadius = 10000f;
+            MotherShipSmallAggression = 1.0f;
+            MotherShipMediumAggression = 1.0f;
+            MotherShipLargeAggression = 1.0f;
 
             MotherShipHealthPercent = 1f;
             MotherShipScreenX = 0f;

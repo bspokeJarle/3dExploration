@@ -1,6 +1,7 @@
 ﻿using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.Persistence;
 using Domain;
 using GameAiAndControls.Input;
 using System;
@@ -49,7 +50,8 @@ namespace GameAiAndControls.Controls
         private SoundDefinition? _changeWeaponSound;
         private SoundDefinition? _bulletSound;
             private SoundDefinition? _powerupSound;
-            private SoundDefinition? _impactThudSound;
+                private SoundDefinition? _impactThudSound;
+                private SoundDefinition? _surfaceThudSound;
         private IAudioInstance? _rocketInstance;
         private IAudioInstance? _bulletInstance;
 
@@ -107,7 +109,7 @@ namespace GameAiAndControls.Controls
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             // Already configured, so nothing else is required.
-            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null && _powerupSound != null && _impactThudSound != null)
+            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null && _powerupSound != null && _impactThudSound != null && _surfaceThudSound != null)
                 return;
 
             if (audioPlayer == null || soundRegistry == null)
@@ -121,6 +123,7 @@ namespace GameAiAndControls.Controls
             _bulletSound = soundRegistry.Get("bullet_main");
             _powerupSound = soundRegistry.Get("powerup_collect");
             _impactThudSound = soundRegistry.Get("lazer_thud");
+            _surfaceThudSound = soundRegistry.Get("ship_thud");
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
@@ -790,6 +793,18 @@ namespace GameAiAndControls.Controls
                     theObject.ImpactStatus.ObjectHealth -= weaponDamage;
                     if (logging) Logger.Log($"[ShipCrash] Weapon hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
+                else if (crashedWith == "EnemyLazer")
+                {
+                    int weaponDamage = WeaponSetup.GetWeaponDamage("Lazer");
+                    theObject.ImpactStatus.ObjectHealth -= weaponDamage;
+                    if (logging) Logger.Log($"[ShipCrash] EnemyLazer hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                }
+                else if (crashedWith == "EnemyLazerMedium")
+                {
+                    int weaponDamage = WeaponSetup.GetWeaponDamage("Lazer") * 2;
+                    theObject.ImpactStatus.ObjectHealth -= weaponDamage;
+                    if (logging) Logger.Log($"[ShipCrash] EnemyLazerMedium hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                }
                 else if (crashedWith == "Surface" ||
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
@@ -805,6 +820,8 @@ namespace GameAiAndControls.Controls
                     if (landingSpeed > 5f)
                     {
                         theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
+                        if (theObject.ImpactStatus.ObjectHealth > 0)
+                            PlaySurfaceThud(theObject);
                     }
                     if (logging) Logger.Log($"[ShipCrash] Landing. Speed={landingSpeed:F1}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
@@ -813,8 +830,11 @@ namespace GameAiAndControls.Controls
                     if (logging) Logger.Log($"[ShipCrash] NO DAMAGE APPLIED! crashedWith='{crashedWith}' did not match any category.");
                 }
 
-                // Play impact thud for non-fatal collisions that actually dealt damage
-                if (theObject.ImpactStatus.ObjectHealth > 0 && theObject.ImpactStatus.ObjectHealth < healthBeforeCrash)
+                // Play impact thud for non-fatal combat collisions that actually dealt damage
+                bool isSurfaceHit = crashedWith == "Surface" ||
+                                    theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
+                                    theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center;
+                if (!isSurfaceHit && theObject.ImpactStatus.ObjectHealth > 0 && theObject.ImpactStatus.ObjectHealth < healthBeforeCrash)
                     PlayImpactThud(theObject);
 
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
@@ -1134,6 +1154,15 @@ namespace GameAiAndControls.Controls
                 });
         }
 
+        private void PlaySurfaceThud(I3dObject theObject)
+        {
+            if (_audio == null || _surfaceThudSound == null) return;
+
+            _audio.PlayOneShot(
+                _surfaceThudSound,
+                new AudioPlayOptions { VolumeOverride = 1.0f });
+        }
+
         private void CollectPowerUp(I3dObject ship)
         {
             var aiObjects = GameState.SurfaceState.AiObjects;
@@ -1144,6 +1173,32 @@ namespace GameAiAndControls.Controls
                 {
                     GameState.GamePlayState.PowerUpsCollected++;
                     GameState.GamePlayState.Score += GameSetup.PowerUpCollectScore;
+
+                    // Snapshot current remaining objective enemies before saving checkpoint
+                    // so reset/load does not restore an already-cleared wave state by mistake.
+                    int seedersLeft = 0;
+                    int dronesLeft = 0;
+                    int motherShipsLeft = 0;
+                    for (int j = 0; j < aiObjects.Count; j++)
+                    {
+                        var enemy = aiObjects[j];
+                        if (enemy.ImpactStatus?.HasExploded == true)
+                            continue;
+
+                        if (enemy.ObjectName == "Seeder")
+                            seedersLeft++;
+                        else if (enemy.ObjectName == "KamikazeDrone" && enemy.IsActive)
+                            dronesLeft++;
+                        else if ((enemy.ObjectName == "MotherShipSmall" || enemy.ObjectName == "MotherShipMedium" || enemy.ObjectName == "MotherShipLarge") && enemy.IsActive)
+                            motherShipsLeft++;
+                    }
+
+                    GameState.GamePlayState.SeedersRemaining = seedersLeft;
+                    GameState.GamePlayState.DronesRemaining = dronesLeft;
+                    GameState.GamePlayState.MotherShipsRemaining = motherShipsLeft;
+                    GameState.GamePlayState.SaveCheckpoint();
+
+                    try { GameStatePersistence.SaveGameState(); } catch { }
 
                     if (_audio != null && _powerupSound != null)
                         _audio.Play(_powerupSound, AudioPlayMode.OneShot, new AudioPlayOptions());

@@ -62,16 +62,17 @@ namespace _3dRotations.Scene.Scene1
             if (_motherShipActivated) return;
 
             var gps = GameState.GamePlayState;
-            if (gps.InitialSeeders == 0) return;
 
             var aiObjs = GameState.SurfaceState.AiObjects;
             int liveSeeders = 0;
             int liveDrones = 0;
             for (int i = 0; i < aiObjs.Count; i++)
             {
+                if (aiObjs[i].ImpactStatus?.HasExploded == true) continue;
+
                 if (aiObjs[i].ObjectName == "Seeder")
                     liveSeeders++;
-                else if (aiObjs[i].ObjectName == "KamikazeDrone")
+                else if (aiObjs[i].ObjectName == "KamikazeDrone" && aiObjs[i].IsActive)
                     liveDrones++;
             }
 
@@ -92,7 +93,6 @@ namespace _3dRotations.Scene.Scene1
 
             if (activated)
             {
-                _motherShipActivated = true;
                 gps.SeedersRemaining = liveSeeders;
                 gps.DronesRemaining = liveDrones;
                 gps.MotherShipsRemaining = msCount;
@@ -100,6 +100,9 @@ namespace _3dRotations.Scene.Scene1
                 try { GameStatePersistence.SaveGameState(); } catch { }
                 try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
             }
+
+            if (activated || msCount > 0)
+                _motherShipActivated = true;
         }
 
         // -----------------------------------------------------------------
@@ -107,6 +110,8 @@ namespace _3dRotations.Scene.Scene1
         // -----------------------------------------------------------------
         private void CheckVictoryCondition()
         {
+            if (!_motherShipActivated) return;
+
             var gps = GameState.GamePlayState;
             if (gps.InitialDrones == 0 && gps.InitialSeeders == 0) return;
             if (gps.DronesRemaining != 0 || gps.SeedersRemaining != 0 || gps.MotherShipsRemaining != 0) return;
@@ -117,7 +122,7 @@ namespace _3dRotations.Scene.Scene1
             {
                 var obj = aiObjs[i];
                 if (obj.ImpactStatus?.HasExploded == true) continue;
-                if (obj.ObjectName == "Seeder" || obj.ObjectName == "KamikazeDrone" || obj.ObjectName == "MotherShipSmall")
+                if (obj.ObjectName == "Seeder" || (obj.ObjectName == "KamikazeDrone" && obj.IsActive) || obj.ObjectName == "MotherShipSmall")
                     return;
             }
 

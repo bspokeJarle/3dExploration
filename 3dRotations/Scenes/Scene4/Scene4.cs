@@ -7,7 +7,7 @@ using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
-using GameAiAndControls.Controls.MotherShipSmallControls;
+using GameAiAndControls.Controls.MotherShipMediumControls;
 using GameAiAndControls.Controls.SeederControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using System;
@@ -29,6 +29,7 @@ namespace _3dRotations.Scene.Scene4
         public int SeederOffscreenSpeedFactor { get; } = 14;
         public float LocalInfectionSpreadDelaySec { get; } = 4.0f;
         public float LocalInfectionSpreadRadius { get; } = 4500f;
+        public float MotherShipMediumAggression { get; } = 1.05f;
 
         public void SetupScene(I3dWorld world)
         {
@@ -144,13 +145,22 @@ namespace _3dRotations.Scene.Scene4
             }
 
             // Mothership — spawns inactive, enters when all seeders and drones are destroyed
-            var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
+            var motherShip = MotherShipMedium.CreateMotherShipMedium(Surface);
             motherShip.Rotation = new Vector3 { };
             motherShip.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 92000 * ws };
             motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
-            motherShip.ObjectName = "MotherShipSmall";
-            motherShip.Movement = new MotherShipSmallControls();
-            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
+            motherShip.ObjectName = "MotherShipMedium";
+            motherShip.Movement = new MotherShipMediumControls();
+            var motherShipLazer = Lazer.CreateLazer(Surface, scaleMultiplier: 2.0f);
+            motherShipLazer.CrashBoxDebugMode = false;
+            var motherShipWeapons = new List<I3dObject> { motherShipLazer };
+            motherShip.WeaponSystems = new Weapons(motherShipWeapons, motherShip.Movement!, (_3dObject)motherShip)
+            {
+                ShowAimAssist = false,
+                FireAsEnemyWeapon = true,
+                EnemyLazerName = "EnemyLazerMedium"
+            };
+            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipMediumHealth };
             motherShip.CrashBoxDebugMode = false;
             motherShip.HasPowerUp = false;
             motherShip.IsActive = false;

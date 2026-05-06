@@ -189,6 +189,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
 
             ParentObject = theObject;
             SyncMovement(theObject);
+            TerrainAvoidanceHelpers.TryStartTerrainRecovery(theObject);
 
             if (theObject.ImpactStatus?.HasCrashed == true && !_isExploding)
             {
@@ -297,6 +298,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             // Drones stay idle until the player unlocks the Decoy powerup
             if (!GameState.GamePlayState.IsDecoyUnlocked)
             {
+                TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, 1f / ScreenSetup.targetFps);
                 _storedWorldPosition = KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition);
                 _storedWorldPositionInitialized = theObject.WorldPosition != null;
                 KamikazeDroneAi.SyncAuthoritativeDroneState(theObject);
@@ -466,6 +468,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 rotation.z = Zrotation;
             }
 
+            TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, (float)deltaSeconds);
             _storedWorldPosition = KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition);
             _storedWorldPositionInitialized = theObject.WorldPosition != null;
             KamikazeDroneAi.SyncAuthoritativeDroneState(theObject);

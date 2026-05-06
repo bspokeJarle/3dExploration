@@ -55,6 +55,16 @@ namespace _3dTesting.Helpers
                     bool isWeaponShipPair =
                         (flagsA.IsWeapon && flagsB.IsShip) ||
                         (flagsB.IsWeapon && flagsA.IsShip);
+                    // Enemy lazers should only hit the player Ship; never collide with any enemy
+                    // (including their own firing mothership, which would cause the beam to vanish
+                    // on frame 1 because it spawns overlapping the parent's crashbox).
+                    bool isLazerEnemyPair =
+                        (flagsA.IsLazer && flagsB.IsEnemy) ||
+                        (flagsB.IsLazer && flagsA.IsEnemy);
+                    // Enemy lazers must not hit the ground/surface — only the player Ship.
+                    bool isEnemyLazerSurfacePair =
+                        ((flagsA.Name == "EnemyLazer" || flagsA.Name == "EnemyLazerMedium") && flagsB.IsSurface) ||
+                        ((flagsB.Name == "EnemyLazer" || flagsB.Name == "EnemyLazerMedium") && flagsA.IsSurface);
                     bool isBothParticles = isInhabitantParticle && isOtherParticle;
                     bool isShip = flagsA.IsShip || flagsB.IsShip;
                     bool isSurface = flagsA.IsSurface || flagsB.IsSurface;
@@ -78,21 +88,27 @@ namespace _3dTesting.Helpers
                     bool isBomberBombSurfacePair =
                         (flagsA.Name == "BomberBomb" && flagsB.IsSurface) ||
                         (flagsB.Name == "BomberBomb" && flagsA.IsSurface);
+                    bool isTerrainAvoidanceAiObstaclePair =
+                        (IsTerrainAvoidanceAiObject(inhabitant, flagsA) && IsTerrainObstacle(flagsB)) ||
+                        (IsTerrainAvoidanceAiObject(otherInhabitant, flagsB) && IsTerrainObstacle(flagsA));
                     bool isBothEnemies = flagsA.IsEnemy && flagsB.IsEnemy;
 
                     if (string.IsNullOrEmpty(flagsA.Name) || string.IsNullOrEmpty(flagsB.Name)) continue;
                     if (flagsA.Name == flagsB.Name) continue;
                     if (isInhabitantStatic && isOtherStatic) continue;
-                    if ((isInhabitantStatic || isOtherStatic) && !shouldCheckStaticObjects) continue;
+                    if ((isInhabitantStatic || isOtherStatic) && !shouldCheckStaticObjects && !isTerrainAvoidanceAiObstaclePair) continue;
                     if (isParticle && isShip) continue;
+                    if (isParticle && (flagsA.IsEnemy || flagsB.IsEnemy)) continue;
                     if (isBothParticles) continue;
                     if (isParticle && _skipParticles) continue;
-                    if (isEnemySurfacePair && !isBomberBombSurfacePair) continue;
+                    if (isEnemySurfacePair && !isBomberBombSurfacePair && !isTerrainAvoidanceAiObstaclePair) continue;
                     if (isBothEnemies) continue;
                     if (isDecoySurfacePair) continue;
                     if (isDecoyShipPair) continue;
                     if (isPowerUp && !isPowerUpShipPair) continue;
                     if (isWeaponShipPair) continue;
+                    if (isLazerEnemyPair) continue;
+                    if (isEnemyLazerSurfacePair) continue;
                     if (isLazer && isParticle || isSeeder && isParticle) continue;
 
                     if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;
@@ -150,7 +166,7 @@ namespace _3dTesting.Helpers
                     // Same for BomberBomb↔Surface: the Surface center is far from
                     // any individual bomb, so let box-vs-box decide.
                     bool isShipEnemyPair = isShip && !isSurface && !isParticle && !isLazer;
-                    if (!isShipEnemyPair && !isBomberBombSurfacePair && distance > effectiveMaxCrashDistance)
+                    if (!isShipEnemyPair && !isBomberBombSurfacePair && !isTerrainAvoidanceAiObstaclePair && distance > effectiveMaxCrashDistance)
                     {
                         SkippedByDistance++;
                         continue;

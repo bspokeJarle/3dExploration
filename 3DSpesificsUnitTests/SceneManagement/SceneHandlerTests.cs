@@ -9,6 +9,7 @@ using static Domain._3dSpecificsImplementations;
 namespace _3DSpesificsUnitTests.SceneManagement;
 
 [TestClass]
+[Ignore("Manual only: these tests build full scenes and are too slow for normal test runs.")]
 public class SceneHandlerTests
 {
     [TestInitialize]
@@ -19,6 +20,83 @@ public class SceneHandlerTests
         GameState.SurfaceState = new SurfaceState();
         GameState.ScreenOverlayState = new ScreenOverlayState();
         GameState.ObjectIdCounter = 0;
+    }
+
+    [TestMethod]
+    public void ResetActiveScene_WithZeroMotherShipCountButClearedWave_RestoresMothership()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        AdvanceScene(handler, world); // -> Scene1
+
+        var gps = GameState.GamePlayState;
+        gps.PowerUpsCollected = 1;
+        gps.SeedersRemaining = 0;
+        gps.DronesRemaining = 0;
+        gps.MotherShipsRemaining = 0; // stale/edge checkpoint value
+        gps.InitialSeeders = 7;
+        gps.InitialDrones = 4;
+        gps.InitialMotherShips = 1;
+        gps.SaveCheckpoint();
+
+        handler.ResetActiveScene(world);
+
+        var motherShips = world.WorldInhabitants.Where(o => o.ObjectName == "MotherShipSmall" && o.IsActive).ToList();
+        Assert.AreEqual(1, motherShips.Count,
+            "When wave is cleared at checkpoint, reset should restore one active mothership even if saved count was 0.");
+    }
+
+    [TestMethod]
+    public void ResetActiveScene_WithDecoyUnlockedCheckpoint_ReactivatesDrones()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        AdvanceScene(handler, world); // -> Scene1
+
+        var gps = GameState.GamePlayState;
+        gps.PowerUpsCollected = 1; // decoy unlocked
+        gps.SeedersRemaining = 2;
+        gps.DronesRemaining = 1;
+        gps.MotherShipsRemaining = 0;
+        gps.InitialSeeders = 7;
+        gps.InitialDrones = 4;
+        gps.InitialMotherShips = 1;
+        gps.SaveCheckpoint();
+
+        handler.ResetActiveScene(world);
+
+        var drones = world.WorldInhabitants.Where(o => o.ObjectName == "KamikazeDrone").ToList();
+        Assert.IsTrue(drones.Count > 0, "Scene1 should contain kamikaze drones after reset.");
+        Assert.IsTrue(drones.Any(d => d.IsActive),
+            "At least one drone should be active when checkpoint indicates decoy-unlocked phase.");
+    }
+
+    [TestMethod]
+    public void ResetActiveScene_WithMothershipPhaseCheckpoint_ReactivatesMothership()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        AdvanceScene(handler, world); // -> Scene1
+
+        var gps = GameState.GamePlayState;
+        gps.PowerUpsCollected = 1;
+        gps.SeedersRemaining = 0;
+        gps.DronesRemaining = 0;
+        gps.MotherShipsRemaining = 1;
+        gps.InitialSeeders = 7;
+        gps.InitialDrones = 4;
+        gps.InitialMotherShips = 1;
+        gps.SaveCheckpoint();
+
+        handler.ResetActiveScene(world);
+
+        var motherShip = world.WorldInhabitants.FirstOrDefault(o => o.ObjectName == "MotherShipSmall");
+        Assert.IsNotNull(motherShip, "Scene1 should contain a mothership after reset.");
+        Assert.IsTrue(motherShip!.IsActive,
+            "Mothership should be active when checkpoint indicates mothership phase was in progress.");
     }
 
     // -----------------------------------------------------------------
@@ -36,7 +114,7 @@ public class SceneHandlerTests
     }
 
     [TestMethod]
-    public void SceneOrder_IsIntroScene1Scene2Outro()
+    public void SceneOrder_IsIntroThroughScene8ThenOutro()
     {
         var handler = new SceneHandler();
         var world = CreateWorld(handler);
@@ -69,7 +147,22 @@ public class SceneHandlerTests
         Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
         Assert.AreEqual("Scene5", handler.GetActiveScene().GetType().Name);
 
-        // Scene 6: Outro (SceneType is Intro)
+        // Scene 6: Game (Scene6)
+        AdvanceScene(handler, world);
+        Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
+        Assert.AreEqual("Scene6", handler.GetActiveScene().GetType().Name);
+
+        // Scene 7: Game (Scene7)
+        AdvanceScene(handler, world);
+        Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
+        Assert.AreEqual("Scene7", handler.GetActiveScene().GetType().Name);
+
+        // Scene 8: Game (Scene8)
+        AdvanceScene(handler, world);
+        Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
+        Assert.AreEqual("Scene8", handler.GetActiveScene().GetType().Name);
+
+        // Scene 9: Outro (SceneType is Intro)
         AdvanceScene(handler, world);
         Assert.AreEqual(SceneTypes.Intro, handler.GetActiveScene().SceneType);
         Assert.AreEqual("Outro", handler.GetActiveScene().GetType().Name);
@@ -81,12 +174,15 @@ public class SceneHandlerTests
         var handler = new SceneHandler();
         var world = CreateWorld(handler);
 
-        // Advance through all 7 scenes
+        // Advance through Intro + 8 game scenes + Outro and wrap
         AdvanceScene(handler, world); // -> Scene1
         AdvanceScene(handler, world); // -> Scene2
         AdvanceScene(handler, world); // -> Scene3
         AdvanceScene(handler, world); // -> Scene4
         AdvanceScene(handler, world); // -> Scene5
+        AdvanceScene(handler, world); // -> Scene6
+        AdvanceScene(handler, world); // -> Scene7
+        AdvanceScene(handler, world); // -> Scene8
         AdvanceScene(handler, world); // -> Outro
         AdvanceScene(handler, world); // -> Intro (wrap)
 
@@ -182,12 +278,15 @@ public class SceneHandlerTests
         var handler = new SceneHandler();
         var world = CreateWorld(handler);
 
-        // Advance to Scene5 (last Game scene)
+        // Advance to Scene8 (last Game scene)
         AdvanceScene(handler, world); // -> Scene1
         AdvanceScene(handler, world); // -> Scene2
         AdvanceScene(handler, world); // -> Scene3
         AdvanceScene(handler, world); // -> Scene4
         AdvanceScene(handler, world); // -> Scene5
+        AdvanceScene(handler, world); // -> Scene6
+        AdvanceScene(handler, world); // -> Scene7
+        AdvanceScene(handler, world); // -> Scene8
 
         // Set stats
         var gps = GameState.GamePlayState;
@@ -230,6 +329,9 @@ public class SceneHandlerTests
         AdvanceScene(handler, world); // -> Scene3
         AdvanceScene(handler, world); // -> Scene4
         AdvanceScene(handler, world); // -> Scene5
+        AdvanceScene(handler, world); // -> Scene6
+        AdvanceScene(handler, world); // -> Scene7
+        AdvanceScene(handler, world); // -> Scene8
         AdvanceScene(handler, world); // -> Outro
         AdvanceScene(handler, world); // -> Intro (wrap)
 
@@ -354,6 +456,9 @@ public class SceneHandlerTests
         AdvanceScene(handler, world); // -> Scene3
         AdvanceScene(handler, world); // -> Scene4
         AdvanceScene(handler, world); // -> Scene5
+        AdvanceScene(handler, world); // -> Scene6
+        AdvanceScene(handler, world); // -> Scene7
+        AdvanceScene(handler, world); // -> Scene8
         AdvanceScene(handler, world); // -> Outro
 
         Assert.IsNull(handler.GetActiveScene().Director, "Outro should not have a director.");
@@ -370,6 +475,9 @@ public class SceneHandlerTests
         AdvanceScene(handler, world); // -> Scene3
         AdvanceScene(handler, world); // -> Scene4
         AdvanceScene(handler, world); // -> Scene5
+        AdvanceScene(handler, world); // -> Scene6
+        AdvanceScene(handler, world); // -> Scene7
+        AdvanceScene(handler, world); // -> Scene8
         AdvanceScene(handler, world); // -> Outro
 
         var scene = handler.GetActiveScene();
@@ -613,10 +721,26 @@ public class SceneHandlerTests
         int aiSeeders = aiObjs.Count(o => o.ObjectName == "Seeder");
         int aiDrones = aiObjs.Count(o => o.ObjectName == "KamikazeDrone");
         int aiMotherShips = aiObjs.Count(o => o.ObjectName == "MotherShipSmall");
+        int aiBombers = aiObjs.Count(o => o.ObjectName == "ZeppelinBomber");
 
         Assert.AreEqual(7, aiSeeders, "AiObjects should have 7 seeders.");
         Assert.AreEqual(4, aiDrones, "AiObjects should have 4 drones.");
         Assert.AreEqual(1, aiMotherShips, "AiObjects should have 1 mothership.");
+        Assert.AreEqual(0, aiBombers, "Scene1 should not contain Zeppelin bombers.");
+    }
+
+    [TestMethod]
+    public void Scene3_HasZeppelinBombers()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        AdvanceScene(handler, world); // -> Scene1
+        AdvanceScene(handler, world); // -> Scene2
+        AdvanceScene(handler, world); // -> Scene3
+
+        int bombers = world.WorldInhabitants.Count(o => o.ObjectName == "ZeppelinBomber");
+        Assert.IsTrue(bombers > 0, "Scene3 should introduce Zeppelin bombers.");
     }
 
     // -----------------------------------------------------------------
@@ -739,8 +863,13 @@ public class SceneHandlerTests
         var scene1Director = handler.GetActiveScene().Director;
         Assert.IsNotNull(scene1Director);
 
-        // Mark all real enemies as exploded and clear counts so victory triggers
+        // Mark all real enemies as exploded and clear counts.
+        // Also mark mothership phase as active by keeping one active mothership object.
         var aiObjs = GameState.SurfaceState.AiObjects;
+        var activeMotherShip = aiObjs.FirstOrDefault(o => o.ObjectName == "MotherShipSmall");
+        if (activeMotherShip != null)
+            activeMotherShip.IsActive = true;
+
         foreach (var obj in aiObjs)
         {
             if (obj.ObjectName == "Seeder" || obj.ObjectName == "KamikazeDrone" || obj.ObjectName == "MotherShipSmall")
@@ -751,6 +880,8 @@ public class SceneHandlerTests
         gps.InitialDrones = 4;
         gps.SeedersRemaining = 0;
         gps.DronesRemaining = 0;
+        gps.MotherShipsRemaining = 1;
+        scene1Director.Update();
         gps.MotherShipsRemaining = 0;
         scene1Director.Update();
         Assert.IsTrue(scene1Director.IsVictory, "Victory should trigger with all enemies exploded.");

@@ -2,6 +2,7 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Helpers;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -103,6 +104,10 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
             if (theObject.ImpactStatus?.HasExploded == true)
                 return theObject;
+
+            bool terrainRecoveryStarted = TerrainAvoidanceHelpers.TryStartTerrainRecovery(theObject);
+            if (terrainRecoveryStarted)
+                MotherShipSmallAi.ResetState(_ramState);
 
             if (theObject.ImpactStatus?.HasCrashed == true && !_isExploding)
             {
@@ -241,7 +246,8 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                     _isDescending = false;
             }
 
-            if (!_isDescending)
+            bool terrainRecoveryActive = TerrainAvoidanceHelpers.IsTerrainRecoveryActive(theObject);
+            if (!_isDescending && !terrainRecoveryActive)
                 MotherShipSmallAi.UpdateRamCycle(_ramState, theObject, now, (float)deltaSeconds);
 
             // Play warning sound when ram warning starts
@@ -285,6 +291,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
             UpdateFlash(theObject);
 
             SyncMovement(theObject);
+            TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, (float)deltaSeconds);
             SyncToOriginal(theObject);
 
             return theObject;
@@ -330,9 +337,6 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
         private void SyncMovement(I3dObject theObject)
         {
-            // Don't sync to surface during descent animation
-            if (_isDescending) return;
-
             if (!_syncInitialized)
             {
                 _syncInitialized = true;
