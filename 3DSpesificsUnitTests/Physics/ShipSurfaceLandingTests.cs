@@ -2,6 +2,8 @@ using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using Domain;
+using System.Reflection;
+using _3dTesting.Helpers;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3DSpesificsUnitTests.Physics;
@@ -9,6 +11,10 @@ namespace _3DSpesificsUnitTests.Physics;
 [TestClass]
 public class ShipSurfaceLandingTests
 {
+    private static readonly FieldInfo LastStaticCheckField = typeof(CrashDetection).GetField(
+        "_lastStaticCheck",
+        BindingFlags.Static | BindingFlags.NonPublic)!;
+
     // Mirror of CrashDetection.EstimateDirection (private) for testability.
     private static ImpactDirection EstimateDirection(float dx, float dy, float dz)
     {
@@ -247,6 +253,49 @@ public class ShipSurfaceLandingTests
 
         Assert.IsTrue(wouldLand,
             $"Non-surface crash with direction={direction} should trigger landing.");
+    }
+
+    [TestMethod]
+    public void CrashDetection_ChecksShipSurfaceEvenWhenStaticThrottleIsNotDue()
+    {
+        var lastStaticCheck = DateTime.Now.AddMinutes(1);
+        LastStaticCheckField.SetValue(null, lastStaticCheck);
+
+        var ship = CreateCrashObject(1, "Ship");
+        var surface = CreateCrashObject(2, "Surface");
+
+        CrashDetection.HandleCrashboxes(new List<_3dObject> { ship, surface }, isPaused: false);
+
+        Assert.IsTrue(ship.ImpactStatus!.HasCrashed, "Ship -> Surface must be checked every frame, even while static collision checks are throttled.");
+        Assert.AreEqual("Surface", ship.ImpactStatus.ObjectName);
+        Assert.AreEqual(lastStaticCheck, (DateTime)LastStaticCheckField.GetValue(null)!,
+            "Forced Ship -> Surface checks must not refresh the static throttle timer for other static objects.");
+    }
+
+    private static _3dObject CreateCrashObject(int id, string name)
+    {
+        return new _3dObject
+        {
+            ObjectId = id,
+            ObjectName = name,
+            ImpactStatus = new ImpactStatus(),
+            ObjectOffsets = new Vector3(),
+            WorldPosition = new Vector3(),
+            CrashBoxes = new List<List<IVector3>>
+            {
+                new()
+                {
+                    new Vector3 { x = -10, y = -10, z = -10 },
+                    new Vector3 { x = 10, y = -10, z = -10 },
+                    new Vector3 { x = 10, y = 10, z = -10 },
+                    new Vector3 { x = -10, y = 10, z = -10 },
+                    new Vector3 { x = -10, y = -10, z = 10 },
+                    new Vector3 { x = 10, y = -10, z = 10 },
+                    new Vector3 { x = 10, y = 10, z = 10 },
+                    new Vector3 { x = -10, y = 10, z = 10 }
+                }
+            }
+        };
     }
 
     }

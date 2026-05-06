@@ -68,6 +68,7 @@ namespace _3dTesting.Helpers
                     bool isBothParticles = isInhabitantParticle && isOtherParticle;
                     bool isShip = flagsA.IsShip || flagsB.IsShip;
                     bool isSurface = flagsA.IsSurface || flagsB.IsSurface;
+                    bool isShipSurfacePair = isShip && isSurface;
                     bool isKamikazeDroneSurfacePair =
                         (flagsA.Name == "KamikazeDrone" && flagsB.IsSurface) ||
                         (flagsB.Name == "KamikazeDrone" && flagsA.IsSurface);
@@ -96,7 +97,10 @@ namespace _3dTesting.Helpers
                     if (string.IsNullOrEmpty(flagsA.Name) || string.IsNullOrEmpty(flagsB.Name)) continue;
                     if (flagsA.Name == flagsB.Name) continue;
                     if (isInhabitantStatic && isOtherStatic) continue;
-                    if ((isInhabitantStatic || isOtherStatic) && !shouldCheckStaticObjects && !isTerrainAvoidanceAiObstaclePair) continue;
+                    if ((isInhabitantStatic || isOtherStatic) &&
+                        !shouldCheckStaticObjects &&
+                        !isTerrainAvoidanceAiObstaclePair &&
+                        !isShipSurfacePair) continue;
                     if (isParticle && isShip) continue;
                     if (isParticle && (flagsA.IsEnemy || flagsB.IsEnemy)) continue;
                     if (isBothParticles) continue;
@@ -111,7 +115,7 @@ namespace _3dTesting.Helpers
                     if (isEnemyLazerSurfacePair) continue;
                     if (isLazer && isParticle || isSeeder && isParticle) continue;
 
-                    if (isInhabitantStatic || isOtherStatic) _lastStaticCheck = DateTime.Now;
+                    if ((isInhabitantStatic || isOtherStatic) && shouldCheckStaticObjects) _lastStaticCheck = DateTime.Now;
 
                     if (isPaused && !LogOnlyCollisions)
                     {
