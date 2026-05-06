@@ -66,6 +66,50 @@ public class GroundControlsCraterTests
         AssertDryCratered(3, 2, GamePlayHelpers.TerrainType.Mountains);
     }
 
+    [TestMethod]
+    public void MoveObject_WhenBombImpactIsInLowerRightOfTile_CratersContainingTileArea()
+    {
+        for (int z = 0; z < 5; z++)
+        {
+            for (int x = 0; x < 5; x++)
+            {
+                SetTile(x, z, 0);
+            }
+        }
+
+        SetTile(1, 1, 20);
+
+        GameState.SurfaceState.AiObjects.Add(new _3dObject
+        {
+            ObjectId = 9002,
+            ObjectName = "BomberBomb",
+            WorldPosition = new Vector3
+            {
+                x = (2 * SurfaceSetup.tileSize) + (SurfaceSetup.tileSize * 0.75f),
+                y = 0f,
+                z = (2 * SurfaceSetup.tileSize) + (SurfaceSetup.tileSize * 0.75f)
+            },
+            ImpactStatus = new ImpactStatus
+            {
+                HasCrashed = true,
+                ObjectName = "Surface"
+            }
+        });
+
+        var ground = new _3dObject
+        {
+            ObjectId = 100,
+            ObjectName = "Surface",
+            ImpactStatus = new ImpactStatus(),
+            WorldPosition = new Vector3(),
+            ObjectOffsets = new Vector3()
+        };
+
+        new GroundControls().MoveObject(ground, null, null);
+
+        AssertDryCratered(1, 1, GamePlayHelpers.TerrainType.Grassland);
+    }
+
     private static void SetTile(int x, int z, int depth)
     {
         GameState.SurfaceState.Global2DMap![z, x] = new SurfaceData

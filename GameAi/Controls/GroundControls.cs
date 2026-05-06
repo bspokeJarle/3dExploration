@@ -61,8 +61,8 @@ namespace GameAiAndControls.Controls
             var global2DMap = GameState.SurfaceState?.Global2DMap;
             if (aiObjects == null || global2DMap == null) return;
 
-            int mapSize = global2DMap.GetLength(0);
-            int tileSize = SurfaceSetup.tileSize;
+            int mapHeight = global2DMap.GetLength(0);
+            int mapWidth = global2DMap.GetLength(1);
             var rnd = new Random();
 
             for (int i = 0; i < aiObjects.Count; i++)
@@ -78,20 +78,16 @@ namespace GameAiAndControls.Controls
                 var wp = obj.WorldPosition;
                 if (wp == null) continue;
 
-                // Use nearest tile center (not truncation toward zero) to avoid
-                // a systematic half-tile drift in crater placement.
-                int centerX = (int)MathF.Floor((wp.x / tileSize) + 0.5f) % mapSize;
-                int centerZ = (int)MathF.Floor((wp.z / tileSize) + 0.5f) % mapSize;
-                if (centerX < 0) centerX += mapSize;
-                if (centerZ < 0) centerZ += mapSize;
+                int centerX = MapCoordinateHelpers.WorldXToTileIndex(wp.x, global2DMap);
+                int centerZ = MapCoordinateHelpers.WorldZToTileIndex(wp.z, global2DMap);
 
                 // Apply crater to 3x3 area around impact
                 for (int dz = -1; dz <= 1; dz++)
                 {
                     for (int dx = -1; dx <= 1; dx++)
                     {
-                        int tileZ = (centerZ + dz + mapSize) % mapSize;
-                        int tileX = (centerX + dx + mapSize) % mapSize;
+                        int tileZ = MapCoordinateHelpers.WrapIndex(centerZ + dz, mapHeight);
+                        int tileX = MapCoordinateHelpers.WrapIndex(centerX + dx, mapWidth);
 
                         ref var tile = ref global2DMap[tileZ, tileX];
                         if (!tile.isCratered && IsCraterableTerrain(tile.mapDepth))

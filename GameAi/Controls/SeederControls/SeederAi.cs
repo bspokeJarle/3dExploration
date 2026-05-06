@@ -194,14 +194,12 @@ namespace GameAiAndControls.Controls.SeederControls
             // since the top-of-AI sync, so refresh the object before visual helpers.
             theObject.WorldPosition = s.AuthWorldPos;
 
-            // Tile indices use raw world coordinates to match the meta map and
-            // Global2DMap (which are indexed by globalTile = worldCoord / tileSize).
+            // Tile indices use raw world coordinates to match the tile under the
+            // seeder on the planet map.
             // Do NOT use GetSurfaceAlignedWorldPosition here — it adds visual
             // offsets (surfOO − seederOO) that shift the lookup by several tiles.
-            // Use nearest tile center (not truncation) to keep infection tile
-            // aligned with where the seeder visually stalls.
-            int tileX = (int)MathF.Floor((s.AuthWorldPos.x / SurfaceSetup.tileSize) + 0.5f);
-            int tileZ = (int)MathF.Floor((s.AuthWorldPos.z / SurfaceSetup.tileSize) + 0.5f);
+            int tileX = MapCoordinateHelpers.WorldXToTileIndex(s.AuthWorldPos.x, surfaceState.Global2DMap);
+            int tileZ = MapCoordinateHelpers.WorldZToTileIndex(s.AuthWorldPos.z, surfaceState.Global2DMap);
             // Bounds
             if (tileZ < 0 || tileX < 0 ||
                 tileZ >= surfaceState.Global2DMap.GetLength(0) ||
@@ -232,7 +230,8 @@ namespace GameAiAndControls.Controls.SeederControls
                 // Also removes the tile from the BioTiles list so seeders move past it.
                 bool TryInfectTile(int tx, int tz, string label)
                 {
-                    if (tx < 0 || tz < 0 || tx >= mapWidth || tz >= mapHeight) return false;
+                    tx = MapCoordinateHelpers.WrapIndex(tx, mapWidth);
+                    tz = MapCoordinateHelpers.WrapIndex(tz, mapHeight);
                     var t = surfaceState.Global2DMap[tz, tx];
                     if (t.isInfected) return false;
                     var tt = GamePlayHelpers.GetTerrainType(t.mapDepth, MapSetup.maxHeight);

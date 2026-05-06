@@ -52,6 +52,8 @@ namespace _3dTesting.MainWindowClasses.Loops
         private bool _victorySequenceStarted = false;
         private long _victoryStartTicks = 0;
         private const float VictoryDisplaySeconds = 3.0f;
+        private static readonly HashSet<Type> movementDisposeNotImplementedTypes = new();
+        private static readonly object movementDisposeNotImplementedTypesLock = new();
 
         private readonly object _lock = new object();
         public I3dObject ShipCopy { get; set; }
@@ -146,6 +148,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                         inhabitant.ParentSurface.RotatedSurfaceTriangles = part.Triangles;
 
                         var landBasedIds = new HashSet<long?>(part.Triangles.Count);
+
                         foreach (var triangle in part.Triangles)
                         {
                             landBasedIds.Add(triangle.landBasedPosition);
@@ -314,7 +317,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                     }
 
                     explodedObjects ??= new List<_3dObject>();
-                    explodedIds ??= new HashSet<int>();
+                    explodedIds ??= new HashSet<int>(inhabitants.Count);
                     explodedObjects.Add(obj);
                     explodedIds.Add(obj.ObjectId);
                 }
@@ -328,6 +331,15 @@ namespace _3dTesting.MainWindowClasses.Loops
                 // and award score for enemy kills / trigger checkpoints
                 var gps = GameState.GamePlayState;
                 bool checkpointTriggered = false;
+                bool powerUpAlreadyExists = false;
+                for (int i = 0; i < inhabitants.Count; i++)
+                {
+                    if (inhabitants[i].ObjectName == "PowerUp")
+                    {
+                        powerUpAlreadyExists = true;
+                        break;
+                    }
+                }
 
                 foreach (var obj in explodedObjects)
                 {
@@ -341,17 +353,8 @@ namespace _3dTesting.MainWindowClasses.Loops
 
                     if (obj.HasPowerUp && obj.WorldPosition != null)
                     {
-                        // Only one PowerUp at a time — skip if one already exists
-                        bool alreadyExists = false;
-                        for (int i = 0; i < inhabitants.Count; i++)
-                        {
-                            if (inhabitants[i].ObjectName == "PowerUp")
-                            {
-                                alreadyExists = true;
-                                break;
-                            }
-                        }
-                        if (alreadyExists) continue;
+                        // Only one PowerUp at a time — skip if one already exists.
+                        if (powerUpAlreadyExists) continue;
 
                         var powerup = PowerUp.CreatePowerup(obj.ParentSurface);
                         powerup.WorldPosition = new Vector3
@@ -374,6 +377,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                         powerup.Movement = new PowerUpControls();
                         inhabitants.Add(powerup);
                         GameState.SurfaceState.AiObjects.Add(powerup);
+                        powerUpAlreadyExists = true;
                     }
                 }
 
@@ -461,17 +465,31 @@ namespace _3dTesting.MainWindowClasses.Loops
 
         private static void TryDisposeMovement(_3dObject obj)
         {
-            if (obj?.Movement == null)
+            var movement = obj?.Movement;
+            if (movement == null)
             {
                 return;
             }
 
+            var movementType = movement.GetType();
+            lock (movementDisposeNotImplementedTypesLock)
+            {
+                if (movementDisposeNotImplementedTypes.Contains(movementType))
+                {
+                    return;
+                }
+            }
+
             try
             {
-                obj.Movement.Dispose();
+                movement.Dispose();
             }
             catch (NotImplementedException)
             {
+                lock (movementDisposeNotImplementedTypesLock)
+                {
+                    movementDisposeNotImplementedTypes.Add(movementType);
+                }
             }
         }
 

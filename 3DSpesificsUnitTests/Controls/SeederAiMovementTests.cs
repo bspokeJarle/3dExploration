@@ -106,6 +106,28 @@ public class SeederAiMovementTests
     }
 
     [TestMethod]
+    public void MoveTowardTarget_WhenSeederIsInLowerRightOfTile_InfectsContainingTileArea()
+    {
+        SetMapTile(1, 1, mapDepth: 20, isInfected: false);
+
+        var state = CreateState();
+        var current = new Vector3
+        {
+            x = (2 * SurfaceSetup.tileSize) + (SurfaceSetup.tileSize * 0.75f),
+            y = 0f,
+            z = (2 * SurfaceSetup.tileSize) + (SurfaceSetup.tileSize * 0.75f)
+        };
+        long now = DateTime.Now.Ticks;
+
+        PrepareTarget(state, current, current, targetIsLocalBio: true, stepsRemaining: 1);
+
+        _ = InvokeMove(isOnScreen: true, state, current, step: 5f, offscreenStepFactor: 1, nowTicks: now);
+
+        Assert.IsTrue(GameState.SurfaceState.Global2DMap![1, 1].isInfected, "Seeder infection should use the tile containing the Seeder, not a nearest-center lookup shifted down/right.");
+    }
+
+
+    [TestMethod]
     public void MoveTowardTarget_WhenLocalTargetIsNoLongerBio_RetargetsImmediately()
     {
         int tile = 1;

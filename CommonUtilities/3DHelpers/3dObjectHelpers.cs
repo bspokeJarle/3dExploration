@@ -230,11 +230,6 @@ namespace CommonUtilities._3DHelpers
 
             foreach (var inhabitant in inhabitants)
             {
-                if (!inhabitant.CheckInhabitantVisibility())
-                {
-                    continue;
-                }
-
                 var copy = Common3dObjectHelpers.DeepCopySingleObject(inhabitant);
 
                 // Restore crashboxes as well

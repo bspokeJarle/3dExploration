@@ -18,6 +18,7 @@
 - If an object has an unnatural crash, check the size of the object (geometry/scale), not the offset or anything else. The size of the actual object coordinates is very important to make a natural hit — if the object is too small in coordinates, the crash seems unnatural since it appears the object is far away.
 - Objects that should crash/collide with each other must share compatible `ObjectOffsets` — specifically, the Z offset must match (e.g., both use z=400 to match the ship's zoom value) and the Y offset should be close enough for crash boxes to overlap. Enemies that need direct collision with the ship should use `ObjectOffsets` similar to the KamikazeDrone pattern {x=0, y=150, z=400}, matching the ship's coordinate layer (z=zoom=400, y≈ShipRestingScreenY=200). Using incompatible offsets (e.g., z=-400 vs ship's z=400) places crash boxes in completely different coordinate layers, making AABB collision impossible regardless of `CrashboxSize`.
 - For mothership particle guides, each wing engine must have its own start at that engine center/edge, and the guide must extend straight out from that same engine (no shared/merged origin).
+- Revert optimization changes that do not produce measurable benchmark improvements; keep only proven wins.
 
 ## Control Class Pattern
 - Control classes implement `IObjectMovement` and are assigned to objects via the `Movement` property.
