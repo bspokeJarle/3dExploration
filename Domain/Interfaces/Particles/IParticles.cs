@@ -19,7 +19,7 @@ namespace Domain
         /// </summary>
         int MaxParticlesOverride { get; set; }
 
-        void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion);
+        void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion, float upwardVelocityBoost = 0f);
         void MoveParticles();
     }
 

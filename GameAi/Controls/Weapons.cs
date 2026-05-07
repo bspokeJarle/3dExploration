@@ -1,4 +1,4 @@
-﻿using _3dTesting.Helpers;
+using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
 using Domain;
 using System;
@@ -260,19 +260,14 @@ namespace GameAiAndControls.Controls
             for (int i = 0; i < aiObjects.Count; i++)
             {
                 var obj = aiObjects[i] as _3dObject;
-                if (obj == null) continue;
-                if (!EnemySetup.IsEnemyTypeValid(obj.ObjectName)) continue;
-                if (obj.ImpactStatus?.HasExploded == true) continue;
-                if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) continue;
+                if (!IsValidAimAssistEnemy(obj)) continue;
+                if (!TryGetVisibleAimAssistTarget(obj, out var screenTarget)) continue;
 
-                var worldPoints = obj.GetAllCrashPointsWorld();
-                if (worldPoints.Count == 0) continue;
-
-                var center = Common3dObjectHelpers.GetCenterOfBox(worldPoints);
+                var shipOffsets = ParentShipObject?.ObjectOffsets ?? new Vector3(0, 0, 0);
                 var toEnemy = new Vector3(
-                    center.x - weaponStart.x,
-                    center.y - weaponStart.y,
-                    center.z - weaponStart.z
+                    screenTarget.ScreenX - (ScreenSetup.screenSizeX / 2f) - shipOffsets.x - weaponStart.x,
+                    screenTarget.ScreenY - (ScreenSetup.screenSizeY / 2f) - shipOffsets.y - weaponStart.y,
+                    screenTarget.RenderZ - shipOffsets.z - weaponStart.z
                 );
 
                 // Enemy must be ahead of the ship (negative Y = forward on screen)
@@ -556,11 +551,11 @@ namespace GameAiAndControls.Controls
                 return;
             }
 
-            var gmp = GameState.SurfaceState.GlobalMapPosition;
-            if (gmp == null) return;
-
             float halfW = ScreenSetup.screenSizeX / 2f;
             float halfH = ScreenSetup.screenSizeY / 2f;
+
+            if (TrySetAimAssistTarget(gameplay, _aimAssistLockedTarget, halfW, halfH, out _))
+                return;
 
             float bestDistSq = float.MaxValue;
             _3dObject? bestTarget = null;
@@ -569,27 +564,17 @@ namespace GameAiAndControls.Controls
             for (int i = 0; i < aiObjects.Count; i++)
             {
                 var obj = aiObjects[i] as _3dObject;
-                if (obj == null) continue;
-                if (!EnemySetup.IsEnemyTypeValid(obj.ObjectName)) continue;
-                if (obj.ImpactStatus?.HasExploded == true) continue;
-                if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) continue;
+                if (!TrySetAimAssistTarget(null, obj, halfW, halfH, out var screenTarget)) continue;
 
-                float dx = obj.WorldPosition.x - gmp.x;
-                float dy = obj.WorldPosition.y - gmp.y;
-
-                float sx = halfW + dx;
-                float sy = halfH + dy + (obj.ObjectOffsets?.y ?? 0f);
-
-                if (sx < 0 || sx > ScreenSetup.screenSizeX) continue;
-                if (sy < 0 || sy > ScreenSetup.screenSizeY) continue;
-
+                float dx = screenTarget.ScreenX - halfW;
+                float dy = screenTarget.ScreenY - halfH;
                 float distSq = dx * dx + dy * dy;
                 if (distSq < bestDistSq)
                 {
                     bestDistSq = distSq;
                     bestTarget = obj;
-                    bestSx = sx;
-                    bestSy = sy;
+                    bestSx = screenTarget.ScreenX;
+                    bestSy = screenTarget.ScreenY;
                 }
             }
 
@@ -604,6 +589,154 @@ namespace GameAiAndControls.Controls
             {
                 _aimAssistLockedTarget = null;
             }
+        }
+
+        private readonly struct AimAssistScreenTarget
+        {
+            public AimAssistScreenTarget(float screenX, float screenY, float renderZ)
+            {
+                ScreenX = screenX;
+                ScreenY = screenY;
+                RenderZ = renderZ;
+            }
+
+            public float ScreenX { get; }
+            public float ScreenY { get; }
+            public float RenderZ { get; }
+        }
+
+        private static bool TrySetAimAssistTarget(
+            GamePlayState? gameplay,
+            _3dObject? obj,
+            float halfW,
+            float halfH,
+            out AimAssistScreenTarget screenTarget)
+        {
+            screenTarget = default;
+
+            if (!IsValidAimAssistEnemy(obj))
+                return false;
+
+            if (!TryGetVisibleAimAssistTarget(obj!, out screenTarget))
+                return false;
+
+            if (gameplay != null)
+            {
+                gameplay.AimAssistTargetActive = true;
+                gameplay.AimAssistTargetScreenX = screenTarget.ScreenX;
+                gameplay.AimAssistTargetScreenY = screenTarget.ScreenY;
+            }
+
+            return true;
+        }
+
+        private static bool IsValidAimAssistEnemy(_3dObject? obj)
+        {
+            if (obj == null) return false;
+            if (!EnemySetup.IsEnemyTypeValid(obj.ObjectName)) return false;
+            if (obj.ImpactStatus?.HasExploded == true) return false;
+            if (obj.CrashBoxes == null || obj.CrashBoxes.Count == 0) return false;
+            if (!obj.CheckInhabitantVisibility()) return false;
+            return true;
+        }
+
+        private static bool TryGetVisibleAimAssistTarget(_3dObject obj, out AimAssistScreenTarget screenTarget)
+        {
+            screenTarget = default;
+
+            if (!TryGetRenderOrigin(obj, out float originX, out float originY, out float originZ))
+                return false;
+
+            var localCenter = GetLocalCrashBoxCenter(obj);
+            if (!TryProjectLocalPoint(localCenter, originX, originY, originZ, out float screenX, out float screenY))
+                return false;
+
+            if (screenX < 0f || screenX > ScreenSetup.screenSizeX) return false;
+            if (screenY < 0f || screenY > ScreenSetup.screenSizeY) return false;
+
+            screenTarget = new AimAssistScreenTarget(screenX, screenY, originZ + localCenter.z);
+            return true;
+        }
+
+        private static bool TryGetRenderOrigin(_3dObject obj, out float x, out float y, out float z)
+        {
+            x = y = z = 0f;
+            if (obj == null || obj.WorldPosition == null)
+                return false;
+
+            var objectOffsets = obj.ObjectOffsets ?? new Vector3(0, 0, 0);
+            float halfW = ScreenSetup.screenSizeX / 2f;
+            float halfH = ScreenSetup.screenSizeY / 2f;
+
+            if (obj.WorldPosition.x == 0f && obj.WorldPosition.y == 0f && obj.WorldPosition.z == 0f)
+            {
+                x = halfW + objectOffsets.x;
+                y = halfH + objectOffsets.y;
+                z = objectOffsets.z;
+                return true;
+            }
+
+            var globalMapPosition = GameState.SurfaceState.GlobalMapPosition;
+            x = halfW - (globalMapPosition.x - obj.WorldPosition.x) + objectOffsets.x;
+            y = halfH - (globalMapPosition.y - obj.WorldPosition.y) + objectOffsets.y;
+            z = (globalMapPosition.z - obj.WorldPosition.z) + objectOffsets.z;
+            return true;
+        }
+
+        private static Vector3 GetLocalCrashBoxCenter(_3dObject obj)
+        {
+            float minX = float.MaxValue, minY = float.MaxValue, minZ = float.MaxValue;
+            float maxX = float.MinValue, maxY = float.MinValue, maxZ = float.MinValue;
+            bool hasPoint = false;
+
+            foreach (var box in obj.CrashBoxes)
+            {
+                if (box == null) continue;
+
+                foreach (var point in box)
+                {
+                    if (point == null) continue;
+
+                    hasPoint = true;
+                    if (point.x < minX) minX = point.x;
+                    if (point.x > maxX) maxX = point.x;
+                    if (point.y < minY) minY = point.y;
+                    if (point.y > maxY) maxY = point.y;
+                    if (point.z < minZ) minZ = point.z;
+                    if (point.z > maxZ) maxZ = point.z;
+                }
+            }
+
+            if (!hasPoint)
+                return new Vector3();
+
+            return new Vector3
+            {
+                x = (minX + maxX) / 2f,
+                y = (minY + maxY) / 2f,
+                z = (minZ + maxZ) / 2f
+            };
+        }
+
+        private static bool TryProjectLocalPoint(
+            Vector3 localPoint,
+            float originX,
+            float originY,
+            float originZ,
+            out float screenX,
+            out float screenY)
+        {
+            screenX = 0f;
+            screenY = 0f;
+
+            double denom = -localPoint.z + originZ + ScreenSetup.perspectiveAdjustment;
+            if (denom <= 1.0)
+                return false;
+
+            double factor = ScreenSetup.perspectiveAdjustment / denom;
+            screenX = (float)(localPoint.x * factor * ScreenSetup.defaultObjectZoom + originX);
+            screenY = (float)(localPoint.y * factor * ScreenSetup.defaultObjectZoom + originY);
+            return !float.IsNaN(screenX) && !float.IsNaN(screenY);
         }
 
         private static void SetWorldPosition(I3dObject obj, IVector3 pos)

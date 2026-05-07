@@ -107,6 +107,19 @@ namespace GameAiAndControls.Helpers
             };
         }
 
+        internal static Vector3 GetNavigationCrashCenterWorldPosition(I3dObject obj)
+        {
+            var rotatedLocalCrashCenter = GetRotatedLocalCrashCenter(obj);
+            var worldPosition = obj.WorldPosition;
+
+            return new Vector3
+            {
+                x = (worldPosition?.x ?? 0f) + rotatedLocalCrashCenter.x,
+                y = (worldPosition?.y ?? 0f) + rotatedLocalCrashCenter.y,
+                z = (worldPosition?.z ?? 0f) + rotatedLocalCrashCenter.z
+            };
+        }
+
         internal static Vector3? GetShipCrashCenterWorldPosition()
         {
             if (GameState.ShipState?.ShipCrashCenterWorldPosition is Vector3 shipCrashCenter)

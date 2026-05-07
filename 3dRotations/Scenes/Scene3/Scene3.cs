@@ -9,6 +9,7 @@ using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Controls.SeederControls;
+using GameAiAndControls.Controls.JumpingFishControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using System;
 using System.Collections.Generic;
@@ -54,6 +55,8 @@ namespace _3dRotations.Scene.Scene3
             guidanceArrow.ImpactStatus = new ImpactStatus { };
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
+
+            SpawnJumpingFish(world);
 
             // ZeppelinBombers — 2 bombers introduced this scene
             for (int b = 0; b < 2; b++)
@@ -297,6 +300,40 @@ namespace _3dRotations.Scene.Scene3
         public void SetupVideoOverlay(string fileName)
         {
             throw new NotImplementedException();
+        }
+
+        private void SpawnJumpingFish(I3dWorld world)
+        {
+            var fishJumpAreas = GameState.SurfaceState.FishJumpAreas;
+            if (fishJumpAreas == null || fishJumpAreas.Count == 0)
+                return;
+
+            int fishCount = Math.Min(100, fishJumpAreas.Count);
+            int tileSize = Surface.TileSize();
+            for (int i = 0; i < fishCount; i++)
+            {
+                int areaIndex = (int)MathF.Floor(i * fishJumpAreas.Count / (float)fishCount);
+                var area = fishJumpAreas[areaIndex];
+                float travelSpan = Math.Max(tileSize * 2f, (area.EndTileX - area.StartTileX - 1) * tileSize);
+
+                var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
+                jumpingFish.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                jumpingFish.WorldPosition = new Vector3 { };
+                jumpingFish.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
+                jumpingFish.ObjectOffsets = new Vector3
+                {
+                    x = 75 * ScreenSetup.ScreenScaleX,
+                    y = 500 * ScreenSetup.ScreenScaleY,
+                    z = 400
+                };
+                jumpingFish.ObjectName = "JumpingFish";
+                jumpingFish.Movement = new JumpingFishControls(travelSpan);
+                jumpingFish.ImpactStatus = new ImpactStatus { };
+                jumpingFish.CrashBoxDebugMode = false;
+                jumpingFish.CrashBoxes = new List<List<IVector3>>();
+                jumpingFish.IsActive = true;
+                world.WorldInhabitants.Add(jumpingFish);
+            }
         }
     }
 }

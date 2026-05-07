@@ -1,4 +1,4 @@
-﻿using _3dRotations.Helpers;
+using _3dRotations.Helpers;
 using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;

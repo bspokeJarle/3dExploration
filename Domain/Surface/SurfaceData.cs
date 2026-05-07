@@ -31,4 +31,16 @@ namespace Domain
         public int Y;
         public int X;
     }
+
+    public struct FishJumpArea
+    {
+        public int CenterTileX;
+        public int CenterTileZ;
+        public int StartTileX;
+        public int EndTileX;
+        public int TileZ;
+        public int WidthTiles;
+        public int HeightTiles;
+        public int ComponentTileCount;
+    }
 }

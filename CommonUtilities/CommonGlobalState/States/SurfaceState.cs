@@ -1,4 +1,4 @@
-﻿using CommonUtilities.CommonSetup;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System.Windows.Media.Imaging;
 using static Domain._3dSpecificsImplementations;
@@ -17,6 +17,7 @@ namespace CommonUtilities.CommonGlobalState.States
         public Vector3 GlobalMapPosition { get; set; } = new Vector3 { x = SurfaceSetup.DefaultMapPosition.x, y = SurfaceSetup.DefaultMapPosition.y, z = SurfaceSetup.DefaultMapPosition.z };
         public List<_3dObject> AiObjects { get; set; } = new List<_3dObject>();
         public List<IVector3> DirtyTiles { get; set; } = new List<IVector3>();
+        public List<FishJumpArea> FishJumpAreas { get; set; } = new();
         public _3dObject? SurfaceViewportObject { get; set; }
         public ulong SurfaceHash { get; set; }
         public string? SurfaceFilePath { get; set; }

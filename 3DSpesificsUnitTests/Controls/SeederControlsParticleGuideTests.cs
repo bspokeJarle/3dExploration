@@ -75,7 +75,8 @@ public class SeederControlsParticleGuideTests
             IVector3 WorldPosition,
             IObjectMovement ParentShip,
             int Thrust,
-            bool? explosion)
+            bool? explosion,
+            float upwardVelocityBoost = 0f)
         {
             this.WorldPosition = new Vector3
             {

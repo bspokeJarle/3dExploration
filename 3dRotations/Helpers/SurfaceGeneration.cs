@@ -1,4 +1,4 @@
-﻿using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.GamePlayHelpers;
 using Domain;
@@ -120,6 +120,206 @@ namespace _3dRotations.Helpers
             }
 
             return ecoMap;
+        }
+
+        public static List<FishJumpArea> FindFishJumpAreas(
+            SurfaceData[,] map,
+            int maxHeight,
+            int minWidthTiles = 6,
+            int minHeightTiles = 2,
+            int maxAreas = 100,
+            int? priorityTileX = null,
+            int? priorityTileZ = null)
+        {
+            var areas = new List<FishJumpArea>();
+            if (map == null || maxAreas <= 0)
+                return areas;
+
+            int mapHeight = map.GetLength(0);
+            int mapWidth = map.GetLength(1);
+            if (mapHeight <= 0 || mapWidth <= 0)
+                return areas;
+
+            int minZ = mapHeight > wrapSize * 2 ? wrapSize : 0;
+            int maxZ = mapHeight > wrapSize * 2 ? mapHeight - wrapSize : mapHeight;
+            int minX = mapWidth > wrapSize * 2 ? wrapSize : 0;
+            int maxX = mapWidth > wrapSize * 2 ? mapWidth - wrapSize : mapWidth;
+
+            var visited = new bool[mapHeight, mapWidth];
+            var component = new List<(int x, int z)>();
+            var queue = new Queue<(int x, int z)>();
+            bool hasPriority = priorityTileX.HasValue && priorityTileZ.HasValue;
+
+            for (int z = minZ; z < maxZ; z++)
+            {
+                for (int x = minX; x < maxX; x++)
+                {
+                    if (visited[z, x])
+                        continue;
+
+                    visited[z, x] = true;
+                    if (!IsFishWaterTile(map[z, x], maxHeight))
+                        continue;
+
+                    component.Clear();
+                    queue.Clear();
+                    queue.Enqueue((x, z));
+
+                    while (queue.Count > 0)
+                    {
+                        var tile = queue.Dequeue();
+                        component.Add(tile);
+
+                        EnqueueWaterNeighbor(tile.x - 1, tile.z);
+                        EnqueueWaterNeighbor(tile.x + 1, tile.z);
+                        EnqueueWaterNeighbor(tile.x, tile.z - 1);
+                        EnqueueWaterNeighbor(tile.x, tile.z + 1);
+                    }
+
+                    if (TryCreateFishJumpArea(
+                        component,
+                        map,
+                        maxHeight,
+                        minWidthTiles,
+                        minHeightTiles,
+                        priorityTileX,
+                        priorityTileZ,
+                        out var area))
+                    {
+                        areas.Add(area);
+                        if (!hasPriority && areas.Count >= maxAreas)
+                            return areas;
+                    }
+                }
+            }
+
+            if (hasPriority)
+            {
+                areas.Sort((a, b) =>
+                    GetFishAreaDistanceSquared(a, priorityTileX!.Value, priorityTileZ!.Value)
+                        .CompareTo(GetFishAreaDistanceSquared(b, priorityTileX.Value, priorityTileZ.Value)));
+            }
+
+            if (areas.Count > maxAreas)
+                areas.RemoveRange(maxAreas, areas.Count - maxAreas);
+
+            return areas;
+
+            void EnqueueWaterNeighbor(int nx, int nz)
+            {
+                if (nz < minZ || nz >= maxZ || nx < minX || nx >= maxX)
+                    return;
+                if (visited[nz, nx])
+                    return;
+
+                visited[nz, nx] = true;
+                if (IsFishWaterTile(map[nz, nx], maxHeight))
+                    queue.Enqueue((nx, nz));
+            }
+        }
+
+        private static bool TryCreateFishJumpArea(
+            List<(int x, int z)> component,
+            SurfaceData[,] map,
+            int maxHeight,
+            int minWidthTiles,
+            int minHeightTiles,
+            int? priorityTileX,
+            int? priorityTileZ,
+            out FishJumpArea area)
+        {
+            area = default;
+            if (component.Count < minWidthTiles * minHeightTiles)
+                return false;
+
+            int minX = int.MaxValue;
+            int minZ = int.MaxValue;
+            int maxX = int.MinValue;
+            int maxZ = int.MinValue;
+            foreach (var tile in component)
+            {
+                minX = Math.Min(minX, tile.x);
+                minZ = Math.Min(minZ, tile.z);
+                maxX = Math.Max(maxX, tile.x);
+                maxZ = Math.Max(maxZ, tile.z);
+            }
+
+            bool hasPriority = priorityTileX.HasValue && priorityTileZ.HasValue;
+            bool found = false;
+            long bestDistanceSquared = long.MaxValue;
+            FishJumpArea bestArea = default;
+
+            for (int z = minZ; z <= maxZ - minHeightTiles + 1; z++)
+            {
+                for (int x = minX; x <= maxX - minWidthTiles + 1; x++)
+                {
+                    if (!IsWaterRectangle(map, maxHeight, x, z, minWidthTiles, minHeightTiles))
+                        continue;
+
+                    var candidate = new FishJumpArea
+                    {
+                        CenterTileX = x + (minWidthTiles / 2),
+                        CenterTileZ = z + (minHeightTiles / 2),
+                        StartTileX = x,
+                        EndTileX = x + minWidthTiles - 1,
+                        TileZ = z + (minHeightTiles / 2),
+                        WidthTiles = minWidthTiles,
+                        HeightTiles = minHeightTiles,
+                        ComponentTileCount = component.Count
+                    };
+
+                    if (!hasPriority)
+                    {
+                        area = candidate;
+                        return true;
+                    }
+
+                    long distanceSquared = GetFishAreaDistanceSquared(candidate, priorityTileX!.Value, priorityTileZ!.Value);
+                    if (!found || distanceSquared < bestDistanceSquared)
+                    {
+                        found = true;
+                        bestDistanceSquared = distanceSquared;
+                        bestArea = candidate;
+                    }
+                }
+            }
+
+            if (!found)
+                return false;
+
+            area = bestArea;
+            return true;
+        }
+
+        private static long GetFishAreaDistanceSquared(FishJumpArea area, int tileX, int tileZ)
+        {
+            long dx = area.CenterTileX - tileX;
+            long dz = area.CenterTileZ - tileZ;
+            return (dx * dx) + (dz * dz);
+        }
+
+        private static bool IsWaterRectangle(SurfaceData[,] map, int maxHeight, int startX, int startZ, int width, int height)
+        {
+            for (int dz = 0; dz < height; dz++)
+            {
+                for (int dx = 0; dx < width; dx++)
+                {
+                    if (!IsFishWaterTile(map[startZ + dz, startX + dx], maxHeight))
+                        return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool IsFishWaterTile(SurfaceData tile, int maxHeight)
+        {
+            if (tile.hasLandbasedObject || tile.isInfected || tile.isCratered)
+                return false;
+
+            var terrainType = GamePlayHelpers.GetTerrainType(tile.mapDepth, maxHeight);
+            return terrainType == GamePlayHelpers.TerrainType.DeepWater ||
+                   terrainType == GamePlayHelpers.TerrainType.Coast;
         }
 
 

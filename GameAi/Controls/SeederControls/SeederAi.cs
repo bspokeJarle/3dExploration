@@ -1,4 +1,4 @@
-﻿using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.GamePlayHelpers;
@@ -233,9 +233,13 @@ namespace GameAiAndControls.Controls.SeederControls
                     tx = MapCoordinateHelpers.WrapIndex(tx, mapWidth);
                     tz = MapCoordinateHelpers.WrapIndex(tz, mapHeight);
                     var t = surfaceState.Global2DMap[tz, tx];
+                    if (!SeederMovementHelpers.IsBioTerrain(t))
+                    {
+                        SeederMovementHelpers.ClearInfectionIfTerrainCannotHostIt(surfaceState, tz, tx);
+                        return false;
+                    }
+
                     if (t.isInfected) return false;
-                    var tt = GamePlayHelpers.GetTerrainType(t.mapDepth, MapSetup.maxHeight);
-                    if (tt != TerrainType.Grassland && tt != TerrainType.Highlands) return false;
 
                     GameState.GamePlayState.InfectionLevel += 1;
                     t.isInfected = true;
@@ -287,7 +291,11 @@ namespace GameAiAndControls.Controls.SeederControls
                 ];
 
                 var tile = surfaceState.Global2DMap[tileZ, tileX];
-                if (tile.isInfected)
+                if (!SeederMovementHelpers.IsBioTerrain(tile))
+                {
+                    SeederMovementHelpers.ClearInfectionIfTerrainCannotHostIt(surfaceState, tileZ, tileX);
+                }
+                else if (tile.isInfected)
                 {
                     SafeLog($"AI:STALL_ALREADY_INFECTED tile=({tileX},{tileZ}) onScreen={isOnScreen} ObjectId:{id}");
                     return true;

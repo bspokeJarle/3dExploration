@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,12 +18,12 @@ namespace CommonUtilities.CommonSetup
 
         // Lazer crashbox extents (local coords, adjustable per axis)
         // X = lateral (left/right), Y = longitudinal (beam direction), Z = vertical (up/down)
-        public const float LazerCrashBoxMinX = -70f;
-        public const float LazerCrashBoxMaxX = 70f;
+        public const float LazerCrashBoxMinX = -95f;
+        public const float LazerCrashBoxMaxX = 95f;
         public const float LazerCrashBoxMinY = -600f;  // extended forward along beam
-        public const float LazerCrashBoxMaxY = -30f;   // slightly closer to muzzle
-        public const float LazerCrashBoxMinZ = -10f;
-        public const float LazerCrashBoxMaxZ = 120f;
+        public const float LazerCrashBoxMaxY = -20f;   // slightly closer to muzzle
+        public const float LazerCrashBoxMinZ = -20f;
+        public const float LazerCrashBoxMaxZ = 145f;
 
         // Bullet crashbox extents (local coords, adjustable per axis)
         // X = lateral (left/right), Y = longitudinal (bullet direction), Z = vertical (up/down)
@@ -58,8 +58,8 @@ namespace CommonUtilities.CommonSetup
         // Strength = blend factor toward enemy (0 = no assist, 1 = full snap)
         // MaxRange = max distance (screen units) to consider enemies
         // -------------------------------------------------------
-        public static float LazerAimAssistConeDot  = 0.55f;   // ~57° half-angle
-        public static float LazerAimAssistStrength = 0.92f;
+        public static float LazerAimAssistConeDot  = 0.40f;   // ~66° half-angle
+        public static float LazerAimAssistStrength = 0.97f;
         public static float LazerAimAssistMaxRange = 2500f;
 
         public static float BulletAimAssistConeDot  = 0.45f;  // ~63° half-angle

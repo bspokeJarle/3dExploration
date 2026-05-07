@@ -1,0 +1,254 @@
+using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
+using Domain;
+using GameAiAndControls.Controls.JumpingFishControls;
+using _3dRotations.World.Objects;
+using static Domain._3dSpecificsImplementations;
+
+namespace _3DSpesificsUnitTests.Controls;
+
+[TestClass]
+public class JumpingFishControlsTests
+{
+    private const float InitialX = 0f;
+    private const float InitialY = -220f;
+    private const float InitialZ = 460f;
+
+    [TestInitialize]
+    public void Setup()
+    {
+        GameState.GamePlayState = new GamePlayState();
+        GameState.SurfaceState = new SurfaceState();
+        GameState.DeltaTime = 0f;
+    }
+
+    [TestCleanup]
+    public void Cleanup()
+    {
+        GameState.DeltaTime = 0f;
+    }
+
+    [TestMethod]
+    public void MoveObject_StartsVerticalAndMovesThroughLeftJumpArc()
+    {
+        var fish = CreateFish(isOnScreen: true);
+        var controls = new JumpingFishControls();
+
+        MoveOneFrame(controls, fish);
+
+        Assert.AreEqual(InitialX + 130f, fish.ObjectOffsets!.x, 0.001f);
+        Assert.AreEqual(InitialY, fish.ObjectOffsets.y, 0.001f);
+        Assert.AreEqual(InitialZ, fish.ObjectOffsets.z, 0.001f);
+        Assert.AreEqual(70f, fish.Rotation!.x, 0.001f);
+        Assert.AreEqual(0f, fish.Rotation.y, 0.001f);
+        Assert.AreEqual(-90f, fish.Rotation.z, 0.001f);
+
+        AdvanceFrames(controls, fish, 10);
+
+        Assert.AreEqual(InitialX, fish.ObjectOffsets.x, 1f);
+        Assert.IsTrue(fish.ObjectOffsets.y < InitialY - 150f, "The fish should reach the top of the jump near mid-cycle.");
+        Assert.IsTrue(fish.ObjectOffsets.z > InitialZ, "The jump should have a small depth pulse at the apex.");
+        Assert.AreEqual(78f, fish.Rotation.x, 0.5f);
+        Assert.AreEqual(24f, fish.Rotation.y, 0.5f);
+        Assert.AreEqual(-180f, fish.Rotation.z, 1f);
+
+        AdvanceFrames(controls, fish, 9);
+
+        Assert.IsTrue(fish.ObjectOffsets.x < InitialX - 120f, "The fish should finish the jump on the left side.");
+        Assert.IsTrue(fish.ObjectOffsets.y > InitialY - 50f, "The fish should dive back down near the end of the jump.");
+        Assert.IsTrue(fish.Rotation.z < -260f, "The fish should be nose-down on the far side of the jump.");
+    }
+
+    [TestMethod]
+    public void MoveObject_DoesNothingUntilFishIsOnScreen()
+    {
+        var fish = CreateFish(isOnScreen: false);
+        var controls = new JumpingFishControls();
+        var rightFin = fish.ObjectParts.Find(p => p.PartName == "RightPectoralFin")!;
+        float originalFinZ = rightFin.Triangles[0].vert1.z;
+
+        MoveOneFrame(controls, fish);
+        AdvanceFrames(controls, fish, 4);
+
+        Assert.AreEqual(originalFinZ, rightFin.Triangles[0].vert1.z, 0.001f);
+        Assert.AreEqual(InitialX, fish.ObjectOffsets!.x, 0.001f);
+        Assert.AreEqual(InitialY, fish.ObjectOffsets.y, 0.001f);
+        Assert.AreEqual(InitialZ, fish.ObjectOffsets.z, 0.001f);
+        Assert.AreEqual(0, GetVisibleTailFrame(fish, "TailBase_Frame"));
+
+        fish.IsOnScreen = true;
+        MoveOneFrame(controls, fish);
+        MoveOneFrame(controls, fish);
+
+        Assert.AreEqual(1, CountVisibleTailParts(fish, "TailBase_Frame"));
+        Assert.AreEqual(1, CountVisibleTailParts(fish, "TailTip_Frame"));
+        Assert.AreNotEqual(0, GetVisibleTailFrame(fish, "TailBase_Frame"));
+        Assert.AreNotEqual(originalFinZ, rightFin.Triangles[0].vert1.z, "Pectoral fins should flap only when the fish is on screen.");
+    }
+
+    [TestMethod]
+    public void MoveObject_AlternatesJumpDirectionEveryCycle()
+    {
+        var fish = CreateFish(isOnScreen: true);
+        var controls = new JumpingFishControls();
+
+        MoveOneFrame(controls, fish);
+
+        Assert.IsTrue(fish.ObjectOffsets!.x > InitialX + 120f, "The first preview jump should start on the right and move left.");
+        Assert.AreEqual(-90f, fish.Rotation!.z, 0.001f);
+
+        AdvanceFrames(controls, fish, 21);
+
+        Assert.IsTrue(fish.ObjectOffsets.x < InitialX - 120f, "The second preview jump should start on the left and move right.");
+        Assert.IsTrue(fish.Rotation.z > -100f && fish.Rotation.z < -80f, "The mirrored jump should still start nose-up.");
+
+        AdvanceFrames(controls, fish, 10);
+
+        Assert.IsTrue(fish.ObjectOffsets.x > InitialX, "The mirrored jump should move back toward the right side.");
+        Assert.IsTrue(fish.Rotation.z > -30f && fish.Rotation.z < 60f, "The mirrored jump should rotate toward a right-facing arc instead of moving backward.");
+    }
+
+    [TestMethod]
+    public void MoveObject_ReleasesBlueSplashParticlesAtTakeoffAndLanding()
+    {
+        var fish = CreateFish(isOnScreen: true);
+        var controls = new JumpingFishControls();
+
+        MoveOneFrame(controls, fish);
+
+        Assert.IsNotNull(fish.Particles);
+        Assert.IsTrue(fish.Particles!.Particles.Count > 0, "The fish should release splash particles when the jump starts.");
+        Assert.IsTrue(HasBlueParticle(fish), "Splash particles should use blue water colors.");
+        AssertSplashStartsNearWaterline(fish.Particles.Particles[0], "Takeoff splash should start at the waterline, not at explosion height.");
+        int takeoffParticleCount = fish.Particles.Particles.Count;
+
+        AdvanceFrames(controls, fish, 20);
+
+        Assert.IsTrue(
+            fish.Particles.Particles.Count > takeoffParticleCount,
+            "The fish should release a second splash just before landing.");
+        Assert.IsTrue(HasBlueParticle(fish), "Landing splash particles should stay blue while they age.");
+        AssertSplashStartsNearWaterline(fish.Particles.Particles[takeoffParticleCount], "Landing splash should start where the fish breaks the water.");
+    }
+
+    [TestMethod]
+    public void MoveObject_SendsUpwardVelocityBoostForSplashParticles()
+    {
+        var fish = CreateFish(isOnScreen: true);
+        var particles = new CapturingParticles();
+        fish.Particles = particles;
+        var controls = new JumpingFishControls();
+
+        MoveOneFrame(controls, fish);
+
+        Assert.IsTrue(particles.ReleaseCount > 0, "The fish should release a splash when the jump starts.");
+        Assert.IsTrue(particles.LastUpwardVelocityBoost > 0f, "Fish splash particles should ask for extra upward travel.");
+        Assert.AreEqual(true, particles.LastExplosionFlag, "Fish splash should still use the explosion-style burst spread.");
+    }
+
+    private static _3dObject CreateFish(bool isOnScreen)
+    {
+        var fish = JumpingFish.CreateJumpingFish(parentSurface: null!);
+        fish.ObjectOffsets = new Vector3 { x = InitialX, y = InitialY, z = InitialZ };
+        fish.WorldPosition = new Vector3();
+        fish.Rotation = new Vector3();
+        fish.IsOnScreen = isOnScreen;
+        return fish;
+    }
+
+    private static void MoveOneFrame(JumpingFishControls controls, I3dObject fish)
+    {
+        GameState.DeltaTime = 0.1f;
+        controls.MoveObject(fish, null, null);
+    }
+
+    private static void AdvanceFrames(JumpingFishControls controls, I3dObject fish, int frameCount)
+    {
+        for (int i = 0; i < frameCount; i++)
+            MoveOneFrame(controls, fish);
+    }
+
+    private static int CountVisibleTailParts(I3dObject fish, string prefix)
+    {
+        int count = 0;
+        foreach (var part in fish.ObjectParts)
+        {
+            if (part.PartName?.StartsWith(prefix, StringComparison.Ordinal) == true && part.IsVisible)
+                count++;
+        }
+
+        return count;
+    }
+
+    private static int GetVisibleTailFrame(I3dObject fish, string prefix)
+    {
+        foreach (var part in fish.ObjectParts)
+        {
+            if (part.PartName?.StartsWith(prefix, StringComparison.Ordinal) != true || !part.IsVisible)
+                continue;
+
+            string frameText = part.PartName.Substring(prefix.Length);
+            return int.Parse(frameText);
+        }
+
+        return -1;
+    }
+
+    private static bool HasBlueParticle(I3dObject fish)
+    {
+        if (fish.Particles == null)
+            return false;
+
+        foreach (var particle in fish.Particles.Particles)
+        {
+            string color = particle.ParticleTriangle.Color;
+            if (color.Length < 6)
+                continue;
+
+            int red = Convert.ToInt32(color.Substring(0, 2), 16);
+            int green = Convert.ToInt32(color.Substring(2, 2), 16);
+            int blue = Convert.ToInt32(color.Substring(4, 2), 16);
+            if (blue > red && blue >= green)
+                return true;
+        }
+
+        return false;
+    }
+
+    private static void AssertSplashStartsNearWaterline(IParticle particle, string message)
+    {
+        Assert.IsNotNull(particle.Position);
+        Assert.IsTrue(
+            particle.Position!.y > -80f && particle.Position.y < 80f,
+            $"{message} Local particle y was {particle.Position.y:0.##}.");
+    }
+
+    private sealed class CapturingParticles : IParticles
+    {
+        public IObjectMovement ParentShip { get; set; } = null!;
+        public List<IParticle> Particles { get; set; } = new();
+        public float LifeMultiplier { get; set; } = 1f;
+        public int MaxParticlesOverride { get; set; }
+        public int ReleaseCount { get; private set; }
+        public bool? LastExplosionFlag { get; private set; }
+        public float LastUpwardVelocityBoost { get; private set; }
+
+        public void ReleaseParticles(
+            ITriangleMeshWithColor Trajectory,
+            ITriangleMeshWithColor StartPosition,
+            IVector3 WorldPosition,
+            IObjectMovement ParentShip,
+            int Thrust,
+            bool? explosion,
+            float upwardVelocityBoost = 0f)
+        {
+            ReleaseCount++;
+            LastExplosionFlag = explosion;
+            LastUpwardVelocityBoost = upwardVelocityBoost;
+        }
+
+        public void MoveParticles()
+        {
+        }
+    }
+}

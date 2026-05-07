@@ -1,11 +1,9 @@
-﻿using _3dTesting._Coordinates;
+using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonSetup;
-using Domain;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting._3dRotation
@@ -19,9 +17,22 @@ namespace _3dTesting._3dRotation
 
         public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, long? currentFrame)
         {
+            return ConvertTo2dFromObjects(inhabitants, currentFrame, null);
+        }
+
+        public List<_2dTriangleMesh> ConvertTo2dFromObjects(
+            List<_3dObject> inhabitants,
+            long? currentFrame,
+            List<_2dTriangleMesh>? reusableResult)
+        {
             //If available use global framecounter
             if (currentFrame > 0) CurrentFrame = (long)currentFrame;
-            var screenCoordinates = new List<_2dTriangleMesh>(inhabitants.Count * 2);
+            var screenCoordinates = reusableResult ?? new List<_2dTriangleMesh>(inhabitants.Count * 2);
+            screenCoordinates.Clear();
+
+            int expectedCapacity = inhabitants.Count * 2;
+            if (screenCoordinates.Capacity < expectedCapacity)
+                screenCoordinates.Capacity = expectedCapacity;
 
             foreach (var obj in inhabitants)
             {
@@ -33,8 +44,8 @@ namespace _3dTesting._3dRotation
                 //Standard 3d Rendring
                 ConvertObjectTo2d(obj, screenX, screenY, screenZ, screenCoordinates);
 
-                if (obj.CrashBoxDebugMode!=null && (bool)obj.CrashBoxDebugMode)
-                { 
+                if (obj.CrashBoxDebugMode != null && (bool)obj.CrashBoxDebugMode)
+                {
                     //Debug visualization of crashboxes
                     ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ, screenCoordinates);
                 }

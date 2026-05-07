@@ -41,7 +41,7 @@ public class MotherShipMediumWingEngineParticleTests
 
         public readonly List<(ITriangleMeshWithColor trajectory, ITriangleMeshWithColor start)> Calls = new();
 
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion)
+        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion, float upwardVelocityBoost = 0f)
         {
             Calls.Add((Trajectory, StartPosition));
         }

@@ -1,4 +1,4 @@
-﻿using _3dTesting._3dWorld;
+using _3dTesting._3dWorld;
 using CommonUtilities._3DHelpers;
 using Domain;
 using System;
@@ -15,7 +15,14 @@ namespace _3dTesting.Helpers
 
         private static ITriangleMeshWithColor? GetSurfaceTriangle(_3dObject obj)
         {
-            return obj?.ParentSurface?.RotatedSurfaceTriangles
+            var surface = obj?.ParentSurface;
+            if (surface == null || obj?.SurfaceBasedId == null)
+                return null;
+
+            if (surface.RotatedSurfaceTriangleByLandId.TryGetValue(obj.SurfaceBasedId.Value, out var cachedTriangle))
+                return cachedTriangle;
+
+            return surface.RotatedSurfaceTriangles
                 .FirstOrDefault(t => t.landBasedPosition == obj.SurfaceBasedId);
         }
 

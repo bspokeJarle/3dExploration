@@ -1,4 +1,4 @@
-﻿using CommonUtilities._3DHelpers;
+using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
@@ -317,6 +317,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 explosionWorldPosition = new Vector3 { x = wp.x, y = wp.y, z = wp.z };
                 var oo = theObject.ObjectOffsets;
                 explosionObjectOffsets = new Vector3 { x = oo.x, y = oo.y, z = oo.z };
+                ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
                 // Handle object destruction or other logic here
                 var explodedVersion = Physics.ExplodeObject(theObject, ExplosionForce);
                 //Remove Crash boxes to avoid further collisions

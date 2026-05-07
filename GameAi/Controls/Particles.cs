@@ -1,4 +1,4 @@
-﻿using Domain;
+using Domain;
 using static Domain._3dSpecificsImplementations;
 using System.Collections.Generic;
 using System;
@@ -37,6 +37,10 @@ public class ParticlesAI : IParticles
     public bool EnableParticleLogging { get; set; } = false;
     public float LifeMultiplier { get; set; } = 1.0f;
     public int MaxParticlesOverride { get; set; } = 0;
+    public string? ColorStartOverride { get; set; }
+    public string? ColorMidOverride { get; set; }
+    public string? ColorEndOverride { get; set; }
+    public float ExplosionStartYOffset { get; set; } = -150f;
 
     private DateTime _lastUpdateTime = DateTime.UtcNow;
     private bool _burstActive = true;
@@ -67,7 +71,7 @@ public class ParticlesAI : IParticles
                 float lifeProgress = (float)(currentTicks - particle.BirthTime.Ticks - particle.VariedStart) / lifeTicks;
 
                 particle.Size = ApplyFade(particle.Size, lifeProgress);
-                particle.ParticleTriangle.Color = GetColorByLifeProgress(lifeProgress);
+                particle.ParticleTriangle.Color = GetColorByLifeProgress(lifeProgress, particle);
                 if (Logger.EnableFileLogging && EnableParticleLogging)
                 {
                     Logger.Log($"Particle Color: {particle.ParticleTriangle.Color}");
@@ -173,10 +177,28 @@ public class ParticlesAI : IParticles
     private static float ApplyFade(float size, float progress) => size * (1.0f - FadeFactor * progress);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static string GetColorByLifeProgress(float progress)
+    private string GetColorByLifeProgress(float progress, IParticle? particle = null)
     {
         // Clamp the progress between 0 and 1
         progress = Clamp(progress, 0f, 1f);
+
+        string? colorStartOverride = ColorStartOverride;
+        string? colorMidOverride = ColorMidOverride;
+        string? colorEndOverride = ColorEndOverride;
+        if (particle is Particle concreteParticle)
+        {
+            colorStartOverride = concreteParticle.ColorStartOverride ?? colorStartOverride;
+            colorMidOverride = concreteParticle.ColorMidOverride ?? colorMidOverride;
+            colorEndOverride = concreteParticle.ColorEndOverride ?? colorEndOverride;
+        }
+
+        if (colorStartOverride != null && colorMidOverride != null && colorEndOverride != null)
+        {
+            if (progress < 0.5f)
+                return LerpColorHex(colorStartOverride, colorMidOverride, progress / 0.5f);
+
+            return LerpColorHex(colorMidOverride, colorEndOverride, (progress - 0.5f) / 0.5f);
+        }
 
         int r, g, b;
 
@@ -200,6 +222,34 @@ public class ParticlesAI : IParticles
         return $"{PhysicsHelpers.ClampColor(r):X2}{PhysicsHelpers.ClampColor(g):X2}{PhysicsHelpers.ClampColor(b):X2}".ToLower();
     }
 
+    private static string LerpColorHex(string fromHex, string toHex, float amount)
+    {
+        amount = Clamp(amount, 0f, 1f);
+        ParseHexColor(fromHex, out int fromR, out int fromG, out int fromB);
+        ParseHexColor(toHex, out int toR, out int toG, out int toB);
+
+        int r = (int)MathF.Round(fromR + (toR - fromR) * amount);
+        int g = (int)MathF.Round(fromG + (toG - fromG) * amount);
+        int b = (int)MathF.Round(fromB + (toB - fromB) * amount);
+        return $"{PhysicsHelpers.ClampColor(r):X2}{PhysicsHelpers.ClampColor(g):X2}{PhysicsHelpers.ClampColor(b):X2}".ToLower();
+    }
+
+    private static void ParseHexColor(string hex, out int r, out int g, out int b)
+    {
+        hex = (hex ?? string.Empty).Trim().TrimStart('#');
+        if (hex.Length < 6)
+        {
+            r = 255;
+            g = 255;
+            b = 255;
+            return;
+        }
+
+        r = Convert.ToInt32(hex.Substring(0, 2), 16);
+        g = Convert.ToInt32(hex.Substring(2, 2), 16);
+        b = Convert.ToInt32(hex.Substring(4, 2), 16);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static float Clamp(float value, float min, float max) => MathF.Min(MathF.Max(value, min), max);
 
@@ -215,7 +265,7 @@ public class ParticlesAI : IParticles
         return new Vector3(x, y, z);
     }
 
-    public void ReleaseParticles(ITriangleMeshWithColor trajectory, ITriangleMeshWithColor startPosition, IVector3 worldPosition, IObjectMovement parentShip, int thrust, bool? explosion)
+    public void ReleaseParticles(ITriangleMeshWithColor trajectory, ITriangleMeshWithColor startPosition, IVector3 worldPosition, IObjectMovement parentShip, int thrust, bool? explosion, float upwardVelocityBoost = 0f)
     {
         if (thrust == 0)
         {
@@ -297,8 +347,7 @@ public class ParticlesAI : IParticles
             (trajectory.vert1.z + trajectory.vert2.z + trajectory.vert3.z) / 3
         );
 
-        //When exploding start the particles a bit further up
-        if (explosion != null && explosion == true) startPos.y -= 150f;
+        if (explosion == true) startPos.y += ExplosionStartYOffset;
 
         if (Logger.EnableFileLogging && EnableParticleLogging)
         {
@@ -329,7 +378,7 @@ public class ParticlesAI : IParticles
                 velocity = new Vector3
                 {
                     x = dir.x * spread,
-                    y = dir.y * spread,
+                    y = dir.y * spread + Math.Max(0f, upwardVelocityBoost),
                     z = dir.z * spread
                 };
             }
@@ -358,6 +407,7 @@ public class ParticlesAI : IParticles
             //Explosion particles should start at the same time
             if (explosion!=null && explosion == true) variedStart = 0;
 
+            string initialColor = GetColorByLifeProgress(0f);
             Particles.Add(new Particle
             {
                 Life = life,
@@ -367,7 +417,7 @@ public class ParticlesAI : IParticles
                 VariedStart = variedStart,
                 ParticleTriangle = new TriangleMeshWithColor
                 {
-                    Color = "eeffee",
+                    Color = initialColor,
                     vert1 = new Vector3 { x = -size / 2, y = -size / 2, z = 0 },
                     vert2 = new Vector3 { x = size / 2, y = -size / 2, z = 0 },
                     vert3 = new Vector3 { x = 0, y = size / 2, z = 0 },
@@ -380,7 +430,10 @@ public class ParticlesAI : IParticles
                 IsRotated = false,
                 Rotation = new Vector3(random.NextInt64(0, 360), random.NextInt64(0, 360), random.NextInt64(0, 360)),
                 RotationSpeed = new Vector3(random.NextInt64(-5, 5), random.NextInt64(-5, 5), random.NextInt64(-5, 5)),
-                Color = "ff0000",
+                Color = initialColor,
+                ColorStartOverride = ColorStartOverride,
+                ColorMidOverride = ColorMidOverride,
+                ColorEndOverride = ColorEndOverride,
                 Visible = false,
                 //Physics = null,
                 Physics = new Physics
@@ -407,6 +460,9 @@ public class Particle : IParticle
     public float Life { get; set; }
     public float Size { get; set; }
     public string Color { get; set; }
+    public string? ColorStartOverride { get; set; }
+    public string? ColorMidOverride { get; set; }
+    public string? ColorEndOverride { get; set; }
     public bool noHidden { get; set; }
     public long VariedStart { get; set; }
     public bool IsRotated { get; set; }

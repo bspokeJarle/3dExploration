@@ -1,4 +1,4 @@
-﻿using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.GamePlayHelpers;
@@ -38,6 +38,32 @@ namespace GameAiAndControls.Helpers
         private static float MaxWorld => (MapSetup.globalMapSize - 1) * (float)TileSize;
 
         private static readonly Random _rng = new Random();
+
+        internal static bool IsBioTerrain(SurfaceData tile)
+        {
+            var terrain = GamePlayHelpers.GetTerrainType(tile.mapDepth, MapSetup.maxHeight);
+            return terrain == TerrainType.Grassland || terrain == TerrainType.Highlands;
+        }
+
+        internal static bool ClearInfectionIfTerrainCannotHostIt(SurfaceState surfaceState, int tileY, int tileX)
+        {
+            var map = surfaceState.Global2DMap;
+            if (map == null) return false;
+
+            int wrappedY = MapCoordinateHelpers.WrapIndex(tileY, map.GetLength(0));
+            int wrappedX = MapCoordinateHelpers.WrapIndex(tileX, map.GetLength(1));
+            var tile = map[wrappedY, wrappedX];
+
+            if (IsBioTerrain(tile)) return false;
+
+            RemoveBioTileFromEcoMap(surfaceState, wrappedY, wrappedX);
+            if (!tile.isInfected) return false;
+
+            tile.isInfected = false;
+            map[wrappedY, wrappedX] = tile;
+            surfaceState.DirtyTiles.Add(new Vector3 { x = wrappedX, y = 0, z = wrappedY });
+            return true;
+        }
 
         internal readonly struct MoveVector
         {
@@ -228,14 +254,16 @@ namespace GameAiAndControls.Helpers
                 if (validateAgainstMap && map != null)
                 {
                     var mapTile = map[tileY, tileX];
-                    if (mapTile.isInfected)
-                    {
-                        skippedNotBio++;
-                        continue;
-                    }
                     var terrain = getTerrainType(mapTile);
                     bool stillBio = terrain == TerrainType.Grassland || terrain == TerrainType.Highlands;
                     if (!stillBio)
+                    {
+                        ClearInfectionIfTerrainCannotHostIt(surfaceState, tileY, tileX);
+                        skippedNotBio++;
+                        continue;
+                    }
+
+                    if (mapTile.isInfected)
                     {
                         skippedNotBio++;
                         continue;
@@ -279,6 +307,35 @@ namespace GameAiAndControls.Helpers
             if (meta.BioTileCount > 0) meta.BioTileCount--;
             eco[screenY, screenX] = meta;
             return meta.BioTileCount;
+        }
+
+        internal static bool RemoveBioTileFromEcoMap(SurfaceState surfaceState, int tileY, int tileX)
+        {
+            int screenY = tileY / TilesPerScreen;
+            int screenX = tileX / TilesPerScreen;
+
+            var eco = surfaceState.ScreenEcoMetas;
+            if ((uint)screenY >= (uint)eco.GetLength(0) || (uint)screenX >= (uint)eco.GetLength(1))
+                return false;
+
+            var meta = eco[screenY, screenX];
+            var bioList = meta.BioTiles;
+            if (bioList == null) return false;
+
+            int worldX = tileX * TileSize;
+            int worldZ = tileY * TileSize;
+            for (int bi = bioList.Count - 1; bi >= 0; bi--)
+            {
+                if (bioList[bi].X == worldX && bioList[bi].Y == worldZ)
+                {
+                    bioList.RemoveAt(bi);
+                    if (meta.BioTileCount > 0) meta.BioTileCount--;
+                    eco[screenY, screenX] = meta;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         internal static Vector3 StepTowardTargetWorldXZ(Vector3 current, Vector3 target, float step)
@@ -329,7 +386,6 @@ namespace GameAiAndControls.Helpers
 
             int mapHeight = map.GetLength(0);
             int mapWidth = map.GetLength(1);
-            int maxHeight = MapSetup.maxHeight;
             long now = DateTime.Now.Ticks;
             long delayTicks = (long)(delaySec * TimeSpan.TicksPerSecond);
 
@@ -393,10 +449,13 @@ namespace GameAiAndControls.Helpers
                     int nz = MapCoordinateHelpers.WrapIndex(tz + d[1], mapHeight);
 
                     var t = map[nz, nx];
-                    if (t.isInfected) continue;
+                    if (!IsBioTerrain(t))
+                    {
+                        ClearInfectionIfTerrainCannotHostIt(surfaceState, nz, nx);
+                        continue;
+                    }
 
-                    var tt = GetTerrainType(t.mapDepth, maxHeight);
-                    if (tt != TerrainType.Grassland && tt != TerrainType.Highlands) continue;
+                    if (t.isInfected) continue;
 
                     // Infect the neighbor tile
                     GameState.GamePlayState.InfectionLevel += 1;

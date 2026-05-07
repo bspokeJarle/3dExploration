@@ -160,6 +160,7 @@ namespace GameAiAndControls.Controls.SpaceSwanControls
                 }
 
                 Physics.UpdateExplosion(theObject, _explosionDeltaTime);
+                ExplosionParticleHelpers.MoveParticles(theObject);
                 if (theObject.ImpactStatus.HasExploded == true)
                 {
                     theObject.ObjectParts = new List<I3dObjectPart>();
@@ -252,6 +253,7 @@ namespace GameAiAndControls.Controls.SpaceSwanControls
             _explosionWorldPosition = new Vector3 { x = wp.x, y = wp.y, z = wp.z };
             var oo = theObject.ObjectOffsets;
             _explosionObjectOffsets = new Vector3 { x = oo.x, y = oo.y, z = oo.z };
+            ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
             Physics.ExplodeObject(theObject, ExplosionForce);
             theObject.CrashBoxes = new List<List<IVector3>>();
             theObject.ImpactStatus.HasCrashed = false;
