@@ -235,11 +235,6 @@ namespace Domain
         public float AimAssistTargetScreenX { get; set; } = 0f;
         public float AimAssistTargetScreenY { get; set; } = 0f;
 
-        // Temporary JumpingFish test indicator.
-        public bool JumpingFishDebugTargetActive { get; set; } = false;
-        public float JumpingFishDebugTargetScreenX { get; set; } = 0f;
-        public float JumpingFishDebugTargetScreenY { get; set; } = 0f;
-
         // PowerUp progression: each collected PowerUp unlocks the next weapon tier
         public int PowerUpsCollected { get; set; } = 0;
         public bool IsDecoyUnlocked => PowerUpsCollected >= 1;
@@ -433,10 +428,6 @@ namespace Domain
             AimAssistTargetActive = false;
             AimAssistTargetScreenX = 0f;
             AimAssistTargetScreenY = 0f;
-
-            JumpingFishDebugTargetActive = false;
-            JumpingFishDebugTargetScreenX = 0f;
-            JumpingFishDebugTargetScreenY = 0f;
 
             SelectedWeapon = WeaponType.Bullet;
             ActivePowerup = "BULLET";

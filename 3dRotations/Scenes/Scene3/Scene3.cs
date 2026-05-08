@@ -314,7 +314,10 @@ namespace _3dRotations.Scene.Scene3
             {
                 int areaIndex = (int)MathF.Floor(i * fishJumpAreas.Count / (float)fishCount);
                 var area = fishJumpAreas[areaIndex];
-                float travelSpan = Math.Max(tileSize * 2f, (area.EndTileX - area.StartTileX - 1) * tileSize);
+                float jumpSpan = Math.Min(tileSize * 2f, Math.Max(tileSize, (area.EndTileX - area.StartTileX - 1) * tileSize));
+                float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
+                float minPathOffsetX = baseOffsetX + ((area.StartTileX - area.CenterTileX) * tileSize);
+                float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
 
                 var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
                 jumpingFish.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
@@ -322,12 +325,12 @@ namespace _3dRotations.Scene.Scene3
                 jumpingFish.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
                 jumpingFish.ObjectOffsets = new Vector3
                 {
-                    x = 75 * ScreenSetup.ScreenScaleX,
+                    x = baseOffsetX,
                     y = 500 * ScreenSetup.ScreenScaleY,
                     z = 400
                 };
                 jumpingFish.ObjectName = "JumpingFish";
-                jumpingFish.Movement = new JumpingFishControls(travelSpan);
+                jumpingFish.Movement = new JumpingFishControls(jumpSpan, minPathOffsetX, maxPathOffsetX);
                 jumpingFish.ImpactStatus = new ImpactStatus { };
                 jumpingFish.CrashBoxDebugMode = false;
                 jumpingFish.CrashBoxes = new List<List<IVector3>>();

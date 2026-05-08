@@ -90,12 +90,6 @@ namespace _3dTesting
         private readonly System.Windows.Shapes.Ellipse _aimAssistInner;
         private const double AimAssistIndicatorSize = 90;
 
-        // Temporary JumpingFish test indicator.
-        private readonly Canvas _jumpingFishDebugCanvas;
-        private readonly System.Windows.Shapes.Ellipse _jumpingFishDebugOuter;
-        private readonly System.Windows.Shapes.Ellipse _jumpingFishDebugInner;
-        private const double JumpingFishDebugIndicatorSize = 72;
-
         private bool isFading = false;
         private bool _isFadingIn = false;
         private int Fps = 0;
@@ -256,35 +250,6 @@ namespace _3dTesting
             _aimAssistCanvas.Children.Add(_aimAssistOuter);
             _aimAssistCanvas.Children.Add(_aimAssistInner);
             mainGrid.Children.Add(_aimAssistCanvas);
-
-            _jumpingFishDebugCanvas = new Canvas
-            {
-                IsHitTestVisible = false,
-                Visibility = Visibility.Collapsed
-            };
-            Panel.SetZIndex(_jumpingFishDebugCanvas, 10);
-
-            _jumpingFishDebugOuter = new System.Windows.Shapes.Ellipse
-            {
-                Width = JumpingFishDebugIndicatorSize,
-                Height = JumpingFishDebugIndicatorSize,
-                Fill = System.Windows.Media.Brushes.Transparent,
-                Stroke = new SolidColorBrush(Color.FromArgb(210, 80, 220, 255)),
-                StrokeThickness = 3
-            };
-
-            _jumpingFishDebugInner = new System.Windows.Shapes.Ellipse
-            {
-                Width = JumpingFishDebugIndicatorSize * 0.5,
-                Height = JumpingFishDebugIndicatorSize * 0.5,
-                Fill = new SolidColorBrush(Color.FromArgb(65, 80, 220, 255)),
-                Stroke = new SolidColorBrush(Color.FromArgb(175, 160, 245, 255)),
-                StrokeThickness = 2
-            };
-
-            _jumpingFishDebugCanvas.Children.Add(_jumpingFishDebugOuter);
-            _jumpingFishDebugCanvas.Children.Add(_jumpingFishDebugInner);
-            mainGrid.Children.Add(_jumpingFishDebugCanvas);
 
             timer.Interval = TimeSpan.FromMilliseconds(8);
             CompositionTarget.Rendering += Handle3dWorldRendering;
@@ -480,8 +445,6 @@ namespace _3dTesting
                 // Aim assist target indicator
                 UpdateAimAssistIndicator(gameplay);
 
-                // Temporary JumpingFish test indicator
-                UpdateJumpingFishDebugIndicator(gameplay);
             }
 
             world.SceneHandler.UpdateFrame(world);
@@ -721,43 +684,6 @@ namespace _3dTesting
             double innerSize = AimAssistIndicatorSize * 0.5;
             Canvas.SetLeft(_aimAssistInner, cx - innerSize / 2);
             Canvas.SetTop(_aimAssistInner, cy - innerSize / 2);
-        }
-
-        private void UpdateJumpingFishDebugIndicator(GamePlayState gameplay)
-        {
-            if (gameplay == null || !gameplay.JumpingFishDebugTargetActive || isFading)
-            {
-                _jumpingFishDebugCanvas.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            if (GameState.ScreenOverlayState.Type != ScreenOverlayType.Game)
-            {
-                _jumpingFishDebugCanvas.Visibility = Visibility.Collapsed;
-                return;
-            }
-
-            double phase = (DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond) % 700.0 / 700.0;
-            double alpha = 0.55 + 0.45 * Math.Sin(phase * Math.PI * 2);
-            byte outerAlpha = (byte)(210 * alpha);
-            byte innerAlpha = (byte)(65 * alpha);
-            byte innerStrokeAlpha = (byte)(175 * alpha);
-
-            _jumpingFishDebugOuter.Stroke = new SolidColorBrush(Color.FromArgb(outerAlpha, 80, 220, 255));
-            _jumpingFishDebugInner.Fill = new SolidColorBrush(Color.FromArgb(innerAlpha, 80, 220, 255));
-            _jumpingFishDebugInner.Stroke = new SolidColorBrush(Color.FromArgb(innerStrokeAlpha, 160, 245, 255));
-
-            _jumpingFishDebugCanvas.Visibility = Visibility.Visible;
-
-            double cx = gameplay.JumpingFishDebugTargetScreenX;
-            double cy = gameplay.JumpingFishDebugTargetScreenY;
-
-            Canvas.SetLeft(_jumpingFishDebugOuter, cx - JumpingFishDebugIndicatorSize / 2);
-            Canvas.SetTop(_jumpingFishDebugOuter, cy - JumpingFishDebugIndicatorSize / 2);
-
-            double innerSize = JumpingFishDebugIndicatorSize * 0.5;
-            Canvas.SetLeft(_jumpingFishDebugInner, cx - innerSize / 2);
-            Canvas.SetTop(_jumpingFishDebugInner, cy - innerSize / 2);
         }
 
         private static string ResolveVideoPath(string clipPath)

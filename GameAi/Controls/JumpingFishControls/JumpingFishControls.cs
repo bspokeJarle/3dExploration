@@ -37,6 +37,10 @@ namespace GameAiAndControls.Controls.JumpingFishControls
         private readonly _3dRotationCommon _rotate = new();
         private readonly Dictionary<string, List<ITriangleMeshWithColor>> _baseTrianglesByPart = new();
         private readonly float _jumpHorizontalSpan;
+        private readonly bool _hasPathBounds;
+        private readonly float _minPathOffsetX;
+        private readonly float _maxPathOffsetX;
+        private readonly int _initialJumpDirection;
 
         private DateTime _lastFrameTime = DateTime.MinValue;
         private float _jumpTimeSeconds;
@@ -59,8 +63,23 @@ namespace GameAiAndControls.Controls.JumpingFishControls
         }
 
         public JumpingFishControls(float jumpHorizontalSpan)
+            : this(jumpHorizontalSpan, 0f, 0f, InitialJumpDirection, hasPathBounds: false)
+        {
+        }
+
+        public JumpingFishControls(float jumpHorizontalSpan, float minPathOffsetX, float maxPathOffsetX, int initialJumpDirection = InitialJumpDirection)
+            : this(jumpHorizontalSpan, minPathOffsetX, maxPathOffsetX, initialJumpDirection, hasPathBounds: true)
+        {
+        }
+
+        private JumpingFishControls(float jumpHorizontalSpan, float minPathOffsetX, float maxPathOffsetX, int initialJumpDirection, bool hasPathBounds)
         {
             _jumpHorizontalSpan = Math.Max(75f, jumpHorizontalSpan);
+            _minPathOffsetX = Math.Min(minPathOffsetX, maxPathOffsetX);
+            _maxPathOffsetX = Math.Max(minPathOffsetX, maxPathOffsetX);
+            _initialJumpDirection = initialJumpDirection < 0 ? -1 : 1;
+            _jumpDirection = _initialJumpDirection;
+            _hasPathBounds = hasPathBounds && (_maxPathOffsetX - _minPathOffsetX) > _jumpHorizontalSpan;
         }
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -76,7 +95,7 @@ namespace GameAiAndControls.Controls.JumpingFishControls
                 bool wrapped = AdvanceJump(deltaSeconds);
                 if (wrapped)
                 {
-                    _jumpDirection *= -1;
+                    AdvanceToNextJumpSegment();
                     _takeoffSplashReleased = false;
                     _landingSplashReleased = false;
                 }
@@ -128,6 +147,33 @@ namespace GameAiAndControls.Controls.JumpingFishControls
             }
 
             return wrapped;
+        }
+
+        private void AdvanceToNextJumpSegment()
+        {
+            if (!_hasPathBounds)
+            {
+                _jumpDirection *= -1;
+                return;
+            }
+
+            float nextBaseOffsetX = _baseOffsetX + (_jumpDirection * _jumpHorizontalSpan);
+            if (CanFitJumpSegment(nextBaseOffsetX))
+            {
+                _baseOffsetX = nextBaseOffsetX;
+                return;
+            }
+
+            float currentLandingX = _baseOffsetX + (_jumpDirection * _jumpHorizontalSpan * 0.5f);
+            _jumpDirection *= -1;
+            _baseOffsetX = currentLandingX + (_jumpDirection * _jumpHorizontalSpan * 0.5f);
+        }
+
+        private bool CanFitJumpSegment(float baseOffsetX)
+        {
+            float halfSpan = _jumpHorizontalSpan * 0.5f;
+            return baseOffsetX - halfSpan >= _minPathOffsetX &&
+                   baseOffsetX + halfSpan <= _maxPathOffsetX;
         }
 
         private void ApplyJumpPose(I3dObject theObject)
@@ -332,6 +378,11 @@ namespace GameAiAndControls.Controls.JumpingFishControls
             _baseOffsetX = theObject.ObjectOffsets?.x ?? 0f;
             _baseOffsetY = theObject.ObjectOffsets?.y ?? 0f;
             _baseOffsetZ = theObject.ObjectOffsets?.z ?? 0f;
+            if (_hasPathBounds)
+                _baseOffsetX = _jumpDirection < 0
+                    ? _maxPathOffsetX - (_jumpHorizontalSpan * 0.5f)
+                    : _minPathOffsetX + (_jumpHorizontalSpan * 0.5f);
+
             _baseInitialized = true;
         }
 
@@ -450,7 +501,7 @@ namespace GameAiAndControls.Controls.JumpingFishControls
             _firstPoseApplied = false;
             _takeoffSplashReleased = false;
             _landingSplashReleased = false;
-            _jumpDirection = InitialJumpDirection;
+            _jumpDirection = _initialJumpDirection;
             StartCoordinates = null;
             GuideCoordinates = null;
         }

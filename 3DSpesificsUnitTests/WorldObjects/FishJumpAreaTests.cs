@@ -83,7 +83,10 @@ public class FishJumpAreaTests
             priorityTileZ: 3);
 
         Assert.AreEqual(1, areas.Count);
-        Assert.IsTrue(areas[0].StartTileX > 10, "Fish should be placed near the visible priority area, not at the first rectangle in the water body.");
+        Assert.IsTrue(areas[0].CenterTileX >= 18, "Fish should be anchored near the visible priority area, not at the first rectangle in the water body.");
+        Assert.AreEqual(2, areas[0].StartTileX);
+        Assert.AreEqual(21, areas[0].EndTileX);
+        Assert.AreEqual(20, areas[0].WidthTiles);
     }
 
     private static SurfaceData[,] CreateLandMap(int size)

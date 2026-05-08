@@ -87,25 +87,30 @@ public class JumpingFishControlsTests
     }
 
     [TestMethod]
-    public void MoveObject_AlternatesJumpDirectionEveryCycle()
+    public void MoveObject_WithPathBounds_ContinuesForwardUntilNearEdgeBeforeTurning()
     {
         var fish = CreateFish(isOnScreen: true);
-        var controls = new JumpingFishControls();
+        var controls = new JumpingFishControls(jumpHorizontalSpan: 100f, minPathOffsetX: -250f, maxPathOffsetX: 250f);
 
         MoveOneFrame(controls, fish);
 
-        Assert.IsTrue(fish.ObjectOffsets!.x > InitialX + 120f, "The first preview jump should start on the right and move left.");
+        Assert.AreEqual(250f, fish.ObjectOffsets!.x, 0.001f, "The bounded fish should start at the right edge.");
         Assert.AreEqual(-90f, fish.Rotation!.z, 0.001f);
 
         AdvanceFrames(controls, fish, 21);
 
-        Assert.IsTrue(fish.ObjectOffsets.x < InitialX - 120f, "The second preview jump should start on the left and move right.");
-        Assert.IsTrue(fish.Rotation.z > -100f && fish.Rotation.z < -80f, "The mirrored jump should still start nose-up.");
+        Assert.IsTrue(fish.ObjectOffsets.x > 100f && fish.ObjectOffsets.x < 180f, "The second jump should continue left instead of immediately turning back.");
+        Assert.IsTrue(fish.Rotation.z < -90f, "The fish should still be moving in the first direction while there is room.");
+
+        AdvanceFrames(controls, fish, 80);
+        float turnStartX = fish.ObjectOffsets.x;
+
+        Assert.IsTrue(turnStartX < -220f, "The fish should only turn after it reaches the left edge.");
+        Assert.IsTrue(fish.Rotation.z > -90f, "After the edge turn, the fish should start a mirrored jump back to the right.");
 
         AdvanceFrames(controls, fish, 10);
 
-        Assert.IsTrue(fish.ObjectOffsets.x > InitialX, "The mirrored jump should move back toward the right side.");
-        Assert.IsTrue(fish.Rotation.z > -30f && fish.Rotation.z < 60f, "The mirrored jump should rotate toward a right-facing arc instead of moving backward.");
+        Assert.IsTrue(fish.ObjectOffsets.x > turnStartX, "After turning at the edge, the fish should move right.");
     }
 
     [TestMethod]

@@ -113,11 +113,6 @@ namespace _3dTesting.MainWindowClasses.Loops
             bool doAiMark = AiUpdateCounter >= AiUpdateInterval;
             if (doAiMark) AiUpdateCounter = 0;
 
-            var gameplayState = GameState.GamePlayState;
-            gameplayState.JumpingFishDebugTargetActive = false;
-            gameplayState.JumpingFishDebugTargetScreenX = 0f;
-            gameplayState.JumpingFishDebugTargetScreenY = 0f;
-
             Dictionary<int, _3dObject> aiById = null;
             if (doAiMark)
             {
@@ -259,7 +254,6 @@ namespace _3dTesting.MainWindowClasses.Loops
             SeederControls.ProcessLocalInfectionSpread(GameState.SurfaceState);
 
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter, projectedCoordinates);
-            UpdateJumpingFishDebugTarget(projectedCoordinates);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             CleanupExplodedObjects(world);
 
@@ -691,30 +685,6 @@ namespace _3dTesting.MainWindowClasses.Loops
             rotatedMesh = Rotate3d.RotateMesh(rotatedMesh, rotation.y, 'Y');
             rotatedMesh = Rotate3d.RotateMesh(rotatedMesh, rotation.x, 'X');
             return rotatedMesh;
-        }
-
-        private static void UpdateJumpingFishDebugTarget(List<_2dTriangleMesh> projectedCoordinates)
-        {
-            var gameplay = GameState.GamePlayState;
-
-            for (int i = 0; i < projectedCoordinates.Count; i++)
-            {
-                var triangle = projectedCoordinates[i];
-                if (triangle.PartName != "FishBody")
-                    continue;
-
-                float screenX = (triangle.X1 + triangle.X2 + triangle.X3) / 3f;
-                float screenY = (triangle.Y1 + triangle.Y2 + triangle.Y3) / 3f;
-                if (screenX < 0 || screenX > ScreenSetup.screenSizeX)
-                    continue;
-                if (screenY < 0 || screenY > ScreenSetup.screenSizeY)
-                    continue;
-
-                gameplay.JumpingFishDebugTargetActive = true;
-                gameplay.JumpingFishDebugTargetScreenX = screenX;
-                gameplay.JumpingFishDebugTargetScreenY = screenY;
-                return;
-            }
         }
 
         private void SetMovementGuides(_3dObject inhabitant, I3dObjectPart part, List<ITriangleMeshWithColor> rotatedMesh)

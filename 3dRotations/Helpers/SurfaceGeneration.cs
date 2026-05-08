@@ -256,17 +256,14 @@ namespace _3dRotations.Helpers
                     if (!IsWaterRectangle(map, maxHeight, x, z, minWidthTiles, minHeightTiles))
                         continue;
 
-                    var candidate = new FishJumpArea
-                    {
-                        CenterTileX = x + (minWidthTiles / 2),
-                        CenterTileZ = z + (minHeightTiles / 2),
-                        StartTileX = x,
-                        EndTileX = x + minWidthTiles - 1,
-                        TileZ = z + (minHeightTiles / 2),
-                        WidthTiles = minWidthTiles,
-                        HeightTiles = minHeightTiles,
-                        ComponentTileCount = component.Count
-                    };
+                    var candidate = CreateExpandedFishJumpArea(
+                        map,
+                        maxHeight,
+                        startX: x,
+                        startZ: z,
+                        width: minWidthTiles,
+                        height: minHeightTiles,
+                        componentTileCount: component.Count);
 
                     if (!hasPriority)
                     {
@@ -296,6 +293,48 @@ namespace _3dRotations.Helpers
             long dx = area.CenterTileX - tileX;
             long dz = area.CenterTileZ - tileZ;
             return (dx * dx) + (dz * dz);
+        }
+
+        private static FishJumpArea CreateExpandedFishJumpArea(
+            SurfaceData[,] map,
+            int maxHeight,
+            int startX,
+            int startZ,
+            int width,
+            int height,
+            int componentTileCount)
+        {
+            int expandedStartX = startX;
+            int expandedEndX = startX + width - 1;
+            while (expandedStartX > 0 && IsWaterColumn(map, maxHeight, expandedStartX - 1, startZ, height))
+                expandedStartX--;
+
+            int mapWidth = map.GetLength(1);
+            while (expandedEndX < mapWidth - 1 && IsWaterColumn(map, maxHeight, expandedEndX + 1, startZ, height))
+                expandedEndX++;
+
+            return new FishJumpArea
+            {
+                CenterTileX = startX + (width / 2),
+                CenterTileZ = startZ + (height / 2),
+                StartTileX = expandedStartX,
+                EndTileX = expandedEndX,
+                TileZ = startZ + (height / 2),
+                WidthTiles = expandedEndX - expandedStartX + 1,
+                HeightTiles = height,
+                ComponentTileCount = componentTileCount
+            };
+        }
+
+        private static bool IsWaterColumn(SurfaceData[,] map, int maxHeight, int x, int startZ, int height)
+        {
+            for (int dz = 0; dz < height; dz++)
+            {
+                if (!IsFishWaterTile(map[startZ + dz, x], maxHeight))
+                    return false;
+            }
+
+            return true;
         }
 
         private static bool IsWaterRectangle(SurfaceData[,] map, int maxHeight, int startX, int startZ, int width, int height)
