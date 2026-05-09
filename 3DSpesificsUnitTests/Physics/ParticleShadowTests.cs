@@ -1,3 +1,5 @@
+using _3dRotations.World.Objects;
+using _3dTesting.MainWindowClasses;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
@@ -8,9 +10,8 @@ namespace _3DSpesificsUnitTests.Physics;
 
 // These tests MIRROR the particle-shadow projection math in
 // 3dTesting\MainWindowClasses\MainWindow.Particles.cs (ParticleManager.HandleParticles).
-// Because the test project cannot reference the WPF Frontend project, the
-// formula is duplicated here; if the production math changes, update these
-// constants/functions to keep parity.
+// The projection formula is duplicated here; if the production math changes,
+// update these constants/functions to keep parity.
 //
 // The tests exist primarily to catch REGRESSIONS of the bug that caused
 // particle shadows to vanish:
@@ -31,6 +32,7 @@ public class ParticleShadowProjectionTests
     private const float AltitudeShrinkFactor = 0.003f;
     private const float ParticleAltitudeProjection = 0.15f;
     private const float MaxParticleAltitudeForProjection = 120f;
+    private const float ParticleShadowMinAltitude = 12f;
     private const float ShadowSlopeX = -0.15f;   // ObjectShadowManager.ShadowSlopeX
     private const float ShadowSlopeY = -0.55f;   // ObjectShadowManager.ShadowSlopeY
 
@@ -43,7 +45,8 @@ public class ParticleShadowProjectionTests
     private static ShadowVerts ProjectShadow(float particleScreenY, float surfaceScreenY,
         float groundLocalX, float groundLocalY, float groundLocalZ)
     {
-        float altitudeRaw = MathF.Max(0f, surfaceScreenY - particleScreenY);
+        float groundScreenY = surfaceScreenY + groundLocalY;
+        float altitudeRaw = MathF.Max(0f, groundScreenY - particleScreenY);
         float altitude = MathF.Min(altitudeRaw, MaxParticleAltitudeForProjection);
         float scale = MathF.Max(MinProjectedScale, BaseProjectedScale - altitudeRaw * AltitudeShrinkFactor);
 
@@ -216,5 +219,122 @@ public class ParticleShadowProjectionTests
         float rightCenterX = (sRight.V1.x + sRight.V2.x) / 2f;
         Assert.IsTrue(rightCenterX - leftCenterX > 399f,
             "Shadow must move with the ground anchor (delta 400) — else it detaches from the particle.");
+    }
+
+    [TestMethod]
+    public void Shadow_UsesGroundLocalYForAltitude()
+    {
+        var flatGround = ProjectShadow(particleScreenY: 480f, surfaceScreenY: 500f,
+            groundLocalX: 0f, groundLocalY: 0f, groundLocalZ: 0f);
+        var lowerGround = ProjectShadow(particleScreenY: 480f, surfaceScreenY: 500f,
+            groundLocalX: 0f, groundLocalY: 40f, groundLocalZ: 0f);
+
+        float flatCenterX = (flatGround.V1.x + flatGround.V2.x) / 2f;
+        float lowerGroundCenterX = (lowerGround.V1.x + lowerGround.V2.x) / 2f;
+
+        Assert.IsTrue(lowerGroundCenterX < flatCenterX,
+            "Altitude should be measured against the actual tile ground Y, not only the surface object's base Y.");
+    }
+
+    [TestMethod]
+    public void ShouldRenderParticleShadow_SuppressesJumpingFishWaterParticles()
+    {
+        bool shouldRender = ParticleManager.ShouldRenderParticleShadow(
+            sourceObjectName: "JumpingFish",
+            particleScreenY: 100f,
+            groundScreenY: 500f);
+
+        Assert.IsFalse(shouldRender, "Water splash particles should not cast ground shadows.");
+    }
+
+    [TestMethod]
+    public void ShouldRenderParticleShadow_SuppressesParticlesAtGroundLevel()
+    {
+        bool shouldRender = ParticleManager.ShouldRenderParticleShadow(
+            sourceObjectName: "ParticleEmitter",
+            particleScreenY: 495f,
+            groundScreenY: 500f);
+
+        Assert.IsFalse(shouldRender,
+            $"Particles within {ParticleShadowMinAltitude} screen units of ground should not cast visible shadows.");
+    }
+
+    [TestMethod]
+    public void ShouldRenderParticleShadow_AllowsAirborneNonWaterParticles()
+    {
+        bool shouldRender = ParticleManager.ShouldRenderParticleShadow(
+            sourceObjectName: "ZeppelinBomber",
+            particleScreenY: 430f,
+            groundScreenY: 500f);
+
+        Assert.IsTrue(shouldRender, "Airborne non-water particles should keep their shadows.");
+    }
+
+    [TestMethod]
+    public void HandleParticles_KeepsSurfaceBasedAnchorForRenderedParticles()
+    {
+        var surface = new Surface
+        {
+            RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>()
+        };
+
+        GameState.SurfaceState.SurfaceViewportObject = new _3dObject
+        {
+            ObjectId = 1,
+            ObjectName = "Surface",
+            ObjectOffsets = new Vector3(),
+            WorldPosition = new Vector3(),
+            Rotation = new Vector3()
+        };
+
+        var source = new _3dObject
+        {
+            ObjectId = 2,
+            ObjectName = "JumpingFish",
+            ParentSurface = surface,
+            SurfaceBasedId = 4242,
+            ObjectOffsets = new Vector3 { x = 10f, y = 20f, z = 30f },
+            WorldPosition = new Vector3(),
+            Rotation = new Vector3(),
+            Particles = new ParticlesAI
+            {
+                Particles = new List<IParticle>
+                {
+                    new Particle
+                    {
+                        ParticleTriangle = CreateParticleTriangle(),
+                        Position = new Vector3 { x = 1f, y = 2f, z = 3f },
+                        WorldPosition = new Vector3(),
+                        Rotation = new Vector3(),
+                        RotationSpeed = new Vector3(),
+                        Velocity = new Vector3(),
+                        Acceleration = new Vector3(),
+                        Color = "d8f6ff",
+                        BirthTime = DateTime.UtcNow,
+                        Visible = true,
+                        ImpactStatus = new ImpactStatus()
+                    }
+                }
+            }
+        };
+
+        var renderedParticles = new List<_3dObject>();
+        new ParticleManager().HandleParticles(source, renderedParticles);
+
+        Assert.AreEqual(1, renderedParticles.Count, "Only the visible particle should be rendered; JumpingFish splash shadows are suppressed.");
+        Assert.AreEqual(source.SurfaceBasedId, renderedParticles[0].SurfaceBasedId,
+            "Particles from surface-based objects must keep the same tile anchor as their source object.");
+    }
+
+    private static TriangleMeshWithColor CreateParticleTriangle()
+    {
+        return new TriangleMeshWithColor
+        {
+            Color = "d8f6ff",
+            noHidden = true,
+            vert1 = new Vector3 { x = -1f, y = -1f, z = 0f },
+            vert2 = new Vector3 { x = 1f, y = -1f, z = 0f },
+            vert3 = new Vector3 { x = 0f, y = 1f, z = 0f }
+        };
     }
 }

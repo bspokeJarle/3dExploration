@@ -68,6 +68,25 @@ public class TerrainAvoidanceTests
         Assert.AreNotEqual(originalX, aiObject.WorldPosition.x, $"{objectName} should steer horizontally away from the tower.");
     }
 
+    [DataTestMethod]
+    [DataRow("LargePalm", 2020)]
+    [DataRow("SmallPalm", 2021)]
+    [DataRow("BambooHut", 2022)]
+    public void TryStartTerrainRecovery_WhenAiHitsLandBasedDecoration_UsesItAsTerrainObstacle(string obstacleObjectName, int objectId)
+    {
+        var aiObject = CreateAiObject(objectId, "Seeder", obstacleObjectName);
+        GameState.SurfaceState.AiObjects.Add(aiObject);
+        var originalY = aiObject.ObjectOffsets!.y;
+
+        var started = TerrainAvoidanceHelpers.TryStartTerrainRecovery(aiObject);
+        var applied = TerrainAvoidanceHelpers.ApplyTerrainRecovery(aiObject, 0.1f);
+
+        Assert.IsTrue(started, $"Seeder should treat {obstacleObjectName} as a passive terrain obstacle for AI avoidance.");
+        Assert.IsTrue(applied, $"Seeder should apply recovery movement away from {obstacleObjectName}.");
+        Assert.IsFalse(aiObject.ImpactStatus!.HasCrashed);
+        Assert.IsTrue(aiObject.ObjectOffsets.y < originalY, $"Seeder should lift away from {obstacleObjectName} contact.");
+    }
+
     [TestMethod]
     public void TryStartTerrainRecovery_WhenObjectIsNotInAiObjects_DoesNotReact()
     {

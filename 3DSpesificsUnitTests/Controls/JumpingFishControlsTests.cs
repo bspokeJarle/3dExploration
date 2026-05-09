@@ -151,6 +151,51 @@ public class JumpingFishControlsTests
         Assert.AreEqual(true, particles.LastExplosionFlag, "Fish splash should still use the explosion-style burst spread.");
     }
 
+    [TestMethod]
+    public void MoveObject_KeepsReleasedSplashParticlesAnchoredToWaterline()
+    {
+        var fish = CreateFish(isOnScreen: true);
+        var particles = new CapturingParticles();
+        fish.Particles = particles;
+        var controls = new JumpingFishControls();
+
+        MoveOneFrame(controls, fish);
+
+        Assert.IsTrue(particles.Particles.Count > 0, "Expected takeoff splash particles.");
+        var particle = particles.Particles[0];
+        float releasedX = fish.ObjectOffsets!.x + particle.Position.x;
+        float releasedY = fish.ObjectOffsets.y + particle.Position.y;
+        float releasedZ = fish.ObjectOffsets.z + particle.Position.z;
+
+        MoveOneFrame(controls, fish);
+
+        Assert.AreEqual(releasedX, fish.ObjectOffsets!.x + particle.Position.x, 0.001f);
+        Assert.AreEqual(releasedY, fish.ObjectOffsets.y + particle.Position.y, 0.001f);
+        Assert.AreEqual(releasedZ, fish.ObjectOffsets.z + particle.Position.z, 0.001f);
+    }
+
+    [TestMethod]
+    public void MoveObject_ReleasesLandingSplashUnderCurrentFishPosition()
+    {
+        var fish = CreateFish(isOnScreen: true);
+        var particles = new CapturingParticles();
+        fish.Particles = particles;
+        var controls = new JumpingFishControls();
+
+        MoveOneFrame(controls, fish);
+        AdvanceFrames(controls, fish, 19);
+
+        Assert.IsTrue(particles.Particles.Count >= 2, "Expected a landing splash particle.");
+        var landingParticle = particles.Particles[1];
+        float splashX = fish.ObjectOffsets!.x + landingParticle.Position.x;
+        float splashY = fish.ObjectOffsets.y + landingParticle.Position.y;
+        float splashZ = fish.ObjectOffsets.z + landingParticle.Position.z;
+
+        Assert.AreEqual(fish.ObjectOffsets.x, splashX, 0.001f, "Landing splash should appear directly under the fish's current X position.");
+        Assert.IsTrue(splashY < InitialY && splashY > InitialY - 30f, $"Landing splash should sit slightly above the waterline. Actual Y: {splashY:0.##}.");
+        Assert.AreEqual(InitialZ, splashZ, 0.001f, "Landing splash should stay on the water surface depth.");
+    }
+
     private static _3dObject CreateFish(bool isOnScreen)
     {
         var fish = JumpingFish.CreateJumpingFish(parentSurface: null!);
@@ -250,10 +295,54 @@ public class JumpingFishControlsTests
             ReleaseCount++;
             LastExplosionFlag = explosion;
             LastUpwardVelocityBoost = upwardVelocityBoost;
+
+            var startPosition = GetTriangleCenter(StartPosition);
+            Particles.Add(new CapturedParticle
+            {
+                ParticleTriangle = StartPosition,
+                Position = startPosition,
+                WorldPosition = new Vector3
+                {
+                    x = WorldPosition.x,
+                    y = WorldPosition.y,
+                    z = WorldPosition.z
+                }
+            });
         }
 
         public void MoveParticles()
         {
         }
+
+        private static Vector3 GetTriangleCenter(ITriangleMeshWithColor triangle)
+        {
+            return new Vector3
+            {
+                x = (triangle.vert1.x + triangle.vert2.x + triangle.vert3.x) / 3f,
+                y = (triangle.vert1.y + triangle.vert2.y + triangle.vert3.y) / 3f,
+                z = (triangle.vert1.z + triangle.vert2.z + triangle.vert3.z) / 3f
+            };
+        }
+    }
+
+    private sealed class CapturedParticle : IParticle
+    {
+        public ITriangleMeshWithColor ParticleTriangle { get; set; } = null!;
+        public IVector3 Velocity { get; set; } = new Vector3();
+        public IVector3 Acceleration { get; set; } = new Vector3();
+        public long VariedStart { get; set; }
+        public float Life { get; set; } = 1f;
+        public float Size { get; set; } = 1f;
+        public string Color { get; set; } = "d8f6ff";
+        public DateTime BirthTime { get; set; } = DateTime.UtcNow;
+        public bool IsRotated { get; set; }
+        public IVector3 Position { get; set; } = new Vector3();
+        public IVector3 WorldPosition { get; set; } = new Vector3();
+        public IVector3? Rotation { get; set; }
+        public IVector3? RotationSpeed { get; set; }
+        public bool? NoShading { get; set; }
+        public bool Visible { get; set; } = true;
+        public IImpactStatus? ImpactStatus { get; set; }
+        public IPhysics? Physics { get; set; }
     }
 }

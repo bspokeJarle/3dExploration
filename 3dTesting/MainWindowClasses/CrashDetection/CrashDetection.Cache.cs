@@ -80,7 +80,12 @@ namespace _3dTesting.Helpers
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsStaticName(string objectName) =>
-            objectName == "Tree" || objectName == "Surface" || objectName == "House";
+            objectName == "Tree" ||
+            objectName == "LargePalm" ||
+            objectName == "SmallPalm" ||
+            objectName == "BambooHut" ||
+            objectName == "Surface" ||
+            objectName == "House";
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsTerrainObstacle(ObjectTypeFlags flags) =>

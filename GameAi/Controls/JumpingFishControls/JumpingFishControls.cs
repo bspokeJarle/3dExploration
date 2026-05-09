@@ -25,6 +25,7 @@ namespace GameAiAndControls.Controls.JumpingFishControls
         private const float LandingSplashPhase = 0.94f;
         private const int SplashParticleThrust = 3;
         private const float SplashUpwardVelocityBoost = 4.5f;
+        private const float SplashSurfaceLift = -12f;
         private const int TailFrameCount = 6;
         private const float TailFramesPerSecond = 14f;
         private const float FinRadiansPerSecond = 11.5f;
@@ -51,6 +52,8 @@ namespace GameAiAndControls.Controls.JumpingFishControls
         private bool _firstPoseApplied;
         private bool _takeoffSplashReleased;
         private bool _landingSplashReleased;
+        private bool _particleAnchorInitialized;
+        private Vector3 _particleAnchorOffsets = new();
         private int _jumpDirection = InitialJumpDirection;
 
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
@@ -108,6 +111,7 @@ namespace GameAiAndControls.Controls.JumpingFishControls
             }
 
             ApplyJumpPose(theObject);
+            AnchorExistingSplashParticles(theObject);
             if (theObject.IsOnScreen)
             {
                 ReleaseSplashParticles(theObject);
@@ -258,7 +262,7 @@ namespace GameAiAndControls.Controls.JumpingFishControls
             if (theObject.Particles == null)
                 return;
 
-            var start = CreateSplashPointTriangle(GetSplashLocalPoint(theObject, landingSplash));
+            var start = CreateSplashPointTriangle(GetSplashLocalPoint(theObject));
             var guide = CreateSplashPointTriangle(new Vector3
             {
                 x = start.vert1.x,
@@ -302,17 +306,56 @@ namespace GameAiAndControls.Controls.JumpingFishControls
                 SplashUpwardVelocityBoost);
         }
 
-        private Vector3 GetSplashLocalPoint(I3dObject theObject, bool landingSplash)
+        private void AnchorExistingSplashParticles(I3dObject theObject)
         {
             var offsets = theObject.ObjectOffsets;
-            if (!landingSplash || offsets == null)
-                return new Vector3();
+            if (offsets == null)
+                return;
 
-            float landingX = _baseOffsetX + (_jumpDirection * _jumpHorizontalSpan * 0.5f);
+            if (!_particleAnchorInitialized)
+            {
+                _particleAnchorOffsets = ToVector3(offsets);
+                _particleAnchorInitialized = true;
+                return;
+            }
+
+            float deltaX = _particleAnchorOffsets.x - offsets.x;
+            float deltaY = _particleAnchorOffsets.y - offsets.y;
+            float deltaZ = _particleAnchorOffsets.z - offsets.z;
+            if (MathF.Abs(deltaX) < 0.001f && MathF.Abs(deltaY) < 0.001f && MathF.Abs(deltaZ) < 0.001f)
+            {
+                _particleAnchorOffsets = ToVector3(offsets);
+                return;
+            }
+
+            var particles = theObject.Particles?.Particles;
+            if (particles != null)
+            {
+                foreach (var particle in particles)
+                {
+                    if (particle.Position == null)
+                        continue;
+
+                    particle.Position.x += deltaX;
+                    particle.Position.y += deltaY;
+                    particle.Position.z += deltaZ;
+                }
+            }
+
+            _particleAnchorOffsets = ToVector3(offsets);
+        }
+
+        private Vector3 GetSplashLocalPoint(I3dObject theObject)
+        {
+            var offsets = theObject.ObjectOffsets;
+
+            if (offsets == null)
+                return new Vector3 { y = SplashSurfaceLift };
+
             return new Vector3
             {
-                x = landingX - offsets.x,
-                y = _baseOffsetY - offsets.y,
+                x = 0f,
+                y = _baseOffsetY - offsets.y + SplashSurfaceLift,
                 z = _baseOffsetZ - offsets.z
             };
         }
@@ -501,6 +544,8 @@ namespace GameAiAndControls.Controls.JumpingFishControls
             _firstPoseApplied = false;
             _takeoffSplashReleased = false;
             _landingSplashReleased = false;
+            _particleAnchorInitialized = false;
+            _particleAnchorOffsets = new Vector3();
             _jumpDirection = _initialJumpDirection;
             StartCoordinates = null;
             GuideCoordinates = null;

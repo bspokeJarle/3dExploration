@@ -450,7 +450,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 }
 
                 currentDronePosition = closestDecoy != null
-                    ? KamikazeDroneMovementHelpers.GetNavigationCrashCenterWorldPosition(theObject)
+                    ? KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(theObject)
                     : KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(theObject);
 
                 if (closestDecoy != null && currentDronePosition is Vector3 dronePositionAfterMove)

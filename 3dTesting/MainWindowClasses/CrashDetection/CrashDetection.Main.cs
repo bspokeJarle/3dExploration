@@ -81,6 +81,9 @@ namespace _3dTesting.Helpers
                     bool isDecoyShipPair =
                         (flagsA.Name == "DroneDecoy" && flagsB.IsShip) ||
                         (flagsB.Name == "DroneDecoy" && flagsA.IsShip);
+                    bool isDecoyParticlePair =
+                        (flagsA.Name == "DroneDecoy" && flagsB.IsParticle) ||
+                        (flagsB.Name == "DroneDecoy" && flagsA.IsParticle);
                     bool isPowerUp = flagsA.Name == "PowerUp" || flagsB.Name == "PowerUp";
                     bool isPowerUpShipPair =
                         (flagsA.Name == "PowerUp" && flagsB.IsShip) ||
@@ -109,6 +112,7 @@ namespace _3dTesting.Helpers
                     if (isBothEnemies) continue;
                     if (isDecoySurfacePair) continue;
                     if (isDecoyShipPair) continue;
+                    if (isDecoyParticlePair) continue;
                     if (isPowerUp && !isPowerUpShipPair) continue;
                     if (isWeaponShipPair) continue;
                     if (isEnemyLazerEnemyPair) continue;

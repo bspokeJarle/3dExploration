@@ -37,6 +37,25 @@ public class ExplosionParticleEffectsTests
     }
 
     [TestMethod]
+    public void CrashDetection_DecoyDoesNotCrashWithParticles()
+    {
+        var decoy = CreateCollisionObject("DroneDecoy", 7203);
+        var particle = CreateCollisionObject("Particle", 7204);
+        particle.ImpactStatus = new ImpactStatus
+        {
+            HasCrashed = false,
+            HasExploded = false,
+            ObjectName = "KamikazeDrone"
+        };
+
+        CrashDetection.HandleCrashboxes(new List<_3dObject> { particle, decoy }, isPaused: false);
+        CrashDetection.HandleCrashboxes(new List<_3dObject> { particle, decoy }, isPaused: false);
+
+        Assert.IsFalse(particle.ImpactStatus!.HasCrashed, "Particles should ignore decoys instead of treating them as collision targets.");
+        Assert.IsFalse(decoy.ImpactStatus!.HasCrashed, "Decoys should not be detonated by explosion particles.");
+    }
+
+    [TestMethod]
     public void DecoyExplosion_DirectHitExplodesWithoutWaitingForTimeout()
     {
         var decoy = CreateExplodingDecoy();
