@@ -30,9 +30,16 @@ public class Scene4BearSpawningTests
 
         var worldBears = world.WorldInhabitants.Where(o => o.ObjectName == "PolarBear").ToList();
         var aiBears = GameState.SurfaceState.AiObjects.Where(o => o.ObjectName == "PolarBear").ToList();
+        var snowEmitters = world.WorldInhabitants.Where(o => o.ObjectName == "SnowEmitter").ToList();
 
-        Assert.IsTrue(worldBears.Count > 0, "Scene4 should spawn at least one polar bear.");
+        Assert.AreEqual(1, snowEmitters.Count, "Winter scene should add exactly one snow emitter.");
+        Assert.AreEqual(0, snowEmitters[0].CrashBoxes.Count, "Snow should not participate in crash detection.");
+        Assert.IsNull(snowEmitters[0].Particles, "Snow is rendered by the scene-owned emitter, not a global particle system.");
+        Assert.AreEqual(Scene4.TargetPatrolPolarBearCount + 1, worldBears.Count, "Scene4 should spawn one guaranteed bear plus the configured patrol bear target.");
         Assert.AreEqual(worldBears.Count, aiBears.Count, "Spawned polar bears should also be tracked in AiObjects.");
+        Assert.AreEqual(worldBears.Count, scene.PolarBearPlacements.Count, "Scene4 should report every spawned polar bear placement.");
+        Assert.AreEqual(1, scene.PolarBearPlacements.Count(p => p.Source == "Guaranteed"), "Scene4 should report one guaranteed bear placement.");
+        Assert.AreEqual(Scene4.TargetPatrolPolarBearCount, scene.PolarBearPlacements.Count(p => p.Source == "Patrol"), "Scene4 should report all patrol bear placements.");
         Assert.IsTrue(worldBears.All(b => (b.SurfaceBasedId ?? 0) > 0), "Polar bears should be surface-based placements.");
 
         var map = GameState.SurfaceState.Global2DMap!;

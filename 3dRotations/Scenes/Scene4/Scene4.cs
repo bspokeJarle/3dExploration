@@ -20,6 +20,10 @@ namespace _3dRotations.Scene.Scene4
     public class Scene4 : IScene
     {
         Surface Surface = new();
+        public const int TargetPatrolPolarBearCount = 30;
+        private readonly List<PolarBearPlacementInfo> _polarBearPlacements = new();
+
+        public IReadOnlyList<PolarBearPlacementInfo> PolarBearPlacements => _polarBearPlacements;
 
         public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
@@ -203,6 +207,9 @@ namespace _3dRotations.Scene.Scene4
             world.WorldInhabitants.Add(surfaceObject);
             GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
 
+            if (SceneBiome == SceneBiomeTypes.Winter)
+                world.WorldInhabitants.Add(SnowEmitter.CreateSnowEmitter(Surface));
+
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
 
             SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
@@ -275,6 +282,8 @@ namespace _3dRotations.Scene.Scene4
             if (map == null)
                 return;
 
+            _polarBearPlacements.Clear();
+
             int sizeZ = map.GetLength(0);
             int sizeX = map.GetLength(1);
             int patrolWidthTiles = 8;
@@ -296,21 +305,43 @@ namespace _3dRotations.Scene.Scene4
                     if (map[z, x].mapDepth > maxHeight) maxHeight = map[z, x].mapDepth;
 
             var patrolAreas = new List<(int centerX, int centerZ, int startX, int endX)>();
-            for (int z = 1; z < sizeZ - patrolHeightTiles - 1; z += patrolHeightTiles)
+            var patrolAreaKeys = new HashSet<int>();
+
+            void AddPatrolAreas(int areaMaxHeightDelta, bool requireFlatArea)
             {
-                for (int x = 1; x < sizeX - patrolWidthTiles - 1; x += patrolWidthTiles)
+                for (int z = 1; z < sizeZ - patrolHeightTiles - 1; z += patrolHeightTiles)
                 {
-                    int areaCenterX = x + (patrolWidthTiles / 2);
-                    int areaCenterZ = z + (patrolHeightTiles / 2);
-                    if (IsInsideLandingPlatformOrBuffer(areaCenterX, areaCenterZ, landingTopLeftX, landingTopLeftZ, landingAreaSize, landingBufferTiles))
-                        continue;
+                    for (int x = 1; x < sizeX - patrolWidthTiles - 1; x += patrolWidthTiles)
+                    {
+                        int key = (z * sizeX) + x;
+                        if (patrolAreaKeys.Contains(key))
+                            continue;
 
-                    if (!IsLandFlatArea(map, x, z, patrolWidthTiles, patrolHeightTiles, maxHeightDelta, maxHeight))
-                        continue;
+                        int areaCenterX = x + (patrolWidthTiles / 2);
+                        int areaCenterZ = z + (patrolHeightTiles / 2);
+                        if (IsInsideLandingPlatformOrBuffer(areaCenterX, areaCenterZ, landingTopLeftX, landingTopLeftZ, landingAreaSize, landingBufferTiles))
+                            continue;
 
-                    patrolAreas.Add((areaCenterX, areaCenterZ, x, x + patrolWidthTiles - 1));
+                        bool isValidArea = requireFlatArea
+                            ? IsLandFlatArea(map, x, z, patrolWidthTiles, patrolHeightTiles, areaMaxHeightDelta, maxHeight)
+                            : TryFindNearestDryLandTile(map, maxHeight, areaCenterX, areaCenterZ, out _, out _);
+
+                        if (!isValidArea)
+                            continue;
+
+                        patrolAreaKeys.Add(key);
+                        patrolAreas.Add((areaCenterX, areaCenterZ, x, x + patrolWidthTiles - 1));
+                    }
                 }
             }
+
+            AddPatrolAreas(maxHeightDelta, requireFlatArea: true);
+            if (patrolAreas.Count < TargetPatrolPolarBearCount)
+                AddPatrolAreas(areaMaxHeightDelta: 20, requireFlatArea: true);
+            if (patrolAreas.Count < TargetPatrolPolarBearCount)
+                AddPatrolAreas(areaMaxHeightDelta: 32, requireFlatArea: true);
+            if (patrolAreas.Count < TargetPatrolPolarBearCount)
+                AddPatrolAreas(areaMaxHeightDelta: 0, requireFlatArea: false);
 
             patrolAreas.Sort((a, b) =>
             {
@@ -356,13 +387,13 @@ namespace _3dRotations.Scene.Scene4
                 }
             }
 
-            int bearCount = Math.Min(12, patrolAreas.Count);
             int tileSize = Surface.TileSize();
             float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
 
             SpawnGuaranteedBear(world, map, sizeX, sizeZ, mapCenterX, mapCenterZ, guaranteedCenterX, guaranteedCenterZ, baseOffsetX, tileSize, patrolWidthTiles, maxHeight);
 
-            for (int i = 0; i < bearCount; i++)
+            int patrolBearsPlaced = 0;
+            for (int i = 0; i < patrolAreas.Count && patrolBearsPlaced < TargetPatrolPolarBearCount; i++)
             {
                 int areaIndex = i;
                 var area = patrolAreas[areaIndex];
@@ -408,7 +439,18 @@ namespace _3dRotations.Scene.Scene4
 
                 world.WorldInhabitants.Add(polarBear);
                 GameState.SurfaceState.AiObjects.Add(polarBear);
+                map[tileZ, tileX].hasLandbasedObject = true;
+                patrolBearsPlaced++;
+                _polarBearPlacements.Add(new PolarBearPlacementInfo(
+                    "Patrol",
+                    tileX,
+                    tileZ,
+                    fallbackMapId,
+                    minPathOffsetX,
+                    maxPathOffsetX));
             }
+
+            LogPolarBearPlacements(patrolAreas.Count, patrolBearsPlaced);
         }
 
         private void SpawnGuaranteedBear(
@@ -458,6 +500,29 @@ namespace _3dRotations.Scene.Scene4
 
             world.WorldInhabitants.Add(guaranteedBear);
             GameState.SurfaceState.AiObjects.Add(guaranteedBear);
+            map[tileZ, tileX].hasLandbasedObject = true;
+            _polarBearPlacements.Add(new PolarBearPlacementInfo(
+                "Guaranteed",
+                tileX,
+                tileZ,
+                mapId,
+                minPathOffsetX,
+                maxPathOffsetX));
+        }
+
+        private void LogPolarBearPlacements(int patrolCandidateCount, int patrolBearsPlaced)
+        {
+            Logger.Log(
+                $"Scene4 polar bears placed: total={_polarBearPlacements.Count}, guaranteed={_polarBearPlacements.FindAll(p => p.Source == "Guaranteed").Count}, patrol={patrolBearsPlaced}/{TargetPatrolPolarBearCount}, patrolCandidates={patrolCandidateCount}",
+                "Scene4");
+
+            for (int i = 0; i < _polarBearPlacements.Count; i++)
+            {
+                var p = _polarBearPlacements[i];
+                Logger.Log(
+                    $"PolarBear[{i + 1}] source={p.Source}; tile=({p.TileX},{p.TileZ}); mapId={p.MapId}; pathX=({p.MinPathOffsetX:0.##},{p.MaxPathOffsetX:0.##})",
+                    "Scene4");
+            }
         }
 
         private static bool IsInsideLandingPlatformOrBuffer(int x, int z, int landingTopLeftX, int landingTopLeftZ, int landingSize, int buffer)
@@ -627,5 +692,13 @@ namespace _3dRotations.Scene.Scene4
         {
             throw new NotImplementedException();
         }
+
+        public readonly record struct PolarBearPlacementInfo(
+            string Source,
+            int TileX,
+            int TileZ,
+            int MapId,
+            float MinPathOffsetX,
+            float MaxPathOffsetX);
     }
 }
