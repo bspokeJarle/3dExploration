@@ -36,6 +36,12 @@ namespace GameAiAndControls.Controls
         private const float TravelAheadRecycleDistance = 3800f;
         private const int DirectionalSpawnModulo = 5;
 
+        /// <summary>
+        /// Controls snow visibility (1 = fully visible, 0 = fully hidden).
+        /// Set each frame from outside based on star field opacity.
+        /// </summary>
+        public static float GlobalSnowOpacity { get; set; } = 1f;
+
         private readonly Random _random = new();
         private readonly List<Snowflake> _flakes = new(TargetFlakeCount);
         private bool _hasLastMapPosition;
@@ -235,13 +241,24 @@ namespace GameAiAndControls.Controls
 
         private static void WriteTriangle(ITriangleMeshWithColor triangle, Snowflake flake, IVector3 mapPosition, float objectZ)
         {
+            float opacity = GlobalSnowOpacity;
+            if (opacity <= 0.01f)
+            {
+                // Collapse the triangle to a single point so it is invisible
+                triangle.vert1.x = triangle.vert2.x = triangle.vert3.x = 0f;
+                triangle.vert1.y = triangle.vert2.y = triangle.vert3.y = 0f;
+                triangle.vert1.z = triangle.vert2.z = triangle.vert3.z = 0f;
+                triangle.angle = 0f;
+                return;
+            }
+
             float relativeX = flake.WorldX - mapPosition.x;
             float relativeZ = flake.WorldZ - mapPosition.z;
 
             float scale = GetProjectionScale(relativeZ, objectZ);
             float centerX = relativeX / scale;
             float centerY = flake.OffsetY / scale;
-            float halfSize = flake.Size;
+            float halfSize = flake.Size * opacity;
 
             triangle.Color = SnowColor;
             triangle.noHidden = true;

@@ -102,6 +102,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             {
                 StarFieldHandler.GenerateStarfield();
                 if (StarFieldHandler.HasStars()) deepCopiedWorld.AddRange(StarFieldHandler.GetStars());
+                SnowfallControls.GlobalSnowOpacity = 1f - StarFieldHandler.PoolOpacity;
             }
 
             var particleObjectList = new List<_3dObject>();
@@ -122,7 +123,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             foreach (var inhabitant in deepCopiedWorld)
             {
-                if (!inhabitant.CheckInhabitantVisibility()) continue;
+                if (inhabitant.ObjectName != "Star" && !inhabitant.CheckInhabitantVisibility()) continue;
                 inhabitant.IsOnScreen = true;
                 if (doAiMark)
                 {

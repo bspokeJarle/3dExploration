@@ -36,7 +36,7 @@ namespace _3dTesting._3dRotation
 
             foreach (var obj in inhabitants)
             {
-                if (obj == null || !obj.CheckInhabitantVisibility()) continue;
+                if (obj == null || (obj.ObjectName != "Star" && !obj.CheckInhabitantVisibility())) continue;
 
                 if (!ObjectPlacementHelpers.TryGetRenderPosition(obj, screenCenterX, screenCenterY, out double screenX, out double screenY, out double screenZ))
                     continue;
