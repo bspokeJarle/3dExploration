@@ -73,6 +73,9 @@
     <None Update="Soundeffects\Kanpai!_Battle.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Soundeffects\OmegaStrain_Bear_Growl.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\OmegaStrain_Bullet.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

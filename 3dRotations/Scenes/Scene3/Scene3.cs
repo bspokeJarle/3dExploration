@@ -23,6 +23,7 @@ namespace _3dRotations.Scene.Scene3
 
         public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
+        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Rainforrest;
         public ISceneDirector Director { get; } = new Scene3Director();
         public GameModes GameMode { get; } = GameModes.Live;
         public float InfectionThresholdPercent { get; } = 8f;

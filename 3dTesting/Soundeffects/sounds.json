@@ -628,6 +628,32 @@
       }
     },
     {
+      "id": "bear_growl",
+      "usage": "BearGrowl",
+      "file": "OmegaStrain_Bear_Growl.wav",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 2.0,
+        "end": 2.0
+      },
+
+      "settings": {
+        "volume": 2.4,
+        "maxVoices": 3,
+        "is3D": true,
+        "priority": 120
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.03, 0.03 ],
+        "min": 0.95,
+        "max": 1.05
+      }
+    },
+    {
       "id": "ship_thud",
       "usage": "ShipThud",
       "file": "OmegaStrain_ship_thud.wav",

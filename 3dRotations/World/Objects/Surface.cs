@@ -226,6 +226,16 @@ namespace _3dRotations.World.Objects
             return $"{r:X2}{g:X2}{b:X2}";
         }
 
+        public static System.Windows.Media.Color GetTileColorGradientColor(int height, int maxHeight)
+        {
+            GetTileColorGradientRgb(height, maxHeight, out int r, out int g, out int b);
+            return System.Windows.Media.Color.FromArgb(
+                255,
+                (byte)Math.Clamp(r, 0, 255),
+                (byte)Math.Clamp(g, 0, 255),
+                (byte)Math.Clamp(b, 0, 255));
+        }
+
         private static bool IsInfectableTerrain(int height, int maxHeight)
         {
             var terrain = GamePlayHelpers.GetTerrainType(height, maxHeight);
@@ -235,6 +245,125 @@ namespace _3dRotations.World.Objects
 
         private static void GetTileColorGradientRgb(int height, int maxHeight, out int red, out int green, out int blue)
         {
+            var biome = GameState.SurfaceState.SceneBiome;
+
+            if (biome == SceneBiomeTypes.Winter)
+            {
+                if (height < maxHeight * 0.05)
+                {
+                    red = 25;
+                    green = 55;
+                    blue = 165;
+                }
+                else if (height < maxHeight * 0.15)
+                {
+                    red = 60;
+                    green = 110;
+                    blue = 210;
+                }
+                else if (height < maxHeight * 0.4)
+                {
+                    red = 215;
+                    green = 230;
+                    blue = 240;
+                }
+                else if (height < maxHeight * 0.7)
+                {
+                    red = 195;
+                    green = 210;
+                    blue = 225;
+                }
+                else
+                {
+                    red = 235;
+                    green = 240;
+                    blue = 245;
+                }
+
+                red = Math.Clamp(red, 0, 255);
+                green = Math.Clamp(green, 0, 255);
+                blue = Math.Clamp(blue, 0, 255);
+                return;
+            }
+
+            if (biome == SceneBiomeTypes.Rainforrest)
+            {
+                if (height < maxHeight * 0.05)
+                {
+                    red = 0;
+                    green = 24;
+                    blue = 170;
+                }
+                else if (height < maxHeight * 0.15)
+                {
+                    red = 0;
+                    green = 95;
+                    blue = 235;
+                }
+                else if (height < maxHeight * 0.4)
+                {
+                    red = 20;
+                    green = 190;
+                    blue = 45;
+                }
+                else if (height < maxHeight * 0.7)
+                {
+                    red = 120;
+                    green = 95;
+                    blue = 35;
+                }
+                else
+                {
+                    red = 125;
+                    green = 145;
+                    blue = 130;
+                }
+
+                red = Math.Clamp(red, 0, 255);
+                green = Math.Clamp(green, 0, 255);
+                blue = Math.Clamp(blue, 0, 255);
+                return;
+            }
+
+            if (biome == SceneBiomeTypes.Desert)
+            {
+                if (height < maxHeight * 0.05)
+                {
+                    red = 20;
+                    green = 55;
+                    blue = 165;
+                }
+                else if (height < maxHeight * 0.15)
+                {
+                    red = 60;
+                    green = 125;
+                    blue = 220;
+                }
+                else if (height < maxHeight * 0.4)
+                {
+                    red = 205;
+                    green = 175;
+                    blue = 95;
+                }
+                else if (height < maxHeight * 0.7)
+                {
+                    red = 185;
+                    green = 145;
+                    blue = 80;
+                }
+                else
+                {
+                    red = 170;
+                    green = 155;
+                    blue = 135;
+                }
+
+                red = Math.Clamp(red, 0, 255);
+                green = Math.Clamp(green, 0, 255);
+                blue = Math.Clamp(blue, 0, 255);
+                return;
+            }
+
 
             if (height < maxHeight * 0.05) // Deep Ocean (Very Dark Blue)
             {

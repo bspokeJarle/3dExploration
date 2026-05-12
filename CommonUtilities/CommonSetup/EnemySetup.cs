@@ -32,7 +32,8 @@ namespace CommonUtilities.CommonSetup
             "MotherShipSmall",
             "MotherShipMedium",
             "MotherShipLarge",
-            "SpaceSwan"
+            "SpaceSwan",
+            "PolarBear"
         };
 
         public static bool IsEnemyTypeValid(string objectName)

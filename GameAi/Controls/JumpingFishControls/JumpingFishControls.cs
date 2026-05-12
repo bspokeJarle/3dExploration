@@ -29,7 +29,7 @@ namespace GameAiAndControls.Controls.JumpingFishControls
         private const int TailFrameCount = 6;
         private const float TailFramesPerSecond = 14f;
         private const float FinRadiansPerSecond = 11.5f;
-        private const float PectoralFinAmplitude = 18f;
+        private const float PectoralFinAmplitude = 26f;
 
         private const float LeftFinPivotY = -7.2f;
         private const float RightFinPivotY = 7.2f;

@@ -22,6 +22,7 @@ namespace _3dRotations.Scene.Scene6
 
         public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
+        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
         public ISceneDirector Director { get; } = new Scene6Director();
         public GameModes GameMode { get; } = GameModes.Live;
 

@@ -20,6 +20,9 @@ namespace CommonUtilities.Persistence
         public int SeedersRemaining { get; set; }
         public int DronesRemaining { get; set; }
         public int MotherShipsRemaining { get; set; }
+        public int InitialSeeders { get; set; }
+        public int InitialDrones { get; set; }
+        public int InitialMotherShips { get; set; }
 
         // Combat statistics
         public int TotalShotsFired { get; set; }

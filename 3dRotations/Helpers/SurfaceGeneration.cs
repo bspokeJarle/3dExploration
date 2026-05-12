@@ -2,6 +2,7 @@ using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.GamePlayHelpers;
 using Domain;
+using _3dRotations.World.Objects;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -568,7 +569,7 @@ namespace _3dRotations.Helpers
                 for (int j = 0; j < mapSize; j++)
                 {
                     int height = terrainMap[i, j].mapDepth;
-                    Color color = GetTileColor(height, maxHeight);
+                    Color color = Surface.GetTileColorGradientColor(height, maxHeight);
 
                     int index = (i * mapSize + j) * 4;
                     pixelData[index] = color.B;
@@ -1369,50 +1370,6 @@ namespace _3dRotations.Helpers
         }
 
         //------------------------------------------------------------- End Tower Placement
-
-        public static Color GetTileColor(int height, int maxHeight)
-        {
-            int red, green, blue;
-
-            if (height < maxHeight * 0.05)
-            {
-                red = 0;
-                green = 0;
-                blue = 180 + (int)((height / (maxHeight * 0.05)) * 75);
-            }
-            else if (height < maxHeight * 0.15)
-            {
-                red = 0;
-                green = (int)((height / (maxHeight * 0.2)) * 100);
-                blue = 255;
-            }
-            else if (height < maxHeight * 0.4)
-            {
-                red = 0;
-                green = 150 + ((height - (int)(maxHeight * 0.2)) * 3);
-                blue = 0;
-            }
-            else if (height < maxHeight * 0.7)
-            {
-                red = 139 + ((height - (int)(maxHeight * 0.4)) * 3);
-                green = 69 + ((height - (int)(maxHeight * 0.4)) * 2);
-                blue = 19;
-            }
-            else
-            {
-                red = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
-                green = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
-                blue = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
-            }
-
-            return Color.FromArgb(
-                255,
-                (byte)Math.Clamp(red, 0, 255),
-                (byte)Math.Clamp(green, 0, 255),
-                (byte)Math.Clamp(blue, 0, 255));
-        }
-
-
         private static void GenerateCrashBoxes(SurfaceData[,] map, int maxHeight)
         {
             int mapSizeX = map.GetLength(0);

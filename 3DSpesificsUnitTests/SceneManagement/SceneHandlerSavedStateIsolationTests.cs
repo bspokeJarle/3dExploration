@@ -6,6 +6,7 @@ using CommonUtilities.Persistence;
 using Domain;
 using System;
 using System.IO;
+using System.Reflection;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3DSpesificsUnitTests.SceneManagement;
@@ -119,6 +120,77 @@ public class SceneHandlerSavedStateIsolationTests
             "Entering a new scene should save fresh scene progress, not the previous scene's checkpoint.");
         Assert.AreEqual(1234, saved.Score);
         Assert.AreEqual(2, saved.PowerUpsCollected);
+    }
+
+    [TestMethod]
+    public void ResetActiveScene_CheckpointWithZeroMotherShips_PreservesSceneMotherShipCandidate()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        handler.NextScene(world); // Scene1
+        handler.NextScene(world); // Scene2
+        handler.NextScene(world); // Scene3
+
+        var gps = GameState.GamePlayState;
+        gps.PowerUpsCollected = 1;
+        gps.SeedersRemaining = 5;
+        gps.DronesRemaining = 3;
+        gps.MotherShipsRemaining = 0;
+        gps.InitialSeeders = 12;
+        gps.InitialDrones = 8;
+        gps.InitialMotherShips = 1;
+        gps.SaveCheckpoint();
+
+        handler.ResetActiveScene(world);
+
+        int motherShipCount = GameState.SurfaceState.AiObjects.Count(o => o.ObjectName == "MotherShipSmall");
+        Assert.IsTrue(motherShipCount > 0,
+            "Checkpoint restore should keep at least one Scene3 mothership candidate even when checkpoint mother ship count is zero.");
+    }
+
+    [TestMethod]
+    public void UpdateFrame_LoadedCheckpointWithZeroMotherShips_PreservesSceneMotherShipCandidate()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        var loaded = new SavedGameState
+        {
+            PlayerName = "Jarle",
+            SceneIndex = 3,
+            Score = 3456,
+            TotalKills = 22,
+            TotalShotsFired = 100,
+            TotalDeaths = 1,
+            PowerUpsCollected = 1,
+            HasCheckpoint = true,
+            CheckpointSeedersRemaining = 5,
+            CheckpointDronesRemaining = 3,
+            CheckpointMotherShipsRemaining = 0,
+            CheckpointInitialSeeders = 12,
+            CheckpointInitialDrones = 8,
+            CheckpointInitialMotherShips = 1,
+            CheckpointTotalKills = 10
+        };
+
+        SetPrivateField(handler, "_pendingSavedState", loaded);
+        SetPrivateField(handler, "_targetSceneIndex", 3);
+        SetPrivateField(handler, "_pendingSceneAdvance", true);
+        SetPrivateField(handler, "_pendingSceneAdvanceFramesLeft", 0);
+
+        handler.UpdateFrame(world);
+
+        int motherShipCount = GameState.SurfaceState.AiObjects.Count(o => o.ObjectName == "MotherShipSmall");
+        Assert.AreEqual(1, motherShipCount,
+            "Loaded checkpoint restore should keep Scene3 mothership candidate even when checkpoint mother ship count is zero.");
+    }
+
+    private static void SetPrivateField<T>(SceneHandler handler, string fieldName, T value)
+    {
+        var field = typeof(SceneHandler).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(field, $"Missing private field: {fieldName}");
+        field!.SetValue(handler, value);
     }
 
     private static _3dWorld CreateWorld(SceneHandler handler)

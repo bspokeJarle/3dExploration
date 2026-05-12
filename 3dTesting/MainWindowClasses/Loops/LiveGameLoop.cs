@@ -45,6 +45,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
+        private const bool enableProgressionLogging = true;
         public bool FadeOutWorld { get; set; } = false;
         public bool FadeInWorld { get; set; } = false;
         public bool SceneResetReady { get; set; } = false;
@@ -348,11 +349,22 @@ namespace _3dTesting.MainWindowClasses.Loops
                     }
                 }
 
+                var aiObjects = GameState.SurfaceState.AiObjects;
+
                 foreach (var obj in explodedObjects)
                 {
                     if (EnemySetup.IsEnemyTypeValid(obj.ObjectName))
                     {
                         gps.RecordKill(obj.ObjectName);
+
+                        if (enableProgressionLogging && Logger.EnableFileLogging)
+                        {
+                            var pos = obj.WorldPosition;
+                            var offs = obj.ObjectOffsets;
+                            Logger.Log(
+                                $"EnemyKilled: name={obj.ObjectName}; id={obj.ObjectId}; world=({pos?.x ?? 0f};{pos?.y ?? 0f};{pos?.z ?? 0f}); offsets=({offs?.x ?? 0f};{offs?.y ?? 0f};{offs?.z ?? 0f}); status={GetEnemyStatusSnapshot(aiObjects, explodedIds)}",
+                                "Progression");
+                        }
 
                         if (GameSetup.IsCheckpointEnemy(obj.ObjectName, obj.HasPowerUp))
                             checkpointTriggered = true;
@@ -396,7 +408,6 @@ namespace _3dTesting.MainWindowClasses.Loops
                     }
                 }
 
-                var aiObjects = GameState.SurfaceState.AiObjects;
                 for (int i = aiObjects.Count - 1; i >= 0; i--)
                 {
                     if (explodedIds.Contains(aiObjects[i].ObjectId))
@@ -416,7 +427,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                         if (o.ImpactStatus?.HasExploded == true) continue;
                         if (o.ObjectName == "Seeder") seedersLeft++;
                         else if (o.ObjectName == "KamikazeDrone" && o.IsActive) dronesLeft++;
-                        else if (o.ObjectName == "MotherShipSmall" && o.IsActive) motherShipsLeft++;
+                        else if ((o.ObjectName == "MotherShipSmall" || o.ObjectName == "MotherShipMedium" || o.ObjectName == "MotherShipLarge") && o.IsActive) motherShipsLeft++;
                     }
                     gps.SeedersRemaining = seedersLeft;
                     gps.DronesRemaining = dronesLeft;
@@ -468,6 +479,37 @@ namespace _3dTesting.MainWindowClasses.Loops
                 obj.Movement = null;
                 obj.ImpactStatus = null;
             }
+        }
+
+        private static string GetEnemyStatusSnapshot(List<_3dObject> aiObjects, HashSet<int> pendingRemovalIds)
+        {
+            int liveSeeders = 0;
+            int liveDrones = 0;
+            int liveMotherShips = 0;
+            int liveOtherEnemies = 0;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var aiObject = aiObjects[i];
+                if (pendingRemovalIds.Contains(aiObject.ObjectId))
+                    continue;
+                if (aiObject.ImpactStatus?.HasExploded == true)
+                    continue;
+                if (!EnemySetup.IsEnemyTypeValid(aiObject.ObjectName))
+                    continue;
+
+                if (aiObject.ObjectName == "Seeder")
+                    liveSeeders++;
+                else if (aiObject.ObjectName == "KamikazeDrone" && aiObject.IsActive)
+                    liveDrones++;
+                else if ((aiObject.ObjectName == "MotherShipSmall" || aiObject.ObjectName == "MotherShipMedium" || aiObject.ObjectName == "MotherShipLarge") && aiObject.IsActive)
+                    liveMotherShips++;
+                else
+                    liveOtherEnemies++;
+            }
+
+            var gps = GameState.GamePlayState;
+            return $"liveSeeders={liveSeeders}; liveDrones={liveDrones}; liveMotherShips={liveMotherShips}; liveOtherEnemies={liveOtherEnemies}; gpsSeeders={gps.SeedersRemaining}; gpsDrones={gps.DronesRemaining}; gpsMotherShips={gps.MotherShipsRemaining}; initialSeeders={gps.InitialSeeders}; initialDrones={gps.InitialDrones}";
         }
 
         private static void TryDisposeMovement(_3dObject obj)

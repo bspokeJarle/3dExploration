@@ -82,16 +82,13 @@ namespace _3DWorld.Scene
             scenes[currentSceneIndex] = newScene;
             GameState.ScreenOverlayState.HardHide();
             newScene.SetupGameOverlay();
+            ApplySceneSettings(newScene);
             newScene.SetupScene((_3dWorld)world);
             ApplySceneSettings(newScene);
 
             if (hadCheckpoint)
             {
-                int restoredMotherShips = snapshot.MotherShipsRemaining;
-                // If the checkpoint was captured at the exact transition to mothership phase,
-                // mothership count can be zero even though a mothership should be present.
-                if (snapshot.SeedersRemaining == 0 && snapshot.DronesRemaining == 0 && restoredMotherShips == 0)
-                    restoredMotherShips = 1;
+                int restoredMotherShips = ResolveRestoredMotherShipCount(snapshot.MotherShipsRemaining);
 
                 TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
                 TrimEnemies(world, "KamikazeDrone", snapshot.DronesRemaining);
@@ -242,9 +239,7 @@ namespace _3DWorld.Scene
                     GameStatePersistence.RestoreToGamePlayState(_pendingSavedState);
 
                     var snapshot = gps.CaptureCheckpointSnapshot();
-                    int restoredMotherShips = snapshot.MotherShipsRemaining;
-                    if (snapshot.SeedersRemaining == 0 && snapshot.DronesRemaining == 0 && restoredMotherShips == 0)
-                        restoredMotherShips = 1;
+                    int restoredMotherShips = ResolveRestoredMotherShipCount(snapshot.MotherShipsRemaining);
 
                     TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
                     TrimEnemies(world, "KamikazeDrone", snapshot.DronesRemaining);
@@ -474,6 +469,7 @@ namespace _3DWorld.Scene
                 z = SurfaceSetup.DefaultMapPosition.z
             };
             GameState.SurfaceState.ScreenEcoMetas = new ScreenEcoMeta[MapSetup.screensPrMap, MapSetup.screensPrMap];
+            GameState.SurfaceState.SceneBiome = SceneBiomeTypes.HillsWoods;
         }
 
         private static void ApplySceneSettings(IScene scene)
@@ -487,6 +483,7 @@ namespace _3DWorld.Scene
             gps.MotherShipSmallAggression = scene.MotherShipSmallAggression;
             gps.MotherShipMediumAggression = scene.MotherShipMediumAggression;
             gps.MotherShipLargeAggression = scene.MotherShipLargeAggression;
+            GameState.SurfaceState.SceneBiome = scene.SceneBiome;
         }
 
         private void InitializeDirector(IScene scene, I3dWorld world)
@@ -609,6 +606,20 @@ namespace _3DWorld.Scene
             }
 
             return count;
+        }
+
+        private static int ResolveRestoredMotherShipCount(int checkpointMotherShipsRemaining)
+        {
+            int sceneMotherShips = CountSceneMotherShips();
+            if (sceneMotherShips <= 0)
+                return 0;
+
+            if (checkpointMotherShipsRemaining > 0)
+                return Math.Min(checkpointMotherShipsRemaining, sceneMotherShips);
+
+            // Keep scene mothership candidates even when old checkpoint saves have 0 remaining,
+            // otherwise late-phase activation can never happen.
+            return sceneMotherShips;
         }
 
         private static int CountSceneMotherShips()

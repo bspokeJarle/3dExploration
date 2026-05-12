@@ -22,6 +22,7 @@ namespace CommonUtilities.CommonGlobalState.States
         public ulong SurfaceHash { get; set; }
         public string? SurfaceFilePath { get; set; }
         public int RecordingFps { get; set; } = ScreenSetup.targetFps;
+        public SceneBiomeTypes SceneBiome { get; set; } = SceneBiomeTypes.HillsWoods;
 
         /// <summary>
         /// Tiles infected by seeders that are pending local spread to their neighbors.

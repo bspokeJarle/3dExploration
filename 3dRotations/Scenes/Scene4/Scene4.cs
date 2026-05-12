@@ -3,6 +3,7 @@ using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
 using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.ZeppelinBomberControls;
@@ -22,6 +23,7 @@ namespace _3dRotations.Scene.Scene4
 
         public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
+        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Winter;
         public ISceneDirector Director { get; } = new Scene4Director();
         public GameModes GameMode { get; } = GameModes.Live;
         public float InfectionThresholdPercent { get; } = 6f;
@@ -54,6 +56,8 @@ namespace _3dRotations.Scene.Scene4
             guidanceArrow.ImpactStatus = new ImpactStatus { };
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
+
+            SpawnSeals(world);
 
             // ZeppelinBombers — 3 bombers
             for (int b = 0; b < 3; b++)
@@ -213,13 +217,13 @@ namespace _3dRotations.Scene.Scene4
             {
                 towerIndex++;
 
-                var tower = Tower.CreateTower(Surface);
+                var tower = SnowTower.CreateSnowTower(Surface);
                 tower.Rotation = new Vector3 { };
                 tower.WorldPosition = new Vector3 { };
                 tower.SurfaceBasedId = GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
-                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
-                tower.ObjectName = "Tower";
+                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 315 * ScreenSetup.ScreenScaleY, z = 400 };
+                tower.ObjectName = "SnowTower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
                 tower.ImpactStatus = new ImpactStatus { };
@@ -227,35 +231,351 @@ namespace _3dRotations.Scene.Scene4
             }
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
-            var treeIndex = 0;
-            foreach (var treePlacement in treePlacements)
+            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 30000);
+            var iglooPlacementAreas = new List<(int x, int y)>();
+            for (int i = 0; i < treePlacements.Count; i++)
             {
-                treeIndex++;
-                var tree = Tree.CreateTree(Surface);
-                tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-                tree.SurfaceBasedId = GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].mapId;
-                GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
-                tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
-                tree.ObjectName = "Tree";
-                tree.Movement = new TreeControls();
-                tree.ImpactStatus = new ImpactStatus { };
-                tree.CrashBoxDebugMode = false;
-                if (tree.SurfaceBasedId > 0) world.WorldInhabitants.Add(tree);
+                iglooPlacementAreas.Add((treePlacements[i].x, treePlacements[i].y));
+            }
+            for (int i = 0; i < housePlacements.Count; i++)
+            {
+                iglooPlacementAreas.Add((housePlacements[i].x, housePlacements[i].y));
             }
 
-            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
-            foreach (var housePlacement in housePlacements)
+            var iglooRotationVariants = new float[] { -30f, -18f, -8f, 0f, 12f, 24f, 36f };
+            var iglooIndex = 0;
+            foreach (var iglooPlacement in iglooPlacementAreas)
             {
-                var house = House.CreateHouse(Surface);
-                house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-                house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
-                GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
-                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 400 };
-                house.ObjectName = "House";
-                house.Movement = new HouseControls();
-                house.ImpactStatus = new ImpactStatus { };
-                house.CrashBoxDebugMode = false;
-                if (house.SurfaceBasedId > 0) world.WorldInhabitants.Add(house);
+                bool useLargeIgloo = iglooIndex % 4 == 0;
+                var igloo = useLargeIgloo
+                    ? Igloo.CreateLargeIgloo(Surface)
+                    : Igloo.CreateSmallIgloo(Surface);
+
+                float rotationZ = iglooRotationVariants[iglooIndex % iglooRotationVariants.Length];
+                igloo.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                igloo.Rotation = new Vector3 { x = 0, y = 0, z = rotationZ };
+                igloo.SurfaceBasedId = GameState.SurfaceState.Global2DMap[iglooPlacement.y, iglooPlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[iglooPlacement.y, iglooPlacement.x].hasLandbasedObject = true;
+                float iglooOffsetY = useLargeIgloo ? 462f : 475f;
+                igloo.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = iglooOffsetY * ScreenSetup.ScreenScaleY, z = 400 };
+                igloo.ImpactStatus = new ImpactStatus { };
+                igloo.CrashBoxDebugMode = false;
+                if (igloo.SurfaceBasedId > 0) world.WorldInhabitants.Add(igloo);
+
+                iglooIndex++;
+            }
+
+            SpawnPolarBears(world);
+
+        }
+
+        private void SpawnPolarBears(I3dWorld world)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return;
+
+            int sizeZ = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+            int patrolWidthTiles = 8;
+            int patrolHeightTiles = 2;
+            int maxHeightDelta = 10;
+            int landingAreaSize = 8;
+            int landingBufferTiles = 6;
+
+            int mapCenterX = sizeX / 2;
+            int mapCenterZ = sizeZ / 2;
+            int landingTopLeftX = Math.Max(0, mapCenterX - (landingAreaSize / 2));
+            int landingTopLeftZ = Math.Max(0, mapCenterZ - (landingAreaSize / 2));
+            int guaranteedCenterX = mapCenterX;
+            int guaranteedCenterZ = Math.Clamp(mapCenterZ + landingAreaSize + landingBufferTiles + 6, 1, sizeZ - 2);
+
+            int maxHeight = 0;
+            for (int z = 0; z < sizeZ; z++)
+                for (int x = 0; x < sizeX; x++)
+                    if (map[z, x].mapDepth > maxHeight) maxHeight = map[z, x].mapDepth;
+
+            var patrolAreas = new List<(int centerX, int centerZ, int startX, int endX)>();
+            for (int z = 1; z < sizeZ - patrolHeightTiles - 1; z += patrolHeightTiles)
+            {
+                for (int x = 1; x < sizeX - patrolWidthTiles - 1; x += patrolWidthTiles)
+                {
+                    int areaCenterX = x + (patrolWidthTiles / 2);
+                    int areaCenterZ = z + (patrolHeightTiles / 2);
+                    if (IsInsideLandingPlatformOrBuffer(areaCenterX, areaCenterZ, landingTopLeftX, landingTopLeftZ, landingAreaSize, landingBufferTiles))
+                        continue;
+
+                    if (!IsLandFlatArea(map, x, z, patrolWidthTiles, patrolHeightTiles, maxHeightDelta, maxHeight))
+                        continue;
+
+                    patrolAreas.Add((areaCenterX, areaCenterZ, x, x + patrolWidthTiles - 1));
+                }
+            }
+
+            patrolAreas.Sort((a, b) =>
+            {
+                int adx = a.centerX - mapCenterX;
+                int adz = a.centerZ - mapCenterZ;
+                int bdx = b.centerX - mapCenterX;
+                int bdz = b.centerZ - mapCenterZ;
+                int ad = (adx * adx) + (adz * adz);
+                int bd = (bdx * bdx) + (bdz * bdz);
+                return ad.CompareTo(bd);
+            });
+
+            if (patrolAreas.Count == 0)
+            {
+                (int centerX, int centerZ, int startX, int endX)? nearestFallback = null;
+                int bestDistance = int.MaxValue;
+                for (int z = 1; z < sizeZ - patrolHeightTiles - 1; z += patrolHeightTiles)
+                {
+                    for (int x = 1; x < sizeX - patrolWidthTiles - 1; x += patrolWidthTiles)
+                    {
+                        int areaCenterX = x + (patrolWidthTiles / 2);
+                        int areaCenterZ = z + (patrolHeightTiles / 2);
+                        if (IsInsideLandingPlatformOrBuffer(areaCenterX, areaCenterZ, landingTopLeftX, landingTopLeftZ, landingAreaSize, landingBufferTiles))
+                            continue;
+
+                        if (!IsLandFlatArea(map, x, z, patrolWidthTiles, patrolHeightTiles, maxHeightDelta: 16, maxHeight))
+                            continue;
+
+                        int dx = areaCenterX - mapCenterX;
+                        int dz = areaCenterZ - mapCenterZ;
+                        int distance = (dx * dx) + (dz * dz);
+                        if (distance < bestDistance)
+                        {
+                            bestDistance = distance;
+                            nearestFallback = (areaCenterX, areaCenterZ, x, x + patrolWidthTiles - 1);
+                        }
+                    }
+                }
+
+                if (nearestFallback.HasValue)
+                {
+                    patrolAreas.Add(nearestFallback.Value);
+                }
+            }
+
+            int bearCount = Math.Min(12, patrolAreas.Count);
+            int tileSize = Surface.TileSize();
+            float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
+
+            SpawnGuaranteedBear(world, map, sizeX, sizeZ, mapCenterX, mapCenterZ, guaranteedCenterX, guaranteedCenterZ, baseOffsetX, tileSize, patrolWidthTiles, maxHeight);
+
+            for (int i = 0; i < bearCount; i++)
+            {
+                int areaIndex = i;
+                var area = patrolAreas[areaIndex];
+
+                var centerTile = map[area.centerZ, area.centerX];
+                var centerTerrain = GamePlayHelpers.GetTerrainType(centerTile.mapDepth, maxHeight);
+                if (centerTerrain == GamePlayHelpers.TerrainType.DeepWater || centerTerrain == GamePlayHelpers.TerrainType.Coast)
+                    continue;
+
+                var polarBear = PolarBear.CreatePolarBear(Surface);
+                polarBear.WorldPosition = new Vector3 { };
+                int tileZ = Math.Clamp(area.centerZ, 0, sizeZ - 1);
+                int tileX = Math.Clamp(area.centerX, 0, sizeX - 1);
+                if (map[tileZ, tileX].hasLandbasedObject)
+                    continue;
+
+                if (!TryFindNearestDryLandTile(map, maxHeight, tileX, tileZ, out int resolvedTileX, out int resolvedTileZ))
+                    continue;
+
+                tileX = resolvedTileX;
+                tileZ = resolvedTileZ;
+
+                int tileDeltaX = tileX - area.centerX;
+                float centerOffsetX = baseOffsetX + (tileDeltaX * tileSize);
+                float halfSpan = (area.endX - area.startX) * 0.5f * tileSize;
+                float minPathOffsetX = centerOffsetX - halfSpan;
+                float maxPathOffsetX = centerOffsetX + halfSpan;
+
+                int fallbackMapId = map[tileZ, tileX].mapId;
+                if (fallbackMapId <= 0)
+                {
+                    fallbackMapId = map[mapCenterZ, mapCenterX].mapId;
+                }
+
+                polarBear.SurfaceBasedId = fallbackMapId;
+                polarBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
+                polarBear.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                polarBear.ObjectName = "PolarBear";
+                polarBear.Movement = new PolarBearControls(minPathOffsetX, maxPathOffsetX);
+                polarBear.ImpactStatus = new ImpactStatus { };
+                polarBear.CrashBoxDebugMode = false;
+                polarBear.IsActive = true;
+
+                world.WorldInhabitants.Add(polarBear);
+                GameState.SurfaceState.AiObjects.Add(polarBear);
+            }
+        }
+
+        private void SpawnGuaranteedBear(
+            I3dWorld world,
+            SurfaceData[,] map,
+            int sizeX,
+            int sizeZ,
+            int mapCenterX,
+            int mapCenterZ,
+            int guaranteedCenterX,
+            int guaranteedCenterZ,
+            float baseOffsetX,
+            int tileSize,
+            int patrolWidthTiles,
+            int maxHeight)
+        {
+            int startX = Math.Max(1, guaranteedCenterX - (patrolWidthTiles / 2));
+            int endX = Math.Min(sizeX - 2, startX + patrolWidthTiles - 1);
+            float minPathOffsetX = baseOffsetX + ((startX - guaranteedCenterX) * tileSize);
+            float maxPathOffsetX = baseOffsetX + ((endX - guaranteedCenterX) * tileSize);
+
+            int tileZ = Math.Clamp(guaranteedCenterZ, 0, sizeZ - 1);
+            int tileX = Math.Clamp(guaranteedCenterX, 0, sizeX - 1);
+            if (!TryFindNearestDryLandTile(map, maxHeight, tileX, tileZ, out tileX, out tileZ))
+                return;
+
+            int tileDeltaX = tileX - guaranteedCenterX;
+            float centerOffsetX = baseOffsetX + (tileDeltaX * tileSize);
+            float halfSpan = (endX - startX) * 0.5f * tileSize;
+            minPathOffsetX = centerOffsetX - halfSpan;
+            maxPathOffsetX = centerOffsetX + halfSpan;
+
+            int mapId = map[tileZ, tileX].mapId;
+            if (mapId <= 0)
+                mapId = map[mapCenterZ, mapCenterX].mapId;
+
+            var guaranteedBear = PolarBear.CreatePolarBear(Surface);
+            guaranteedBear.WorldPosition = new Vector3 { };
+            guaranteedBear.SurfaceBasedId = mapId;
+            guaranteedBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
+            guaranteedBear.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            guaranteedBear.ObjectName = "PolarBear";
+            guaranteedBear.Movement = new PolarBearControls(minPathOffsetX, maxPathOffsetX);
+            guaranteedBear.ImpactStatus = new ImpactStatus { };
+            guaranteedBear.CrashBoxDebugMode = false;
+            guaranteedBear.IsActive = true;
+
+            world.WorldInhabitants.Add(guaranteedBear);
+            GameState.SurfaceState.AiObjects.Add(guaranteedBear);
+        }
+
+        private static bool IsInsideLandingPlatformOrBuffer(int x, int z, int landingTopLeftX, int landingTopLeftZ, int landingSize, int buffer)
+        {
+            int minX = landingTopLeftX - buffer;
+            int minZ = landingTopLeftZ - buffer;
+            int maxX = landingTopLeftX + landingSize - 1 + buffer;
+            int maxZ = landingTopLeftZ + landingSize - 1 + buffer;
+            return x >= minX && x <= maxX && z >= minZ && z <= maxZ;
+        }
+
+        private static bool IsLandFlatArea(SurfaceData[,] map, int startX, int startZ, int width, int height, int maxHeightDelta, int maxHeight)
+        {
+            int minDepth = int.MaxValue;
+            int maxDepth = int.MinValue;
+
+            for (int z = startZ; z < startZ + height; z++)
+            {
+                for (int x = startX; x < startX + width; x++)
+                {
+                    var tile = map[z, x];
+                    if (!IsDryLandTerrain(tile, maxHeight))
+                        return false;
+
+                    if (tile.hasLandbasedObject)
+                        return false;
+
+                    minDepth = Math.Min(minDepth, tile.mapDepth);
+                    maxDepth = Math.Max(maxDepth, tile.mapDepth);
+                    if ((maxDepth - minDepth) > maxHeightDelta)
+                        return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool IsDryLandTerrain(SurfaceData tile, int maxHeight)
+        {
+            var terrain = GamePlayHelpers.GetTerrainType(tile.mapDepth, maxHeight);
+            return terrain == GamePlayHelpers.TerrainType.Grassland ||
+                   terrain == GamePlayHelpers.TerrainType.Highlands;
+        }
+
+        private static bool TryFindNearestDryLandTile(SurfaceData[,] map, int maxHeight, int startX, int startZ, out int bestTileX, out int bestTileZ)
+        {
+            int sizeZ = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+
+            bestTileX = Math.Clamp(startX, 0, sizeX - 1);
+            bestTileZ = Math.Clamp(startZ, 0, sizeZ - 1);
+
+            if (!map[bestTileZ, bestTileX].hasLandbasedObject && IsDryLandTerrain(map[bestTileZ, bestTileX], maxHeight))
+                return true;
+
+            int bestDistance = int.MaxValue;
+            bool found = false;
+
+            for (int z = 1; z < sizeZ - 1; z++)
+            {
+                for (int x = 1; x < sizeX - 1; x++)
+                {
+                    if (map[z, x].hasLandbasedObject)
+                        continue;
+
+                    if (!IsDryLandTerrain(map[z, x], maxHeight))
+                        continue;
+
+                    int dx = x - startX;
+                    int dz = z - startZ;
+                    int distance = (dx * dx) + (dz * dz);
+                    if (distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        bestTileX = x;
+                        bestTileZ = z;
+                        found = true;
+                    }
+                }
+            }
+
+            return found;
+        }
+
+        private void SpawnSeals(I3dWorld world)
+        {
+            var fishJumpAreas = GameState.SurfaceState.FishJumpAreas;
+            if (fishJumpAreas == null || fishJumpAreas.Count == 0)
+                return;
+
+            int sealCount = Math.Min(80, fishJumpAreas.Count);
+            int tileSize = Surface.TileSize();
+            for (int i = 0; i < sealCount; i++)
+            {
+                int areaIndex = (int)MathF.Floor(i * fishJumpAreas.Count / (float)sealCount);
+                var area = fishJumpAreas[areaIndex];
+                float jumpSpan = Math.Min(tileSize * 2f, Math.Max(tileSize, (area.EndTileX - area.StartTileX - 1) * tileSize));
+                float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
+                float minPathOffsetX = baseOffsetX + ((area.StartTileX - area.CenterTileX) * tileSize);
+                float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
+
+                var seal = Seal.CreateSeal(Surface);
+                seal.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                seal.WorldPosition = new Vector3 { };
+                seal.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
+                seal.ObjectOffsets = new Vector3
+                {
+                    x = baseOffsetX,
+                    y = 500 * ScreenSetup.ScreenScaleY,
+                    z = 400
+                };
+                seal.ObjectName = "Seal";
+                seal.Movement = new GameAiAndControls.Controls.JumpingFishControls.JumpingFishControls(jumpSpan, minPathOffsetX, maxPathOffsetX);
+                seal.ImpactStatus = new ImpactStatus { };
+                seal.CrashBoxDebugMode = false;
+                seal.CrashBoxes = new List<List<IVector3>>();
+                seal.IsActive = true;
+                world.WorldInhabitants.Add(seal);
             }
         }
 
