@@ -1,7 +1,7 @@
-using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Controls.Weather;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,13 +28,20 @@ namespace GameAiAndControls.Controls
         private const float HorizontalDrift = 0.28f;
         private const float DepthDrift = 0.18f;
         private const float TopRespawnJitter = 180f;
-        private const float OffscreenMargin = 240f;
-        private const float DirectionalSpawnAheadMin = 900f;
-        private const float DirectionalSpawnAheadMax = 3000f;
-        private const float DirectionalLateralSpreadFactor = 0.88f;
-        private const float TravelBehindRecycleDistance = 2200f;
-        private const float TravelAheadRecycleDistance = 3800f;
-        private const int DirectionalSpawnModulo = 5;
+        private static readonly WeatherFieldSettings FieldSettings = new(
+            DepthStartZ: DepthStartZ,
+            VisibleDepthSpread: DepthSpread,
+            BehindSpread: DepthBehindSpread,
+            AheadSpread: DepthAheadSpread,
+            OffscreenMargin: 240f,
+            DirectionalSpawnAheadMin: 900f,
+            DirectionalSpawnAheadMax: 3000f,
+            DirectionalLateralSpreadFactor: 0.88f,
+            TravelBehindRecycleDistance: 2200f,
+            TravelAheadRecycleDistance: 3800f,
+            DirectionalSpawnModulo: 5,
+            VisibleSpreadScreenMultiplier: 0.58f,
+            WorldSpreadScreenMultiplier: 2.4f);
 
         /// <summary>
         /// Controls snow visibility (1 = fully visible, 0 = fully hidden).
@@ -43,34 +50,31 @@ namespace GameAiAndControls.Controls
         public static float GlobalSnowOpacity { get; set; } = 1f;
 
         private readonly Random _random = new();
+        private readonly WorldWeatherField _weatherField;
         private readonly List<Snowflake> _flakes = new(TargetFlakeCount);
-        private bool _hasLastMapPosition;
-        private bool _isMoving;
-        private bool _hasTravelDirection;
-        private float _lastMapX;
-        private float _lastMapZ;
-        private float _travelX;
-        private float _travelZ;
-        private int _spawnSequence;
 
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject? ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
+        public SnowfallControls()
+        {
+            _weatherField = new WorldWeatherField(_random, FieldSettings);
+        }
+
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             ParentObject = theObject;
 
             var mapPosition = GameState.SurfaceState.GlobalMapPosition;
-            SyncEmitterToGround(theObject, mapPosition);
-            UpdateTravelDirection(mapPosition);
+            WorldWeatherField.SyncEmitterToGround(theObject, mapPosition);
+            _weatherField.UpdateTravelDirection(mapPosition);
             float endOffsetY = GetEndGuideYOffset();
             EnsureFlakes(mapPosition, endOffsetY);
             EnsureTriangleBuffer(theObject);
 
             var triangles = GetSnowflakePart(theObject).Triangles;
-            float halfWorldSpread = GetHalfWorldSpread();
             float objectZ = theObject.ObjectOffsets?.z ?? 0f;
 
             for (int i = 0; i < _flakes.Count; i++)
@@ -78,8 +82,8 @@ namespace GameAiAndControls.Controls
                 var flake = _flakes[i];
                 MoveFlake(flake);
 
-                if (ShouldRecycle(flake, mapPosition, endOffsetY, halfWorldSpread))
-                    ResetFlakeAtTop(flake, mapPosition, halfWorldSpread, ShouldSpawnAhead());
+                if (ShouldRecycle(flake, mapPosition, endOffsetY))
+                    ResetFlakeAtTop(flake, mapPosition, _weatherField.ShouldSpawnAhead());
 
                 WriteTriangle(triangles[i], flake, mapPosition, objectZ);
             }
@@ -93,8 +97,7 @@ namespace GameAiAndControls.Controls
                 return;
 
             _flakes.Clear();
-            float halfVisibleSpread = GetHalfScreenSpread();
-            float halfWorldSpread = GetHalfWorldSpread();
+            float halfVisibleSpread = _weatherField.HalfVisibleSpread;
             for (int i = 0; i < VisibleFlakeTarget; i++)
             {
                 _flakes.Add(CreateVisibleFlake(
@@ -104,7 +107,7 @@ namespace GameAiAndControls.Controls
             }
 
             for (int i = VisibleFlakeTarget; i < TargetFlakeCount; i++)
-                _flakes.Add(CreateReserveFlake(mapPosition, halfWorldSpread));
+                _flakes.Add(CreateReserveFlake(mapPosition));
         }
 
         private void EnsureTriangleBuffer(I3dObject theObject)
@@ -141,36 +144,19 @@ namespace GameAiAndControls.Controls
             flake.WorldZ += flake.DriftZ;
         }
 
-        private bool ShouldRecycle(Snowflake flake, IVector3 mapPosition, float endOffsetY, float halfWorldSpread)
+        private bool ShouldRecycle(Snowflake flake, IVector3 mapPosition, float endOffsetY)
         {
-            float relativeX = flake.WorldX - mapPosition.x;
-            float relativeZ = flake.WorldZ - mapPosition.z;
-
             if (flake.OffsetY > endOffsetY)
                 return true;
-            if (MathF.Abs(relativeX) > halfWorldSpread + OffscreenMargin)
-                return true;
-            if (relativeZ < -DepthBehindSpread - OffscreenMargin)
-                return true;
-            if (relativeZ > DepthStartZ + DepthSpread + DepthAheadSpread + OffscreenMargin)
-                return true;
 
-            if (!_isMoving || !_hasTravelDirection)
-                return false;
-
-            float alongTravel = relativeX * _travelX + relativeZ * _travelZ;
-            float lateral = MathF.Abs(relativeX * -_travelZ + relativeZ * _travelX);
-
-            return alongTravel < -TravelBehindRecycleDistance
-                || alongTravel > TravelAheadRecycleDistance
-                || lateral > halfWorldSpread + OffscreenMargin;
+            return _weatherField.ShouldRecycle(flake.WorldX, flake.WorldZ, mapPosition);
         }
 
-        private void ResetFlakeAtTop(Snowflake flake, IVector3 mapPosition, float halfWorldSpread, bool preferAhead)
+        private void ResetFlakeAtTop(Snowflake flake, IVector3 mapPosition, bool preferAhead)
         {
-            var spawn = preferAhead && _hasTravelDirection
-                ? GetDirectionalSpawnOffset(halfWorldSpread)
-                : GetAmbientSpawnOffset(halfWorldSpread, preferOutside: true);
+            var spawn = preferAhead && _weatherField.HasTravelDirection
+                ? _weatherField.GetDirectionalSpawnOffset()
+                : _weatherField.GetAmbientSpawnOffset(preferOutside: true);
 
             flake.WorldX = mapPosition.x + spawn.x;
             flake.OffsetY = StartGuideYOffset - RandomRange(0f, TopRespawnJitter);
@@ -187,56 +173,19 @@ namespace GameAiAndControls.Controls
         private Snowflake CreateVisibleFlake(IVector3 mapPosition, float offsetX, float offsetY)
         {
             var flake = new Snowflake();
-            ResetFlakeAtTop(flake, mapPosition, GetHalfWorldSpread(), preferAhead: false);
+            ResetFlakeAtTop(flake, mapPosition, preferAhead: false);
             flake.WorldX = mapPosition.x + offsetX;
             flake.OffsetY = offsetY;
             flake.WorldZ = mapPosition.z + RandomRange(DepthStartZ, DepthStartZ + DepthSpread);
             return flake;
         }
 
-        private Snowflake CreateReserveFlake(IVector3 mapPosition, float halfWorldSpread)
+        private Snowflake CreateReserveFlake(IVector3 mapPosition)
         {
             var flake = new Snowflake();
-            ResetFlakeAtTop(flake, mapPosition, halfWorldSpread, preferAhead: false);
+            ResetFlakeAtTop(flake, mapPosition, preferAhead: false);
             flake.OffsetY = RandomRange(StartGuideYOffset, GetEndGuideYOffset());
             return flake;
-        }
-
-        private (float x, float z) GetAmbientSpawnOffset(float halfWorldSpread, bool preferOutside)
-        {
-            if (preferOutside && _random.NextDouble() < 0.65d)
-            {
-                if (_random.NextDouble() < 0.5d)
-                {
-                    float sign = _random.NextDouble() < 0.5d ? -1f : 1f;
-                    return (
-                        sign * RandomRange(GetHalfScreenSpread(), halfWorldSpread),
-                        RandomRange(-DepthBehindSpread, DepthStartZ + DepthSpread + DepthAheadSpread));
-                }
-
-                float z = _random.NextDouble() < 0.5d
-                    ? RandomRange(-DepthBehindSpread, DepthStartZ)
-                    : RandomRange(DepthStartZ + DepthSpread, DepthStartZ + DepthSpread + DepthAheadSpread);
-
-                return (RandomRange(-halfWorldSpread, halfWorldSpread), z);
-            }
-
-            return (
-                RandomRange(-GetHalfScreenSpread(), GetHalfScreenSpread()),
-                RandomRange(DepthStartZ, DepthStartZ + DepthSpread));
-        }
-
-        private (float x, float z) GetDirectionalSpawnOffset(float halfWorldSpread)
-        {
-            float forward = RandomRange(DirectionalSpawnAheadMin, DirectionalSpawnAheadMax);
-            float lateral = RandomRange(-halfWorldSpread * DirectionalLateralSpreadFactor, halfWorldSpread * DirectionalLateralSpreadFactor);
-
-            float x = _travelX * forward + -_travelZ * lateral;
-            float z = _travelZ * forward + _travelX * lateral;
-
-            return (
-                x,
-                Math.Clamp(z, -DepthBehindSpread, DepthStartZ + DepthSpread + DepthAheadSpread));
         }
 
         private static void WriteTriangle(ITriangleMeshWithColor triangle, Snowflake flake, IVector3 mapPosition, float objectZ)
@@ -255,7 +204,7 @@ namespace GameAiAndControls.Controls
             float relativeX = flake.WorldX - mapPosition.x;
             float relativeZ = flake.WorldZ - mapPosition.z;
 
-            float scale = GetProjectionScale(relativeZ, objectZ);
+            float scale = WorldWeatherField.GetProjectionScale(relativeZ, objectZ);
             float centerX = relativeX / scale;
             float centerY = flake.OffsetY / scale;
             float halfSize = flake.Size * opacity;
@@ -290,19 +239,6 @@ namespace GameAiAndControls.Controls
             };
         }
 
-        private static float GetProjectionScale(float z, float objectZ)
-        {
-            float denominator = -z + objectZ + ScreenSetup.perspectiveAdjustment;
-            if (denominator <= 1f)
-                denominator = 1f;
-
-            return ScreenSetup.perspectiveAdjustment / denominator * ScreenSetup.defaultObjectZoom;
-        }
-
-        private static float GetHalfScreenSpread() => ScreenSetup.screenSizeX * 0.58f;
-
-        private static float GetHalfWorldSpread() => ScreenSetup.screenSizeX * 2.4f;
-
         private static float GetEndGuideYOffset()
         {
             var surfaceY = GameState.SurfaceState.SurfaceViewportObject?.ObjectOffsets?.y;
@@ -317,62 +253,11 @@ namespace GameAiAndControls.Controls
             return min + (float)_random.NextDouble() * (max - min);
         }
 
-        private static void SyncEmitterToGround(I3dObject theObject, IVector3 mapPosition)
-        {
-            var offsets = theObject.ObjectOffsets ?? new Vector3();
-            theObject.ObjectOffsets = new Vector3
-            {
-                x = offsets.x,
-                y = mapPosition.y * SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY,
-                z = offsets.z
-            };
-        }
-
-        private bool ShouldSpawnAhead()
-        {
-            if (!_isMoving || !_hasTravelDirection)
-                return false;
-
-            _spawnSequence++;
-            return _spawnSequence % DirectionalSpawnModulo != 0;
-        }
-
-        private void UpdateTravelDirection(IVector3 mapPosition)
-        {
-            if (!_hasLastMapPosition)
-            {
-                _lastMapX = mapPosition.x;
-                _lastMapZ = mapPosition.z;
-                _hasLastMapPosition = true;
-                return;
-            }
-
-            float dx = mapPosition.x - _lastMapX;
-            float dz = mapPosition.z - _lastMapZ;
-            _lastMapX = mapPosition.x;
-            _lastMapZ = mapPosition.z;
-
-            float distance = MathF.Sqrt(dx * dx + dz * dz);
-            if (distance <= 0.05f)
-            {
-                _isMoving = false;
-                return;
-            }
-
-            _travelX = dx / distance;
-            _travelZ = dz / distance;
-            _isMoving = true;
-            _hasTravelDirection = true;
-        }
-
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry) { }
         public void Dispose()
         {
             _flakes.Clear();
-            _hasLastMapPosition = false;
-            _isMoving = false;
-            _hasTravelDirection = false;
-            _spawnSequence = 0;
+            _weatherField.Reset();
         }
         public void ReleaseParticles(I3dObject theObject) { }
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }

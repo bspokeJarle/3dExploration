@@ -26,7 +26,7 @@ namespace GameAiAndControls.Controls
         private const float SyncFactorY = 2.5f;
         private const float BearGroundOffsetY = 65f;
         private const float ShadowGroundLiftY = 10f;
-        private const float BearAboveShadowY = 65f;
+        private const float BearAboveShadowY = 5f;
         private const float SurfaceHeightBobAmplitude = 0.45f;
         private const float TurnPauseSeconds = 0.8f;
         private const float MouthOpenDegrees = 52f;
@@ -334,11 +334,11 @@ namespace GameAiAndControls.Controls
             if (surfaceOffsets == null)
                 return false;
 
-            // The bear is surface-based: CenterObjectAt already moves the bear geometry
+            // The bear and its custom shadow both live in the surface-local tile plane.
             // to the matched tile vertex every frame, so tileY must NOT be added here —
-            // doing so double-counts it and lifts the bear 30-40 units above the shadow.
+            // just above the shadow baseline.
             //
-            // The shadow uses ObjectOffsets = surfaceOffsets as its reference and builds
+            //
             // its triangles in surface-local space at (tileCenterY - ShadowGroundLiftY).
             // We match that same reference by starting from surfaceOffsets.y and subtracting
             // the perspective-projected equivalent of ShadowGroundLiftY, then raising the
@@ -346,8 +346,27 @@ namespace GameAiAndControls.Controls
             float objZ = (theObject.ObjectOffsets as Vector3)?.z ?? 400f;
             float perspFactor = ScreenSetup.perspectiveAdjustment / (objZ + ScreenSetup.perspectiveAdjustment);
             float liftInScreenY = ShadowGroundLiftY * perspFactor * ScreenSetup.defaultObjectZoom;
-            offsetY = surfaceOffsets.y - liftInScreenY - BearAboveShadowY;
+            offsetY = surfaceOffsets.y + GetSurfaceTileY(theObject) - liftInScreenY - BearAboveShadowY;
             return true;
+        }
+
+        private static float GetSurfaceTileY(I3dObject theObject)
+        {
+            if (theObject.ParentSurface == null || !theObject.SurfaceBasedId.HasValue)
+                return 0f;
+
+            int surfaceBasedId = theObject.SurfaceBasedId.Value;
+            if (theObject.ParentSurface.RotatedSurfaceTriangleByLandId.TryGetValue(surfaceBasedId, out var cachedTriangle))
+                return cachedTriangle.vert1.y;
+
+            var triangles = theObject.ParentSurface.RotatedSurfaceTriangles;
+            for (int i = 0; i < triangles.Count; i++)
+            {
+                if (triangles[i].landBasedPosition == surfaceBasedId)
+                    return triangles[i].vert1.y;
+            }
+
+            return 0f;
         }
 
         private void ApplyPartAnimation(I3dObject theObject, string partName, float angleDegrees, float pivotY, float pivotZ)

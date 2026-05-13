@@ -32,6 +32,11 @@ namespace _3DWorld.Scene
         private int? _targetSceneIndex = null;
         private SavedGameState? _pendingSavedState = null;
 
+        public SceneHandler()
+        {
+            ApplySceneIndexOverrideFromGameState();
+        }
+
         public IScene GetActiveScene() => scenes[currentSceneIndex];
 
         // -----------------------------------------------------------------
@@ -40,6 +45,7 @@ namespace _3DWorld.Scene
 
         public void SetupActiveScene(I3dWorld world)
         {
+            ApplySceneIndexOverrideFromGameState();
             var scene = GetActiveScene();
             scene.SetupSceneOverlay();
             ClearVideoOverlay();
@@ -470,6 +476,7 @@ namespace _3DWorld.Scene
             };
             GameState.SurfaceState.ScreenEcoMetas = new ScreenEcoMeta[MapSetup.screensPrMap, MapSetup.screensPrMap];
             GameState.SurfaceState.SceneBiome = SceneBiomeTypes.HillsWoods;
+            GameState.WeatherVisualState.ClearLightningFlash();
         }
 
         private static void ApplySceneSettings(IScene scene)
@@ -494,6 +501,30 @@ namespace _3DWorld.Scene
         private void DisposeDirector()
         {
             GetActiveScene().Director?.Dispose();
+        }
+
+        private void ApplySceneIndexOverrideFromGameState()
+        {
+            var gamePlayState = GameState.GamePlayState;
+            if (gamePlayState == null || !CanUseSceneIndexAsStartupOverride(gamePlayState))
+                return;
+
+            var requestedSceneIndex = gamePlayState.SceneIndex;
+            if (requestedSceneIndex < 0 || requestedSceneIndex >= scenes.Count)
+                return;
+
+            currentSceneIndex = requestedSceneIndex;
+        }
+
+        private static bool CanUseSceneIndexAsStartupOverride(GamePlayState gamePlayState)
+        {
+            return string.IsNullOrWhiteSpace(gamePlayState.PlayerName)
+                && gamePlayState.Score == 0
+                && gamePlayState.TotalKills == 0
+                && gamePlayState.TotalShotsFired == 0
+                && gamePlayState.TotalDeaths == 0
+                && gamePlayState.PowerUpsCollected == 0
+                && !gamePlayState.HasCheckpoint;
         }
 
         // -----------------------------------------------------------------

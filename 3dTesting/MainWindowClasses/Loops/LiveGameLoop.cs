@@ -102,7 +102,9 @@ namespace _3dTesting.MainWindowClasses.Loops
             {
                 StarFieldHandler.GenerateStarfield();
                 if (StarFieldHandler.HasStars()) deepCopiedWorld.AddRange(StarFieldHandler.GetStars());
-                SnowfallControls.GlobalSnowOpacity = 1f - StarFieldHandler.PoolOpacity;
+                float weatherOpacity = 1f - StarFieldHandler.PoolOpacity;
+                SnowfallControls.GlobalSnowOpacity = weatherOpacity;
+                RainfallControls.GlobalRainOpacity = weatherOpacity;
             }
 
             var particleObjectList = new List<_3dObject>();
@@ -223,6 +225,8 @@ namespace _3dTesting.MainWindowClasses.Loops
                 GameState.ShipState.BestCandidateStates.Clear();
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
+                SnowfallControls.GlobalSnowOpacity = 1f;
+                RainfallControls.GlobalRainOpacity = 1f;
 
                 if (_victorySequenceStarted && !_deathSequenceStarted)
                     world.SceneHandler.NextScene(world);

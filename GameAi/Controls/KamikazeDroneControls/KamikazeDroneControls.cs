@@ -319,13 +319,13 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
 
             var closestDecoy = KamikazeDroneAi.GetClosestActiveDecoy(ParentObject);
             Vector3? targetWorldPosition = closestDecoy != null
-                ? SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(closestDecoy)
+                ? KamikazeDroneMovementHelpers.GetNavigationCrashCenterWorldPosition(closestDecoy)
                 : KamikazeDroneMovementHelpers.GetShipCrashCenterWorldPosition();
 
             if (ParentObject.WorldPosition is IVector3 && targetWorldPosition is Vector3 resolvedTargetWorldPosition)
             {
                 var parentWorldPosition = closestDecoy != null
-                    ? SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(ParentObject)
+                    ? KamikazeDroneMovementHelpers.GetNavigationCrashCenterWorldPosition(ParentObject)
                     : KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(ParentObject);
                 currentDronePosition = parentWorldPosition;
                 currentTargetPosition = resolvedTargetWorldPosition;
@@ -382,7 +382,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             if (theObject.WorldPosition is IVector3 objectWorldPosition)
             {
                 currentDronePosition = closestDecoy != null
-                    ? SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(theObject)
+                    ? KamikazeDroneMovementHelpers.GetNavigationCrashCenterWorldPosition(theObject)
                     : KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(theObject);
 
                 if (currentDronePosition is Vector3 dronePosition && currentTargetPosition is Vector3 targetPosition)

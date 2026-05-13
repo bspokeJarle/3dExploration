@@ -206,6 +206,12 @@ namespace _3dRotations.Scene.Scene3
             world.WorldInhabitants.Add(surfaceObject);
             GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
 
+            if (SceneBiome == SceneBiomeTypes.Rainforrest)
+            {
+                world.WorldInhabitants.Add(RainEmitter.CreateRainEmitter(Surface));
+                world.WorldInhabitants.Add(LightningEmitter.CreateLightningEmitter(Surface));
+            }
+
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
 
             SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
