@@ -300,44 +300,36 @@ namespace GameAiAndControls.Controls
             }
         }
 
-        // Mouse-as-virtual-joystick state (Zarch/Virus-inspired).
-        // Mouse displacement from screen center sets desired yaw/pitch rate;
-        // the further from center, the faster the turn. The ship responds
-        // through the same acceleration/drag system as keyboard controls.
+        // Delta-based mouse input: each MouseMove event accumulates raw pixel deltas.
+        // MoveObject drains the accumulator each frame into the yaw/pitch velocity,
+        // so the ship only turns while the mouse is actually moving and stops (with
+        // inertia from RotationDrag) as soon as it does.
         private bool _mouseActive = false;
-        private int _screenCenterX;
-        private int _screenCenterY;
-        private const float MouseDeadZone = 0.05f;
-        private const float MouseSensitivity = 1.6f;
+        private int _lastMouseX;
+        private int _lastMouseY;
+        private const float MouseSensitivity = 0.06f;
+        private const float MouseDeadZonePixels = 2f;
 
         public void GlobalHookMouseMovement(object sender, MouseEventArgs e)
         {
             if (!_mouseActive)
             {
-                // First mouse event — capture screen center reference
-                _screenCenterX = (int)(ScreenSetup.screenSizeX / 2);
-                _screenCenterY = (int)(ScreenSetup.screenSizeY / 2);
+                _lastMouseX = e.X;
+                _lastMouseY = e.Y;
                 _mouseActive = true;
+                return;
             }
 
-            float halfWidth = ScreenSetup.screenSizeX / 2f;
-            float halfHeight = ScreenSetup.screenSizeY / 2f;
+            float dx = e.X - _lastMouseX;
+            float dy = e.Y - _lastMouseY;
+            _lastMouseX = e.X;
+            _lastMouseY = e.Y;
 
-            // Normalized displacement from center: -1..+1
-            float nx = (e.X - _screenCenterX) / halfWidth;
-            float ny = (e.Y - _screenCenterY) / halfHeight;
+            if (MathF.Abs(dx) < MouseDeadZonePixels) dx = 0f;
+            if (MathF.Abs(dy) < MouseDeadZonePixels) dy = 0f;
 
-            // Apply dead zone
-            if (MathF.Abs(nx) < MouseDeadZone) nx = 0f;
-            if (MathF.Abs(ny) < MouseDeadZone) ny = 0f;
-
-            // Clamp to -1..+1
-            nx = MathF.Max(-1f, MathF.Min(1f, nx));
-            ny = MathF.Max(-1f, MathF.Min(1f, ny));
-
-            // Set desired turn rates — feeds into the same velocity system as keyboard
-            _mouseYawInput = nx * MouseSensitivity;
-            _mousePitchInput = ny * MouseSensitivity;
+            _mouseYawInput += dx * MouseSensitivity;
+            _mousePitchInput += dy * MouseSensitivity;
         }
 
         private float _mouseYawInput = 0f;
@@ -648,11 +640,18 @@ namespace GameAiAndControls.Controls
             if (_upHeld) _pitchVelocity += RotationAcceleration * deltaTime;
             if (_downHeld) _pitchVelocity -= RotationAcceleration * deltaTime;
 
-            // Mouse virtual-joystick: displacement from center sets target turn rate
+            // Mouse delta input: accumulated pixel deltas are applied as velocity impulses
+            // then cleared — the ship only turns while the mouse is moving.
             if (_mouseYawInput != 0f)
-                _yawVelocity += _mouseYawInput * RotationAcceleration * deltaTime;
+            {
+                _yawVelocity += _mouseYawInput * RotationAcceleration;
+                _mouseYawInput = 0f;
+            }
             if (_mousePitchInput != 0f)
-                _pitchVelocity += _mousePitchInput * RotationAcceleration * deltaTime;
+            {
+                _pitchVelocity += _mousePitchInput * RotationAcceleration;
+                _mousePitchInput = 0f;
+            }
 
             _yawVelocity = MathF.Max(-MaxRotationSpeed, MathF.Min(MaxRotationSpeed, _yawVelocity)) * RotationDrag;
             _pitchVelocity = MathF.Max(-MaxRotationSpeed, MathF.Min(MaxRotationSpeed, _pitchVelocity)) * RotationDrag;
