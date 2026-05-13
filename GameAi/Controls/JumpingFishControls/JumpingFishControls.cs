@@ -56,6 +56,10 @@ namespace GameAiAndControls.Controls.JumpingFishControls
         private Vector3 _particleAnchorOffsets = new();
         private int _jumpDirection = InitialJumpDirection;
 
+        private bool _audioConfigured;
+        private IAudioPlayer? _audio;
+        private SoundDefinition? _splashSound;
+
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
@@ -90,6 +94,7 @@ namespace GameAiAndControls.Controls.JumpingFishControls
             if (!theObject.IsOnScreen)
                 return theObject;
 
+            ConfigureAudio(audioPlayer, soundRegistry);
             InitializeBaseGeometry(theObject);
 
             float deltaSeconds = GetDeltaSeconds();
@@ -253,8 +258,23 @@ namespace GameAiAndControls.Controls.JumpingFishControls
             if (!_landingSplashReleased && phase >= LandingSplashPhase)
             {
                 ReleaseBlueExplosionParticles(theObject, landingSplash: true);
+                PlaySplashSound(theObject);
                 _landingSplashReleased = true;
             }
+        }
+
+        private void PlaySplashSound(I3dObject theObject)
+        {
+            if (_audio == null || _splashSound == null) return;
+
+            var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+            _audio.Play(
+                _splashSound,
+                AudioPlayMode.OneShot,
+                new AudioPlayOptions
+                {
+                    WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                });
         }
 
         private void ReleaseBlueExplosionParticles(I3dObject theObject, bool landingSplash)
@@ -512,6 +532,12 @@ namespace GameAiAndControls.Controls.JumpingFishControls
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            if (_audioConfigured) return;
+            if (audioPlayer == null || soundRegistry == null) return;
+
+            _audio = audioPlayer;
+            soundRegistry.TryGet("water_splash", out _splashSound);
+            _audioConfigured = true;
         }
 
         public void ReleaseParticles(I3dObject theObject)

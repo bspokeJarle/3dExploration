@@ -756,6 +756,32 @@
         "min": 0.9,
         "max": 1.1
       }
+    },
+    {
+      "id": "water_splash",
+      "usage": "WaterSplash",
+      "file": "OmegaStrain_water_Splash.wav",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 2.0,
+        "end": 2.0
+      },
+
+      "settings": {
+        "volume": 1.4,
+        "maxVoices": 6,
+        "is3D": true,
+        "priority": 90
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.08, 0.08 ],
+        "min": 0.9,
+        "max": 1.1
+      }
     }
   ]
 }

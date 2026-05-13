@@ -148,6 +148,9 @@
     <None Update="Soundeffects\OmegaStrain_Thunder_Sharp_Direct_2.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Soundeffects\OmegaStrain_water_Splash.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\OmegaStrain_Wings_Flapping.mp3">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
