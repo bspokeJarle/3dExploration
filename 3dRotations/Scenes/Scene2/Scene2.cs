@@ -26,11 +26,11 @@ namespace _3dRotations.Scene.Scene1
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
         public ISceneDirector Director { get; } = new Scene2Director();
         public GameModes GameMode { get; } = GameModes.Playback;
-        public float InfectionThresholdPercent { get; } = 10f;
-        public int InfectionSpreadRate { get; } = 75;
-        public int SeederOffscreenSpeedFactor { get; } = 10;
-        public float LocalInfectionSpreadDelaySec { get; } = 8.0f;
-        public float LocalInfectionSpreadRadius { get; } = 3500f;
+        public float InfectionThresholdPercent { get; } = 6f;
+        public int InfectionSpreadRate { get; } = 130;
+        public int SeederOffscreenSpeedFactor { get; } = 12;
+        public float LocalInfectionSpreadDelaySec { get; } = 6.0f;
+        public float LocalInfectionSpreadRadius { get; } = 4200f;
         public float MotherShipSmallAggression { get; } = 1.00f;
 
         public void SetupScene(I3dWorld world)
@@ -267,16 +267,14 @@ namespace _3dRotations.Scene.Scene1
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "THE OMEGA STRAIN — PHASE II";
+            o.Title = "PLANET TRITON-7 — PHASE II";
 
             o.Body =
-                "NEREID outer colony TRITON-7 has gone dark.\n\n" +
-                "Long-range telemetry confirms Omega Strain\n" +
-                "has breached the quarantine perimeter.\n" +
-                "Seeder count: TEN. Escort drones: SIX.\n" +
-                "Infection spread rate: ACCELERATED.\n" +
-                "Terrain: unknown — no prior survey data.\n\n" +
-                "Bio-contamination tolerance: 10%.\n\n" +
+                "TRITON-7 outer colony has gone dark.\n\n" +
+                "Long-range telemetry: Omega Strain has breached the perimeter.\n" +
+                "Ten seeders confirmed across the highlands. Escort drones: SIX.\n" +
+                "Infection spreading through woodland networks — tolerance: 6%.\n" +
+                "Spread delay: 6 seconds. Window is closing.\n\n" +
                 "REVISED DIRECTIVE:\n" +
                 "Sterilize TRITON-7. Leave nothing behind.";
 

@@ -7,6 +7,7 @@ using _3dRotations.Scene.Scene7;
 using _3dRotations.Scene.Scene8;
 using _3dRotations.Scenes.Intro;
 using _3dRotations.Scenes.Outro;
+using _3dRotations.Scenes.SceneSimulation;
 using _3dTesting._3dWorld;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
@@ -23,7 +24,7 @@ namespace _3DWorld.Scene
 {
     public class SceneHandler : ISceneHandler
     {
-        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Scene3(), new Scene4(), new Scene5(), new Scene6(), new Scene7(), new Scene8(), new Outro() };
+        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Scene3(), new Scene4(), new Scene5(), new Scene6(), new Scene7(), new Scene8(), new Outro(), new SceneSimulation() };
         private int currentSceneIndex = 0;
         private const bool enableLogging = false;
         private const int SceneAdvanceDelayFrames = 5;
@@ -165,9 +166,42 @@ namespace _3DWorld.Scene
             }
             catch { }
 
+            var currentScene = GetActiveScene();
+            bool isOutro = currentScene.SceneType == SceneTypes.Outro;
+            bool isSimulation = currentScene.SceneType == SceneTypes.Simulation;
+
+            if (isOutro || isSimulation)
+            {
+                // After Outro or completing a Simulation round, always go to Simulation
+                gps.SimulationRound++;
+
+                // Replace the simulation slot with a fresh instance for the new round
+                int simIndex = scenes.FindIndex(s => s.SceneType == SceneTypes.Simulation);
+                if (simIndex < 0) simIndex = scenes.Count - 1;
+                scenes[simIndex] = new SceneSimulation();
+                currentSceneIndex = simIndex;
+
+                ClearVideoOverlay();
+                gps.ResetForNewGame();
+                // Keep SimulationRound — it was incremented above and ResetForNewGame does not touch it
+                gps.SceneIndex = currentSceneIndex;
+                ResetSurfaceState();
+                SetupActiveScene(world);
+
+                // Carry forward score and stats into simulation
+                gps.Score = prevScore;
+                gps.TotalKills = prevKills;
+                gps.TotalShotsFired = prevShots;
+                gps.TotalDeaths = prevDeaths;
+                gps.PowerUpsCollected = prevPowerUps;
+
+                try { GameStatePersistence.SaveGameState(); } catch { }
+                return;
+            }
+
             currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
 
-            // Game completed — delete save so the next playthrough starts fresh
+            // Game completed normally (wrapped to 0 or Outro index) — delete save
             if (currentSceneIndex == 0)
             {
                 try { GameStatePersistence.DeleteSave(gps.PlayerName); } catch { }
@@ -179,9 +213,9 @@ namespace _3DWorld.Scene
             ResetSurfaceState();
             SetupActiveScene(world);
 
-            // Carry forward score, stats, and powerups into game scenes
+            // Carry forward score, stats, and powerups into game and simulation scenes
             var nextScene = GetActiveScene();
-            if (nextScene.SceneType == SceneTypes.Game)
+            if (nextScene.SceneType == SceneTypes.Game || nextScene.SceneType == SceneTypes.Simulation)
             {
                 gps.Score = prevScore;
                 gps.TotalKills = prevKills;
@@ -230,10 +264,23 @@ namespace _3DWorld.Scene
             {
                 var gps = GameState.GamePlayState;
                 gps.Score = _pendingSavedState.Score;
+                gps.SimulationRound = _pendingSavedState.SimulationRound;
                 gps.TotalKills = _pendingSavedState.TotalKills;
                 gps.TotalShotsFired = _pendingSavedState.TotalShotsFired;
                 gps.TotalDeaths = _pendingSavedState.TotalDeaths;
                 gps.PowerUpsCollected = _pendingSavedState.PowerUpsCollected;
+
+                // If loading into the simulation slot, rebuild it for the restored round
+                if (GetActiveScene().SceneType == SceneTypes.Simulation)
+                {
+                    int simIndex = scenes.FindIndex(s => s.SceneType == SceneTypes.Simulation);
+                    if (simIndex >= 0)
+                    {
+                        scenes[simIndex] = new SceneSimulation();
+                        ResetSurfaceState();
+                        SetupActiveScene(world);
+                    }
+                }
 
                 // If there's a checkpoint, trim enemies and restore full checkpoint state
                 bool shouldRestoreCheckpoint =
@@ -309,6 +356,8 @@ namespace _3DWorld.Scene
             {
                 if (scene.SceneType == SceneTypes.Intro)
                     SkipLogoCube(world, scene);
+                else if ((scene.SceneType == SceneTypes.Game || scene.SceneType == SceneTypes.Simulation) && k.Key == Key.X)
+                    ReturnToIntro(world);
                 return;
             }
 
@@ -318,8 +367,15 @@ namespace _3DWorld.Scene
                 return;
             }
 
-            if (scene.SceneType == SceneTypes.Game)
+            if (scene.SceneType == SceneTypes.Game || scene.SceneType == SceneTypes.Simulation)
+            {
+                if (k.Key == Key.X)
+                {
+                    ReturnToIntro(world);
+                    return;
+                }
                 HandleGameKey(k, scene, overlay);
+            }
         }
 
         private void HandleNameEntryKey(KeyEventArgs k, IScene scene, ScreenOverlayState overlay)
@@ -457,6 +513,33 @@ namespace _3DWorld.Scene
 
         private IScene? CreateFreshScene() =>
             (IScene?)Activator.CreateInstance(GetActiveScene().GetType());
+
+        private void ReturnToIntro(I3dWorld world)
+        {
+            DisposeDirector();
+            var gps = GameState.GamePlayState;
+            try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
+            try { GameStatePersistence.SaveGameState(); } catch { }
+
+            // Clear all game objects so nothing from the current scene bleeds through
+            world.WorldInhabitants.Clear();
+            if (GameState.SurfaceState.AiObjects != null)
+                GameState.SurfaceState.AiObjects.Clear();
+
+            currentSceneIndex = 0;
+            ClearVideoOverlay();
+            gps.ResetForNewGame();
+            gps.SceneIndex = 0;
+            ResetSurfaceState();
+
+            // Replace the intro scene instance so SkipLogoCube is set before SetupScene runs
+            var introScene = new Intro { SkipLogoCube = true };
+            scenes[0] = introScene;
+
+            introScene.SetupSceneOverlay();
+            introScene.SetupScene((_3dWorld)world);
+            ApplySceneSettings(introScene);
+        }
 
         private static void ClearVideoOverlay()
         {

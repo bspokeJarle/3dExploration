@@ -15,6 +15,8 @@ namespace _3dRotations.Scenes.Intro
 {
     public class Intro : IScene
     {
+        public bool SkipLogoCube { get; set; } = false;
+
         public GameModes GameMode { get; } = GameModes.Live;
 
         public string SceneMusic { get; } = "music_intro";
@@ -29,6 +31,13 @@ namespace _3dRotations.Scenes.Intro
 
         public void SetupScene(I3dWorld world)
         {
+            if (SkipLogoCube)
+            {
+                // Returning mid-game — show the overlay immediately without the logo animation
+                GameState.ScreenOverlayState.ShowOverlay = true;
+                return;
+            }
+
             var TheOmegaStrainLogo = LogoCube.CreateLogoCube();
             TheOmegaStrainLogo.ObjectOffsets = new Vector3 { x = 1000, y = 0, z = 0 };
             TheOmegaStrainLogo.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
@@ -74,7 +83,8 @@ namespace _3dRotations.Scenes.Intro
                 "  \u2022 Eliminate all enemies to face the MotherShip\n\n" +
                 "NAVIGATION:\n" +
                 "  \u2022 Arrow keys or WASD to move\n" +
-                "  \u2022 Follow the guidance arrow to find Seeders",
+                "  \u2022 Follow the guidance arrow to find Seeders\n" +
+                "  \u2022 Press [X] at any time during a mission to return to this screen",
                 "PRESS ANY KEY TO INITIATE PROTOCOL");
 
             // Page 3: Highscores

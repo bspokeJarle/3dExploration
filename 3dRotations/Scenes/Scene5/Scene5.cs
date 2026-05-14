@@ -23,14 +23,14 @@ namespace _3dRotations.Scene.Scene5
 
         public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
-        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
+        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Rainforrest;
         public ISceneDirector Director { get; } = new Scene5Director();
         public GameModes GameMode { get; } = GameModes.Live;
-        public float InfectionThresholdPercent { get; } = 4f;
-        public int InfectionSpreadRate { get; } = 200;
-        public int SeederOffscreenSpeedFactor { get; } = 16;
-        public float LocalInfectionSpreadDelaySec { get; } = 2.5f;
-        public float LocalInfectionSpreadRadius { get; } = 5000f;
+        public float InfectionThresholdPercent { get; } = 3.5f;
+        public int InfectionSpreadRate { get; } = 270;
+        public int SeederOffscreenSpeedFactor { get; } = 18;
+        public float LocalInfectionSpreadDelaySec { get; } = 2.0f;
+        public float LocalInfectionSpreadRadius { get; } = 5500f;
         public float MotherShipMediumAggression { get; } = 1.20f;
 
         public void SetupScene(I3dWorld world)
@@ -274,18 +274,16 @@ namespace _3dRotations.Scene.Scene5
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "THE OMEGA STRAIN — PHASE V";
+            o.Title = "PLANET VERIDIAN — PHASE V";
 
             o.Body =
-                "Final transmission from deep-orbit relay PROXIMA-7.\n\n" +
-                "All sectors overrun. Eighteen seeders detected.\n" +
-                "Kamikaze escort: TWELVE units. Full swarm protocol.\n" +
-                "Bomber wing: FIVE — maximum deployment.\n" +
-                "Infection cascade: CRITICAL.\n" +
-                "Spread delay: NEAR-INSTANT.\n\n" +
-                "Bio-contamination tolerance: 4%.\n\n" +
+                "Approach confirmed: dense rainforest world, designation VERIDIAN.\n\n" +
+                "Canopy systems compromised. Omega Strain spreading through root networks.\n" +
+                "Eighteen seeders detected. Kamikaze escort: TWELVE units.\n" +
+                "Bomber wing: FIVE units. Infection cascade: CRITICAL.\n" +
+                "Spread delay: 2 seconds. Tolerance: 3.5%.\n\n" +
                 "DIRECTIVE:\n" +
-                "This is the last stand. Total eradication required.";
+                "Hunt seeders before the jungle is lost. Eradicate on sight.";
 
             o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";
 
@@ -304,7 +302,7 @@ namespace _3dRotations.Scene.Scene5
         {
             GameState.ScreenOverlayState.ResetToDefaults();
             GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
-            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "The Omega Strain", "", "");
+            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "Planet Veridian", "", "");
             GameState.ScreenOverlayState.ShowOverlay = false;
             GameState.ScreenOverlayState.ShowDebugOverlay = false;
         }

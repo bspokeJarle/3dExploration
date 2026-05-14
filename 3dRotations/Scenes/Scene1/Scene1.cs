@@ -28,15 +28,15 @@ namespace _3dRotations.Scene.Scene1
 
         public GameModes GameMode { get; } = GameModes.Playback;
         //How much of the surface needs to be infected for the player to lose, as a percentage of total bio tiles
-        public float InfectionThresholdPercent { get; } = 12f;
+        public float InfectionThresholdPercent { get; } = 7f;
         //How many new tiles does each infected tile infect per second, on average? This is used to calculate the local spread delay and the infection progress bar fill rate
-        public int InfectionSpreadRate { get; } = 50;
+        public int InfectionSpreadRate { get; } = 100;
         //When seeders are offscreen, they will move at this speed factor (multiplier to normal speed) to catch up to the player faster. This is used to keep the gameplay engaging and prevent players from kiting seeders indefinitely by staying at the edge of the screen
-        public int SeederOffscreenSpeedFactor { get; } = 8;
+        public int SeederOffscreenSpeedFactor { get; } = 10;
         //When a tile is infected, it will spread the infection to its neighbors after this delay (in seconds). The delay is calculated based on the InfectionSpreadRate, and determines how quickly the infection spreads across the surface. A lower value means faster spread, while a higher value means slower spread.
-        public float LocalInfectionSpreadDelaySec { get; } = 12.0f;
+        public float LocalInfectionSpreadDelaySec { get; } = 8.0f;
         //Killing a seeder will stop the cascade of infections from spreading to its neighbors. If there is a seeder within this radius the infection will go on until it is killed
-        public float LocalInfectionSpreadRadius { get; } = 3500f;
+        public float LocalInfectionSpreadRadius { get; } = 4000f;
         public float MotherShipSmallAggression { get; } = 0.90f;
 
         public void SetupScene(I3dWorld world)
@@ -285,18 +285,17 @@ namespace _3dRotations.Scene.Scene1
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // BOOT SEQUENCE";
-            o.Title = "THE OMEGA STRAIN";
+            o.Title = "PLANET NEREID — PHASE I";
 
             o.Body =
                 "Year 2147.\n\n" +
                 "Signal received from the NEREID perimeter colonies.\n" +
-                "Biological anomaly confirmed.\n" +
-                "Designation: OMEGA STRAIN.\n\n" +
-                "Seeder activity detected across multiple sectors.\n" +
-                "Infection rate: ACCELERATING.\n" +
-                "Containment probability: 12%.\n\n" +
+                "Biological anomaly confirmed. Designation: OMEGA STRAIN.\n\n" +
+                "Seeder activity detected. Seven units across grassland sectors.\n" +
+                "Infection is advancing fast — tolerance threshold: 7%.\n" +
+                "Spread delay: 8 seconds. Act before the bio-layer is lost.\n\n" +
                 "PRIMARY DIRECTIVE:\n" +
-                "Eliminate Seeders before Critical Mass.";
+                "Eliminate Seeders before Critical Mass. Good luck, pilot.";
 
             o.Footer = "PRESS ANY KEY TO INITIATE PROTOCOL";
 

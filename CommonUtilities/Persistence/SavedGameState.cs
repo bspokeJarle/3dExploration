@@ -9,6 +9,7 @@ namespace CommonUtilities.Persistence
     {
         public string PlayerName { get; set; } = "";
         public int SceneIndex { get; set; }
+        public int SimulationRound { get; set; }
         public long Score { get; set; }
         public int Lives { get; set; }
         public float Health { get; set; }

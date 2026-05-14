@@ -22,15 +22,15 @@ namespace _3dRotations.Scene.Scene6
 
         public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
-        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
+        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Desert;
         public ISceneDirector Director { get; } = new Scene6Director();
         public GameModes GameMode { get; } = GameModes.Live;
 
-        public float InfectionThresholdPercent { get; } = 3.5f;
-        public int InfectionSpreadRate { get; } = 230;
-        public int SeederOffscreenSpeedFactor { get; } = 18;
-        public float LocalInfectionSpreadDelaySec { get; } = 2.2f;
-        public float LocalInfectionSpreadRadius { get; } = 5200f;
+        public float InfectionThresholdPercent { get; } = 3.0f;
+        public int InfectionSpreadRate { get; } = 310;
+        public int SeederOffscreenSpeedFactor { get; } = 20;
+        public float LocalInfectionSpreadDelaySec { get; } = 1.8f;
+        public float LocalInfectionSpreadRadius { get; } = 5800f;
         public float MotherShipMediumAggression { get; } = 1.35f;
 
         public void SetupScene(I3dWorld world)
@@ -254,11 +254,15 @@ namespace _3dRotations.Scene.Scene6
             o.Type = ScreenOverlayType.Intro;
             o.Anchor = ScreenOverlayAnchor.Top;
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "THE OMEGA STRAIN — PHASE VI";
+            o.Title = "PLANET ARIDUS — PHASE VI";
             o.Body =
-                "Medium-class carrier detected.\n\n" +
-                "Objective: purge seeders, survive drones, destroy the medium carrier.\n" +
-                "Threat index: high. Infection window narrows.";
+                "Descending on ARIDUS — arid desert world, surface temperature extreme.\n\n" +
+                "Sand contamination identified as Omega Strain vector.\n" +
+                "Nineteen seeders detected across dune fields.\n" +
+                "Kamikaze escort: FOURTEEN units. Bomber wing: SIX.\n" +
+                "Spread delay: 1.8 seconds. Bio-tolerance: 3.0%.\n\n" +
+                "DIRECTIVE:\n" +
+                "Destroy all seeders before the desert biome collapses entirely.";
             o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";
             o.ShowOverlay = true;
             o.AutoHide = false;
@@ -273,7 +277,7 @@ namespace _3dRotations.Scene.Scene6
         {
             GameState.ScreenOverlayState.ResetToDefaults();
             GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
-            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "Medium Mothership Hunt", "", "");
+            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "Planet Aridus", "", "");
             GameState.ScreenOverlayState.ShowOverlay = false;
             GameState.ScreenOverlayState.ShowDebugOverlay = false;
         }

@@ -26,11 +26,11 @@ namespace _3dRotations.Scene.Scene8
         public ISceneDirector Director { get; } = new Scene8Director();
         public GameModes GameMode { get; } = GameModes.Live;
 
-        public float InfectionThresholdPercent { get; } = 2.5f;
-        public int InfectionSpreadRate { get; } = 280;
-        public int SeederOffscreenSpeedFactor { get; } = 20;
-        public float LocalInfectionSpreadDelaySec { get; } = 1.8f;
-        public float LocalInfectionSpreadRadius { get; } = 5600f;
+        public float InfectionThresholdPercent { get; } = 2.0f;
+        public int InfectionSpreadRate { get; } = 400;
+        public int SeederOffscreenSpeedFactor { get; } = 22;
+        public float LocalInfectionSpreadDelaySec { get; } = 1.2f;
+        public float LocalInfectionSpreadRadius { get; } = 6500f;
         public float MotherShipLargeAggression { get; } = 1.40f;
 
         public void SetupScene(I3dWorld world)
@@ -258,12 +258,15 @@ namespace _3dRotations.Scene.Scene8
             o.Type = ScreenOverlayType.Intro;
             o.Anchor = ScreenOverlayAnchor.Top;
             o.Header = "RETROMESH // FINAL BRIEFING";
-            o.Title = "THE OMEGA STRAIN — PHASE VIII";
+            o.Title = "PLANET TERRA-IX — PHASE VIII";
             o.Body =
-                "Final large-class war carrier confirmed.\n\n" +
-                "Objective: eliminate all hostiles and finish the campaign.\n" +
-                "Threat index: critical.\n" +
-                "Carrier aggression is at maximum stage tuning.";
+                "Last stand on TERRA-IX — origin colony world of the outer systems.\n\n" +
+                "All previous planets compromised. This is the final perimeter.\n" +
+                "Twenty-two seeders confirmed. Kamikaze escort: EIGHTEEN units.\n" +
+                "Bomber wing: EIGHT. Large-class war carrier: MAXIMUM aggression.\n" +
+                "Spread delay: 1.2 seconds. Bio-tolerance: 2.0%.\n\n" +
+                "DIRECTIVE:\n" +
+                "Win here. There is nowhere left to fall back to.";
             o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";
             o.ShowOverlay = true;
             o.AutoHide = false;
@@ -278,7 +281,7 @@ namespace _3dRotations.Scene.Scene8
         {
             GameState.ScreenOverlayState.ResetToDefaults();
             GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
-            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "Final Large Mothership", "", "");
+            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "Planet Terra-IX", "", "");
             GameState.ScreenOverlayState.ShowOverlay = false;
             GameState.ScreenOverlayState.ShowDebugOverlay = false;
         }

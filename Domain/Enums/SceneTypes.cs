@@ -4,6 +4,7 @@ namespace Domain
     {
         Intro,
         Game,
-        Outro
+        Outro,
+        Simulation
     }
 }

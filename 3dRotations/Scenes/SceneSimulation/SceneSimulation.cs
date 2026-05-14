@@ -1,6 +1,7 @@
 using _3dRotations.Helpers;
 using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
@@ -14,24 +15,91 @@ using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
 
-namespace _3dRotations.Scene.Scene7
+namespace _3dRotations.Scenes.SceneSimulation
 {
-    public class Scene7 : IScene
+    public class SceneSimulation : IScene
     {
         Surface Surface = new();
 
-        public string SceneMusic { get; } = "music_battle";
-        public SceneTypes SceneType { get; } = SceneTypes.Game;
-        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Winter;
-        public ISceneDirector Director { get; } = new Scene7Director();
-        public GameModes GameMode { get; } = GameModes.Live;
+        private static readonly SceneBiomeTypes[] BiomeCycle = new[]
+        {
+            SceneBiomeTypes.HillsWoods,
+            SceneBiomeTypes.Rainforrest,
+            SceneBiomeTypes.Desert,
+            SceneBiomeTypes.Winter,
+        };
 
-        public float InfectionThresholdPercent { get; } = 2.5f;
-        public int InfectionSpreadRate { get; } = 350;
-        public int SeederOffscreenSpeedFactor { get; } = 21;
-        public float LocalInfectionSpreadDelaySec { get; } = 1.5f;
-        public float LocalInfectionSpreadRadius { get; } = 6000f;
-        public float MotherShipLargeAggression { get; } = 1.20f;
+        private readonly SceneBiomeTypes _biome;
+        private readonly int _simulationRound;
+
+        // Derived scaling values based on round
+        private readonly int _seeders;
+        private readonly int _drones;
+        private readonly int _bombers;
+        private readonly int _powerUpSeeders;
+        private readonly float _infectionThreshold;
+        private readonly int _infectionSpreadRate;
+        private readonly int _offscreenSpeedFactor;
+        private readonly float _spreadDelaySec;
+        private readonly float _spreadRadius;
+        private readonly float _motherShipAggression;
+        private readonly bool _useLargeMotherShip;
+
+        public string SceneMusic { get; } = "music_battle";
+        public SceneTypes SceneType { get; } = SceneTypes.Simulation;
+        public SceneBiomeTypes SceneBiome { get; }
+        public GameModes GameMode { get; } = GameModes.Live;
+        public ISceneDirector Director { get; }
+
+        // IScene infection/difficulty properties driven by simulation round
+        public float InfectionThresholdPercent { get; }
+        public int InfectionSpreadRate { get; }
+        public int SeederOffscreenSpeedFactor { get; }
+        public float LocalInfectionSpreadDelaySec { get; }
+        public float LocalInfectionSpreadRadius { get; }
+        public float MotherShipSmallAggression { get; }
+        public float MotherShipMediumAggression { get; }
+        public float MotherShipLargeAggression { get; }
+
+        public SceneSimulation()
+        {
+            _simulationRound = GameState.GamePlayState.SimulationRound;
+
+            // Pick biome pseudo-randomly from round seed so each round feels different
+            var rndBiome = new Random(_simulationRound * 7919 + 42);
+            _biome = BiomeCycle[rndBiome.Next(BiomeCycle.Length)];
+            SceneBiome = _biome;
+
+            // Scale enemies with round: base values + round increment, capped at sane maxima
+            int round = _simulationRound;
+            _seeders = Math.Min(8 + round * 3, 40);
+            _powerUpSeeders = Math.Max(2, Math.Min(2 + round, 8));
+            _drones = Math.Min(12 + round * 2, 40);
+            _bombers = Math.Min(5 + round, 15);
+
+            // Use large mothership from round 2 onwards, toggle between medium/large
+            _useLargeMotherShip = round >= 2;
+
+            // Infection gets progressively more brutal
+            _infectionThreshold = Math.Max(1.0f, 3.5f - round * 0.15f);
+            _infectionSpreadRate = Math.Min(200 + round * 40, 800);
+            _offscreenSpeedFactor = Math.Min(16 + round * 1, 30);
+            _spreadDelaySec = Math.Max(0.4f, 2.0f - round * 0.12f);
+            _spreadRadius = Math.Min(5500f + round * 200f, 10000f);
+            _motherShipAggression = Math.Min(1.20f + round * 0.08f, 2.2f);
+
+            // Assign to interface properties
+            InfectionThresholdPercent = _infectionThreshold;
+            InfectionSpreadRate = _infectionSpreadRate;
+            SeederOffscreenSpeedFactor = _offscreenSpeedFactor;
+            LocalInfectionSpreadDelaySec = _spreadDelaySec;
+            LocalInfectionSpreadRadius = _spreadRadius;
+            MotherShipSmallAggression = _motherShipAggression;
+            MotherShipMediumAggression = _motherShipAggression;
+            MotherShipLargeAggression = _motherShipAggression;
+
+            Director = new SceneSimulationDirector();
+        }
 
         public void SetupScene(I3dWorld world)
         {
@@ -59,12 +127,13 @@ namespace _3dRotations.Scene.Scene7
 
             SpawnJumpingFish(world);
 
-            for (int b = 0; b < 7; b++)
+            // Zeppelin Bombers
+            for (int b = 0; b < _bombers; b++)
             {
-                var rmdBomber = new Random();
+                var rmd = new Random();
                 var bomber = ZeppelinBomber.CreateZeppelinBomber(Surface);
                 bomber.Rotation = new Vector3 { };
-                bomber.WorldPosition = new Vector3 { x = (95700 + rmdBomber.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmdBomber.Next(-40000, 40000)) * ws };
+                bomber.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmd.Next(-40000, 40000)) * ws };
                 bomber.ObjectOffsets = new Vector3 { x = 0, y = -50, z = 400 };
                 bomber.ObjectName = "ZeppelinBomber";
                 bomber.Movement = new ZeppelinBomberControls();
@@ -75,7 +144,8 @@ namespace _3dRotations.Scene.Scene7
                 GameState.SurfaceState.AiObjects.Add(bomber);
             }
 
-            for (int i = 0; i < 16; i++)
+            // Kamikaze Drones — inactive until Decoy unlocked
+            for (int i = 0; i < _drones; i++)
             {
                 var rmd = new Random();
                 var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
@@ -92,12 +162,16 @@ namespace _3dRotations.Scene.Scene7
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-            for (int i = 0; i < 10; i++)
+            // Seeders — close group
+            int nearSeeders = _seeders / 2;
+            int farSeeders = _seeders - nearSeeders;
+
+            for (int i = 0; i < nearSeeders; i++)
             {
                 var rmd = new Random();
                 var seeder = Seeder.CreateSeeder(Surface);
                 seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-22000, 22000)) * ws, y = 0, z = (92000 + rmd.Next(-22000, 22000)) * ws };
+                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-20000, 20000)) * ws, y = 0, z = (92000 + rmd.Next(-20000, 20000)) * ws };
                 seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seeder.ObjectName = "Seeder";
                 seeder.Movement = new SeederControls();
@@ -108,12 +182,12 @@ namespace _3dRotations.Scene.Scene7
                 GameState.SurfaceState.AiObjects.Add(seeder);
             }
 
-            for (int i = 0; i < 9; i++)
+            for (int i = 0; i < farSeeders; i++)
             {
                 var rmd = new Random();
                 var seeder = Seeder.CreateSeeder(Surface);
                 seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-45000, 26000)) * ws, y = 0, z = (92000 + rmd.Next(-45000, 26000)) * ws };
+                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-50000, 30000)) * ws, y = 0, z = (92000 + rmd.Next(-50000, 30000)) * ws };
                 seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 seeder.ObjectName = "Seeder";
                 seeder.Movement = new SeederControls();
@@ -124,52 +198,78 @@ namespace _3dRotations.Scene.Scene7
                 GameState.SurfaceState.AiObjects.Add(seeder);
             }
 
-            for (int i = 0; i < 4; i++)
+            // PowerUp seeders
+            for (int i = 0; i < _powerUpSeeders; i++)
             {
                 var rmd = new Random();
-                var seederPowerup = Seeder.CreateSeeder(Surface);
-                seederPowerup.Rotation = new Vector3 { };
-                seederPowerup.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-34000, 34000)) * ws, y = 0, z = (92000 + rmd.Next(-34000, 34000)) * ws };
-                seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seederPowerup.ObjectName = "Seeder";
-                seederPowerup.Movement = new SeederControls();
-                seederPowerup.CrashBoxDebugMode = false;
-                seederPowerup.ImpactStatus = new ImpactStatus { };
-                seederPowerup.HasPowerUp = true;
-                world.WorldInhabitants.Add(seederPowerup);
-                GameState.SurfaceState.AiObjects.Add(seederPowerup);
+                var seederPu = Seeder.CreateSeeder(Surface);
+                seederPu.Rotation = new Vector3 { };
+                seederPu.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-35000, 35000)) * ws, y = 0, z = (92000 + rmd.Next(-35000, 35000)) * ws };
+                seederPu.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+                seederPu.ObjectName = "Seeder";
+                seederPu.Movement = new SeederControls();
+                seederPu.CrashBoxDebugMode = false;
+                seederPu.ImpactStatus = new ImpactStatus { };
+                seederPu.HasPowerUp = true;
+                world.WorldInhabitants.Add(seederPu);
+                GameState.SurfaceState.AiObjects.Add(seederPu);
             }
 
-            var motherShipLarge = MotherShipLarge.CreateMotherShipLarge(Surface);
-            motherShipLarge.Rotation = new Vector3 { };
-            motherShipLarge.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 88000 * ws };
-            motherShipLarge.ObjectOffsets = new Vector3 { x = 0, y = -1500, z = 400 };
-            motherShipLarge.ObjectName = "MotherShipLarge";
-            motherShipLarge.Movement = new MotherShipLargeControls();
-
-            var motherShipLargeLazer = Lazer.CreateLazer(Surface, scaleMultiplier: 2.5f);
-            motherShipLargeLazer.CrashBoxDebugMode = false;
-            var motherShipLargeWeapons = new List<I3dObject> { motherShipLargeLazer };
-            motherShipLarge.WeaponSystems = new Weapons(motherShipLargeWeapons, motherShipLarge.Movement!, (_3dObject)motherShipLarge)
+            // MotherShip — Large from round 2+, Medium for rounds 0-1
+            if (_useLargeMotherShip)
             {
-                ShowAimAssist = false,
-                FireAsEnemyWeapon = true,
-                EnemyLazerName = "EnemyLazerLarge"
-            };
+                var motherShipLarge = MotherShipLarge.CreateMotherShipLarge(Surface);
+                motherShipLarge.Rotation = new Vector3 { };
+                motherShipLarge.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 88000 * ws };
+                motherShipLarge.ObjectOffsets = new Vector3 { x = 0, y = -1500, z = 400 };
+                motherShipLarge.ObjectName = "MotherShipLarge";
+                motherShipLarge.Movement = new MotherShipLargeControls();
+                var lazer = Lazer.CreateLazer(Surface, scaleMultiplier: 2.5f);
+                lazer.CrashBoxDebugMode = false;
+                motherShipLarge.WeaponSystems = new Weapons(new List<I3dObject> { lazer }, motherShipLarge.Movement!, (_3dObject)motherShipLarge)
+                {
+                    ShowAimAssist = false,
+                    FireAsEnemyWeapon = true,
+                    EnemyLazerName = "EnemyLazerLarge"
+                };
+                motherShipLarge.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipLargeHealth };
+                motherShipLarge.CrashBoxDebugMode = false;
+                motherShipLarge.HasPowerUp = false;
+                motherShipLarge.IsActive = false;
+                world.WorldInhabitants.Add(motherShipLarge);
+                GameState.SurfaceState.AiObjects.Add(motherShipLarge);
+            }
+            else
+            {
+                var motherShipMedium = MotherShipMedium.CreateMotherShipMedium(Surface);
+                motherShipMedium.Rotation = new Vector3 { };
+                motherShipMedium.WorldPosition = new Vector3 { x = 95700 * ws, y = 0, z = 90000 * ws };
+                motherShipMedium.ObjectOffsets = new Vector3 { x = 0, y = -1500, z = 400 };
+                motherShipMedium.ObjectName = "MotherShipMedium";
+                motherShipMedium.Movement = new MotherShipMediumControls();
+                var lazer = Lazer.CreateLazer(Surface, scaleMultiplier: 2.0f);
+                lazer.CrashBoxDebugMode = false;
+                motherShipMedium.WeaponSystems = new Weapons(new List<I3dObject> { lazer }, motherShipMedium.Movement!, (_3dObject)motherShipMedium)
+                {
+                    ShowAimAssist = false,
+                    FireAsEnemyWeapon = true,
+                    EnemyLazerName = "EnemyLazerMedium"
+                };
+                motherShipMedium.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipMediumHealth };
+                motherShipMedium.CrashBoxDebugMode = false;
+                motherShipMedium.HasPowerUp = false;
+                motherShipMedium.IsActive = false;
+                world.WorldInhabitants.Add(motherShipMedium);
+                GameState.SurfaceState.AiObjects.Add(motherShipMedium);
+            }
 
-            motherShipLarge.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipLargeHealth };
-            motherShipLarge.CrashBoxDebugMode = false;
-            motherShipLarge.HasPowerUp = false;
-            motherShipLarge.IsActive = false;
-            world.WorldInhabitants.Add(motherShipLarge);
-            GameState.SurfaceState.AiObjects.Add(motherShipLarge);
-
+            // SpaceSwans — passive wildlife
             for (int s = 0; s < 50; s++)
             {
-                var rmdSwan = new Random();
+                var rmd = new Random();
                 var spaceSwan = SpaceSwan.CreateSpaceSwan(Surface);
                 spaceSwan.Rotation = new Vector3 { };
-                spaceSwan.WorldPosition = new Vector3 { x = (95700 + rmdSwan.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmdSwan.Next(-40000, 40000)) * ws };
+                spaceSwan.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-40000, 40000)) * ws, y = 0, z = (92000 + rmd.Next(-40000, 40000)) * ws };
                 spaceSwan.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
                 spaceSwan.ObjectName = "SpaceSwan";
                 spaceSwan.Movement = new SpaceSwanControls();
@@ -181,6 +281,7 @@ namespace _3dRotations.Scene.Scene7
                 GameState.SurfaceState.AiObjects.Add(spaceSwan);
             }
 
+            // Surface
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 400 };
@@ -199,8 +300,7 @@ namespace _3dRotations.Scene.Scene7
                 GameState.SurfaceState.Global2DMap,
                 Surface.MaxHeight(),
                 towerPlacements,
-                writeDebugLogs: false
-            );
+                writeDebugLogs: false);
 
             foreach (var towerPlacement in towerPlacements)
             {
@@ -257,24 +357,45 @@ namespace _3dRotations.Scene.Scene7
 
             o.Type = ScreenOverlayType.Intro;
             o.Anchor = ScreenOverlayAnchor.Top;
-            o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "PLANET GLACIUS — PHASE VII";
+
+            int round = _simulationRound;
+            string roundLabel = round == 0 ? "INITIAL" : $"ROUND {round + 1}";
+            int totalEnemies = _seeders + _powerUpSeeders + _drones + _bombers + 1;
+            string motherShipClass = _useLargeMotherShip ? "LARGE-CLASS WAR CARRIER" : "MEDIUM-CLASS CARRIER";
+            string biomeName = _biome switch
+            {
+                SceneBiomeTypes.Rainforrest => "JUNGLE WORLD",
+                SceneBiomeTypes.Desert      => "DESERT WORLD",
+                SceneBiomeTypes.Winter      => "FROZEN WORLD",
+                _                           => "TEMPERATE WORLD"
+            };
+
+            o.Header = "RETROMESH // SIMULATION";
+            o.Title = $"COMBAT SIMULATOR \u2014 {roundLabel}";
+
             o.Body =
-                "Entering orbit of GLACIUS — frozen world, permanent ice storm coverage.\n\n" +
-                "Omega Strain adapts rapidly under sub-zero conditions.\n" +
-                "Twenty seeders embedded in glacial terrain.\n" +
-                "Kamikaze escort: SIXTEEN units. Bomber wing: SEVEN.\n" +
-                "Spread delay: 1.5 seconds. Bio-tolerance: 2.5%.\n" +
-                "Large-class war carrier incoming.\n\n" +
-                "DIRECTIVE:\n" +
-                "Clear all hostiles — the ice planet will not survive another hour.";
-            o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";
+                $"The galaxy has been cleared \u2014 but the war is not over.\\n\\n" +
+                $"A new infection wave is imminent. Train now.\\n" +
+                $"Simulation type: {biomeName}\\n\\n" +
+                $"ENEMY COUNT: {totalEnemies} units total\\n" +
+                $"  Seeders:          {_seeders + _powerUpSeeders} (incl. {_powerUpSeeders} power-up carriers)\\n" +
+                $"  Kamikaze Drones:  {_drones}\\n" +
+                $"  Zeppelin Bombers: {_bombers}\\n" +
+                $"  MotherShip:       1 \u00d7 {motherShipClass}\\n\\n" +
+                $"Infection tolerance: {_infectionThreshold:F1}%  |  Spread delay: {_spreadDelaySec:F1}s\\n\\n" +
+                "DIRECTIVE:\\n" +
+                "Survive. Score high. Defend your rank on the leaderboard.";
+
+            o.Footer = "PRESS ANY KEY TO ENTER THE SIMULATION";
+
             o.ShowOverlay = true;
             o.AutoHide = false;
             o.AutoHideSeconds = 0f;
-            o.DimStrength = 0.60f;
-            o.PanelWidthRatio = 0.74f;
-            o.PanelHeightRatio = 0.34f;
+
+            o.DimStrength = 0.65f;
+            o.PanelWidthRatio = 0.80f;
+            o.PanelHeightRatio = 0.40f;
+
             o.ShowDebugOverlay = false;
         }
 
@@ -282,7 +403,9 @@ namespace _3dRotations.Scene.Scene7
         {
             GameState.ScreenOverlayState.ResetToDefaults();
             GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
-            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", "Planet Glacius", "", "");
+            int round = _simulationRound;
+            string roundLabel = round == 0 ? "Simulation" : $"Simulation R{round + 1}";
+            GameState.ScreenOverlayState.SetGameOverlayPreset("Header", roundLabel, "", "");
             GameState.ScreenOverlayState.ShowOverlay = false;
             GameState.ScreenOverlayState.ShowDebugOverlay = false;
         }

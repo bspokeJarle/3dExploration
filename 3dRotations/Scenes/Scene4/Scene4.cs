@@ -31,11 +31,11 @@ namespace _3dRotations.Scene.Scene4
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Winter;
         public ISceneDirector Director { get; } = new Scene4Director();
         public GameModes GameMode { get; } = GameModes.Live;
-        public float InfectionThresholdPercent { get; } = 6f;
-        public int InfectionSpreadRate { get; } = 150;
-        public int SeederOffscreenSpeedFactor { get; } = 14;
-        public float LocalInfectionSpreadDelaySec { get; } = 4.0f;
-        public float LocalInfectionSpreadRadius { get; } = 4500f;
+        public float InfectionThresholdPercent { get; } = 4.5f;
+        public int InfectionSpreadRate { get; } = 210;
+        public int SeederOffscreenSpeedFactor { get; } = 16;
+        public float LocalInfectionSpreadDelaySec { get; } = 3.0f;
+        public float LocalInfectionSpreadRadius { get; } = 5000f;
         public float MotherShipMediumAggression { get; } = 1.05f;
 
         public void SetupScene(I3dWorld world)
@@ -659,18 +659,15 @@ namespace _3dRotations.Scene.Scene4
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "THE OMEGA STRAIN — PHASE IV";
+            o.Title = "PLANET KEPLER-22b — PHASE IV";
 
             o.Body =
-                "Mining station KEPLER-22b reports critical breach.\n\n" +
-                "Omega Strain has mutated. Fifteen seeders confirmed.\n" +
-                "Escort drones: TEN. Formation pattern: aggressive.\n" +
-                "Bomber squadron: THREE units in orbit.\n" +
-                "Infection spread rate: EXTREME.\n" +
-                "Local cascade delay: MINIMAL.\n\n" +
-                "Bio-contamination tolerance: 6%.\n\n" +
+                "Frozen world KEPLER-22b: Omega Strain has adapted to sub-zero conditions.\n\n" +
+                "Fifteen seeders confirmed. Escort drones: TEN. Bombers: THREE.\n" +
+                "Infection spreading beneath the ice layer — tolerance: 4.5%.\n" +
+                "Spread delay: 3 seconds. Cascade will not stop until seeders are dead.\n\n" +
                 "DIRECTIVE:\n" +
-                "Purge the station. Accept no losses.";
+                "Purge the frozen world. Accept no losses.";
 
             o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";
 

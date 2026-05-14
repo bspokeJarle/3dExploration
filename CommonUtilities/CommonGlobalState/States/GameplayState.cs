@@ -34,6 +34,9 @@ namespace Domain
         public int SceneIndex { get; set; } = 0;
         public int Lives { get; set; } = 3;
 
+        // Simulation round counter — increments each time the player enters the simulation after the outro
+        public int SimulationRound { get; set; } = 0;
+
         // Keep as float to allow smooth damage later (e.g., collision damage scaling)
         public float Health { get; set; } = 100f;
         public float Alt { get; set; } = 0f;

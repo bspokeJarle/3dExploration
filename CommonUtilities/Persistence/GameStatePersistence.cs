@@ -31,6 +31,7 @@ namespace CommonUtilities.Persistence
             {
                 PlayerName = state.PlayerName,
                 SceneIndex = state.SceneIndex,
+                SimulationRound = state.SimulationRound,
                 Score = state.Score,
                 Lives = state.Lives,
                 Health = state.Health,
@@ -114,6 +115,7 @@ namespace CommonUtilities.Persistence
 
             state.Score = saved.Score;
             state.SceneIndex = saved.SceneIndex;
+            state.SimulationRound = saved.SimulationRound;
             state.Lives = saved.Lives;
             state.Health = saved.Health;
             state.MaxHealth = saved.MaxHealth;

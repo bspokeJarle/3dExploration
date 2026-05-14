@@ -26,11 +26,11 @@ namespace _3dRotations.Scene.Scene3
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Rainforrest;
         public ISceneDirector Director { get; } = new Scene3Director();
         public GameModes GameMode { get; } = GameModes.Live;
-        public float InfectionThresholdPercent { get; } = 8f;
-        public int InfectionSpreadRate { get; } = 100;
-        public int SeederOffscreenSpeedFactor { get; } = 12;
-        public float LocalInfectionSpreadDelaySec { get; } = 6.0f;
-        public float LocalInfectionSpreadRadius { get; } = 4000f;
+        public float InfectionThresholdPercent { get; } = 5f;
+        public int InfectionSpreadRate { get; } = 170;
+        public int SeederOffscreenSpeedFactor { get; } = 14;
+        public float LocalInfectionSpreadDelaySec { get; } = 4.5f;
+        public float LocalInfectionSpreadRadius { get; } = 4500f;
         public float MotherShipSmallAggression { get; } = 1.10f;
         private const int MinimumVisibleBambooHuts = 6;
         private static readonly float[] BambooHutRotationVariants = { -32f, -21f, -10f, 0f, 13f, 24f, 35f };
@@ -327,18 +327,16 @@ namespace _3dRotations.Scene.Scene3
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "THE OMEGA STRAIN — PHASE III";
+            o.Title = "PLANET CYGNUS-9 — PHASE III";
 
             o.Body =
-                "Deep-space relay CYGNUS-9 is under siege.\n\n" +
-                "Seeder activity has doubled. Twelve confirmed.\n" +
-                "Escort drones: EIGHT. Heavily armed.\n" +
-                "New threat detected: ZEPPELIN BOMBERS.\n" +
-                "Two bomber units patrol the upper atmosphere.\n" +
-                "Infection spread rate: CRITICAL.\n\n" +
-                "Bio-contamination tolerance: 8%.\n\n" +
+                "Dense jungle world CYGNUS-9 is under siege.\n\n" +
+                "Omega Strain spreads through root systems at extreme speed.\n" +
+                "Twelve seeders confirmed. Escort drones: EIGHT.\n" +
+                "New threat: ZEPPELIN BOMBERS — two patrolling upper canopy.\n" +
+                "Infection spread delay: 4.5 seconds. Tolerance: 5%.\n\n" +
                 "DIRECTIVE:\n" +
-                "Neutralize all threats. Watch the skies.";
+                "Neutralize all threats. Watch the skies and the roots.";
 
             o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";
 
