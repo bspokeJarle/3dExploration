@@ -15,6 +15,7 @@ namespace Domain
     public interface IScene
     {
         SceneTypes SceneType { get; }
+        SceneBiomeTypes SceneBiome { get; }
         GameModes GameMode { get; }
         void SetupScene(I3dWorld world);
         string SceneMusic { get; }

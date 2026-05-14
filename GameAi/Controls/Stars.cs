@@ -61,7 +61,7 @@ namespace GameAiAndControls.Controls
                 z = theObject.ObjectOffsets.z                            // keep Z
             };
 
-            if (_enableLogging)
+            if (Logger.ShouldLog(_enableLogging))
             {
                 Logger.Log(
                     $"[StarsControl] Star Y={theObject.ObjectOffsets.y:0.0}, " +

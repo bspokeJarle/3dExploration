@@ -1,10 +1,9 @@
-﻿using _3dRotations.Helpers;
+using _3dRotations.Helpers;
 using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using static Domain._3dSpecificsImplementations;
 using CommonUtilities.CommonSetup;
@@ -18,7 +17,11 @@ namespace _3dRotations.World.Objects
     {
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = 0, y = 0, z = 0 };
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
+        public Dictionary<long, ITriangleMeshWithColor> RotatedSurfaceTriangleByLandId { get; set; } = new();
         public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();
+        private readonly List<ITriangleMeshWithColor> _surfaceTriangles = new();
+        private readonly List<List<IVector3>> _viewPortCrashBoxes = new();
+        private List<List<IVector3>>? _mainSurfaceCrashBoxes;
 
         // Pre-parsed crater colors (R, G, B) to avoid per-tile string allocation
         private static readonly (int r, int g, int b)[] CraterColorsRgb =
@@ -30,6 +33,7 @@ namespace _3dRotations.World.Objects
             (0x3D, 0x2B, 0x1D)
         ];
 
+        private const bool enableLogging = false;
         const bool debugSurfaceBasedObjects = false; // Set to true to debug surface based objects
 
         public int SurfaceWidth() {  return SurfaceSetup.surfaceWidth; }
@@ -46,11 +50,12 @@ namespace _3dRotations.World.Objects
             int viewPortSize = ViewPortSize();
             int maxHeight = MaxHeight();
             int rowLimit = (int)(viewPortSize / 1.5) + 2;
-            int tileCount = (rowLimit - 1) * (viewPortSize - 2);
+            int tileCount = (rowLimit - 1) * (viewPortSize - 1);
+            int requiredTriangleCount = tileCount * 2;
 
-            var newSurface = new List<ITriangleMeshWithColor>(tileCount * 2);
+            EnsureSurfaceTrianglePool(requiredTriangleCount);
             var surface = new _3dObject { ObjectId = GameState.ObjectIdCounter++ };
-            var viewPortCrashBoxes = new List<List<IVector3>>(tileCount / 4); // Ny liste for ViewPort-crashboxes
+            _viewPortCrashBoxes.Clear();
 
             int mapSize = global2DMap.GetLength(0);
             int mapZIndex = ((int)globalMapPosition.z / tileSize) % mapSize;
@@ -70,6 +75,7 @@ namespace _3dRotations.World.Objects
             var YRemainer = globalMapPosition.y;
 
             var YPosition = -(tileSize * viewPortSize / 2);
+            int triangleIndex = 0;
             for (int i = 1; i < rowLimit; i++)
             {
                 int currentMapY = (mapZIndex + i) % mapSize;
@@ -104,7 +110,7 @@ namespace _3dRotations.World.Objects
                         cr = cc.r; cg = cc.g; cb = cc.b;
                     }
 
-                    if (currentTile.isInfected)
+                    if (currentTile.isInfected && IsInfectableTerrain(currentTile.mapDepth, maxHeight))
                     {
                         cr = 255; cg = 0; cb = 0;
                     }
@@ -134,7 +140,7 @@ namespace _3dRotations.World.Objects
                         };
 
                         var crashBoxCorners = _3dObjectHelpers.GenerateCrashBoxCorners(min, max);
-                        viewPortCrashBoxes.Add(crashBoxCorners);
+                        _viewPortCrashBoxes.Add(crashBoxCorners);
                     }
 
                     // Fade-in: first 3 rows gradually brighten, full brightness from row 4
@@ -147,48 +153,71 @@ namespace _3dRotations.World.Objects
 
                     var color = $"{cr:X2}{cg:X2}{cb:X2}";
 
-                    var triangle1 = new TriangleMeshWithColor
-                    {
-                        Color = color,
-                        landBasedPosition = surfaceId,
-                        vert1 = { x = XPosition - XRemainer, y = YPosition - ZRemainer, z = ZPostition1 - YRemainer },
-                        vert2 = { x = XPosition + tileSize - XRemainer, y = YPosition - ZRemainer, z = ZPostition2 - YRemainer },
-                        vert3 = { x = XPosition + tileSize - XRemainer, y = YPosition + tileSize - ZRemainer, z = ZPostition3 - YRemainer }
-                    };
+                    var triangle1 = (TriangleMeshWithColor)_surfaceTriangles[triangleIndex++];
+                    triangle1.Color = color;
+                    triangle1.landBasedPosition = surfaceId;
+                    SetVector(triangle1.vert1, XPosition - XRemainer, YPosition - ZRemainer, ZPostition1 - YRemainer);
+                    SetVector(triangle1.vert2, XPosition + tileSize - XRemainer, YPosition - ZRemainer, ZPostition2 - YRemainer);
+                    SetVector(triangle1.vert3, XPosition + tileSize - XRemainer, YPosition + tileSize - ZRemainer, ZPostition3 - YRemainer);
 
-                    var triangle2 = new TriangleMeshWithColor
-                    {
-                        Color = color,
-                        landBasedPosition = surfaceId,
-                        vert1 = { x = XPosition - XRemainer, y = YPosition - ZRemainer, z = ZPostition1 - YRemainer },
-                        vert2 = { x = XPosition + tileSize - XRemainer, y = YPosition + tileSize - ZRemainer, z = ZPostition3 - YRemainer },
-                        vert3 = { x = XPosition - XRemainer, y = YPosition + tileSize - ZRemainer, z = ZPostition4 - YRemainer }
-                    };
-
-                    newSurface.Add(triangle1);
-                    newSurface.Add(triangle2);
+                    var triangle2 = (TriangleMeshWithColor)_surfaceTriangles[triangleIndex++];
+                    triangle2.Color = color;
+                    triangle2.landBasedPosition = surfaceId;
+                    SetVector(triangle2.vert1, XPosition - XRemainer, YPosition - ZRemainer, ZPostition1 - YRemainer);
+                    SetVector(triangle2.vert2, XPosition + tileSize - XRemainer, YPosition + tileSize - ZRemainer, ZPostition3 - YRemainer);
+                    SetVector(triangle2.vert3, XPosition - XRemainer, YPosition + tileSize - ZRemainer, ZPostition4 - YRemainer);
                 }
             }
 
-            surface.ObjectParts.Add(new _3dObjectPart { PartName = "Surface", Triangles = newSurface, IsVisible = true });
-            surface.CrashBoxes = viewPortCrashBoxes;
+            surface.ObjectParts.Add(new _3dObjectPart { PartName = "Surface", Triangles = _surfaceTriangles, IsVisible = true });
+            surface.CrashBoxes = _viewPortCrashBoxes;
             surface.CrashBoxes.AddRange(GetMainSurfaceCrashBox());
             return surface;
+        }
+
+        private void EnsureSurfaceTrianglePool(int requiredTriangleCount)
+        {
+            while (_surfaceTriangles.Count < requiredTriangleCount)
+            {
+                _surfaceTriangles.Add(new TriangleMeshWithColor
+                {
+                    vert1 = new Vector3(),
+                    vert2 = new Vector3(),
+                    vert3 = new Vector3()
+                });
+            }
+
+            if (_surfaceTriangles.Count > requiredTriangleCount)
+            {
+                _surfaceTriangles.RemoveRange(requiredTriangleCount, _surfaceTriangles.Count - requiredTriangleCount);
+            }
+        }
+
+        private static void SetVector(IVector3 vector, float x, float y, float z)
+        {
+            vector.x = x;
+            vector.y = y;
+            vector.z = z;
         }
 
 
         private List<List<IVector3>> GetMainSurfaceCrashBox()
         {
+            if (_mainSurfaceCrashBoxes != null)
+                return _mainSurfaceCrashBoxes;
+
             //var min = new Vector3 { x = -1200, y = -600, z = -1000 };
             //var max = new Vector3 { x = 1200, y = 1500, z = 400 };
 
             var min = new Vector3 { x = -500, y = -100, z = 1000 };
             var max = new Vector3 { x = 500, y = 1000, z = -350 };
 
-            return new List<List<IVector3>>
+            _mainSurfaceCrashBoxes = new List<List<IVector3>>
             {
                 _3dObjectHelpers.GenerateCrashBoxCorners(min, max)
             };
+
+            return _mainSurfaceCrashBoxes;
         }
 
         private static string GetTileColorGradient(int height, int maxHeight)
@@ -197,8 +226,144 @@ namespace _3dRotations.World.Objects
             return $"{r:X2}{g:X2}{b:X2}";
         }
 
+        public static System.Windows.Media.Color GetTileColorGradientColor(int height, int maxHeight)
+        {
+            GetTileColorGradientRgb(height, maxHeight, out int r, out int g, out int b);
+            return System.Windows.Media.Color.FromArgb(
+                255,
+                (byte)Math.Clamp(r, 0, 255),
+                (byte)Math.Clamp(g, 0, 255),
+                (byte)Math.Clamp(b, 0, 255));
+        }
+
+        private static bool IsInfectableTerrain(int height, int maxHeight)
+        {
+            var terrain = GamePlayHelpers.GetTerrainType(height, maxHeight);
+            return terrain == GamePlayHelpers.TerrainType.Grassland ||
+                   terrain == GamePlayHelpers.TerrainType.Highlands;
+        }
+
         private static void GetTileColorGradientRgb(int height, int maxHeight, out int red, out int green, out int blue)
         {
+            var biome = GameState.SurfaceState.SceneBiome;
+
+            if (biome == SceneBiomeTypes.Winter)
+            {
+                if (height < maxHeight * 0.05)
+                {
+                    red = 25;
+                    green = 55;
+                    blue = 165;
+                }
+                else if (height < maxHeight * 0.15)
+                {
+                    red = 60;
+                    green = 110;
+                    blue = 210;
+                }
+                else if (height < maxHeight * 0.4)
+                {
+                    red = 215;
+                    green = 230;
+                    blue = 240;
+                }
+                else if (height < maxHeight * 0.7)
+                {
+                    red = 195;
+                    green = 210;
+                    blue = 225;
+                }
+                else
+                {
+                    red = 235;
+                    green = 240;
+                    blue = 245;
+                }
+
+                red = Math.Clamp(red, 0, 255);
+                green = Math.Clamp(green, 0, 255);
+                blue = Math.Clamp(blue, 0, 255);
+                return;
+            }
+
+            if (biome == SceneBiomeTypes.Rainforrest)
+            {
+                if (height < maxHeight * 0.05)
+                {
+                    red = 0;
+                    green = 24;
+                    blue = 170;
+                }
+                else if (height < maxHeight * 0.15)
+                {
+                    red = 0;
+                    green = 95;
+                    blue = 235;
+                }
+                else if (height < maxHeight * 0.4)
+                {
+                    red = 20;
+                    green = 190;
+                    blue = 45;
+                }
+                else if (height < maxHeight * 0.7)
+                {
+                    red = 120;
+                    green = 95;
+                    blue = 35;
+                }
+                else
+                {
+                    red = 125;
+                    green = 145;
+                    blue = 130;
+                }
+
+                red = Math.Clamp(red, 0, 255);
+                green = Math.Clamp(green, 0, 255);
+                blue = Math.Clamp(blue, 0, 255);
+                return;
+            }
+
+            if (biome == SceneBiomeTypes.Desert)
+            {
+                if (height < maxHeight * 0.05)
+                {
+                    red = 20;
+                    green = 55;
+                    blue = 165;
+                }
+                else if (height < maxHeight * 0.15)
+                {
+                    red = 60;
+                    green = 125;
+                    blue = 220;
+                }
+                else if (height < maxHeight * 0.4)
+                {
+                    red = 205;
+                    green = 175;
+                    blue = 95;
+                }
+                else if (height < maxHeight * 0.7)
+                {
+                    red = 185;
+                    green = 145;
+                    blue = 80;
+                }
+                else
+                {
+                    red = 170;
+                    green = 155;
+                    blue = 135;
+                }
+
+                red = Math.Clamp(red, 0, 255);
+                green = Math.Clamp(green, 0, 255);
+                blue = Math.Clamp(blue, 0, 255);
+                return;
+            }
+
 
             if (height < maxHeight * 0.05) // Deep Ocean (Very Dark Blue)
             {
@@ -336,10 +501,21 @@ namespace _3dRotations.World.Objects
                     for (int sx = 0; sx < ecoMetas.GetLength(1); sx++)
                         totalBio += ecoMetas[sy, sx].BioTileCount;
                 GameState.GamePlayState.TotalBioTiles = totalBio;
-                Debug.WriteLine($"[Surface] TotalBioTiles computed from EcoMap: {totalBio} (mode={gameMode})");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"[Surface] TotalBioTiles computed from EcoMap: {totalBio} (mode={gameMode})", "Surface");
             }
 
-            Debug.WriteLine($"[Surface] Create2DMap complete: mode={gameMode} TotalBioTiles={GameState.GamePlayState.TotalBioTiles} maxHeight={MapSetup.maxHeight} InfectionCriticalMass={GameState.GamePlayState.InfectionCriticalMass}");
+            int fishPriorityTileX = (int)(GameState.SurfaceState.GlobalMapPosition.x / TileSize());
+            int fishPriorityTileZ = (int)(GameState.SurfaceState.GlobalMapPosition.z / TileSize());
+            GameState.SurfaceState.FishJumpAreas = SurfaceGeneration.FindFishJumpAreas(
+                GameState.SurfaceState.Global2DMap,
+                MapSetup.maxHeight,
+                minWidthTiles: 6,
+                minHeightTiles: 2,
+                maxAreas: 100,
+                priorityTileX: fishPriorityTileX,
+                priorityTileZ: fishPriorityTileZ);
+
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"[Surface] Create2DMap complete: mode={gameMode} TotalBioTiles={GameState.GamePlayState.TotalBioTiles} maxHeight={MapSetup.maxHeight} InfectionCriticalMass={GameState.GamePlayState.InfectionCriticalMass}", "Surface");
 
             int mapSize = GameState.SurfaceState.Global2DMap.GetLength(0); // siden kartet er square
             SurfaceGeneration.GenerateTerrainBitmapSource(

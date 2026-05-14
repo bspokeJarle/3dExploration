@@ -1,4 +1,4 @@
-﻿using _3dTesting.Helpers;
+using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
 using _3dTesting.MainWindowClasses.Overlays;
 using _3dTesting.Rendering;
@@ -43,6 +43,7 @@ namespace _3dTesting
     public partial class MainWindow : Window
     {
         private const bool enableLogging = false;
+        private const bool enableFileLogging = false;
         private DrawingVisualHost visualHost = new DrawingVisualHost();
         private readonly DispatcherTimer timer = new DispatcherTimer();
         private readonly Stopwatch stopwatch = new Stopwatch();
@@ -101,8 +102,12 @@ namespace _3dTesting
 
         public MainWindow()
         {
-            Logger.EnableFileLogging = true;
-            Logger.ClearLog();
+            Logger.EnableFileLogging = enableFileLogging;
+            if (Logger.EnableFileLogging)
+            {
+                Logger.ClearLog();
+            }
+
             GameState.SurfaceState.RecordingFps = ScreenSetup.targetFps;
 
             PersistenceSetup.Initialize();
@@ -366,13 +371,13 @@ namespace _3dTesting
 
         private async void Handle3dWorld(double dtSeconds)
         {
-            if (Logger.EnableFileLogging)
+            if (Logger.ShouldLog(enableLogging))
             {
                 var nowTicks = Stopwatch.GetTimestamp();
                 if (_lastTickTimestamp != 0)
                 {
                     var tickMs = (nowTicks - _lastTickTimestamp) * 1000.0 / Stopwatch.Frequency;
-                    if (enableLogging) Logger.Log($"[Tick] dtMs={tickMs:0.###}");
+                    Logger.Log($"[Tick] dtMs={tickMs:0.###}");
                 }
                 _lastTickTimestamp = nowTicks;
             }
@@ -444,6 +449,7 @@ namespace _3dTesting
 
                 // Aim assist target indicator
                 UpdateAimAssistIndicator(gameplay);
+
             }
 
             world.SceneHandler.UpdateFrame(world);
@@ -484,7 +490,8 @@ namespace _3dTesting
 
             _ = Task.Run(() =>
             {
-                long startTicks = Logger.EnableFileLogging ? Stopwatch.GetTimestamp() : 0;
+                bool shouldLog = Logger.ShouldLog(enableLogging);
+                long startTicks = shouldLog ? Stopwatch.GetTimestamp() : 0;
                 try
                 {
                     var screenCoordinates = new List<_Coordinates._2dTriangleMesh>();
@@ -492,7 +499,7 @@ namespace _3dTesting
 
                     gameWorldManager.UpdateWorld(world, ref screenCoordinates, ref crashBoxCoordinates);
 
-                    if (enableLogging)
+                    if (shouldLog)
                     {
                         var elapsedMs = (Stopwatch.GetTimestamp() - startTicks) * 1000.0 / Stopwatch.Frequency;
                         Logger.Log($"[UpdateWorld] ms={elapsedMs:0.###}");

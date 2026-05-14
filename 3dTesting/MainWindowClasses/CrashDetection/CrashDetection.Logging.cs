@@ -19,7 +19,7 @@ namespace _3dTesting.Helpers
 
         public static double MaxCrashDistance = 625.0;
 
-        private static bool ShouldLogAny => Logger.EnableFileLogging && LocalEnableLogging;
+        private static bool ShouldLogAny => Logger.ShouldLog(LocalEnableLogging);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool ShouldLogPair(_3dObject a, _3dObject b)
@@ -98,6 +98,8 @@ namespace _3dTesting.Helpers
 
         public static void LogSnapShots(_3dObject inhabitant, _3dObject otherInhabitant)
         {
+            if (!ShouldLogAny) return;
+
             if (inhabitant == null || otherInhabitant == null)
             {
                 Logger.Log("[SNAPSHOT] One or both objects are null.");

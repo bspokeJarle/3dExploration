@@ -6,6 +6,8 @@ namespace CommonUtilities._3DHelpers
 {
     public class _3dRotationCommon
     {
+        private const bool enableLogging = false;
+
         // Scene-wide light source — kept in sync with the shadow projection in
         // ObjectShadowManager (ShadowSlopeX = -0.15, ShadowSlopeY = -0.55).
         //
@@ -174,7 +176,7 @@ namespace CommonUtilities._3DHelpers
                 var triangle = (TriangleMeshWithColor)mesh[i];
                 if (triangle.vert1 == null || triangle.vert2 == null || triangle.vert3 == null)
                 {
-                    Console.WriteLine("Warning: Skipping uninitialized triangle");
+                    if (Logger.ShouldLog(enableLogging)) Logger.Log("Warning: Skipping uninitialized triangle", "Rotation");
                     continue;
                 }
                 rotatedMesh.Add(RotateTriangle(triangle, cosRes, sinRes, axis));

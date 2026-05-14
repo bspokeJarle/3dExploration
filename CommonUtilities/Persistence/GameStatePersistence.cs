@@ -42,6 +42,9 @@ namespace CommonUtilities.Persistence
                 SeedersRemaining = state.SeedersRemaining,
                 DronesRemaining = state.DronesRemaining,
                 MotherShipsRemaining = state.MotherShipsRemaining,
+                InitialSeeders = state.InitialSeeders,
+                InitialDrones = state.InitialDrones,
+                InitialMotherShips = state.InitialMotherShips,
                 TotalShotsFired = state.TotalShotsFired,
                 TotalKills = state.TotalKills,
                 TotalDeaths = state.TotalDeaths,
@@ -121,6 +124,9 @@ namespace CommonUtilities.Persistence
             state.SeedersRemaining = saved.SeedersRemaining;
             state.DronesRemaining = saved.DronesRemaining;
             state.MotherShipsRemaining = saved.MotherShipsRemaining;
+            state.InitialSeeders = saved.InitialSeeders > 0 ? saved.InitialSeeders : saved.CheckpointInitialSeeders;
+            state.InitialDrones = saved.InitialDrones > 0 ? saved.InitialDrones : saved.CheckpointInitialDrones;
+            state.InitialMotherShips = saved.InitialMotherShips > 0 ? saved.InitialMotherShips : saved.CheckpointInitialMotherShips;
             state.TotalShotsFired = saved.TotalShotsFired;
             state.TotalKills = saved.TotalKills;
             state.TotalDeaths = saved.TotalDeaths;

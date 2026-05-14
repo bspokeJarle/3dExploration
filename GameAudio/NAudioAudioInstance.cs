@@ -137,12 +137,12 @@ internal sealed class NAudioAudioInstance : IAudioInstance
 
         if (_mode == AudioPlayMode.SegmentedLoop && _loopProvider != null && playEndSegment)
         {
-            if (enableLogging) Logger.Log(@"Audio:Requested stop with EndSegment.");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log(@"Audio:Requested stop with EndSegment.");
             _loopProvider.RequestStopWithEndSegment();
         }
         else
         {
-            if (enableLogging) Logger.Log(@"Audio:IsPlaying set to false.");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log(@"Audio:IsPlaying set to false.");
             _isPlaying = false;
             _owner.InternalStopInstance(this);
         }
@@ -150,7 +150,7 @@ internal sealed class NAudioAudioInstance : IAudioInstance
 
     internal void MarkFinished()
     {
-        if (enableLogging) Logger.Log(@"Audio: Marking instance as finished.");
+        if (Logger.ShouldLog(enableLogging)) Logger.Log(@"Audio: Marking instance as finished.");
         _isPlaying = false;
     }
 }

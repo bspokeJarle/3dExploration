@@ -17,6 +17,9 @@ namespace CommonUtilities.CommonSetup
             "Surface",
             "Tower",
             "Tree",
+            "LargePalm",
+            "SmallPalm",
+            "BambooHut",
             "House"
         };
 

@@ -32,6 +32,11 @@ namespace _3DWorld.Scene
         private int? _targetSceneIndex = null;
         private SavedGameState? _pendingSavedState = null;
 
+        public SceneHandler()
+        {
+            ApplySceneIndexOverrideFromGameState();
+        }
+
         public IScene GetActiveScene() => scenes[currentSceneIndex];
 
         // -----------------------------------------------------------------
@@ -40,6 +45,7 @@ namespace _3DWorld.Scene
 
         public void SetupActiveScene(I3dWorld world)
         {
+            ApplySceneIndexOverrideFromGameState();
             var scene = GetActiveScene();
             scene.SetupSceneOverlay();
             ClearVideoOverlay();
@@ -51,7 +57,7 @@ namespace _3DWorld.Scene
 
         public void ResetActiveScene(I3dWorld world)
         {
-            if (enableLogging) Logger.Log("Scenehandler: ResetActiveScene");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log("Scenehandler: ResetActiveScene");
 
             DisposeDirector();
             var newScene = CreateFreshScene();
@@ -82,16 +88,13 @@ namespace _3DWorld.Scene
             scenes[currentSceneIndex] = newScene;
             GameState.ScreenOverlayState.HardHide();
             newScene.SetupGameOverlay();
+            ApplySceneSettings(newScene);
             newScene.SetupScene((_3dWorld)world);
             ApplySceneSettings(newScene);
 
             if (hadCheckpoint)
             {
-                int restoredMotherShips = snapshot.MotherShipsRemaining;
-                // If the checkpoint was captured at the exact transition to mothership phase,
-                // mothership count can be zero even though a mothership should be present.
-                if (snapshot.SeedersRemaining == 0 && snapshot.DronesRemaining == 0 && restoredMotherShips == 0)
-                    restoredMotherShips = 1;
+                int restoredMotherShips = ResolveRestoredMotherShipCount(snapshot.MotherShipsRemaining);
 
                 TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
                 TrimEnemies(world, "KamikazeDrone", snapshot.DronesRemaining);
@@ -123,7 +126,7 @@ namespace _3DWorld.Scene
                     }
                 }
 
-                if (enableLogging) Logger.Log($"Scenehandler: Checkpoint restored. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: Checkpoint restored. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
             }
             else
             {
@@ -135,7 +138,7 @@ namespace _3DWorld.Scene
                 gps.TotalDeaths = prevDeaths + 1;
                 gps.PowerUpsCollected = prevPowerUps;
 
-                if (enableLogging) Logger.Log($"Scenehandler: No checkpoint — stats preserved. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: No checkpoint — stats preserved. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
             }
 
             InitializeDirector(newScene, world);
@@ -143,7 +146,7 @@ namespace _3DWorld.Scene
 
         public void NextScene(I3dWorld world)
         {
-            if (enableLogging) Logger.Log($"Scenehandler: NextScene :{GameState.ScreenOverlayState.ShowOverlay} ");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: NextScene :{GameState.ScreenOverlayState.ShowOverlay} ");
 
             DisposeDirector();
             var gps = GameState.GamePlayState;
@@ -242,9 +245,7 @@ namespace _3DWorld.Scene
                     GameStatePersistence.RestoreToGamePlayState(_pendingSavedState);
 
                     var snapshot = gps.CaptureCheckpointSnapshot();
-                    int restoredMotherShips = snapshot.MotherShipsRemaining;
-                    if (snapshot.SeedersRemaining == 0 && snapshot.DronesRemaining == 0 && restoredMotherShips == 0)
-                        restoredMotherShips = 1;
+                    int restoredMotherShips = ResolveRestoredMotherShipCount(snapshot.MotherShipsRemaining);
 
                     TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
                     TrimEnemies(world, "KamikazeDrone", snapshot.DronesRemaining);
@@ -386,7 +387,7 @@ namespace _3DWorld.Scene
 
         private void HandleIntroKey(ScreenOverlayState overlay, KeyEventArgs k)
         {
-            if (enableLogging) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {overlay.ShowOverlay} ", "General");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {overlay.ShowOverlay} ", "General");
 
             // Page navigation with arrow keys
             if (overlay.HasMultiplePages)
@@ -429,7 +430,7 @@ namespace _3DWorld.Scene
                     }
                 }
 
-                if (enableLogging) Logger.Log($"Scenehandler: Game keypress. Overlay Type={overlay.Type} Show={overlay.ShowOverlay}", "General");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: Game keypress. Overlay Type={overlay.Type} Show={overlay.ShowOverlay}", "General");
                 scene.SetupGameOverlay();
             }
         }
@@ -474,6 +475,8 @@ namespace _3DWorld.Scene
                 z = SurfaceSetup.DefaultMapPosition.z
             };
             GameState.SurfaceState.ScreenEcoMetas = new ScreenEcoMeta[MapSetup.screensPrMap, MapSetup.screensPrMap];
+            GameState.SurfaceState.SceneBiome = SceneBiomeTypes.HillsWoods;
+            GameState.WeatherVisualState.ClearLightningFlash();
         }
 
         private static void ApplySceneSettings(IScene scene)
@@ -487,6 +490,7 @@ namespace _3DWorld.Scene
             gps.MotherShipSmallAggression = scene.MotherShipSmallAggression;
             gps.MotherShipMediumAggression = scene.MotherShipMediumAggression;
             gps.MotherShipLargeAggression = scene.MotherShipLargeAggression;
+            GameState.SurfaceState.SceneBiome = scene.SceneBiome;
         }
 
         private void InitializeDirector(IScene scene, I3dWorld world)
@@ -497,6 +501,30 @@ namespace _3DWorld.Scene
         private void DisposeDirector()
         {
             GetActiveScene().Director?.Dispose();
+        }
+
+        private void ApplySceneIndexOverrideFromGameState()
+        {
+            var gamePlayState = GameState.GamePlayState;
+            if (gamePlayState == null || !CanUseSceneIndexAsStartupOverride(gamePlayState))
+                return;
+
+            var requestedSceneIndex = gamePlayState.SceneIndex;
+            if (requestedSceneIndex < 0 || requestedSceneIndex >= scenes.Count)
+                return;
+
+            currentSceneIndex = requestedSceneIndex;
+        }
+
+        private static bool CanUseSceneIndexAsStartupOverride(GamePlayState gamePlayState)
+        {
+            return string.IsNullOrWhiteSpace(gamePlayState.PlayerName)
+                && gamePlayState.Score == 0
+                && gamePlayState.TotalKills == 0
+                && gamePlayState.TotalShotsFired == 0
+                && gamePlayState.TotalDeaths == 0
+                && gamePlayState.PowerUpsCollected == 0
+                && !gamePlayState.HasCheckpoint;
         }
 
         // -----------------------------------------------------------------
@@ -609,6 +637,20 @@ namespace _3DWorld.Scene
             }
 
             return count;
+        }
+
+        private static int ResolveRestoredMotherShipCount(int checkpointMotherShipsRemaining)
+        {
+            int sceneMotherShips = CountSceneMotherShips();
+            if (sceneMotherShips <= 0)
+                return 0;
+
+            if (checkpointMotherShipsRemaining > 0)
+                return Math.Min(checkpointMotherShipsRemaining, sceneMotherShips);
+
+            // Keep scene mothership candidates even when old checkpoint saves have 0 remaining,
+            // otherwise late-phase activation can never happen.
+            return sceneMotherShips;
         }
 
         private static int CountSceneMotherShips()

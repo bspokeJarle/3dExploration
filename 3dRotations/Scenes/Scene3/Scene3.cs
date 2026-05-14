@@ -9,6 +9,7 @@ using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Controls.SeederControls;
+using GameAiAndControls.Controls.JumpingFishControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using System;
 using System.Collections.Generic;
@@ -22,6 +23,7 @@ namespace _3dRotations.Scene.Scene3
 
         public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
+        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Rainforrest;
         public ISceneDirector Director { get; } = new Scene3Director();
         public GameModes GameMode { get; } = GameModes.Live;
         public float InfectionThresholdPercent { get; } = 8f;
@@ -30,6 +32,18 @@ namespace _3dRotations.Scene.Scene3
         public float LocalInfectionSpreadDelaySec { get; } = 6.0f;
         public float LocalInfectionSpreadRadius { get; } = 4000f;
         public float MotherShipSmallAggression { get; } = 1.10f;
+        private const int MinimumVisibleBambooHuts = 6;
+        private static readonly float[] BambooHutRotationVariants = { -32f, -21f, -10f, 0f, 13f, 24f, 35f };
+        private static readonly (int x, int y)[] VisibleBambooHutOffsets =
+        {
+            (2, 4),
+            (6, 6),
+            (11, 5),
+            (15, 8),
+            (4, 10),
+            (9, 12),
+            (14, 13)
+        };
 
         public void SetupScene(I3dWorld world)
         {
@@ -54,6 +68,8 @@ namespace _3dRotations.Scene.Scene3
             guidanceArrow.ImpactStatus = new ImpactStatus { };
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
+
+            SpawnJumpingFish(world);
 
             // ZeppelinBombers — 2 bombers introduced this scene
             for (int b = 0; b < 2; b++)
@@ -190,6 +206,12 @@ namespace _3dRotations.Scene.Scene3
             world.WorldInhabitants.Add(surfaceObject);
             GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
 
+            if (SceneBiome == SceneBiomeTypes.Rainforrest)
+            {
+                world.WorldInhabitants.Add(RainEmitter.CreateRainEmitter(Surface));
+                world.WorldInhabitants.Add(LightningEmitter.CreateLightningEmitter(Surface));
+            }
+
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
 
             SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
@@ -217,33 +239,79 @@ namespace _3dRotations.Scene.Scene3
                 world.WorldInhabitants.Add(tower);
             }
 
-            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
-            var treeIndex = 0;
-            foreach (var treePlacement in treePlacements)
+            var palmPlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), palmPlacements, radius: 0);
+            var palmIndex = 0;
+            foreach (var palmPlacement in palmPlacements)
             {
-                treeIndex++;
-                var tree = Tree.CreateTree(Surface);
-                tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-                tree.SurfaceBasedId = GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].mapId;
-                GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
-                tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
-                tree.ObjectName = "Tree";
-                tree.Movement = new TreeControls();
-                tree.ImpactStatus = new ImpactStatus { };
-                tree.CrashBoxDebugMode = false;
-                if (tree.SurfaceBasedId > 0) world.WorldInhabitants.Add(tree);
+                palmIndex++;
+
+                bool useLargePalm = palmIndex % 4 == 0;
+                bool useSmallPalm = palmIndex % 4 == 1;
+                bool useLargeAlienPlant = palmIndex % 4 == 2;
+
+                var plant = useLargePalm
+                    ? PalmTree.CreateLargePalm(Surface)
+                    : useSmallPalm
+                        ? PalmTree.CreateSmallPalm(Surface)
+                        : useLargeAlienPlant
+                            ? AlienPlant.CreateLargeAlienPlant(Surface)
+                            : AlienPlant.CreateSmallAlienPlant(Surface);
+
+                plant.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                plant.SurfaceBasedId = GameState.SurfaceState.Global2DMap[palmPlacement.y, palmPlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[palmPlacement.y, palmPlacement.x].hasLandbasedObject = true;
+                plant.ObjectOffsets = new Vector3
+                {
+                    x = 75 * ScreenSetup.ScreenScaleX,
+                    y = (useLargeAlienPlant || (!useLargePalm && !useSmallPalm && !useLargeAlienPlant) ? 410f : 425f) * ScreenSetup.ScreenScaleY,
+                    z = 400
+                };
+
+                if (useLargePalm)
+                {
+                    plant.ObjectName = "LargePalm";
+                    plant.Movement = new LargePalmControls();
+                }
+                else if (useSmallPalm)
+                {
+                    plant.ObjectName = "SmallPalm";
+                    plant.Movement = new SmallPalmControls();
+                }
+                else if (useLargeAlienPlant)
+                {
+                    plant.ObjectName = "LargeAlienPlant";
+                    plant.Movement = new LargePalmControls();
+                }
+                else
+                {
+                    plant.ObjectName = "SmallAlienPlant";
+                    plant.Movement = new SmallPalmControls();
+                }
+
+                plant.ImpactStatus = new ImpactStatus { };
+                plant.CrashBoxDebugMode = false;
+                if (plant.SurfaceBasedId > 0) world.WorldInhabitants.Add(plant);
             }
 
-            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
+            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), palmPlacements, 15000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), housePlacements, radius: 1);
+            EnsureVisibleBambooHutPlacements(housePlacements);
+            var bambooHutIndex = 0;
             foreach (var housePlacement in housePlacements)
             {
-                var house = House.CreateHouse(Surface);
+                if (GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject)
+                    continue;
+
+                bambooHutIndex++;
+                var house = BambooHut.CreateBambooHut(Surface);
                 house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
-                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 400 };
-                house.ObjectName = "House";
-                house.Movement = new HouseControls();
+                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 445 * ScreenSetup.ScreenScaleY, z = 400 };
+                house.Rotation = new Vector3 { x = 70, y = 0, z = GetBambooHutRotationZ(bambooHutIndex, housePlacement.x, housePlacement.y) };
+                house.ObjectName = "BambooHut";
+                house.Movement = new BambooHutControls();
                 house.ImpactStatus = new ImpactStatus { };
                 house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId > 0) world.WorldInhabitants.Add(house);
@@ -297,6 +365,176 @@ namespace _3dRotations.Scene.Scene3
         public void SetupVideoOverlay(string fileName)
         {
             throw new NotImplementedException();
+        }
+
+        private static float GetBambooHutRotationZ(int index, int tileX, int tileY)
+        {
+            int variant = Math.Abs((tileX * 37 + tileY * 17 + index * 11) % BambooHutRotationVariants.Length);
+            return BambooHutRotationVariants[variant];
+        }
+
+        private void EnsureVisibleBambooHutPlacements(List<(int x, int y, int height)> housePlacements)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null || map.Length == 0)
+                return;
+
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+            if (sizeX < 4 || sizeY < 4)
+                return;
+
+            int tileSize = Math.Max(1, Surface.TileSize());
+            int centerX = Math.Clamp((int)(GameState.SurfaceState.GlobalMapPosition.x / tileSize), 2, sizeX - 3);
+            int centerY = Math.Clamp((int)(GameState.SurfaceState.GlobalMapPosition.z / tileSize), 2, sizeY - 3);
+
+            var used = new HashSet<(int x, int y)>();
+            int visibleCount = 0;
+            foreach (var placement in housePlacements)
+            {
+                used.Add((placement.x, placement.y));
+                if (IsInInitialSurfaceViewport(placement.x, placement.y, centerX, centerY))
+                    visibleCount++;
+            }
+
+            foreach (var offset in VisibleBambooHutOffsets)
+            {
+                if (visibleCount >= MinimumVisibleBambooHuts)
+                    break;
+
+                int targetX = centerX + offset.x;
+                int targetY = centerY + offset.y;
+                if (TryFindBambooHutPlacementNear(map, targetX, targetY, used, out var placement))
+                {
+                    housePlacements.Add(placement);
+                    used.Add((placement.x, placement.y));
+                    visibleCount++;
+                }
+            }
+        }
+
+        private static bool IsInInitialSurfaceViewport(int tileX, int tileY, int centerX, int centerY)
+        {
+            return tileX >= centerX
+                && tileX <= centerX + SurfaceSetup.viewPortSize - 2
+                && tileY >= centerY + 1
+                && tileY <= centerY + (SurfaceSetup.viewPortSize / 1.5) + 1;
+        }
+
+        private bool TryFindBambooHutPlacementNear(
+            SurfaceData[,] map,
+            int targetX,
+            int targetY,
+            HashSet<(int x, int y)> used,
+            out (int x, int y, int height) placement)
+        {
+            const int searchRadius = 8;
+            placement = default;
+
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+            targetX = Math.Clamp(targetX, 2, sizeX - 3);
+            targetY = Math.Clamp(targetY, 2, sizeY - 3);
+
+            for (int radius = 0; radius <= searchRadius; radius++)
+            {
+                for (int y = targetY - radius; y <= targetY + radius; y++)
+                {
+                    for (int x = targetX - radius; x <= targetX + radius; x++)
+                    {
+                        if (radius > 0 && Math.Abs(x - targetX) != radius && Math.Abs(y - targetY) != radius)
+                            continue;
+
+                        if (!IsValidBambooHutTile(map, x, y, used))
+                            continue;
+
+                        placement = (x, y, map[y, x].mapDepth);
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsValidBambooHutTile(SurfaceData[,] map, int x, int y, HashSet<(int x, int y)> used)
+        {
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+            if (x < 2 || y < 2 || x >= sizeX - 2 || y >= sizeY - 2)
+                return false;
+
+            if (used.Contains((x, y)))
+                return false;
+
+            var tile = map[y, x];
+            if (tile.hasLandbasedObject || tile.isInfected || tile.isCratered)
+                return false;
+
+            int maxHeight = Surface.MaxHeight();
+            int coastCutoff = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.15));
+            int mountainCutoff = (int)(maxHeight * 0.70);
+            if (tile.mapDepth <= coastCutoff || tile.mapDepth >= mountainCutoff)
+                return false;
+
+            for (int dy = 0; dy <= 1; dy++)
+            {
+                for (int dx = 0; dx <= 1; dx++)
+                {
+                    var quadTile = map[y + dy, x + dx];
+                    if (quadTile.mapDepth <= coastCutoff
+                        || quadTile.mapDepth >= mountainCutoff
+                        || quadTile.hasLandbasedObject
+                        || quadTile.isInfected
+                        || quadTile.isCratered)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            int h = tile.mapDepth;
+            return Math.Abs(h - map[y, x - 1].mapDepth) < 8
+                && Math.Abs(h - map[y, x + 1].mapDepth) < 8
+                && Math.Abs(h - map[y - 1, x].mapDepth) < 8
+                && Math.Abs(h - map[y + 1, x].mapDepth) < 8;
+        }
+
+        private void SpawnJumpingFish(I3dWorld world)
+        {
+            var fishJumpAreas = GameState.SurfaceState.FishJumpAreas;
+            if (fishJumpAreas == null || fishJumpAreas.Count == 0)
+                return;
+
+            int fishCount = Math.Min(100, fishJumpAreas.Count);
+            int tileSize = Surface.TileSize();
+            for (int i = 0; i < fishCount; i++)
+            {
+                int areaIndex = (int)MathF.Floor(i * fishJumpAreas.Count / (float)fishCount);
+                var area = fishJumpAreas[areaIndex];
+                float jumpSpan = Math.Min(tileSize * 2f, Math.Max(tileSize, (area.EndTileX - area.StartTileX - 1) * tileSize));
+                float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
+                float minPathOffsetX = baseOffsetX + ((area.StartTileX - area.CenterTileX) * tileSize);
+                float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
+
+                var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
+                jumpingFish.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                jumpingFish.WorldPosition = new Vector3 { };
+                jumpingFish.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
+                jumpingFish.ObjectOffsets = new Vector3
+                {
+                    x = baseOffsetX,
+                    y = 500 * ScreenSetup.ScreenScaleY,
+                    z = 400
+                };
+                jumpingFish.ObjectName = "JumpingFish";
+                jumpingFish.Movement = new JumpingFishControls(jumpSpan, minPathOffsetX, maxPathOffsetX);
+                jumpingFish.ImpactStatus = new ImpactStatus { };
+                jumpingFish.CrashBoxDebugMode = false;
+                jumpingFish.CrashBoxes = new List<List<IVector3>>();
+                jumpingFish.IsActive = true;
+                world.WorldInhabitants.Add(jumpingFish);
+            }
         }
     }
 }

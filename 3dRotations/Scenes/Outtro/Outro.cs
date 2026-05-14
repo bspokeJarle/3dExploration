@@ -20,6 +20,7 @@ namespace _3dRotations.Scenes.Outro
         public string SceneMusic { get; } = "music_intro";
 
         public SceneTypes SceneType { get; } = SceneTypes.Intro;
+        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
 
         public void SetupGameOverlay()
         {

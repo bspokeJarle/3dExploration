@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
@@ -352,8 +352,8 @@ namespace _3dRotations.World.Objects
             var tris = new List<ITriangleMeshWithColor>();
 
             // Hub
-            float xFront = propHubBackX - 0.6f;
-            float xBack = propHubBackX - 3.0f;
+            float xFront = propHubBackX + 1.2f;
+            float xBack = propHubBackX - 1.2f;
             float r = propHubRadius;
 
             var ftl = new Vector3 { x = xFront, y = -r, z = r };

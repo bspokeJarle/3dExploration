@@ -1,4 +1,4 @@
-﻿
+
 using _3dRotations.Helpers;
 using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
@@ -10,6 +10,7 @@ using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipSmallControls;
 using GameAiAndControls.Controls.SeederControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
+using GameAiAndControls.Controls.JumpingFishControls;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -22,6 +23,7 @@ namespace _3dRotations.Scene.Scene1
 
         public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
+        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
         public ISceneDirector Director { get; } = new Scene2Director();
         public GameModes GameMode { get; } = GameModes.Playback;
         public float InfectionThresholdPercent { get; } = 10f;
@@ -57,6 +59,8 @@ namespace _3dRotations.Scene.Scene1
             guidanceArrow.ImpactStatus = new ImpactStatus { };
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
+
+            SpawnJumpingFish(world);
 
             // Drones — waiting until the player has a Decoy powerup
             for (int i = 0; i < 6; i++)
@@ -207,6 +211,7 @@ namespace _3dRotations.Scene.Scene1
             }
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight(), 30000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), treePlacements, radius: 0);
             var treeIndex = 0;
             foreach (var treePlacement in treePlacements)
             {
@@ -230,6 +235,7 @@ namespace _3dRotations.Scene.Scene1
             }
 
             var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), housePlacements, radius: 1);
             foreach (var housePlacement in housePlacements)
             {
                 //Debug.WriteLine($"House placement: {housePlacement.x} {housePlacement.y}");
@@ -298,6 +304,43 @@ namespace _3dRotations.Scene.Scene1
         public void SetupVideoOverlay(string fileName)
         {
             throw new NotImplementedException();
+        }
+
+        private void SpawnJumpingFish(I3dWorld world)
+        {
+            var fishJumpAreas = GameState.SurfaceState.FishJumpAreas;
+            if (fishJumpAreas == null || fishJumpAreas.Count == 0)
+                return;
+
+            int fishCount = Math.Min(100, fishJumpAreas.Count);
+            int tileSize = Surface.TileSize();
+            for (int i = 0; i < fishCount; i++)
+            {
+                int areaIndex = (int)MathF.Floor(i * fishJumpAreas.Count / (float)fishCount);
+                var area = fishJumpAreas[areaIndex];
+                float jumpSpan = Math.Min(tileSize * 2f, Math.Max(tileSize, (area.EndTileX - area.StartTileX - 1) * tileSize));
+                float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
+                float minPathOffsetX = baseOffsetX + ((area.StartTileX - area.CenterTileX) * tileSize);
+                float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
+
+                var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
+                jumpingFish.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                jumpingFish.WorldPosition = new Vector3 { };
+                jumpingFish.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
+                jumpingFish.ObjectOffsets = new Vector3
+                {
+                    x = baseOffsetX,
+                    y = 500 * ScreenSetup.ScreenScaleY,
+                    z = 400
+                };
+                jumpingFish.ObjectName = "JumpingFish";
+                jumpingFish.Movement = new JumpingFishControls(jumpSpan, minPathOffsetX, maxPathOffsetX);
+                jumpingFish.ImpactStatus = new ImpactStatus { };
+                jumpingFish.CrashBoxDebugMode = false;
+                jumpingFish.CrashBoxes = new List<List<IVector3>>();
+                jumpingFish.IsActive = true;
+                world.WorldInhabitants.Add(jumpingFish);
+            }
         }
     }
 }

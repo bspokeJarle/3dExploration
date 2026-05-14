@@ -197,13 +197,13 @@ namespace GameplayHelpers.SurfaceIO
 
             if (string.IsNullOrWhiteSpace(path))
             {
-                if (enableLogging) Logger.Log("TryLoad SurfaceIO. File is null or whitespace.");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log("TryLoad SurfaceIO. File is null or whitespace.");
                 return false;
             }
 
             if (!File.Exists(path))
             {
-                if (enableLogging) Logger.Log("TryLoad SurfaceIO. File does not exist.");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log("TryLoad SurfaceIO. File does not exist.");
                 return false;
             }
 
@@ -321,7 +321,7 @@ namespace GameplayHelpers.SurfaceIO
             }
             catch(Exception ex)
             {
-                if (enableLogging) Logger.Log($"SurfaceIO, fail safe triggered, try load. Exception:{ex.Message}");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"SurfaceIO, fail safe triggered, try load. Exception:{ex.Message}");
                 // Fail-safe
                 surface = new SurfaceData[0, 0];
                 surfaceHash64 = 0;

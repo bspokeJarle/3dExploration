@@ -1,6 +1,7 @@
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using Domain;
+using GameAiAndControls.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -23,7 +24,7 @@ namespace GameAiAndControls.Controls
         private const float SyncFactorY = 2.5f;
 
         // Diagnostics:
-        private const bool enableLogging = true;
+        private const bool enableLogging = false;
         private const int LogEveryNthFrame = 60;
 
         // Explosion:
@@ -60,7 +61,7 @@ namespace GameAiAndControls.Controls
         {
             try
             {
-                if (enableLogging && Logger.EnableFileLogging) Logger.Log(message, "PowerUp");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log(message, "PowerUp");
             }
             catch { }
         }
@@ -86,6 +87,7 @@ namespace GameAiAndControls.Controls
                 _explosionWorldPosition = theObject.WorldPosition as Vector3 ?? new Vector3 { x = theObject.WorldPosition.x, y = theObject.WorldPosition.y, z = theObject.WorldPosition.z };
                 _explosionObjectOffsets = theObject.ObjectOffsets as Vector3 ?? new Vector3 { x = theObject.ObjectOffsets.x, y = theObject.ObjectOffsets.y, z = theObject.ObjectOffsets.z };
                 Physics.ExplosionColorOverride = "4488FF";
+                ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
                 Physics.ExplodeObject(theObject, ExplosionForce);
                 theObject.CrashBoxes = new List<List<IVector3>>();
             }
@@ -98,6 +100,7 @@ namespace GameAiAndControls.Controls
                     theObject.ObjectOffsets = _explosionObjectOffsets;
 
                 Physics.UpdateExplosion(theObject, _explosionDeltaTime);
+                ExplosionParticleHelpers.MoveParticles(theObject);
                 if (theObject.ImpactStatus?.HasExploded == true)
                     theObject.ObjectParts = new List<I3dObjectPart>();
 
@@ -142,7 +145,7 @@ namespace GameAiAndControls.Controls
             // Push positions back to original in AiObjects
             SyncToOriginal(theObject);
 
-            if (enableLogging && Logger.EnableFileLogging)
+            if (Logger.ShouldLog(enableLogging))
             {
                 _logFrameCounter++;
                 if (_logFrameCounter % LogEveryNthFrame == 0)

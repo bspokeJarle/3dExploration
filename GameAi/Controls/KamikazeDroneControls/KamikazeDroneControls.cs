@@ -1,4 +1,4 @@
-﻿using CommonUtilities._3DHelpers;
+using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
@@ -144,6 +144,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             _explosionWorldPosition = theObject.WorldPosition as Vector3 ?? KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition);
             _explosionObjectOffsets = theObject.ObjectOffsets as Vector3 ?? KamikazeDroneMovementHelpers.ToVector3(theObject.ObjectOffsets);
 
+            ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
             Physics.ExplodeObject(theObject, 200f);
             theObject.CrashBoxes = new List<List<IVector3>>();
             theObject.ImpactStatus.HasCrashed = false;
@@ -152,7 +153,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             // Skip hunt until the delay expires, unless the ship is already close
-            if (DateTime.Now < StartHuntDateTime)
+            if (DateTime.Now < StartHuntDateTime && HasLiveNonDroneEnemies())
             {
                 var shipPos = GameState.ShipState?.ShipCrashCenterWorldPosition;
                 if (shipPos != null && theObject.WorldPosition != null)
@@ -276,6 +277,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 }
 
                 Physics.UpdateExplosion(theObject, _explosionDeltaTime);
+                ExplosionParticleHelpers.MoveParticles(theObject);
                 if (theObject.ImpactStatus?.HasExploded == true)
                 {
                     theObject.ObjectParts = new List<I3dObjectPart>();
@@ -317,12 +319,14 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
 
             var closestDecoy = KamikazeDroneAi.GetClosestActiveDecoy(ParentObject);
             Vector3? targetWorldPosition = closestDecoy != null
-                ? KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(closestDecoy)
+                ? KamikazeDroneMovementHelpers.GetNavigationCrashCenterWorldPosition(closestDecoy)
                 : KamikazeDroneMovementHelpers.GetShipCrashCenterWorldPosition();
 
             if (ParentObject.WorldPosition is IVector3 && targetWorldPosition is Vector3 resolvedTargetWorldPosition)
             {
-                var parentWorldPosition = KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(ParentObject);
+                var parentWorldPosition = closestDecoy != null
+                    ? KamikazeDroneMovementHelpers.GetNavigationCrashCenterWorldPosition(ParentObject)
+                    : KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(ParentObject);
                 currentDronePosition = parentWorldPosition;
                 currentTargetPosition = resolvedTargetWorldPosition;
 
@@ -377,7 +381,9 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
 
             if (theObject.WorldPosition is IVector3 objectWorldPosition)
             {
-                currentDronePosition = KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(theObject);
+                currentDronePosition = closestDecoy != null
+                    ? KamikazeDroneMovementHelpers.GetNavigationCrashCenterWorldPosition(theObject)
+                    : KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(theObject);
 
                 if (currentDronePosition is Vector3 dronePosition && currentTargetPosition is Vector3 targetPosition)
                 {
@@ -443,11 +449,13 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                     }
                 }
 
-                currentDronePosition = KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(theObject);
+                currentDronePosition = closestDecoy != null
+                    ? SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(theObject)
+                    : KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(theObject);
 
                 if (closestDecoy != null && currentDronePosition is Vector3 dronePositionAfterMove)
                 {
-                    var decoyCenter = KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(closestDecoy);
+                    var decoyCenter = SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(closestDecoy);
                     float touchDistance = KamikazeDroneMovementHelpers.GetApproximateCrashRadius(theObject) + KamikazeDroneMovementHelpers.GetApproximateCrashRadius(closestDecoy);
                     float currentDistanceToDecoy = (float)CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance(dronePositionAfterMove, decoyCenter);
 
@@ -475,6 +483,47 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             LastMovementDateTime = now;
 
             return theObject;
+        }
+
+        private static bool HasLiveNonDroneEnemies()
+        {
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null || aiObjects.Count == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var aiObject = aiObjects[i];
+                if (aiObject.ImpactStatus?.HasExploded == true)
+                {
+                    continue;
+                }
+
+                if (!EnemySetup.IsEnemyTypeValid(aiObject.ObjectName))
+                {
+                    continue;
+                }
+
+                if (IsEssentialNonDroneEnemy(aiObject.ObjectName))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsEssentialNonDroneEnemy(string objectName)
+        {
+            return objectName == "Seeder"
+                || objectName == "MotherShipSmall"
+                || objectName == "MotherShipMedium"
+                || objectName == "MotherShipLarge"
+                || objectName == "AttackShip"
+                || objectName == "Endboss1"
+                || objectName == "Endboss2";
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)

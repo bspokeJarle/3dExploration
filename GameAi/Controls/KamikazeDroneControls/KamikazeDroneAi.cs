@@ -36,7 +36,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 return null;
             }
 
-            var droneCenter = KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(currentDrone);
+            var droneCenter = SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(currentDrone);
             _3dObject? closestDecoy = null;
             double closestDistance = double.MaxValue;
 
@@ -58,7 +58,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                     continue;
                 }
 
-                var candidateCenter = KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(candidate);
+                var candidateCenter = SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(candidate);
                 double distance = Common3dObjectHelpers.GetDistance(droneCenter, candidateCenter);
                 if (distance < closestDistance)
                 {
@@ -73,7 +73,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
         internal static Vector3? GetClosestDecoyCrashCenterWorldPosition(I3dObject currentDrone)
         {
             var closestDecoy = GetClosestActiveDecoy(currentDrone);
-            return closestDecoy == null ? null : KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(closestDecoy);
+            return closestDecoy == null ? null : SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(closestDecoy);
         }
 
         internal static void TriggerDecoyCollision(I3dObject droneObject, _3dObject decoyObject)

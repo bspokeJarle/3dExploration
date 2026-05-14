@@ -1,10 +1,10 @@
-﻿using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.GamePlayHelpers;
 using Domain;
+using _3dRotations.World.Objects;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -120,6 +120,245 @@ namespace _3dRotations.Helpers
             }
 
             return ecoMap;
+        }
+
+        public static List<FishJumpArea> FindFishJumpAreas(
+            SurfaceData[,] map,
+            int maxHeight,
+            int minWidthTiles = 6,
+            int minHeightTiles = 2,
+            int maxAreas = 100,
+            int? priorityTileX = null,
+            int? priorityTileZ = null)
+        {
+            var areas = new List<FishJumpArea>();
+            if (map == null || maxAreas <= 0)
+                return areas;
+
+            int mapHeight = map.GetLength(0);
+            int mapWidth = map.GetLength(1);
+            if (mapHeight <= 0 || mapWidth <= 0)
+                return areas;
+
+            int minZ = mapHeight > wrapSize * 2 ? wrapSize : 0;
+            int maxZ = mapHeight > wrapSize * 2 ? mapHeight - wrapSize : mapHeight;
+            int minX = mapWidth > wrapSize * 2 ? wrapSize : 0;
+            int maxX = mapWidth > wrapSize * 2 ? mapWidth - wrapSize : mapWidth;
+
+            var visited = new bool[mapHeight, mapWidth];
+            var component = new List<(int x, int z)>();
+            var queue = new Queue<(int x, int z)>();
+            bool hasPriority = priorityTileX.HasValue && priorityTileZ.HasValue;
+
+            for (int z = minZ; z < maxZ; z++)
+            {
+                for (int x = minX; x < maxX; x++)
+                {
+                    if (visited[z, x])
+                        continue;
+
+                    visited[z, x] = true;
+                    if (!IsFishWaterTile(map[z, x], maxHeight))
+                        continue;
+
+                    component.Clear();
+                    queue.Clear();
+                    queue.Enqueue((x, z));
+
+                    while (queue.Count > 0)
+                    {
+                        var tile = queue.Dequeue();
+                        component.Add(tile);
+
+                        EnqueueWaterNeighbor(tile.x - 1, tile.z);
+                        EnqueueWaterNeighbor(tile.x + 1, tile.z);
+                        EnqueueWaterNeighbor(tile.x, tile.z - 1);
+                        EnqueueWaterNeighbor(tile.x, tile.z + 1);
+                    }
+
+                    if (TryCreateFishJumpArea(
+                        component,
+                        map,
+                        maxHeight,
+                        minWidthTiles,
+                        minHeightTiles,
+                        priorityTileX,
+                        priorityTileZ,
+                        out var area))
+                    {
+                        areas.Add(area);
+                        if (!hasPriority && areas.Count >= maxAreas)
+                            return areas;
+                    }
+                }
+            }
+
+            if (hasPriority)
+            {
+                areas.Sort((a, b) =>
+                    GetFishAreaDistanceSquared(a, priorityTileX!.Value, priorityTileZ!.Value)
+                        .CompareTo(GetFishAreaDistanceSquared(b, priorityTileX.Value, priorityTileZ.Value)));
+            }
+
+            if (areas.Count > maxAreas)
+                areas.RemoveRange(maxAreas, areas.Count - maxAreas);
+
+            return areas;
+
+            void EnqueueWaterNeighbor(int nx, int nz)
+            {
+                if (nz < minZ || nz >= maxZ || nx < minX || nx >= maxX)
+                    return;
+                if (visited[nz, nx])
+                    return;
+
+                visited[nz, nx] = true;
+                if (IsFishWaterTile(map[nz, nx], maxHeight))
+                    queue.Enqueue((nx, nz));
+            }
+        }
+
+        private static bool TryCreateFishJumpArea(
+            List<(int x, int z)> component,
+            SurfaceData[,] map,
+            int maxHeight,
+            int minWidthTiles,
+            int minHeightTiles,
+            int? priorityTileX,
+            int? priorityTileZ,
+            out FishJumpArea area)
+        {
+            area = default;
+            if (component.Count < minWidthTiles * minHeightTiles)
+                return false;
+
+            int minX = int.MaxValue;
+            int minZ = int.MaxValue;
+            int maxX = int.MinValue;
+            int maxZ = int.MinValue;
+            foreach (var tile in component)
+            {
+                minX = Math.Min(minX, tile.x);
+                minZ = Math.Min(minZ, tile.z);
+                maxX = Math.Max(maxX, tile.x);
+                maxZ = Math.Max(maxZ, tile.z);
+            }
+
+            bool hasPriority = priorityTileX.HasValue && priorityTileZ.HasValue;
+            bool found = false;
+            long bestDistanceSquared = long.MaxValue;
+            FishJumpArea bestArea = default;
+
+            for (int z = minZ; z <= maxZ - minHeightTiles + 1; z++)
+            {
+                for (int x = minX; x <= maxX - minWidthTiles + 1; x++)
+                {
+                    if (!IsWaterRectangle(map, maxHeight, x, z, minWidthTiles, minHeightTiles))
+                        continue;
+
+                    var candidate = CreateExpandedFishJumpArea(
+                        map,
+                        maxHeight,
+                        startX: x,
+                        startZ: z,
+                        width: minWidthTiles,
+                        height: minHeightTiles,
+                        componentTileCount: component.Count);
+
+                    if (!hasPriority)
+                    {
+                        area = candidate;
+                        return true;
+                    }
+
+                    long distanceSquared = GetFishAreaDistanceSquared(candidate, priorityTileX!.Value, priorityTileZ!.Value);
+                    if (!found || distanceSquared < bestDistanceSquared)
+                    {
+                        found = true;
+                        bestDistanceSquared = distanceSquared;
+                        bestArea = candidate;
+                    }
+                }
+            }
+
+            if (!found)
+                return false;
+
+            area = bestArea;
+            return true;
+        }
+
+        private static long GetFishAreaDistanceSquared(FishJumpArea area, int tileX, int tileZ)
+        {
+            long dx = area.CenterTileX - tileX;
+            long dz = area.CenterTileZ - tileZ;
+            return (dx * dx) + (dz * dz);
+        }
+
+        private static FishJumpArea CreateExpandedFishJumpArea(
+            SurfaceData[,] map,
+            int maxHeight,
+            int startX,
+            int startZ,
+            int width,
+            int height,
+            int componentTileCount)
+        {
+            int expandedStartX = startX;
+            int expandedEndX = startX + width - 1;
+            while (expandedStartX > 0 && IsWaterColumn(map, maxHeight, expandedStartX - 1, startZ, height))
+                expandedStartX--;
+
+            int mapWidth = map.GetLength(1);
+            while (expandedEndX < mapWidth - 1 && IsWaterColumn(map, maxHeight, expandedEndX + 1, startZ, height))
+                expandedEndX++;
+
+            return new FishJumpArea
+            {
+                CenterTileX = startX + (width / 2),
+                CenterTileZ = startZ + (height / 2),
+                StartTileX = expandedStartX,
+                EndTileX = expandedEndX,
+                TileZ = startZ + (height / 2),
+                WidthTiles = expandedEndX - expandedStartX + 1,
+                HeightTiles = height,
+                ComponentTileCount = componentTileCount
+            };
+        }
+
+        private static bool IsWaterColumn(SurfaceData[,] map, int maxHeight, int x, int startZ, int height)
+        {
+            for (int dz = 0; dz < height; dz++)
+            {
+                if (!IsFishWaterTile(map[startZ + dz, x], maxHeight))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static bool IsWaterRectangle(SurfaceData[,] map, int maxHeight, int startX, int startZ, int width, int height)
+        {
+            for (int dz = 0; dz < height; dz++)
+            {
+                for (int dx = 0; dx < width; dx++)
+                {
+                    if (!IsFishWaterTile(map[startZ + dz, startX + dx], maxHeight))
+                        return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool IsFishWaterTile(SurfaceData tile, int maxHeight)
+        {
+            if (tile.hasLandbasedObject || tile.isInfected || tile.isCratered)
+                return false;
+
+            var terrainType = GamePlayHelpers.GetTerrainType(tile.mapDepth, maxHeight);
+            return terrainType == GamePlayHelpers.TerrainType.DeepWater ||
+                   terrainType == GamePlayHelpers.TerrainType.Coast;
         }
 
 
@@ -303,7 +542,7 @@ namespace _3dRotations.Helpers
             {
                 if (wb == null || wb.PixelWidth != mapSize || wb.PixelHeight != mapSize)
                 {
-                    if (enableLogging)
+                    if (Logger.ShouldLog(enableLogging))
                         Logger.Log($"GenerateTerrainBitmapSource: recreating bitmap (existing={(wb == null ? "null" : $"{wb.PixelWidth}x{wb.PixelHeight}")})", "SurfaceGeneration");
 
                     // MUST be created on UI thread, so we do a safe sync create if needed
@@ -316,7 +555,7 @@ namespace _3dRotations.Helpers
             }
             catch (Exception ex)
             {
-                if (enableLogging) Logger.Log($"Error creating WriteableBitmap: {ex.Message}", "SurfaceGeneration");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"Error creating WriteableBitmap: {ex.Message}", "SurfaceGeneration");
                 return;
             }
 
@@ -329,7 +568,7 @@ namespace _3dRotations.Helpers
                 for (int j = 0; j < mapSize; j++)
                 {
                     int height = terrainMap[i, j].mapDepth;
-                    Color color = GetTileColor(height, maxHeight);
+                    Color color = Surface.GetTileColorGradientColor(height, maxHeight);
 
                     int index = (i * mapSize + j) * 4;
                     pixelData[index] = color.B;
@@ -348,7 +587,7 @@ namespace _3dRotations.Helpers
                 {
                     currentWb.WritePixels(new Int32Rect(0, 0, mapSize, mapSize), pixelData, stride, 0);
                 }
-                else if (enableLogging)
+                else if (Logger.ShouldLog(enableLogging))
                 {
                     Logger.Log("GenerateTerrainBitmapSource: bitmap size mismatch; skipping WritePixels", "SurfaceGeneration");
                 }
@@ -803,74 +1042,59 @@ namespace _3dRotations.Helpers
         //  TOWER PLACEMENT (1 near platform + total N across map)
         // ============================================================
 
+        /// <summary>
+        /// Flattens the terrain around a set of placement points.
+        /// All tiles within <paramref name="radius"/> of each point are set to the same depth
+        /// (at least Highlands minimum) so land-based objects sit on a stable, flat base.
+        /// Radius 1 = 3x3 block (towers), 0 = single tile (trees), 1 also works for houses.
+        /// </summary>
+        public static void FlattenTerrainAroundPlacements(
+            SurfaceData[,] map,
+            int maxHeight,
+            List<(int x, int y, int height)> placements,
+            int radius = 1,
+            bool writeDebugLogs = false)
+        {
+            if (map == null || map.Length == 0) return;
+            if (placements == null || placements.Count == 0) return;
+
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+
+            int highlandsMin = (int)(maxHeight * 0.40);
+
+            foreach (var (px, py, _) in placements)
+            {
+                if (px < 0 || py < 0 || px >= sizeX || py >= sizeY)
+                    continue;
+
+                int centerDepth = map[py, px].mapDepth;
+                int target = Math.Max(centerDepth, highlandsMin);
+
+                for (int dy = -radius; dy <= radius; dy++)
+                {
+                    for (int dx = -radius; dx <= radius; dx++)
+                    {
+                        int x = px + dx;
+                        int y = py + dy;
+                        if (x < 0 || y < 0 || x >= sizeX || y >= sizeY)
+                            continue;
+                        map[y, x].mapDepth = target;
+                    }
+                }
+            }
+
+            if (writeDebugLogs && Logger.ShouldLog(enableLogging))
+                Logger.Log($"FlattenTerrainAroundPlacements: {placements.Count} objects, radius={radius}", "SurfaceGeneration");
+        }
+
         public static void FlattenTerrainAroundTowers_ToHighlands(
             SurfaceData[,] map,
             int maxHeight,
             List<(int x, int y, int height)> towerLocations,
             bool writeDebugLogs = true)
         {
-            if (map == null || map.Length == 0) return;
-            if (towerLocations == null || towerLocations.Count == 0) return;
-
-            // map is [y, x] in your project
-            int sizeY = map.GetLength(0);
-            int sizeX = map.GetLength(1);
-
-            // Highlands threshold per your enum logic (>= 0.40 * maxHeight)
-            int highlandsMin = (int)(maxHeight * 0.40);
-
-            void Log(string s)
-            {
-                if (writeDebugLogs)
-                    System.Diagnostics.Debug.WriteLine(s);
-            }
-
-            Log($"=== ENTER FlattenTerrainAroundTowers_ToHighlands (3x3) ===");
-            Log($"Towers={towerLocations.Count} highlandsMin={highlandsMin} maxHeight={maxHeight}");
-
-            int totalChanged = 0;
-
-            foreach (var (tx, ty, _) in towerLocations)
-            {
-                if (tx < 0 || ty < 0 || tx >= sizeX || ty >= sizeY)
-                {
-                    Log($"[SKIP] Tower out of bounds: ({tx},{ty})");
-                    continue;
-                }
-
-                int beforeCenter = map[ty, tx].mapDepth;
-
-                // We force the entire 3x3 to the same target depth, at least Highlands min.
-                int target = Math.Max(beforeCenter, highlandsMin);
-
-                int changedThisTower = 0;
-
-                // 3x3 block: centered on tower tile (tx,ty)
-                for (int dy = -1; dy <= 1; dy++)
-                {
-                    for (int dx = -1; dx <= 1; dx++)
-                    {
-                        int x = tx + dx;
-                        int y = ty + dy;
-
-                        if (x < 0 || y < 0 || x >= sizeX || y >= sizeY)
-                            continue;
-
-                        int before = map[y, x].mapDepth;
-                        if (before != target)
-                        {
-                            map[y, x].mapDepth = target;
-                            changedThisTower++;
-                            totalChanged++;
-                        }
-                    }
-                }
-
-                Log($"Tower ({tx},{ty}) centerDepth={beforeCenter} -> target={target} changedTiles={changedThisTower}");
-            }
-
-            Log($"TOTAL changedTiles={totalChanged}");
-            Log($"=== EXIT FlattenTerrainAroundTowers_ToHighlands (3x3) ===");
+            FlattenTerrainAroundPlacements(map, maxHeight, towerLocations, radius: 1, writeDebugLogs);
         }
 
         public static List<(int x, int y, int height)> FindTowerPlacements(
@@ -880,8 +1104,6 @@ namespace _3dRotations.Helpers
             int maxHeight,
             int totalTowers = 10)
         {
-            Debug.WriteLine("=== ENTER FindTowerPlacements ===");
-
             int sizeY = map.GetLength(0);
             int sizeX = map.GetLength(1);
             mapSize = Math.Min(mapSize, Math.Min(sizeX, sizeY));
@@ -889,7 +1111,14 @@ namespace _3dRotations.Helpers
             // ✅ YX (outer = y, inner = x)
             int H(int x, int y) => map[y, x].mapDepth;
 
-            Debug.WriteLine($"Map: sizeX={sizeX} sizeY={sizeY} mapSize={mapSize} maxHeight={maxHeight} totalTowers={totalTowers}");
+            void Log(string s)
+            {
+                if (Logger.ShouldLog(enableLogging))
+                    Logger.Log(s, "SurfaceGeneration");
+            }
+
+            Log("=== ENTER FindTowerPlacements ===");
+            Log($"Map: sizeX={sizeX} sizeY={sizeY} mapSize={mapSize} maxHeight={maxHeight} totalTowers={totalTowers}");
 
             int nearRadius = 17;
             int spacing = 6;                 // same “looks good” value you liked
@@ -963,7 +1192,7 @@ namespace _3dRotations.Helpers
             int landingTopLeftX = landing.topLeftX;
             int landingTopLeftY = landing.topLeftY;
 
-            Debug.WriteLine($"Landing center=({landingX},{landingY}) depth={landing.depth} TL=({landingTopLeftX},{landingTopLeftY})");
+            Log($"Landing center=({landingX},{landingY}) depth={landing.depth} TL=({landingTopLeftX},{landingTopLeftY})");
 
             // ------------------------------------------------------------
             // Helper: exclude landing platform (plus buffer ring)
@@ -1026,7 +1255,7 @@ namespace _3dRotations.Helpers
                 }
             }
 
-            Debug.WriteLine($"Candidates OK={okCount} highlands={highPool.Count} grassland={grassPool.Count}");
+            Log($"Candidates OK={okCount} highlands={highPool.Count} grassland={grassPool.Count}");
 
             FisherYatesShuffle(highPool, random);
             FisherYatesShuffle(grassPool, random);
@@ -1091,18 +1320,18 @@ namespace _3dRotations.Helpers
             if (TryFindNearestNear(GamePlayHelpers.TerrainType.Highlands, out var nearHi))
             {
                 placedNear = TryAdd(nearHi.x, nearHi.y, nearHi.h);
-                Debug.WriteLine($"Near tower (Highlands) => ({nearHi.x},{nearHi.y}) depth={nearHi.h} placed={placedNear}");
+                Log($"Near tower (Highlands) => ({nearHi.x},{nearHi.y}) depth={nearHi.h} placed={placedNear}");
             }
 
             // Grassland fallback near
             if (!placedNear && TryFindNearestNear(GamePlayHelpers.TerrainType.Grassland, out var nearGr))
             {
                 placedNear = TryAdd(nearGr.x, nearGr.y, nearGr.h);
-                Debug.WriteLine($"Near tower (Grassland) => ({nearGr.x},{nearGr.y}) depth={nearGr.h} placed={placedNear}");
+                Log($"Near tower (Grassland) => ({nearGr.x},{nearGr.y}) depth={nearGr.h} placed={placedNear}");
             }
 
             if (!placedNear)
-                Debug.WriteLine("WARNING: No near-platform tower candidate found in radius 17 (excluding platform).");
+                Log("WARNING: No near-platform tower candidate found in radius 17 (excluding platform).");
 
             // 3b) Fill global
             void FillFrom(List<(int x, int y, int h)> pool, string label)
@@ -1115,65 +1344,21 @@ namespace _3dRotations.Helpers
                     TryAdd(x, y, h);
                 }
 
-                Debug.WriteLine($"FillFrom {label}: added={towers.Count - before}, now={towers.Count}/{totalTowers}");
+                Log($"FillFrom {label}: added={towers.Count - before}, now={towers.Count}/{totalTowers}");
             }
 
             FillFrom(highPool, "Highlands");
             FillFrom(grassPool, "Grassland");
 
-            Debug.WriteLine($"TOWERS PLACED: {towers.Count}/{totalTowers}");
+            Log($"TOWERS PLACED: {towers.Count}/{totalTowers}");
             for (int i = 0; i < towers.Count; i++)
-                Debug.WriteLine($"To  w er #{i + 1}: ({towers[i].x},{towers[i].y}) depth={towers[i].height}");
+                Log($"Tower #{i + 1}: ({towers[i].x},{towers[i].y}) depth={towers[i].height}");
 
-            Debug.WriteLine("=== EXIT FindTowerPlacements ===");
+            Log("=== EXIT FindTowerPlacements ===");
             return towers;
         }
 
         //------------------------------------------------------------- End Tower Placement
-
-        public static Color GetTileColor(int height, int maxHeight)
-        {
-            int red, green, blue;
-
-            if (height < maxHeight * 0.05)
-            {
-                red = 0;
-                green = 0;
-                blue = 180 + (int)((height / (maxHeight * 0.05)) * 75);
-            }
-            else if (height < maxHeight * 0.15)
-            {
-                red = 0;
-                green = (int)((height / (maxHeight * 0.2)) * 100);
-                blue = 255;
-            }
-            else if (height < maxHeight * 0.4)
-            {
-                red = 0;
-                green = 150 + ((height - (int)(maxHeight * 0.2)) * 3);
-                blue = 0;
-            }
-            else if (height < maxHeight * 0.7)
-            {
-                red = 139 + ((height - (int)(maxHeight * 0.4)) * 3);
-                green = 69 + ((height - (int)(maxHeight * 0.4)) * 2);
-                blue = 19;
-            }
-            else
-            {
-                red = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
-                green = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
-                blue = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
-            }
-
-            return Color.FromArgb(
-                255,
-                (byte)Math.Clamp(red, 0, 255),
-                (byte)Math.Clamp(green, 0, 255),
-                (byte)Math.Clamp(blue, 0, 255));
-        }
-
-
         private static void GenerateCrashBoxes(SurfaceData[,] map, int maxHeight)
         {
             int mapSizeX = map.GetLength(0);
@@ -1255,7 +1440,7 @@ namespace _3dRotations.Helpers
                     }
                 }
             }
-            Debug.WriteLine($"[SurfaceGeneration] Generated {numCrashBoxes} crashboxes.");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"[SurfaceGeneration] Generated {numCrashBoxes} crashboxes.", "SurfaceGeneration");
         }
 
 

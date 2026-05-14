@@ -19,15 +19,17 @@ public static class Logger
         AppDomain.CurrentDomain.ProcessExit += (_, _) => Flush();
     }
 
+    public static bool ShouldLog(bool enableLocalLogging) =>
+        EnableFileLogging && enableLocalLogging;
+
     public static void Log(string message, string category = "General")
     {
-        string logLine = $"{DateTime.Now:HH:mm:ss.fff} [{category}] {message}";
-
         if (!EnableFileLogging)
         {
-            Debug.WriteLine(logLine);
             return;
         }
+
+        string logLine = $"{DateTime.Now:HH:mm:ss.fff} [{category}] {message}";
 
         lock (_lock)
         {

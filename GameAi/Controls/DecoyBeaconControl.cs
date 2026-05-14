@@ -1,7 +1,8 @@
-﻿using CommonUtilities._3DHelpers;
+using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Helpers;
 using Gma.System.MouseKeyHook;
 using System;
 using System.Collections.Generic;
@@ -22,8 +23,8 @@ namespace GameAiAndControls.Controls
         private const bool enableLogging = false;
         private const string WheelPartName = "DecoyFrontPulsePanel";
         private const float WheelRotationDegreesPerSecond = 540f;
-        // Deployed decoy fuse: it must stay alive for the full delay before exploding.
-        private const float DeployedDecoyLifetimeSeconds = 3f;
+        // Deployed decoy fuse: timeout explosion only. Direct hits explode immediately.
+        private const float DeployedDecoyLifetimeSeconds = 2.25f;
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
@@ -77,7 +78,7 @@ namespace GameAiAndControls.Controls
         {
             try
             {
-                if (enableLogging && Logger.EnableFileLogging) Logger.Log(message, "KamikazeDrone");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log(message, "KamikazeDrone");
             }
             catch
             {
@@ -443,6 +444,7 @@ namespace GameAiAndControls.Controls
             _explosionWorldPosition = theObject.WorldPosition as Vector3 ?? ToVector3(theObject.WorldPosition);
             _explosionObjectOffsets = theObject.ObjectOffsets as Vector3 ?? ToVector3(theObject.ObjectOffsets);
 
+            ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
             Physics.ExplodeObject(theObject, 200f);
             theObject.CrashBoxes = new List<List<IVector3>>();
         }
@@ -492,8 +494,7 @@ namespace GameAiAndControls.Controls
             var now = DateTime.Now;
             bool fuseElapsed = !_isDeployedDecoy || (now - _deployedAt).TotalSeconds >= DeployedDecoyLifetimeSeconds;
 
-            // Crash-triggered explosion should also respect the deployed fuse time.
-            if (theObject.ImpactStatus?.HasCrashed == true && !_isExploding && fuseElapsed)
+            if (theObject.ImpactStatus?.HasCrashed == true && !_isExploding)
             {
                 HandleCrash(theObject);
             }
@@ -516,6 +517,7 @@ namespace GameAiAndControls.Controls
                 }
 
                 Physics.UpdateExplosion(theObject, _explosionDeltaTime);
+                ExplosionParticleHelpers.MoveParticles(theObject);
                 if (theObject.ImpactStatus?.HasExploded == true)
                 {
                     theObject.ObjectParts = new List<I3dObjectPart>();

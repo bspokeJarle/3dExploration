@@ -58,9 +58,9 @@ namespace _3dTesting.Helpers
                     // Enemy lazers should only hit the player Ship; never collide with any enemy
                     // (including their own firing mothership, which would cause the beam to vanish
                     // on frame 1 because it spawns overlapping the parent's crashbox).
-                    bool isLazerEnemyPair =
-                        (flagsA.IsLazer && flagsB.IsEnemy) ||
-                        (flagsB.IsLazer && flagsA.IsEnemy);
+                    bool isEnemyLazerEnemyPair =
+                        ((flagsA.Name == "EnemyLazer" || flagsA.Name == "EnemyLazerMedium") && flagsB.IsEnemy) ||
+                        ((flagsB.Name == "EnemyLazer" || flagsB.Name == "EnemyLazerMedium") && flagsA.IsEnemy);
                     // Enemy lazers must not hit the ground/surface — only the player Ship.
                     bool isEnemyLazerSurfacePair =
                         ((flagsA.Name == "EnemyLazer" || flagsA.Name == "EnemyLazerMedium") && flagsB.IsSurface) ||
@@ -81,6 +81,9 @@ namespace _3dTesting.Helpers
                     bool isDecoyShipPair =
                         (flagsA.Name == "DroneDecoy" && flagsB.IsShip) ||
                         (flagsB.Name == "DroneDecoy" && flagsA.IsShip);
+                    bool isDecoyParticlePair =
+                        (flagsA.Name == "DroneDecoy" && flagsB.IsParticle) ||
+                        (flagsB.Name == "DroneDecoy" && flagsA.IsParticle);
                     bool isPowerUp = flagsA.Name == "PowerUp" || flagsB.Name == "PowerUp";
                     bool isPowerUpShipPair =
                         (flagsA.Name == "PowerUp" && flagsB.IsShip) ||
@@ -109,9 +112,10 @@ namespace _3dTesting.Helpers
                     if (isBothEnemies) continue;
                     if (isDecoySurfacePair) continue;
                     if (isDecoyShipPair) continue;
+                    if (isDecoyParticlePair) continue;
                     if (isPowerUp && !isPowerUpShipPair) continue;
                     if (isWeaponShipPair) continue;
-                    if (isLazerEnemyPair) continue;
+                    if (isEnemyLazerEnemyPair) continue;
                     if (isEnemyLazerSurfacePair) continue;
                     if (isLazer && isParticle || isSeeder && isParticle) continue;
 

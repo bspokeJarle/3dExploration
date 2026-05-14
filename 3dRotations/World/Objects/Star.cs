@@ -1,7 +1,6 @@
 ﻿using _3dTesting.Helpers;
 using CommonUtilities.CommonGlobalState;
 using Domain;
-using GameAiAndControls.Controls;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
 
@@ -28,7 +27,7 @@ namespace _3dRotations.World.Objects
         /// <summary>
         /// Creates a small 3D star object with a minimal number of triangles.
         /// The star is centered around local origin (0,0,0).
-        /// Position and rotation should be applied via ObjectOffsets and Rotation when spawning.
+        /// StarFieldHandler owns world-space placement and fading.
         /// </summary>
         public static _3dObject CreateStar(
             ISurface parentSurface,
@@ -55,7 +54,7 @@ namespace _3dRotations.World.Objects
                 IsVisible = true
             });
 
-            // Placement offset is randomized per star instance.
+            // StarFieldHandler normally supplies a zero offset and places stars via WorldPosition.
             star.ObjectOffsets = randomOffset;
 
             // Random rotation to vary the visual appearance slightly
@@ -79,7 +78,7 @@ namespace _3dRotations.World.Objects
 
             // ParentSurface can be null if the star is not tied to any surface.
             star.ParentSurface = parentSurface;
-            star.Movement = new StarsControl();
+            star.Movement = null;
 
             return star;
         }

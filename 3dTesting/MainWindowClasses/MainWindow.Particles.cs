@@ -1,4 +1,4 @@
-﻿using _3dTesting._3dRotation;
+using _3dTesting._3dRotation;
 using _3dTesting._3dWorld;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
@@ -41,6 +41,7 @@ namespace _3dTesting.MainWindowClasses
         // launch the shadow hundreds of units off the ground point.
         public static float ParticleAltitudeProjection = 0.15f;
         public static float MaxParticleAltitudeForProjection = 120f;
+        public static float ParticleShadowMinAltitude = 12f;
 
         // Cached surface-tilt trig — mirrors ObjectShadowManager so particle
         // shadows rotate onto the ground plane the same way.
@@ -90,6 +91,9 @@ namespace _3dTesting.MainWindowClasses
                     ObjectId = GameState.ObjectIdCounter++,
                     ObjectName = "Particle",
                     WorldPosition = particle.WorldPosition,
+                    SurfaceBasedId = inhabitant.SurfaceBasedId.HasValue && inhabitant.SurfaceBasedId.Value > 0
+                        ? inhabitant.SurfaceBasedId
+                        : null,
                     ParentSurface = inhabitant.ParentSurface,
                     ObjectParts = new List<I3dObjectPart>
                     {
@@ -168,7 +172,11 @@ namespace _3dTesting.MainWindowClasses
                 // (In this project +Y is down-screen, so higher = smaller Y.)
                 // Clamped so very-high particles (e.g. bombers, explosions) still
                 // produce visible shadows near their ground point.
-                float altitudeRaw = MathF.Max(0f, surfaceY - particleOffsetY);
+                float groundScreenY = surfaceY + groundLocalY;
+                if (!ShouldRenderParticleShadow(inhabitant.ObjectName, particleOffsetY, groundScreenY))
+                    continue;
+
+                float altitudeRaw = MathF.Max(0f, groundScreenY - particleOffsetY);
                 float altitude = MathF.Min(altitudeRaw, MaxParticleAltitudeForProjection);
                 float scale = MathF.Max(MinProjectedScale, BaseProjectedScale - altitudeRaw * AltitudeShrinkFactor);
 
@@ -220,6 +228,14 @@ namespace _3dTesting.MainWindowClasses
                     Rotation = new Vector3 { x = 0, y = 0, z = 0 }
                 });
             }
+        }
+
+        public static bool ShouldRenderParticleShadow(string? sourceObjectName, float particleScreenY, float groundScreenY)
+        {
+            if (string.Equals(sourceObjectName, "JumpingFish", StringComparison.Ordinal))
+                return false;
+
+            return groundScreenY - particleScreenY > ParticleShadowMinAltitude;
         }
 
         //Creates a crashbox from a triangle

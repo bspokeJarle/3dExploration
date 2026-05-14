@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using CommonUtilities.CommonSetup;
 using static CommonUtilities.WeaponHelpers.WeaponHelpers;
 

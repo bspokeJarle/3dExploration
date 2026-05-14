@@ -1,4 +1,5 @@
 ﻿using _3dTesting._Coordinates;
+using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,7 @@ namespace _3dTesting.Rendering
         private readonly Dictionary<(float, string), Color> colorCache = new();
         private readonly Dictionary<Color, SolidColorBrush> brushCache = new();
         private readonly Dictionary<Color, Pen> penCache = new();
+        private readonly Dictionary<int, SolidColorBrush> backgroundBrushCache = new();
         private readonly Dictionary<string, string> _normalizedColorCache = new();
 
         private readonly List<StreamGeometry> geometryPool = new();
@@ -52,7 +54,7 @@ namespace _3dTesting.Rendering
             PrewarmColorCache();
         }
 
-        private bool ShouldLog() => _localLoggingEnabled && Logger.EnableFileLogging;
+        private bool ShouldLog() => Logger.ShouldLog(_localLoggingEnabled);
 
         private void PrewarmColorCache()
         {
@@ -133,7 +135,7 @@ namespace _3dTesting.Rendering
 
             using (var dc = visual.RenderOpen())
             {
-                dc.DrawRectangle(Brushes.Black, null, new Rect(0, 0, ScreenSetup.screenSizeX, ScreenSetup.screenSizeY));
+                dc.DrawRectangle(GetBackgroundBrush(), null, new Rect(0, 0, ScreenSetup.screenSizeX, ScreenSetup.screenSizeY));
 
                 foreach (var triangle in screenCoordinates)
                 {
@@ -303,6 +305,27 @@ namespace _3dTesting.Rendering
         public static void ClearCrashBoxBrushCache()
         {
             CrashBoxBrushCache.Clear();
+        }
+
+        private SolidColorBrush GetBackgroundBrush()
+        {
+            float intensity = GameState.WeatherVisualState?.LightningFlashIntensity ?? 0f;
+            if (intensity <= 0.005f)
+                return Brushes.Black;
+
+            int key = Math.Clamp((int)MathF.Round(intensity * 16f), 0, 16);
+            if (backgroundBrushCache.TryGetValue(key, out var brush))
+                return brush;
+
+            float t = key / 16f;
+            byte red = (byte)(2 + 38 * t);
+            byte green = (byte)(4 + 56 * t);
+            byte blue = (byte)(9 + 92 * t);
+
+            brush = new SolidColorBrush(Color.FromRgb(red, green, blue));
+            brush.Freeze();
+            backgroundBrushCache[key] = brush;
+            return brush;
         }
 
         private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)

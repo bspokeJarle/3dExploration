@@ -202,12 +202,14 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
                 if (_explosionObjectOffsets != null) theObject.ObjectOffsets = _explosionObjectOffsets;
 
                 Physics.UpdateExplosion(theObject, _explosionDeltaTime);
+                ExplosionParticleHelpers.MoveParticles(theObject);
 
                 if (!_secondExplosionTriggered &&
                     (DateTime.Now - _explosionDeltaTime).TotalSeconds >= SecondExplosionDelaySeconds)
                 {
                     _secondExplosionTriggered = true;
                     PlayExplosionSound(theObject);
+                    ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
                     Physics.ExplodeObject(theObject, SecondExplosionForce);
                     _explosionDeltaTime = DateTime.Now;
                 }
@@ -417,6 +419,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
             _explosionWorldPosition = theObject.WorldPosition as Vector3 ?? new Vector3 { x = theObject.WorldPosition.x, y = theObject.WorldPosition.y, z = theObject.WorldPosition.z };
             _explosionObjectOffsets = theObject.ObjectOffsets as Vector3 ?? new Vector3 { x = theObject.ObjectOffsets.x, y = theObject.ObjectOffsets.y, z = theObject.ObjectOffsets.z };
 
+            ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
             Physics.ExplodeObject(theObject, FirstExplosionForce);
             theObject.CrashBoxes = new List<List<IVector3>>();
         }
@@ -1037,7 +1040,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
         {
             if (StartCoord != null) _weaponStartGuide = StartCoord;
             if (GuideCoord != null) _weaponDirectionGuide = GuideCoord;
-            if (enableLogging && Logger.EnableFileLogging)
+            if (Logger.ShouldLog(enableLogging))
             {
                 if (StartCoord != null)
                     Logger.Log($"[MotherShipMedium] WeaponStartGuide set: x={StartCoord.vert1.x:F1}; y={StartCoord.vert1.y:F1}; z={StartCoord.vert1.z:F1}", "MSM");
@@ -1062,7 +1065,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
             // Only fire when guide geometry is available
             if (_weaponStartGuide == null || _weaponDirectionGuide == null)
             {
-                if (enableLogging && Logger.EnableFileLogging)
+                if (Logger.ShouldLog(enableLogging))
                     Logger.Log($"[MotherShipMedium] FIRE SKIPPED — guides not set (start={_weaponStartGuide != null}; dir={_weaponDirectionGuide != null})", "MSM");
                 return;
             }
@@ -1077,7 +1080,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
                 _chargeInstance = null;
             }
 
-            if (enableLogging && Logger.EnableFileLogging)
+            if (Logger.ShouldLog(enableLogging))
             {
                 Logger.Log(
                     $"[MotherShipMedium] FireWeapon — start=(x={_weaponStartGuide.vert1.x:F1}; y={_weaponStartGuide.vert1.y:F1}; z={_weaponStartGuide.vert1.z:F1}) " +

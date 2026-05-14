@@ -1,6 +1,7 @@
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using Domain;
+using GameAiAndControls.Helpers;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -82,6 +83,7 @@ namespace GameAiAndControls.Controls
                     theObject.ObjectOffsets = _explosionObjectOffsets;
 
                 Physics.UpdateExplosion(theObject, _explosionDeltaTime);
+                ExplosionParticleHelpers.MoveParticles(theObject);
                 if (theObject.ImpactStatus?.HasExploded == true)
                 {
                     theObject.ObjectParts = new List<I3dObjectPart>();
@@ -193,6 +195,7 @@ namespace GameAiAndControls.Controls
             theObject.ImpactStatus.HasCrashed = true;
             theObject.ImpactStatus.ObjectName = "Surface";
 
+            ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
             Physics.ExplodeObject(theObject, 150f);
             theObject.CrashBoxes = new List<List<IVector3>>();
         }

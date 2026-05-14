@@ -77,6 +77,7 @@ public class UpdateWorldBenchmarks
         private sealed class StubScene : IScene
         {
             public SceneTypes SceneType => SceneTypes.Game;
+            public SceneBiomeTypes SceneBiome => SceneBiomeTypes.HillsWoods;
             public GameModes GameMode => GameModes.Live;
             public string SceneMusic => "music_flight";
 

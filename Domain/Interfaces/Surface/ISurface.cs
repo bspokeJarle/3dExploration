@@ -12,6 +12,7 @@ namespace Domain
         int TileSize();
         int MaxHeight();
         List<ITriangleMeshWithColor> RotatedSurfaceTriangles { get; set; }
+        Dictionary<long, ITriangleMeshWithColor> RotatedSurfaceTriangleByLandId { get; set; }
         HashSet<long?> LandBasedIds { get; set; }
         I3dObject GetSurfaceViewPort();
         void Create2DMap(int? maxTrees, int? maxHouses, GameModes gameMode, string? recordedSurface);

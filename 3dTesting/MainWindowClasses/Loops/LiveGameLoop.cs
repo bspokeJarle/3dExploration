@@ -45,6 +45,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
+        private const bool enableProgressionLogging = false;
         public bool FadeOutWorld { get; set; } = false;
         public bool FadeInWorld { get; set; } = false;
         public bool SceneResetReady { get; set; } = false;
@@ -101,6 +102,9 @@ namespace _3dTesting.MainWindowClasses.Loops
             {
                 StarFieldHandler.GenerateStarfield();
                 if (StarFieldHandler.HasStars()) deepCopiedWorld.AddRange(StarFieldHandler.GetStars());
+                float weatherOpacity = 1f - StarFieldHandler.PoolOpacity;
+                SnowfallControls.GlobalSnowOpacity = weatherOpacity;
+                RainfallControls.GlobalRainOpacity = weatherOpacity;
             }
 
             var particleObjectList = new List<_3dObject>();
@@ -121,7 +125,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             foreach (var inhabitant in deepCopiedWorld)
             {
-                if (!inhabitant.CheckInhabitantVisibility()) continue;
+                if (inhabitant.ObjectName != "Star" && !inhabitant.CheckInhabitantVisibility()) continue;
                 inhabitant.IsOnScreen = true;
                 if (doAiMark)
                 {
@@ -147,13 +151,20 @@ namespace _3dTesting.MainWindowClasses.Loops
                     {
                         inhabitant.ParentSurface.RotatedSurfaceTriangles = part.Triangles;
 
-                        var landBasedIds = new HashSet<long?>(part.Triangles.Count);
+                        var landBasedIds = inhabitant.ParentSurface.LandBasedIds;
+                        landBasedIds.Clear();
+
+                        var triangleByLandId = inhabitant.ParentSurface.RotatedSurfaceTriangleByLandId;
+                        triangleByLandId.Clear();
 
                         foreach (var triangle in part.Triangles)
                         {
-                            landBasedIds.Add(triangle.landBasedPosition);
+                            var landBasedPosition = triangle.landBasedPosition;
+                            landBasedIds.Add(landBasedPosition);
+
+                            if (landBasedPosition.HasValue)
+                                triangleByLandId[landBasedPosition.Value] = triangle;
                         }
-                        inhabitant.ParentSurface.LandBasedIds = landBasedIds;
                     }
 
                     SetMovementGuides(inhabitant, part, part.Triangles);
@@ -214,6 +225,8 @@ namespace _3dTesting.MainWindowClasses.Loops
                 GameState.ShipState.BestCandidateStates.Clear();
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
+                SnowfallControls.GlobalSnowOpacity = 1f;
+                RainfallControls.GlobalRainOpacity = 1f;
 
                 if (_victorySequenceStarted && !_deathSequenceStarted)
                     world.SceneHandler.NextScene(world);
@@ -246,7 +259,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             // Process cascading local infection spread (seeder-infected tiles spread to neighbors after a delay)
             SeederControls.ProcessLocalInfectionSpread(GameState.SurfaceState);
 
-            projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter);
+            projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter, projectedCoordinates);
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
             CleanupExplodedObjects(world);
 
@@ -341,11 +354,22 @@ namespace _3dTesting.MainWindowClasses.Loops
                     }
                 }
 
+                var aiObjects = GameState.SurfaceState.AiObjects;
+
                 foreach (var obj in explodedObjects)
                 {
                     if (EnemySetup.IsEnemyTypeValid(obj.ObjectName))
                     {
                         gps.RecordKill(obj.ObjectName);
+
+                        if (Logger.ShouldLog(enableProgressionLogging))
+                        {
+                            var pos = obj.WorldPosition;
+                            var offs = obj.ObjectOffsets;
+                            Logger.Log(
+                                $"EnemyKilled: name={obj.ObjectName}; id={obj.ObjectId}; world=({pos?.x ?? 0f};{pos?.y ?? 0f};{pos?.z ?? 0f}); offsets=({offs?.x ?? 0f};{offs?.y ?? 0f};{offs?.z ?? 0f}); status={GetEnemyStatusSnapshot(aiObjects, explodedIds)}",
+                                "Progression");
+                        }
 
                         if (GameSetup.IsCheckpointEnemy(obj.ObjectName, obj.HasPowerUp))
                             checkpointTriggered = true;
@@ -389,7 +413,6 @@ namespace _3dTesting.MainWindowClasses.Loops
                     }
                 }
 
-                var aiObjects = GameState.SurfaceState.AiObjects;
                 for (int i = aiObjects.Count - 1; i >= 0; i--)
                 {
                     if (explodedIds.Contains(aiObjects[i].ObjectId))
@@ -409,7 +432,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                         if (o.ImpactStatus?.HasExploded == true) continue;
                         if (o.ObjectName == "Seeder") seedersLeft++;
                         else if (o.ObjectName == "KamikazeDrone" && o.IsActive) dronesLeft++;
-                        else if (o.ObjectName == "MotherShipSmall" && o.IsActive) motherShipsLeft++;
+                        else if ((o.ObjectName == "MotherShipSmall" || o.ObjectName == "MotherShipMedium" || o.ObjectName == "MotherShipLarge") && o.IsActive) motherShipsLeft++;
                     }
                     gps.SeedersRemaining = seedersLeft;
                     gps.DronesRemaining = dronesLeft;
@@ -461,6 +484,37 @@ namespace _3dTesting.MainWindowClasses.Loops
                 obj.Movement = null;
                 obj.ImpactStatus = null;
             }
+        }
+
+        private static string GetEnemyStatusSnapshot(List<_3dObject> aiObjects, HashSet<int> pendingRemovalIds)
+        {
+            int liveSeeders = 0;
+            int liveDrones = 0;
+            int liveMotherShips = 0;
+            int liveOtherEnemies = 0;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var aiObject = aiObjects[i];
+                if (pendingRemovalIds.Contains(aiObject.ObjectId))
+                    continue;
+                if (aiObject.ImpactStatus?.HasExploded == true)
+                    continue;
+                if (!EnemySetup.IsEnemyTypeValid(aiObject.ObjectName))
+                    continue;
+
+                if (aiObject.ObjectName == "Seeder")
+                    liveSeeders++;
+                else if (aiObject.ObjectName == "KamikazeDrone" && aiObject.IsActive)
+                    liveDrones++;
+                else if ((aiObject.ObjectName == "MotherShipSmall" || aiObject.ObjectName == "MotherShipMedium" || aiObject.ObjectName == "MotherShipLarge") && aiObject.IsActive)
+                    liveMotherShips++;
+                else
+                    liveOtherEnemies++;
+            }
+
+            var gps = GameState.GamePlayState;
+            return $"liveSeeders={liveSeeders}; liveDrones={liveDrones}; liveMotherShips={liveMotherShips}; liveOtherEnemies={liveOtherEnemies}; gpsSeeders={gps.SeedersRemaining}; gpsDrones={gps.DronesRemaining}; gpsMotherShips={gps.MotherShipsRemaining}; initialSeeders={gps.InitialSeeders}; initialDrones={gps.InitialDrones}";
         }
 
         private static void TryDisposeMovement(_3dObject obj)
@@ -706,7 +760,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                     inhabitant.Movement.SetWeaponGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
                     break;
                 case "JetMotorDirectionGuide":
-                    if (enableLocalLogging) Logger.Log($"MainLoop Set Guide after rotation: {rotatedMesh.First().vert1.x + ", " + rotatedMesh.First().vert1.y + ", " + rotatedMesh.First().vert1.z} Inhabitant:{inhabitant.ObjectName} ");
+                    if (Logger.ShouldLog(enableLocalLogging)) Logger.Log($"MainLoop Set Guide after rotation: {rotatedMesh.First().vert1.x + ", " + rotatedMesh.First().vert1.y + ", " + rotatedMesh.First().vert1.z} Inhabitant:{inhabitant.ObjectName} ");
                     inhabitant.Movement.SetParticleGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
                     break;
                 case "RearEngine":
@@ -744,7 +798,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             frameTimer.Stop();
             if (!enableLocalLogging)
                 return;
-            if (!Logger.EnableFileLogging)
+            if (!Logger.ShouldLog(enableLocalLogging))
                 return;
 
             var budgetMs = 1000.0 / CommonUtilities.CommonSetup.ScreenSetup.targetFps;

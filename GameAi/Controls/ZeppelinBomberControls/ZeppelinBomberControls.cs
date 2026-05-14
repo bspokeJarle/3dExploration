@@ -20,6 +20,8 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
         // Propeller animation
         private const float PropellerDegreesPerSecond = 720f;
         private float _propellerRotation = 0f;
+        private List<ITriangleMeshWithColor>? _propellerOriginalTriangles;
+        private Vector3? _propellerPivot;
 
         // Bomb bay hatch animation
         private const float HatchMaxAngle = 55f;
@@ -136,6 +138,7 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
                     theObject.ObjectOffsets = new Vector3 { x = _explosionObjectOffsets.x, y = _explosionObjectOffsets.y, z = _explosionObjectOffsets.z };
 
                 Physics.UpdateExplosion(theObject, _explosionDeltaTime);
+                ExplosionParticleHelpers.MoveParticles(theObject);
                 if (theObject.ImpactStatus?.HasExploded == true)
                 {
                     theObject.ObjectParts = new List<I3dObjectPart>();
@@ -244,6 +247,7 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
                 z = theObject.ObjectOffsets?.z ?? 0f
             };
 
+            ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
             Physics.ExplodeObject(theObject, ExplosionForce);
             theObject.CrashBoxes = new List<List<IVector3>>();
         }
@@ -265,10 +269,21 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
 
             _propellerRotation = NormalizeAngle(_propellerRotation + PropellerDegreesPerSecond * deltaSeconds);
 
-            var center = GetPartCenter(propPart.Triangles);
-            var atOrigin = TranslateMesh(propPart.Triangles, new Vector3 { x = -center.x, y = -center.y, z = -center.z });
+            InitializePropellerAnimation(propPart);
+            if (_propellerOriginalTriangles == null || _propellerPivot == null) return;
+
+            var center = _propellerPivot;
+            var atOrigin = TranslateMesh(_propellerOriginalTriangles, new Vector3 { x = -center.x, y = -center.y, z = -center.z });
             var rotated = _rotate.RotateXMesh(atOrigin, _propellerRotation);
             propPart.Triangles = TranslateMesh(rotated, center);
+        }
+
+        private void InitializePropellerAnimation(I3dObjectPart propPart)
+        {
+            if (_propellerOriginalTriangles != null && _propellerPivot != null) return;
+
+            _propellerOriginalTriangles = TranslateMesh(propPart.Triangles, new Vector3());
+            _propellerPivot = GetFrontFaceCenter(propPart.Triangles);
         }
 
         private void AnimateHatch(float deltaSeconds)
@@ -359,6 +374,53 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
                 y = (minY + maxY) * 0.5f,
                 z = (minZ + maxZ) * 0.5f
             };
+        }
+
+        private static Vector3 GetFrontFaceCenter(List<ITriangleMeshWithColor> triangles)
+        {
+            if (triangles == null || triangles.Count == 0)
+                return new Vector3();
+
+            float maxX = float.MinValue;
+            foreach (var triangle in triangles)
+            {
+                if (triangle.vert1.x > maxX) maxX = triangle.vert1.x;
+                if (triangle.vert2.x > maxX) maxX = triangle.vert2.x;
+                if (triangle.vert3.x > maxX) maxX = triangle.vert3.x;
+            }
+
+            const float tolerance = 0.001f;
+            float minY = float.MaxValue, maxY = float.MinValue;
+            float minZ = float.MaxValue, maxZ = float.MinValue;
+            int count = 0;
+
+            foreach (var triangle in triangles)
+            {
+                MeasureFrontVertex(triangle.vert1);
+                MeasureFrontVertex(triangle.vert2);
+                MeasureFrontVertex(triangle.vert3);
+            }
+
+            if (count == 0)
+                return GetPartCenter(triangles);
+
+            return new Vector3
+            {
+                x = maxX,
+                y = (minY + maxY) * 0.5f,
+                z = (minZ + maxZ) * 0.5f
+            };
+
+            void MeasureFrontVertex(IVector3 vertex)
+            {
+                if (MathF.Abs(vertex.x - maxX) > tolerance) return;
+
+                if (vertex.y < minY) minY = vertex.y;
+                if (vertex.y > maxY) maxY = vertex.y;
+                if (vertex.z < minZ) minZ = vertex.z;
+                if (vertex.z > maxZ) maxZ = vertex.z;
+                count++;
+            }
         }
 
         private static List<ITriangleMeshWithColor> TranslateMesh(List<ITriangleMeshWithColor> triangles, Vector3 offset)
@@ -576,6 +638,8 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
         public void Dispose()
         {
             _propellerRotation = 0f;
+            _propellerOriginalTriangles = null;
+            _propellerPivot = null;
             _hatchAngle = 0f;
             _hatchState = HatchState.Closed;
             _hatchHoldTimer = 0f;

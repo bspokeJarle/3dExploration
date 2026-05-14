@@ -1,11 +1,9 @@
-﻿using _3dTesting._Coordinates;
+using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonSetup;
-using Domain;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dTesting._3dRotation
@@ -19,13 +17,26 @@ namespace _3dTesting._3dRotation
 
         public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, long? currentFrame)
         {
+            return ConvertTo2dFromObjects(inhabitants, currentFrame, null);
+        }
+
+        public List<_2dTriangleMesh> ConvertTo2dFromObjects(
+            List<_3dObject> inhabitants,
+            long? currentFrame,
+            List<_2dTriangleMesh>? reusableResult)
+        {
             //If available use global framecounter
             if (currentFrame > 0) CurrentFrame = (long)currentFrame;
-            var screenCoordinates = new List<_2dTriangleMesh>(inhabitants.Count * 2);
+            var screenCoordinates = reusableResult ?? new List<_2dTriangleMesh>(inhabitants.Count * 2);
+            screenCoordinates.Clear();
+
+            int expectedCapacity = inhabitants.Count * 2;
+            if (screenCoordinates.Capacity < expectedCapacity)
+                screenCoordinates.Capacity = expectedCapacity;
 
             foreach (var obj in inhabitants)
             {
-                if (obj == null || !obj.CheckInhabitantVisibility()) continue;
+                if (obj == null || (obj.ObjectName != "Star" && !obj.CheckInhabitantVisibility())) continue;
 
                 if (!ObjectPlacementHelpers.TryGetRenderPosition(obj, screenCenterX, screenCenterY, out double screenX, out double screenY, out double screenZ))
                     continue;
@@ -33,8 +44,8 @@ namespace _3dTesting._3dRotation
                 //Standard 3d Rendring
                 ConvertObjectTo2d(obj, screenX, screenY, screenZ, screenCoordinates);
 
-                if (obj.CrashBoxDebugMode!=null && (bool)obj.CrashBoxDebugMode)
-                { 
+                if (obj.CrashBoxDebugMode != null && (bool)obj.CrashBoxDebugMode)
+                {
                     //Debug visualization of crashboxes
                     ConvertCrashBoxesTo2d(obj, screenX, screenY, screenZ, screenCoordinates);
                 }
@@ -136,7 +147,7 @@ namespace _3dTesting._3dRotation
                     if (normal.z > 0 || (triangle.noHidden ?? false))
                     {
                         //Debugging Object sorting issues for specific objects
-                        if (enableLogging && Logger.EnableFileLogging && (objectName == "Seeder" || objectName == "Lazer"))
+                        if (Logger.ShouldLog(enableLogging) && (objectName == "Seeder" || objectName == "Lazer"))
                         {
                             Logger.Log($"Converted 3D object '{objectName}' to 2D. CalculatedZ: {(float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ)}");
                         }

@@ -147,6 +147,47 @@ public class SeederAiMovementTests
         Assert.IsFalse((bool)GetField(state, "SeededAtCurrentStall")!);
     }
 
+    [TestMethod]
+    public void MoveTowardTarget_WhenWaterTileWasMarkedInfected_ClearsWaterInfection()
+    {
+        int tile = 1;
+        SetMapTile(tile, tile, mapDepth: 0, isInfected: true);
+        AddBioTile(tile, tile);
+
+        var state = CreateState();
+        var current = TileWorld(tile, tile);
+        long now = DateTime.Now.Ticks;
+
+        PrepareTarget(state, current, current, targetIsLocalBio: true, stepsRemaining: 1);
+
+        _ = InvokeMove(isOnScreen: true, state, current, step: 5f, offscreenStepFactor: 1, nowTicks: now);
+
+        Assert.IsFalse(GameState.SurfaceState.Global2DMap![tile, tile].isInfected, "Water should not keep stale infection flags.");
+        Assert.AreEqual(0, GameState.SurfaceState.ScreenEcoMetas[0, 0].BioTileCount, "Invalid water targets should be removed from the bio count.");
+        Assert.AreEqual(0, GameState.SurfaceState.ScreenEcoMetas[0, 0].BioTiles.Count, "Invalid water targets should be removed from the local bio list.");
+        Assert.AreEqual(now, (long)GetField(state, "NextLocalRetargetTicks")!, "Seeder should retarget immediately when a stale infected target is water.");
+    }
+
+    [TestMethod]
+    public void ProcessLocalInfectionSpread_WhenWaterNeighborWasMarkedInfected_ClearsWaterInfection()
+    {
+        SetMapTile(1, 1, mapDepth: 20, isInfected: true);
+        SetMapTile(1, 0, mapDepth: 0, isInfected: true);
+
+        GameState.GamePlayState.LocalInfectionSpreadDelaySec = 0.001f;
+        GameState.SurfaceState.AiObjects.Add(new _3dObject
+        {
+            ObjectId = 99,
+            ObjectName = "Seeder",
+            WorldPosition = TileWorld(1, 1)
+        });
+        GameState.SurfaceState.PendingLocalInfectionSpread.Add((1, 1, DateTime.Now.Ticks - TimeSpan.TicksPerSecond));
+
+        SeederControls.ProcessLocalInfectionSpread(GameState.SurfaceState);
+
+        Assert.IsFalse(GameState.SurfaceState.Global2DMap![0, 1].isInfected, "Local infection spread should clear stale water infection instead of preserving it.");
+    }
+
     private static object CreateState()
     {
         return Activator.CreateInstance(AiStateType)!;
