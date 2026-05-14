@@ -8,7 +8,7 @@ namespace _3dRotations.Scene.Scene3
 {
     public class Scene3Director : ISceneDirector
     {
-        private const bool enableLogging = true;
+        private const bool enableLogging = false;
         private IGameEventBus? _eventBus;
         private I3dWorld? _world;
         private bool _dronesActivated;
@@ -57,7 +57,7 @@ namespace _3dRotations.Scene.Scene3
             var gps = GameState.GamePlayState;
 
             var aiObjs = GameState.SurfaceState.AiObjects;
-            if (enableLogging && Logger.EnableFileLogging)
+            if (Logger.ShouldLog(enableLogging))
             {
                 bool hasInactiveMotherShip = false;
                 for (int i = 0; i < aiObjs.Count; i++)
@@ -89,7 +89,7 @@ namespace _3dRotations.Scene.Scene3
 
             if (liveSeeders > 0 || liveDrones > 0)
             {
-                if (enableLogging && Logger.EnableFileLogging)
+                if (Logger.ShouldLog(enableLogging))
                 {
                     Logger.Log($"Scene3 blocked: liveSeeders={liveSeeders}; liveDrones={liveDrones}; blockers={GetBlockingEnemySummary(aiObjs)}", "Scene3Director");
                 }
@@ -109,7 +109,7 @@ namespace _3dRotations.Scene.Scene3
                     msCount++;
             }
 
-            if (enableLogging && Logger.EnableFileLogging)
+            if (Logger.ShouldLog(enableLogging))
             {
                 Logger.Log($"Scene3 MotherShip activation pass: activated={activated}; activeMotherShips={msCount}", "Scene3Director");
             }
@@ -147,7 +147,7 @@ namespace _3dRotations.Scene.Scene3
 
             IsVictory = true;
 
-            if (enableLogging && Logger.EnableFileLogging)
+            if (Logger.ShouldLog(enableLogging))
             {
                 Logger.Log("Scene3 victory reached", "Scene3Director");
             }

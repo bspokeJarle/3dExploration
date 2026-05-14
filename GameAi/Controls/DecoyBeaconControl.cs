@@ -78,7 +78,7 @@ namespace GameAiAndControls.Controls
         {
             try
             {
-                if (enableLogging && Logger.EnableFileLogging) Logger.Log(message, "KamikazeDrone");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log(message, "KamikazeDrone");
             }
             catch
             {

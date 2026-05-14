@@ -96,7 +96,7 @@ namespace _3dTesting.MainWindowClasses
             hasTravelDirection = false;
             spawnSequence = 0;
 
-            if (enableLogging)
+            if (Logger.ShouldLog(enableLogging))
                 Logger.Log("[StarField] ClearStars() called. Pool and render list cleared.");
         }
 
@@ -123,7 +123,7 @@ namespace _3dTesting.MainWindowClasses
 
             UpdateRenderableStars();
 
-            if (enableLogging)
+            if (Logger.ShouldLog(enableLogging))
             {
                 Logger.Log(
                     $"[StarField] Surface=({currentWorldPos.x:0.0}, {currentWorldPos.y:0.0}, {currentWorldPos.z:0.0}), " +

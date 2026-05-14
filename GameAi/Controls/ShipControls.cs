@@ -219,7 +219,7 @@ namespace GameAiAndControls.Controls
                     // If an older rocket instance is still finishing its tail, stop it before starting a new one.
                     if (_rocketInstance != null)
                     {
-                        if (logging) Logger.Log("Audio: Force-stopping previous rocket instance before starting new.");
+                        if (Logger.ShouldLog(logging)) Logger.Log("Audio: Force-stopping previous rocket instance before starting new.");
                         _rocketInstance.Stop(playEndSegment: false); // Hard cut the previous tail.
                         _rocketInstance = null;
                     }
@@ -227,7 +227,7 @@ namespace GameAiAndControls.Controls
                     if (_audio != null && _rocketSound != null)
                     {
                         var audioPosition = ((_3dObject)ParentObject).GetAudioPosition();
-                        if (logging) Logger.Log("Audio: Starting new rocket segmented loop.");
+                        if (Logger.ShouldLog(logging)) Logger.Log("Audio: Starting new rocket segmented loop.");
                         _rocketInstance = _audio.Play(
                                        _rocketSound,
                             AudioPlayMode.SegmentedLoop,
@@ -756,7 +756,7 @@ namespace GameAiAndControls.Controls
                 float landingSpeed = CurrentSpeed;
                 string crashedWith = theObject.ImpactStatus.ObjectName;
 
-                if (logging) Logger.Log($"[ShipCrash] HasCrashed=true, ObjectName='{crashedWith}', Health={theObject.ImpactStatus.ObjectHealth}, Direction={theObject.ImpactStatus.ImpactDirection}");
+                if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] HasCrashed=true, ObjectName='{crashedWith}', Health={theObject.ImpactStatus.ObjectHealth}, Direction={theObject.ImpactStatus.ImpactDirection}");
 
                 int healthBeforeCrash = theObject.ImpactStatus.ObjectHealth ?? 0;
 
@@ -765,7 +765,7 @@ namespace GameAiAndControls.Controls
                 {
                     // No damage — collect the powerup; skip health/explosion check
                     CollectPowerUp(theObject);
-                    if (logging) Logger.Log($"[ShipCrash] PowerUp collected!");
+                    if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] PowerUp collected!");
                     theObject.ImpactStatus.HasCrashed = false;
                     return theObject;
                 }
@@ -779,30 +779,30 @@ namespace GameAiAndControls.Controls
                     _motherShipCollisionCooldown = DateTime.Now;
                     int ramDamage = ShipSetup.DefaultShipHealth / 2;
                     theObject.ImpactStatus.ObjectHealth -= ramDamage;
-                    if (logging) Logger.Log($"[ShipCrash] MotherShip ram! Damage={ramDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                    if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] MotherShip ram! Damage={ramDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else if (EnemySetup.IsEnemyTypeValid(crashedWith))
                 {
                     theObject.ImpactStatus.ObjectHealth -= EnemySetup.KamikazeDroneCollisionDamage;
-                    if (logging) Logger.Log($"[ShipCrash] Enemy hit! Damage={EnemySetup.KamikazeDroneCollisionDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                    if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] Enemy hit! Damage={EnemySetup.KamikazeDroneCollisionDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else if (WeaponSetup.IsWeaponTypeValid(crashedWith))
                 {
                     int weaponDamage = WeaponSetup.GetWeaponDamage(crashedWith);
                     theObject.ImpactStatus.ObjectHealth -= weaponDamage;
-                    if (logging) Logger.Log($"[ShipCrash] Weapon hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                    if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] Weapon hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else if (crashedWith == "EnemyLazer")
                 {
                     int weaponDamage = WeaponSetup.GetWeaponDamage("Lazer");
                     theObject.ImpactStatus.ObjectHealth -= weaponDamage;
-                    if (logging) Logger.Log($"[ShipCrash] EnemyLazer hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                    if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] EnemyLazer hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else if (crashedWith == "EnemyLazerMedium")
                 {
                     int weaponDamage = WeaponSetup.GetWeaponDamage("Lazer") * 2;
                     theObject.ImpactStatus.ObjectHealth -= weaponDamage;
-                    if (logging) Logger.Log($"[ShipCrash] EnemyLazerMedium hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                    if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] EnemyLazerMedium hit! Damage={weaponDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else if (crashedWith == "Surface" ||
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
@@ -822,11 +822,11 @@ namespace GameAiAndControls.Controls
                         if (theObject.ImpactStatus.ObjectHealth > 0)
                             PlaySurfaceThud(theObject);
                     }
-                    if (logging) Logger.Log($"[ShipCrash] Landing. Speed={landingSpeed:F1}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                    if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] Landing. Speed={landingSpeed:F1}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else
                 {
-                    if (logging) Logger.Log($"[ShipCrash] NO DAMAGE APPLIED! crashedWith='{crashedWith}' did not match any category.");
+                    if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] NO DAMAGE APPLIED! crashedWith='{crashedWith}' did not match any category.");
                 }
 
                 // Play impact thud for non-fatal combat collisions that actually dealt damage
@@ -878,7 +878,7 @@ namespace GameAiAndControls.Controls
                 theObject.ImpactStatus.HasCrashed = false;
             }
 
-            if (enableMovementDiagnostics)
+            if (Logger.ShouldLog(enableMovementDiagnostics))
             {
                 movementLogCounter++;
                 if (movementLogCounter % 60 == 0)

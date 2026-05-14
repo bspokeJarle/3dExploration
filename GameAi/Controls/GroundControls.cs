@@ -40,7 +40,7 @@ namespace GameAiAndControls.Controls
             ParentObject = theObject;
             if (theObject.ImpactStatus.HasCrashed == true)
             {
-                if (enableLogging) Logger.Log($"GroundControls: {theObject.ImpactStatus.ObjectName} has crashed! Handle the crash.");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"GroundControls: {theObject.ImpactStatus.ObjectName} has crashed! Handle the crash.");
             }
 
             DetectBombCraters();
@@ -372,7 +372,7 @@ namespace GameAiAndControls.Controls
                     }
                 }
 
-                if (enableLogging && Logger.EnableFileLogging)
+                if (Logger.ShouldLog(enableLogging))
                     Logger.Log($"GroundControls: Bomb crater at tile x={centerX}; z={centerZ}");
             }
         }

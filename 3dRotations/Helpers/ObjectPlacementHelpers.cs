@@ -11,7 +11,7 @@ namespace _3dTesting.Helpers
 {
     public static class ObjectPlacementHelpers
     {
-        public static bool EnablePlacementLogging = true;
+        public static bool EnablePlacementLogging = false;
 
         private static ITriangleMeshWithColor? GetSurfaceTriangle(_3dObject obj)
         {
@@ -191,7 +191,7 @@ namespace _3dTesting.Helpers
             float minY = crashBox.Min(p => p.y);
             float shiftY = targetPosition.y - minY + crashboxOffsets.y;
 
-            if (EnablePlacementLogging)
+            if (Logger.ShouldLog(EnablePlacementLogging))
             {
                 Logger.Log("[CenterAt] Target Y: " + targetPosition.y + ", CrashBox MinY: " + minY + ", CrashBoxOffsetY: " + crashboxOffsets.y + ", Final ShiftY: " + shiftY);
             }
@@ -210,7 +210,7 @@ namespace _3dTesting.Helpers
 
         public static void LogCrashboxAnalysis(string label, List<Vector3> box)
         {
-            if (!EnablePlacementLogging || box == null || box.Count == 0) return;
+            if (!Logger.ShouldLog(EnablePlacementLogging) || box == null || box.Count == 0) return;
 
             float yMin = box.Min(p => p.y);
             float yMax = box.Max(p => p.y);

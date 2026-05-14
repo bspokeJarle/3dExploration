@@ -463,7 +463,7 @@ namespace GameAiAndControls.Physics
                 // Apply color transition based on progress
                 exploding.Triangle.Color = GetExplosionColor(progress, exploding.OriginalColor);
 
-                if (Logger.EnableFileLogging && LocalEnableLogging)
+                if (Logger.ShouldLog(LocalEnableLogging))
                 {
                     Logger.Log($"[EXPLOSION] TriangleIndex={exploding.TriangleIndex} " +
                                $"Elapsed={exploding.ElapsedTime:F2}, " +

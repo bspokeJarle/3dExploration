@@ -112,7 +112,7 @@ namespace GameAiAndControls.Controls.SeederControls
         {
             try
             {
-                if (Logger.EnableFileLogging && enableLogging) Logger.Log(msg);
+                if (Logger.ShouldLog(enableLogging)) Logger.Log(msg);
             }
             catch { /* never crash AI because of logging */ }
         }

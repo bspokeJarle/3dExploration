@@ -278,13 +278,13 @@ namespace GameAiAndControls.Helpers
                     z = tile.Y
                 };
 
-                if (Logger.EnableFileLogging && EnableLogging)
+                if (Logger.ShouldLog(EnableLogging))
                     Logger.Log($"AI:LOCAL_PICK onScreen={obj.IsOnScreen} screen=[{screenY},{screenX}] world=({tile.X},{tile.Y})");
 
                 return true;
             }
 
-            if (Logger.EnableFileLogging && EnableLogging)
+            if (Logger.ShouldLog(EnableLogging))
                 Logger.Log($"AI:LOCAL_EMPTY onScreen={obj.IsOnScreen} screen=[{screenY},{screenX}] list={bioTiles.Count} tried={attempts} outOfRange={skippedOutOfRange} notBio={skippedNotBio}");
 
             return false;

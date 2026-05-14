@@ -4,7 +4,6 @@ using CommonUtilities._3DHelpers;
 using Domain;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using static Domain._3dSpecificsImplementations;
 using CommonUtilities.CommonSetup;
@@ -34,6 +33,7 @@ namespace _3dRotations.World.Objects
             (0x3D, 0x2B, 0x1D)
         ];
 
+        private const bool enableLogging = false;
         const bool debugSurfaceBasedObjects = false; // Set to true to debug surface based objects
 
         public int SurfaceWidth() {  return SurfaceSetup.surfaceWidth; }
@@ -501,7 +501,7 @@ namespace _3dRotations.World.Objects
                     for (int sx = 0; sx < ecoMetas.GetLength(1); sx++)
                         totalBio += ecoMetas[sy, sx].BioTileCount;
                 GameState.GamePlayState.TotalBioTiles = totalBio;
-                Debug.WriteLine($"[Surface] TotalBioTiles computed from EcoMap: {totalBio} (mode={gameMode})");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"[Surface] TotalBioTiles computed from EcoMap: {totalBio} (mode={gameMode})", "Surface");
             }
 
             int fishPriorityTileX = (int)(GameState.SurfaceState.GlobalMapPosition.x / TileSize());
@@ -515,7 +515,7 @@ namespace _3dRotations.World.Objects
                 priorityTileX: fishPriorityTileX,
                 priorityTileZ: fishPriorityTileZ);
 
-            Debug.WriteLine($"[Surface] Create2DMap complete: mode={gameMode} TotalBioTiles={GameState.GamePlayState.TotalBioTiles} maxHeight={MapSetup.maxHeight} InfectionCriticalMass={GameState.GamePlayState.InfectionCriticalMass}");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"[Surface] Create2DMap complete: mode={gameMode} TotalBioTiles={GameState.GamePlayState.TotalBioTiles} maxHeight={MapSetup.maxHeight} InfectionCriticalMass={GameState.GamePlayState.InfectionCriticalMass}", "Surface");
 
             int mapSize = GameState.SurfaceState.Global2DMap.GetLength(0); // siden kartet er square
             SurfaceGeneration.GenerateTerrainBitmapSource(

@@ -147,7 +147,7 @@ namespace _3dTesting._3dRotation
                     if (normal.z > 0 || (triangle.noHidden ?? false))
                     {
                         //Debugging Object sorting issues for specific objects
-                        if (enableLogging && Logger.EnableFileLogging && (objectName == "Seeder" || objectName == "Lazer"))
+                        if (Logger.ShouldLog(enableLogging) && (objectName == "Seeder" || objectName == "Lazer"))
                         {
                             Logger.Log($"Converted 3D object '{objectName}' to 2D. CalculatedZ: {(float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ)}");
                         }

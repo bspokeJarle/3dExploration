@@ -57,7 +57,7 @@ namespace _3DWorld.Scene
 
         public void ResetActiveScene(I3dWorld world)
         {
-            if (enableLogging) Logger.Log("Scenehandler: ResetActiveScene");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log("Scenehandler: ResetActiveScene");
 
             DisposeDirector();
             var newScene = CreateFreshScene();
@@ -126,7 +126,7 @@ namespace _3DWorld.Scene
                     }
                 }
 
-                if (enableLogging) Logger.Log($"Scenehandler: Checkpoint restored. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: Checkpoint restored. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
             }
             else
             {
@@ -138,7 +138,7 @@ namespace _3DWorld.Scene
                 gps.TotalDeaths = prevDeaths + 1;
                 gps.PowerUpsCollected = prevPowerUps;
 
-                if (enableLogging) Logger.Log($"Scenehandler: No checkpoint — stats preserved. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: No checkpoint — stats preserved. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
             }
 
             InitializeDirector(newScene, world);
@@ -146,7 +146,7 @@ namespace _3DWorld.Scene
 
         public void NextScene(I3dWorld world)
         {
-            if (enableLogging) Logger.Log($"Scenehandler: NextScene :{GameState.ScreenOverlayState.ShowOverlay} ");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: NextScene :{GameState.ScreenOverlayState.ShowOverlay} ");
 
             DisposeDirector();
             var gps = GameState.GamePlayState;
@@ -387,7 +387,7 @@ namespace _3DWorld.Scene
 
         private void HandleIntroKey(ScreenOverlayState overlay, KeyEventArgs k)
         {
-            if (enableLogging) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {overlay.ShowOverlay} ", "General");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {overlay.ShowOverlay} ", "General");
 
             // Page navigation with arrow keys
             if (overlay.HasMultiplePages)
@@ -430,7 +430,7 @@ namespace _3DWorld.Scene
                     }
                 }
 
-                if (enableLogging) Logger.Log($"Scenehandler: Game keypress. Overlay Type={overlay.Type} Show={overlay.ShowOverlay}", "General");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: Game keypress. Overlay Type={overlay.Type} Show={overlay.ShowOverlay}", "General");
                 scene.SetupGameOverlay();
             }
         }

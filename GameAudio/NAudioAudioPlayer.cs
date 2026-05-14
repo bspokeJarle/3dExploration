@@ -71,7 +71,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
                 fileReader.WaveFormat);
 
             source = loopProvider;
-            if (enableLogging) Logger.Log(@"Audio: Playing segmented loop.");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log(@"Audio: Playing segmented loop.");
         }
         else if (mode == AudioPlayMode.OneShot)
         {
@@ -121,7 +121,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
 
         _instances[instance.Id] = instance;
         _mixer.AddMixerInput(pipeline);
-        if (enableLogging) Logger.Log(@"Audio: Play end of method.");
+        if (Logger.ShouldLog(enableLogging)) Logger.Log(@"Audio: Play end of method.");
         return instance;
     }
 
@@ -160,7 +160,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
         // Stop the previous music instance before starting a new one.
         if (_musicInstance != null)
         {
-            if (enableLogging) Logger.Log("Audio: Stopping previous music instance before starting new.");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log("Audio: Stopping previous music instance before starting new.");
             FadeOutAndStopMusicInstance(_musicInstance);
         }
 
@@ -170,7 +170,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
         if (vol > 1f) vol = 1f;
         _musicVolume = vol;
 
-        if (enableLogging) Logger.Log(
+        if (Logger.ShouldLog(enableLogging)) Logger.Log(
             $"Audio: PlayMusic id={definition.Id}, " +
             $"segments: start={definition.Segments.Start:F2}, " +
             $"loopStart={definition.Segments.LoopStart:F2}, " +
@@ -197,7 +197,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
     {
         if (_musicInstance != null)
         {
-            if (enableLogging) Logger.Log("Audio: Stopping music instance.");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log("Audio: Stopping music instance.");
             FadeOutAndStopMusicInstance(_musicInstance);
         }
     }
@@ -239,7 +239,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
 
         if (_musicInstance != null)
         {
-            if (enableLogging) Logger.Log($"Audio: Setting music volume to {_musicVolume:F2}.");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"Audio: Setting music volume to {_musicVolume:F2}.");
             _musicInstance.SetVolume(_musicVolume);
         }
     }

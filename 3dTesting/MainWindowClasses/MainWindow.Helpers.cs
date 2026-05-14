@@ -64,7 +64,7 @@ namespace _3dTesting.Helpers
                 }
                 catch (Exception ex)
                 {
-                    if (enableLogging) Logger.Log("UpdateMapOverlay: Exception while updating map overlay " + ex.Message, "Error");
+                    if (Logger.ShouldLog(enableLogging)) Logger.Log("UpdateMapOverlay: Exception while updating map overlay " + ex.Message, "Error");
                 }
             }
         }
@@ -107,17 +107,17 @@ namespace _3dTesting.Helpers
 
                     if (x < 0 || z < 0 || x >= w || z >= h)
                     {
-                        if (enableLogging) Logger.Log($"UpdateDirtyTilesInMap: skip OOB ({x},{z})");
+                        if (Logger.ShouldLog(enableLogging)) Logger.Log($"UpdateDirtyTilesInMap: skip OOB ({x},{z})");
                         continue;
                     }
 
-                    if (enableLogging) Logger.Log($"UpdateDirtyTilesInMap: Infect pixel ({x},{z})");
+                    if (Logger.ShouldLog(enableLogging)) Logger.Log($"UpdateDirtyTilesInMap: Infect pixel ({x},{z})");
                     wb.WritePixels(new Int32Rect(x, z, 1, 1), infectedPx, 4, 0);
                 }
             }
             catch (Exception ex)
             {
-                if (enableLogging) Logger.Log("UpdateDirtyTilesInMap: Exception while updating dirty tiles  " + ex.Message, "Error");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log("UpdateDirtyTilesInMap: Exception while updating dirty tiles  " + ex.Message, "Error");
                 return;
             }
         }
@@ -173,7 +173,7 @@ namespace _3dTesting.Helpers
             }
             catch (Exception ex)
             {
-                if (enableLogging) Logger.Log("UpdateMapOverlayWithMarkers: " + ex.Message, "Error");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log("UpdateMapOverlayWithMarkers: " + ex.Message, "Error");
             }
         }
 

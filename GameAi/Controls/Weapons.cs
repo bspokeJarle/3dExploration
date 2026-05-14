@@ -148,7 +148,7 @@ namespace GameAiAndControls.Controls
 
                 ActiveWeapons.Add(weapon);
 
-                if (enableLogging) Logger.Log(
+                if (Logger.ShouldLog(enableLogging)) Logger.Log(
                     $"[WeaponSystem] Fired {weaponType} name={instance.ObjectName} parent={parentShip.ObjectName} " +
                     $"start=(x={startPosition.x:F2}; y={startPosition.y:F2}; z={startPosition.z:F2}) " +
                     $"dir=(x={dir.x:F4}; y={dir.y:F4}; z={dir.z:F4}) " +
@@ -214,7 +214,7 @@ namespace GameAiAndControls.Controls
 
                 ActiveWeapons.Add(weapon);
 
-                if (enableLogging) Logger.Log(
+                if (Logger.ShouldLog(enableLogging)) Logger.Log(
                     $"[WeaponSystem] Fired {weaponType} from {startPosition} " +
                     $"with dir={dir} globalmapposition={worldPosition} at {DateTime.UtcNow}"
                 );
@@ -348,10 +348,10 @@ namespace GameAiAndControls.Controls
             if (weapon.ObjectParts == null)
                 return;
 
-            if (enableLogging) Logger.Log(
+            if (Logger.ShouldLog(enableLogging)) Logger.Log(
                 $"Weapon rotation initialization started. BaseDeg:{rotation.x},{rotation.y},{rotation.z} Tilt:{tilt}"
             );
-            if (enableLogging) Logger.Log("Before rotation:" +
+            if (Logger.ShouldLog(enableLogging)) Logger.Log("Before rotation:" +
                 weapon.ObjectParts[0].Triangles[0].vert1.x + ", " +
                 weapon.ObjectParts[0].Triangles[0].vert1.y + ", " +
                 weapon.ObjectParts[0].Triangles[0].vert1.z);
@@ -377,7 +377,7 @@ namespace GameAiAndControls.Controls
             var crashBoxesWithTilt = RotateCrashBoxes(weapon.CrashBoxes, tilt, rotation);
             weapon.CrashBoxes = crashBoxesWithTilt;
 
-            if (enableLogging) Logger.Log("After rotation:" +
+            if (Logger.ShouldLog(enableLogging)) Logger.Log("After rotation:" +
                 weapon.ObjectParts[0].Triangles[0].vert1.x + ", " +
                 weapon.ObjectParts[0].Triangles[0].vert1.y + ", " +
                 weapon.ObjectParts[0].Triangles[0].vert1.z);
@@ -431,7 +431,7 @@ namespace GameAiAndControls.Controls
 
         public void HandleHit(I3dObject weaponObject, bool hasCrashed, string objectName)
         {
-            if (enableLogging) Logger.Log($"Weapon HasCrashed:{hasCrashed} ImpactName:{objectName}");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"Weapon HasCrashed:{hasCrashed} ImpactName:{objectName}");
             if (_audio != null && _thudSound != null)
             {
                 var audioPosition = ((_3dObject)weaponObject).GetAudioPosition();
@@ -486,7 +486,7 @@ namespace GameAiAndControls.Controls
                     SetObjectOffsets(w.WeaponObject, newLocal);
                     w.DistanceTraveled += Magnitude(deltaProj);
 
-                    if (enableLogging) Logger.Log(
+                    if (Logger.ShouldLog(enableLogging)) Logger.Log(
                         $"[WeaponSystem] {w.WeaponType} name={w.WeaponObject.ObjectName} " +
                         $"Δ=(x={deltaProj.x:F2}; y={deltaProj.y:F2}; z={deltaProj.z:F2}) " +
                         $"LocalPos=(x={newLocal.x:F2}; y={newLocal.y:F2}; z={newLocal.z:F2}) " +
@@ -503,7 +503,7 @@ namespace GameAiAndControls.Controls
                 ActiveWeapon w = ActiveWeapons[i] as ActiveWeapon;
                 if (w != null && Expired(w) || OutOfBounds(w.WeaponObject.ObjectOffsets) || w.WeaponObject.ImpactStatus.HasCrashed)
                 {
-                    if (enableLogging) Logger.Log(
+                    if (Logger.ShouldLog(enableLogging)) Logger.Log(
                         $"[WeaponSystem] {w.WeaponType} name={w.WeaponObject.ObjectName} expired/out/crashed " +
                         $"after {w.DistanceTraveled:F2} units. " +
                         $"LocalPos=(x={w.WeaponObject.ObjectOffsets.x:F2}; y={w.WeaponObject.ObjectOffsets.y:F2}; z={w.WeaponObject.ObjectOffsets.z:F2}) " +
@@ -528,7 +528,7 @@ namespace GameAiAndControls.Controls
                     boxes.AddRange(aw.WeaponObject.CrashBoxes);
             }
 
-            if (enableLogging) Logger.Log($"[WeaponSystem] CrashBoxes collected: {boxes.Count}");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"[WeaponSystem] CrashBoxes collected: {boxes.Count}");
             return boxes;
         }
 

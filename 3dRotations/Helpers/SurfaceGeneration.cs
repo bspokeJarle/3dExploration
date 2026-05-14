@@ -5,7 +5,6 @@ using Domain;
 using _3dRotations.World.Objects;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -543,7 +542,7 @@ namespace _3dRotations.Helpers
             {
                 if (wb == null || wb.PixelWidth != mapSize || wb.PixelHeight != mapSize)
                 {
-                    if (enableLogging)
+                    if (Logger.ShouldLog(enableLogging))
                         Logger.Log($"GenerateTerrainBitmapSource: recreating bitmap (existing={(wb == null ? "null" : $"{wb.PixelWidth}x{wb.PixelHeight}")})", "SurfaceGeneration");
 
                     // MUST be created on UI thread, so we do a safe sync create if needed
@@ -556,7 +555,7 @@ namespace _3dRotations.Helpers
             }
             catch (Exception ex)
             {
-                if (enableLogging) Logger.Log($"Error creating WriteableBitmap: {ex.Message}", "SurfaceGeneration");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"Error creating WriteableBitmap: {ex.Message}", "SurfaceGeneration");
                 return;
             }
 
@@ -588,7 +587,7 @@ namespace _3dRotations.Helpers
                 {
                     currentWb.WritePixels(new Int32Rect(0, 0, mapSize, mapSize), pixelData, stride, 0);
                 }
-                else if (enableLogging)
+                else if (Logger.ShouldLog(enableLogging))
                 {
                     Logger.Log("GenerateTerrainBitmapSource: bitmap size mismatch; skipping WritePixels", "SurfaceGeneration");
                 }
@@ -1061,8 +1060,8 @@ namespace _3dRotations.Helpers
 
             void Log(string s)
             {
-                if (writeDebugLogs)
-                    System.Diagnostics.Debug.WriteLine(s);
+                if (writeDebugLogs && Logger.ShouldLog(enableLogging))
+                    Logger.Log(s, "SurfaceGeneration");
             }
 
             Log($"=== ENTER FlattenTerrainAroundTowers_ToHighlands (3x3) ===");
@@ -1120,8 +1119,6 @@ namespace _3dRotations.Helpers
             int maxHeight,
             int totalTowers = 10)
         {
-            Debug.WriteLine("=== ENTER FindTowerPlacements ===");
-
             int sizeY = map.GetLength(0);
             int sizeX = map.GetLength(1);
             mapSize = Math.Min(mapSize, Math.Min(sizeX, sizeY));
@@ -1129,7 +1126,14 @@ namespace _3dRotations.Helpers
             // ✅ YX (outer = y, inner = x)
             int H(int x, int y) => map[y, x].mapDepth;
 
-            Debug.WriteLine($"Map: sizeX={sizeX} sizeY={sizeY} mapSize={mapSize} maxHeight={maxHeight} totalTowers={totalTowers}");
+            void Log(string s)
+            {
+                if (Logger.ShouldLog(enableLogging))
+                    Logger.Log(s, "SurfaceGeneration");
+            }
+
+            Log("=== ENTER FindTowerPlacements ===");
+            Log($"Map: sizeX={sizeX} sizeY={sizeY} mapSize={mapSize} maxHeight={maxHeight} totalTowers={totalTowers}");
 
             int nearRadius = 17;
             int spacing = 6;                 // same “looks good” value you liked
@@ -1203,7 +1207,7 @@ namespace _3dRotations.Helpers
             int landingTopLeftX = landing.topLeftX;
             int landingTopLeftY = landing.topLeftY;
 
-            Debug.WriteLine($"Landing center=({landingX},{landingY}) depth={landing.depth} TL=({landingTopLeftX},{landingTopLeftY})");
+            Log($"Landing center=({landingX},{landingY}) depth={landing.depth} TL=({landingTopLeftX},{landingTopLeftY})");
 
             // ------------------------------------------------------------
             // Helper: exclude landing platform (plus buffer ring)
@@ -1266,7 +1270,7 @@ namespace _3dRotations.Helpers
                 }
             }
 
-            Debug.WriteLine($"Candidates OK={okCount} highlands={highPool.Count} grassland={grassPool.Count}");
+            Log($"Candidates OK={okCount} highlands={highPool.Count} grassland={grassPool.Count}");
 
             FisherYatesShuffle(highPool, random);
             FisherYatesShuffle(grassPool, random);
@@ -1331,18 +1335,18 @@ namespace _3dRotations.Helpers
             if (TryFindNearestNear(GamePlayHelpers.TerrainType.Highlands, out var nearHi))
             {
                 placedNear = TryAdd(nearHi.x, nearHi.y, nearHi.h);
-                Debug.WriteLine($"Near tower (Highlands) => ({nearHi.x},{nearHi.y}) depth={nearHi.h} placed={placedNear}");
+                Log($"Near tower (Highlands) => ({nearHi.x},{nearHi.y}) depth={nearHi.h} placed={placedNear}");
             }
 
             // Grassland fallback near
             if (!placedNear && TryFindNearestNear(GamePlayHelpers.TerrainType.Grassland, out var nearGr))
             {
                 placedNear = TryAdd(nearGr.x, nearGr.y, nearGr.h);
-                Debug.WriteLine($"Near tower (Grassland) => ({nearGr.x},{nearGr.y}) depth={nearGr.h} placed={placedNear}");
+                Log($"Near tower (Grassland) => ({nearGr.x},{nearGr.y}) depth={nearGr.h} placed={placedNear}");
             }
 
             if (!placedNear)
-                Debug.WriteLine("WARNING: No near-platform tower candidate found in radius 17 (excluding platform).");
+                Log("WARNING: No near-platform tower candidate found in radius 17 (excluding platform).");
 
             // 3b) Fill global
             void FillFrom(List<(int x, int y, int h)> pool, string label)
@@ -1355,17 +1359,17 @@ namespace _3dRotations.Helpers
                     TryAdd(x, y, h);
                 }
 
-                Debug.WriteLine($"FillFrom {label}: added={towers.Count - before}, now={towers.Count}/{totalTowers}");
+                Log($"FillFrom {label}: added={towers.Count - before}, now={towers.Count}/{totalTowers}");
             }
 
             FillFrom(highPool, "Highlands");
             FillFrom(grassPool, "Grassland");
 
-            Debug.WriteLine($"TOWERS PLACED: {towers.Count}/{totalTowers}");
+            Log($"TOWERS PLACED: {towers.Count}/{totalTowers}");
             for (int i = 0; i < towers.Count; i++)
-                Debug.WriteLine($"To  w er #{i + 1}: ({towers[i].x},{towers[i].y}) depth={towers[i].height}");
+                Log($"Tower #{i + 1}: ({towers[i].x},{towers[i].y}) depth={towers[i].height}");
 
-            Debug.WriteLine("=== EXIT FindTowerPlacements ===");
+            Log("=== EXIT FindTowerPlacements ===");
             return towers;
         }
 
@@ -1451,7 +1455,7 @@ namespace _3dRotations.Helpers
                     }
                 }
             }
-            Debug.WriteLine($"[SurfaceGeneration] Generated {numCrashBoxes} crashboxes.");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"[SurfaceGeneration] Generated {numCrashBoxes} crashboxes.", "SurfaceGeneration");
         }
 
 

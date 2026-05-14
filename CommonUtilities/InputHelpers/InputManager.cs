@@ -1,10 +1,10 @@
 ﻿using Gma.System.MouseKeyHook;
-using System;
 
 namespace GameAiAndControls.Input
 {
     public static class InputManager
     {
+        private const bool enableLogging = false;
         private static IKeyboardMouseEvents _sharedHook;
 
         /// <summary>
@@ -17,7 +17,7 @@ namespace GameAiAndControls.Input
             {
                 if (_sharedHook == null)
                 {
-                    Console.WriteLine("InputManager: Initializing global hook.");
+                    if (Logger.ShouldLog(enableLogging)) Logger.Log("InputManager: Initializing global hook.", "Input");
                     _sharedHook = Hook.GlobalEvents();
                 }
                 return _sharedHook;
@@ -32,7 +32,7 @@ namespace GameAiAndControls.Input
         {
             if (_sharedHook != null)
             {
-                Console.WriteLine("InputManager: Disposing global hook.");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log("InputManager: Disposing global hook.", "Input");
                 _sharedHook.Dispose();
                 _sharedHook = null;
             }

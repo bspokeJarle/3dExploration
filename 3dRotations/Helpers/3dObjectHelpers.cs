@@ -498,7 +498,7 @@ namespace _3dTesting.Helpers
             bool overlapY = (maxA.y + marginY) >= (minB.y - marginY) && (minA.y - marginY) <= (maxB.y + marginY);
             bool overlapZ = (maxA.z + marginZ) >= (minB.z - marginZ) && (minA.z - marginZ) <= (maxB.z + marginZ);
 
-            if (_localLoggingEnabled && nameA != null && nameB != null)
+            if (Logger.ShouldLog(_localLoggingEnabled) && nameA != null && nameB != null)
             {
                 Logger.Log(
                     $"AABBCHK {nameA} vs {nameB} | " +

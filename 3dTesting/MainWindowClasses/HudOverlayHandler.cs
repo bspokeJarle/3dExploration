@@ -25,6 +25,7 @@ namespace _3dTesting.MainWindowClasses
         // ----------------------------
         private const double DesignWidth = 2256.0;
         private const double DesignHeight = 1504.0;
+        private const bool enableLogging = false;
 
         // You said 0.40 looked correct in-game.
         private const double DesignHudHeightRatio = 0.25;
@@ -510,7 +511,7 @@ namespace _3dTesting.MainWindowClasses
             }
             catch(Exception ex)
             {
-                Logger.Log($"Exception loading map. {ex.Message} ");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"Exception loading map. {ex.Message} ");
                 _frameImage.Source = null;
             }
         }

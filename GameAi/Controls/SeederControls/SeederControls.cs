@@ -324,9 +324,9 @@ namespace GameAiAndControls.Controls.SeederControls
                 theObject.CrashBoxes = new List<List<IVector3>>();
                 //Remove AI state to stop movement and other logic
                 SeederAi.RemoveAiState(theObject.ObjectId);
-                if (enableLogging) Logger.Log($"Seeder has exploded.");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log($"Seeder has exploded.");
             }
-            if (enableLogging) Logger.Log($"Seeder has crashed, current health {theObject.ImpactStatus.ObjectHealth}. CrashedWith:{theObject.ImpactStatus.ObjectName} ObjectId:{theObject.ObjectId}");
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"Seeder has crashed, current health {theObject.ImpactStatus.ObjectHealth}. CrashedWith:{theObject.ImpactStatus.ObjectName} ObjectId:{theObject.ObjectId}");
         }
 
         public void SyncMovement(I3dObject theObject)

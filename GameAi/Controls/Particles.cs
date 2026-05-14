@@ -72,7 +72,7 @@ public class ParticlesAI : IParticles
 
                 particle.Size = ApplyFade(particle.Size, lifeProgress);
                 particle.ParticleTriangle.Color = GetColorByLifeProgress(lifeProgress, particle);
-                if (Logger.EnableFileLogging && EnableParticleLogging)
+                if (Logger.ShouldLog(EnableParticleLogging))
                 {
                     Logger.Log($"Particle Color: {particle.ParticleTriangle.Color}");
                 }
@@ -81,7 +81,7 @@ public class ParticlesAI : IParticles
                 {
                     if (particle.ImpactStatus?.HasCrashed == true && particle.ImpactStatus.ImpactDirection != null)
                     {
-                        if (Logger.EnableFileLogging && EnableParticleLogging)
+                        if (Logger.ShouldLog(EnableParticleLogging))
                         {
                             Logger.Log("[Particle Bounce Triggered]");
                             Logger.Log($"   Object Name        : {particle.ImpactStatus.ObjectName}");
@@ -110,7 +110,7 @@ public class ParticlesAI : IParticles
                         particle.Life *= 0.8f;
                         particle.ImpactStatus.HasCrashed = false;
 
-                        if (Logger.EnableFileLogging && EnableParticleLogging)
+                        if (Logger.ShouldLog(EnableParticleLogging))
                         {
                             Logger.Log("After Bounce Velocity: " + particle.Physics.Velocity);
                         }
@@ -126,12 +126,12 @@ public class ParticlesAI : IParticles
                     }
 
                     particle.Position = particle.Physics.ApplyGravityForce(particle.Position ?? new Vector3(), deltaTime);
-                    if (EnableParticleLogging && Logger.EnableFileLogging)
+                    if (Logger.ShouldLog(EnableParticleLogging))
                     {
                         numLogParticles++;
                         if (numLogParticles > 3)
                         {
-                            if (Logger.EnableFileLogging && EnableParticleLogging)
+                            if (Logger.ShouldLog(EnableParticleLogging))
                             {
                                 Logger.Log($"Particle Position: {particle.Position} Visible:{particle.Visible}");
                                 Logger.Log($"Particle Velocity: {particle.Physics.Velocity} Visible:{particle.Visible}");
@@ -349,7 +349,7 @@ public class ParticlesAI : IParticles
 
         if (explosion == true) startPos.y += ExplosionStartYOffset;
 
-        if (Logger.EnableFileLogging && EnableParticleLogging)
+        if (Logger.ShouldLog(EnableParticleLogging))
         {
             Logger.Log($"[PARTICLES] Releasing {particleCount} particles. Start: ({startPos.x:F2}, {startPos.y:F2}, {startPos.z:F2}), Guide: ({guidePos.x:F2}, {guidePos.y:F2}, {guidePos.z:F2}), World: ({worldPosition.x:F2}, {worldPosition.y:F2}, {worldPosition.z:F2})");
         }

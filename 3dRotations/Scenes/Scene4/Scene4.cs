@@ -21,6 +21,7 @@ namespace _3dRotations.Scene.Scene4
     {
         Surface Surface = new();
         public const int TargetPatrolPolarBearCount = 30;
+        private const bool enableLogging = false;
         private readonly List<PolarBearPlacementInfo> _polarBearPlacements = new();
 
         public IReadOnlyList<PolarBearPlacementInfo> PolarBearPlacements => _polarBearPlacements;
@@ -512,6 +513,9 @@ namespace _3dRotations.Scene.Scene4
 
         private void LogPolarBearPlacements(int patrolCandidateCount, int patrolBearsPlaced)
         {
+            if (!Logger.ShouldLog(enableLogging))
+                return;
+
             Logger.Log(
                 $"Scene4 polar bears placed: total={_polarBearPlacements.Count}, guaranteed={_polarBearPlacements.FindAll(p => p.Source == "Guaranteed").Count}, patrol={patrolBearsPlaced}/{TargetPatrolPolarBearCount}, patrolCandidates={patrolCandidateCount}",
                 "Scene4");

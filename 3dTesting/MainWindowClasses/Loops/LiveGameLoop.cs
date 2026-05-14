@@ -45,7 +45,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
-        private const bool enableProgressionLogging = true;
+        private const bool enableProgressionLogging = false;
         public bool FadeOutWorld { get; set; } = false;
         public bool FadeInWorld { get; set; } = false;
         public bool SceneResetReady { get; set; } = false;
@@ -362,7 +362,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                     {
                         gps.RecordKill(obj.ObjectName);
 
-                        if (enableProgressionLogging && Logger.EnableFileLogging)
+                        if (Logger.ShouldLog(enableProgressionLogging))
                         {
                             var pos = obj.WorldPosition;
                             var offs = obj.ObjectOffsets;
@@ -760,7 +760,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                     inhabitant.Movement.SetWeaponGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
                     break;
                 case "JetMotorDirectionGuide":
-                    if (enableLocalLogging) Logger.Log($"MainLoop Set Guide after rotation: {rotatedMesh.First().vert1.x + ", " + rotatedMesh.First().vert1.y + ", " + rotatedMesh.First().vert1.z} Inhabitant:{inhabitant.ObjectName} ");
+                    if (Logger.ShouldLog(enableLocalLogging)) Logger.Log($"MainLoop Set Guide after rotation: {rotatedMesh.First().vert1.x + ", " + rotatedMesh.First().vert1.y + ", " + rotatedMesh.First().vert1.z} Inhabitant:{inhabitant.ObjectName} ");
                     inhabitant.Movement.SetParticleGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
                     break;
                 case "RearEngine":
@@ -798,7 +798,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             frameTimer.Stop();
             if (!enableLocalLogging)
                 return;
-            if (!Logger.EnableFileLogging)
+            if (!Logger.ShouldLog(enableLocalLogging))
                 return;
 
             var budgetMs = 1000.0 / CommonUtilities.CommonSetup.ScreenSetup.targetFps;

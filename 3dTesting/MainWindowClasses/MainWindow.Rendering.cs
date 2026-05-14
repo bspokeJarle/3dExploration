@@ -54,7 +54,7 @@ namespace _3dTesting.Rendering
             PrewarmColorCache();
         }
 
-        private bool ShouldLog() => _localLoggingEnabled && Logger.EnableFileLogging;
+        private bool ShouldLog() => Logger.ShouldLog(_localLoggingEnabled);
 
         private void PrewarmColorCache()
         {

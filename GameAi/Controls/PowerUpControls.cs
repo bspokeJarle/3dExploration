@@ -24,7 +24,7 @@ namespace GameAiAndControls.Controls
         private const float SyncFactorY = 2.5f;
 
         // Diagnostics:
-        private const bool enableLogging = true;
+        private const bool enableLogging = false;
         private const int LogEveryNthFrame = 60;
 
         // Explosion:
@@ -61,7 +61,7 @@ namespace GameAiAndControls.Controls
         {
             try
             {
-                if (enableLogging && Logger.EnableFileLogging) Logger.Log(message, "PowerUp");
+                if (Logger.ShouldLog(enableLogging)) Logger.Log(message, "PowerUp");
             }
             catch { }
         }
@@ -145,7 +145,7 @@ namespace GameAiAndControls.Controls
             // Push positions back to original in AiObjects
             SyncToOriginal(theObject);
 
-            if (enableLogging && Logger.EnableFileLogging)
+            if (Logger.ShouldLog(enableLogging))
             {
                 _logFrameCounter++;
                 if (_logFrameCounter % LogEveryNthFrame == 0)
