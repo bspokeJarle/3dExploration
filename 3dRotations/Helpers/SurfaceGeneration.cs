@@ -1042,74 +1042,59 @@ namespace _3dRotations.Helpers
         //  TOWER PLACEMENT (1 near platform + total N across map)
         // ============================================================
 
+        /// <summary>
+        /// Flattens the terrain around a set of placement points.
+        /// All tiles within <paramref name="radius"/> of each point are set to the same depth
+        /// (at least Highlands minimum) so land-based objects sit on a stable, flat base.
+        /// Radius 1 = 3x3 block (towers), 0 = single tile (trees), 1 also works for houses.
+        /// </summary>
+        public static void FlattenTerrainAroundPlacements(
+            SurfaceData[,] map,
+            int maxHeight,
+            List<(int x, int y, int height)> placements,
+            int radius = 1,
+            bool writeDebugLogs = false)
+        {
+            if (map == null || map.Length == 0) return;
+            if (placements == null || placements.Count == 0) return;
+
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+
+            int highlandsMin = (int)(maxHeight * 0.40);
+
+            foreach (var (px, py, _) in placements)
+            {
+                if (px < 0 || py < 0 || px >= sizeX || py >= sizeY)
+                    continue;
+
+                int centerDepth = map[py, px].mapDepth;
+                int target = Math.Max(centerDepth, highlandsMin);
+
+                for (int dy = -radius; dy <= radius; dy++)
+                {
+                    for (int dx = -radius; dx <= radius; dx++)
+                    {
+                        int x = px + dx;
+                        int y = py + dy;
+                        if (x < 0 || y < 0 || x >= sizeX || y >= sizeY)
+                            continue;
+                        map[y, x].mapDepth = target;
+                    }
+                }
+            }
+
+            if (writeDebugLogs && Logger.ShouldLog(enableLogging))
+                Logger.Log($"FlattenTerrainAroundPlacements: {placements.Count} objects, radius={radius}", "SurfaceGeneration");
+        }
+
         public static void FlattenTerrainAroundTowers_ToHighlands(
             SurfaceData[,] map,
             int maxHeight,
             List<(int x, int y, int height)> towerLocations,
             bool writeDebugLogs = true)
         {
-            if (map == null || map.Length == 0) return;
-            if (towerLocations == null || towerLocations.Count == 0) return;
-
-            // map is [y, x] in your project
-            int sizeY = map.GetLength(0);
-            int sizeX = map.GetLength(1);
-
-            // Highlands threshold per your enum logic (>= 0.40 * maxHeight)
-            int highlandsMin = (int)(maxHeight * 0.40);
-
-            void Log(string s)
-            {
-                if (writeDebugLogs && Logger.ShouldLog(enableLogging))
-                    Logger.Log(s, "SurfaceGeneration");
-            }
-
-            Log($"=== ENTER FlattenTerrainAroundTowers_ToHighlands (3x3) ===");
-            Log($"Towers={towerLocations.Count} highlandsMin={highlandsMin} maxHeight={maxHeight}");
-
-            int totalChanged = 0;
-
-            foreach (var (tx, ty, _) in towerLocations)
-            {
-                if (tx < 0 || ty < 0 || tx >= sizeX || ty >= sizeY)
-                {
-                    Log($"[SKIP] Tower out of bounds: ({tx},{ty})");
-                    continue;
-                }
-
-                int beforeCenter = map[ty, tx].mapDepth;
-
-                // We force the entire 3x3 to the same target depth, at least Highlands min.
-                int target = Math.Max(beforeCenter, highlandsMin);
-
-                int changedThisTower = 0;
-
-                // 3x3 block: centered on tower tile (tx,ty)
-                for (int dy = -1; dy <= 1; dy++)
-                {
-                    for (int dx = -1; dx <= 1; dx++)
-                    {
-                        int x = tx + dx;
-                        int y = ty + dy;
-
-                        if (x < 0 || y < 0 || x >= sizeX || y >= sizeY)
-                            continue;
-
-                        int before = map[y, x].mapDepth;
-                        if (before != target)
-                        {
-                            map[y, x].mapDepth = target;
-                            changedThisTower++;
-                            totalChanged++;
-                        }
-                    }
-                }
-
-                Log($"Tower ({tx},{ty}) centerDepth={beforeCenter} -> target={target} changedTiles={changedThisTower}");
-            }
-
-            Log($"TOTAL changedTiles={totalChanged}");
-            Log($"=== EXIT FlattenTerrainAroundTowers_ToHighlands (3x3) ===");
+            FlattenTerrainAroundPlacements(map, maxHeight, towerLocations, radius: 1, writeDebugLogs);
         }
 
         public static List<(int x, int y, int height)> FindTowerPlacements(

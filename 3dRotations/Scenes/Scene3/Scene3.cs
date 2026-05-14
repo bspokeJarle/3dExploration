@@ -240,6 +240,7 @@ namespace _3dRotations.Scene.Scene3
             }
 
             var palmPlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), palmPlacements, radius: 0);
             var palmIndex = 0;
             foreach (var palmPlacement in palmPlacements)
             {
@@ -294,6 +295,7 @@ namespace _3dRotations.Scene.Scene3
             }
 
             var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), palmPlacements, 15000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), housePlacements, radius: 1);
             EnsureVisibleBambooHutPlacements(housePlacements);
             var bambooHutIndex = 0;
             foreach (var housePlacement in housePlacements)
