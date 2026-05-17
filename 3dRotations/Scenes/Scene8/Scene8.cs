@@ -20,7 +20,7 @@ namespace _3dRotations.Scene.Scene8
     {
         Surface Surface = new();
 
-        public string SceneMusic { get; } = "music_battle";
+        public string SceneMusic { get; } = "music_dontstop";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
         public ISceneDirector Director { get; } = new Scene8Director();

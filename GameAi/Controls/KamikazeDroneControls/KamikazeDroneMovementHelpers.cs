@@ -120,6 +120,34 @@ namespace GameAiAndControls.Helpers
             };
         }
 
+        internal static Vector3 GetCompensatedHuntTargetWorldPosition(I3dObject hunter, I3dObject target)
+        {
+            var hunterCenter = GetRotatedLocalCrashCenter(hunter);
+            var targetCenter = GetRotatedLocalCrashCenter(target);
+            var hunterOffsets = hunter.ObjectOffsets;
+            var targetOffsets = target.ObjectOffsets;
+            var targetWorld = target.WorldPosition;
+
+            return new Vector3
+            {
+                x = (targetWorld?.x ?? 0f)
+                    + (targetOffsets?.x ?? 0f)
+                    + targetCenter.x
+                    - (hunterOffsets?.x ?? 0f)
+                    - hunterCenter.x,
+                y = (targetWorld?.y ?? 0f)
+                    + (targetOffsets?.y ?? 0f)
+                    + targetCenter.y
+                    - (hunterOffsets?.y ?? 0f)
+                    - hunterCenter.y,
+                z = (targetWorld?.z ?? 0f)
+                    - (targetOffsets?.z ?? 0f)
+                    - targetCenter.z
+                    + (hunterOffsets?.z ?? 0f)
+                    + hunterCenter.z
+            };
+        }
+
         internal static Vector3? GetShipCrashCenterWorldPosition()
         {
             if (GameState.ShipState?.ShipCrashCenterWorldPosition is Vector3 shipCrashCenter)

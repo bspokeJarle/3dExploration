@@ -45,7 +45,7 @@ namespace _3dRotations.Scenes.SceneSimulation
         private readonly float _motherShipAggression;
         private readonly bool _useLargeMotherShip;
 
-        public string SceneMusic { get; } = "music_battle";
+        public string SceneMusic { get; private set; } = "music_flight";
         public SceneTypes SceneType { get; } = SceneTypes.Simulation;
         public SceneBiomeTypes SceneBiome { get; }
         public GameModes GameMode { get; } = GameModes.Live;
@@ -69,6 +69,9 @@ namespace _3dRotations.Scenes.SceneSimulation
             var rndBiome = new Random(_simulationRound * 7919 + 42);
             _biome = BiomeCycle[rndBiome.Next(BiomeCycle.Length)];
             SceneBiome = _biome;
+
+            string[] musicCycle = { "music_flight", "music_battle", "music_kanpai", "music_dontstop" };
+            SceneMusic = musicCycle[_simulationRound % musicCycle.Length];
 
             // Scale enemies with round: base values + round increment, capped at sane maxima
             int round = _simulationRound;

@@ -1,6 +1,7 @@
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using Domain;
+using GameAiAndControls.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -151,6 +152,12 @@ namespace _3dTesting.Helpers
                     LogNonCollision(inhabitant, otherInhabitant,
                         $"[DISTANCE CHECK] [FRAME:{numFrame}] {inhabitant.ObjectName} vs {otherInhabitant.ObjectName} = {distance:F2}");
 
+                    if (isTerrainAvoidanceAiObstaclePair &&
+                        TryStartTerrainProximityRecovery(inhabitant, otherInhabitant, flagsA, flagsB, centerA, centerB, (float)distance))
+                    {
+                        continue;
+                    }
+
                     if (isLazer || isOtherLazer)
                     {
                         if (!LogOnlyCollisions && ShouldLogPair(inhabitant, otherInhabitant))
@@ -201,6 +208,61 @@ namespace _3dTesting.Helpers
                 Logger.Log($"[CACHE] Hits: {CacheHits}, Misses: {CacheMisses}, Efficiency: {(CacheHits + CacheMisses == 0 ? 0 : (int)(100.0 * CacheHits / (CacheHits + CacheMisses)))}%");
                 Logger.Log($"[DISTANCE SKIP] Skipped {SkippedByDistance} pairs due to distance > {MaxCrashDistance}");
             }
+        }
+
+        private static bool TryStartTerrainProximityRecovery(
+            _3dObject a,
+            _3dObject b,
+            ObjectTypeFlags flagsA,
+            ObjectTypeFlags flagsB,
+            Vector3 centerA,
+            Vector3 centerB,
+            float centerDistance)
+        {
+            if (centerDistance > CommonUtilities.CommonSetup.TerrainAvoidanceSetup.HeavyProactiveAvoidanceDistance)
+                return false;
+
+            bool aIsAvoidingAi = IsTerrainAvoidanceAiObject(a, flagsA);
+            bool bIsAvoidingAi = IsTerrainAvoidanceAiObject(b, flagsB);
+            bool aIsProactiveObstacle = CommonUtilities.CommonSetup.TerrainAvoidanceSetup.IsProactiveTerrainObstacle(flagsA.Name);
+            bool bIsProactiveObstacle = CommonUtilities.CommonSetup.TerrainAvoidanceSetup.IsProactiveTerrainObstacle(flagsB.Name);
+
+            _3dObject? ai = null;
+            _3dObject? obstacle = null;
+            Vector3 aiCenter = new();
+            Vector3 obstacleCenter = new();
+
+            if (aIsAvoidingAi && bIsProactiveObstacle)
+            {
+                ai = a;
+                obstacle = b;
+                aiCenter = centerA;
+                obstacleCenter = centerB;
+            }
+            else if (bIsAvoidingAi && aIsProactiveObstacle)
+            {
+                ai = b;
+                obstacle = a;
+                aiCenter = centerB;
+                obstacleCenter = centerA;
+            }
+
+            if (ai == null || obstacle == null)
+                return false;
+
+            bool started = TerrainAvoidanceHelpers.TryStartTerrainProximityRecovery(
+                ai,
+                obstacle.ObjectName,
+                aiCenter,
+                obstacleCenter);
+
+            if (started)
+            {
+                LogCollision(ai, obstacle,
+                    $"[FRAME:{numFrame}] [AI TERRAIN PROXIMITY] {ai.ObjectName} -> {obstacle.ObjectName} | CenterDistance:{centerDistance:0.##}");
+            }
+
+            return started;
         }
     }
 }

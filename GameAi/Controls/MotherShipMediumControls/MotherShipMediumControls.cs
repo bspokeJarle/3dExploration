@@ -132,7 +132,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
         //  Sync
         // -------------------------------------------------------
         private const float SyncFactorY = 2.5f;
-        private const float SyncAnchorY = 25f;
+        private const float SyncAnchorY = -75f;
         private bool _syncInitialized = false;
         private float _syncY = SyncAnchorY;
 
@@ -281,7 +281,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
                 SyncMovement(theObject);
                 UpdateFacingBetweenShots(theObject);
 
-                float maxDelta = RotationDegreesPerSecond * (float)deltaSeconds;
+                float maxDelta = GetRotationDegreesPerSecond() * (float)deltaSeconds;
                 Xrotation = Common3dObjectHelpers.MoveAngleTowards(Xrotation, TargetXrotation, maxDelta);
                 Yrotation = Common3dObjectHelpers.MoveAngleTowards(Yrotation, TargetYrotation, maxDelta);
                 Zrotation = Common3dObjectHelpers.MoveAngleTowards(Zrotation, TargetZrotation, maxDelta);
@@ -541,10 +541,11 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
         private void UpdateFacingBetweenShots(I3dObject theObject)
         {
             float fireIntervalSeconds = GetFireIntervalSeconds();
+            float chargeWindowSeconds = GetChargeWindowSeconds();
             // Within the charge window (the last ChargeWindowSeconds before firing) keep
             // the previously locked heading — this is the "waiting until the shot is finished"
             // behaviour the user asked for.
-            bool inChargeWindow = (fireIntervalSeconds - _fireTimer) <= ChargeWindowSeconds;
+            bool inChargeWindow = (fireIntervalSeconds - _fireTimer) <= chargeWindowSeconds;
             if (_headingLocked && inChargeWindow) return;
 
             var wp = theObject.WorldPosition;
@@ -565,7 +566,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
         private void UpdateFacingTowardsShip(I3dObject theObject, float deltaSeconds)
         {
             var now = DateTime.Now;
-            if ((now - _lastDirectionUpdateTime).TotalSeconds < DirectionUpdateIntervalSeconds)
+            if ((now - _lastDirectionUpdateTime).TotalSeconds < GetDirectionUpdateIntervalSeconds())
                 return;
             _lastDirectionUpdateTime = now;
 
@@ -949,7 +950,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
             float dx = _travelTargetX - wp.x;
             float dz = _travelTargetZ - wp.z;
             float dist = MathF.Sqrt(dx * dx + dz * dz);
-            float step = WorldTravelSpeed * deltaSeconds;
+            float step = MotherShipDifficultySetup.ScaleTravelSpeed(WorldTravelSpeed, GetAggression()) * deltaSeconds;
 
             if (dist > step)
             {
@@ -1116,12 +1117,13 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
             var ring2 = theObject.ObjectParts.Find(p => p.PartName == "CannonChargeRing2");
             var ring3 = theObject.ObjectParts.Find(p => p.PartName == "CannonChargeRing3");
 
+            float chargeWindowSeconds = GetChargeWindowSeconds();
             float timeUntilFire = GetFireIntervalSeconds() - _fireTimer;
-            float step = ChargeWindowSeconds / 3f;
+            float step = chargeWindowSeconds / 3f;
 
-            bool r1 = timeUntilFire <= ChargeWindowSeconds;
-            bool r2 = timeUntilFire <= ChargeWindowSeconds - step;
-            bool r3 = timeUntilFire <= ChargeWindowSeconds - step * 2f;
+            bool r1 = timeUntilFire <= chargeWindowSeconds;
+            bool r2 = timeUntilFire <= chargeWindowSeconds - step;
+            bool r3 = timeUntilFire <= chargeWindowSeconds - step * 2f;
 
             if (ring1 != null) ring1.IsVisible = r1;
             if (ring2 != null) ring2.IsVisible = r2;
@@ -1152,8 +1154,27 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
 
         private static float GetFireIntervalSeconds()
         {
-            float aggression = MathF.Max(0.25f, GameState.GamePlayState.MotherShipMediumAggression);
-            return FireIntervalSeconds / aggression;
+            return MotherShipDifficultySetup.ScaleCooldown(FireIntervalSeconds, GetAggression());
+        }
+
+        private static float GetRotationDegreesPerSecond()
+        {
+            return MotherShipDifficultySetup.ScaleTurnSpeed(RotationDegreesPerSecond, GetAggression());
+        }
+
+        private static float GetDirectionUpdateIntervalSeconds()
+        {
+            return MotherShipDifficultySetup.ScaleUpdateInterval(DirectionUpdateIntervalSeconds, GetAggression());
+        }
+
+        private static float GetChargeWindowSeconds()
+        {
+            return MotherShipDifficultySetup.ScaleChargeWindow(ChargeWindowSeconds, GetAggression());
+        }
+
+        private static float GetAggression()
+        {
+            return MotherShipDifficultySetup.GetAggression(GameState.GamePlayState.MotherShipMediumAggression);
         }
 
         public void Dispose()

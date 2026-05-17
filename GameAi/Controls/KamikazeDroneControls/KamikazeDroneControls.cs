@@ -319,7 +319,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
 
             var closestDecoy = KamikazeDroneAi.GetClosestActiveDecoy(ParentObject);
             Vector3? targetWorldPosition = closestDecoy != null
-                ? KamikazeDroneMovementHelpers.GetNavigationCrashCenterWorldPosition(closestDecoy)
+                ? KamikazeDroneMovementHelpers.GetCompensatedHuntTargetWorldPosition(ParentObject, closestDecoy)
                 : KamikazeDroneMovementHelpers.GetShipCrashCenterWorldPosition();
 
             if (ParentObject.WorldPosition is IVector3 && targetWorldPosition is Vector3 resolvedTargetWorldPosition)
@@ -342,15 +342,14 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                     directionToTarget = _overshootDirection;
                 }
 
-                // Use raw world positions for heading to avoid crash-center/zoom bias.
-                // Target is either the decoy's or the ship's approximate world position.
+                // Use the same direction vector as movement so heading and travel are always consistent.
                 var headingDirection = isOvershooting
                     ? directionToTarget
                     : new Vector3
                     {
-                        x = (closestDecoy != null ? closestDecoy.WorldPosition.x : GameState.SurfaceState.GlobalMapPosition.x) - theObject.WorldPosition.x,
+                        x = directionToTarget.x,
                         y = 0f,
-                        z = (closestDecoy != null ? closestDecoy.WorldPosition.z : GameState.SurfaceState.GlobalMapPosition.z) - theObject.WorldPosition.z
+                        z = directionToTarget.z
                     };
                 UpdateRotationTowardsTarget(headingDirection);
 
@@ -450,12 +449,12 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 }
 
                 currentDronePosition = closestDecoy != null
-                    ? SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(theObject)
+                    ? KamikazeDroneMovementHelpers.GetNavigationCrashCenterWorldPosition(theObject)
                     : KamikazeDroneMovementHelpers.GetDroneCrashCenterWorldPosition(theObject);
 
                 if (closestDecoy != null && currentDronePosition is Vector3 dronePositionAfterMove)
                 {
-                    var decoyCenter = SurfacePositionSyncHelpers.GetObjectCrashCenterWorldPosition(closestDecoy);
+                    var decoyCenter = KamikazeDroneMovementHelpers.GetCompensatedHuntTargetWorldPosition(theObject, closestDecoy);
                     float touchDistance = KamikazeDroneMovementHelpers.GetApproximateCrashRadius(theObject) + KamikazeDroneMovementHelpers.GetApproximateCrashRadius(closestDecoy);
                     float currentDistanceToDecoy = (float)CommonUtilities._3DHelpers.Common3dObjectHelpers.GetDistance(dronePositionAfterMove, decoyCenter);
 

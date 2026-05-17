@@ -20,7 +20,7 @@ namespace _3dRotations.Scene.Scene6
     {
         Surface Surface = new();
 
-        public string SceneMusic { get; } = "music_battle";
+        public string SceneMusic { get; } = "music_kanpai";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Desert;
         public ISceneDirector Director { get; } = new Scene6Director();

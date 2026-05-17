@@ -1,4 +1,5 @@
 ﻿using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,8 @@ namespace GameAiAndControls.Controls
 
         private float TowerRotationSpeedZ = 1.5f;
         private float TowerZRotation = 0;
+        private bool _baseOffsetInitialized;
+        private float _baseOffsetY;
 
         private readonly _3dRotationCommon _rotate = new(); // Rotation fra CommonHelpers
         private readonly Dictionary<string, List<ITriangleMeshWithColor>> _originalTopPartMeshes = new();
@@ -32,6 +35,8 @@ namespace GameAiAndControls.Controls
             if (theObject.Rotation != null) theObject.Rotation.x = Xrotation;
             if (theObject.Rotation != null) theObject.Rotation.z = Zrotation;
 
+            ApplyGroundContactNudge(theObject);
+
             //For now, just rotate the object at a fixed speed
             //Zrotation += 2;
             //Xrotation += 2;
@@ -39,6 +44,25 @@ namespace GameAiAndControls.Controls
             RotateUpperTowerAnimation();
 
             return theObject;
+        }
+
+        private void ApplyGroundContactNudge(I3dObject theObject)
+        {
+            if (theObject.ObjectOffsets == null)
+                return;
+
+            if (!_baseOffsetInitialized)
+            {
+                _baseOffsetY = theObject.ObjectOffsets.y;
+                _baseOffsetInitialized = true;
+            }
+
+            theObject.ObjectOffsets = new Vector3
+            {
+                x = theObject.ObjectOffsets.x,
+                y = _baseOffsetY + LandBasedObjectSetup.GroundContactNudgeYScaled,
+                z = theObject.ObjectOffsets.z
+            };
         }
 
         public void RotateUpperTowerAnimation()
@@ -158,6 +182,8 @@ namespace GameAiAndControls.Controls
             StartCoordinates = null;
             GuideCoordinates = null;
             TowerZRotation = 0f;
+            _baseOffsetInitialized = false;
+            _baseOffsetY = 0f;
         }
 
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)

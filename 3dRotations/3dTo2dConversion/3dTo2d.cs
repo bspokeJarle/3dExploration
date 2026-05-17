@@ -125,6 +125,9 @@ namespace _3dTesting._3dRotation
                 for (int triangleIndex = 0; triangleIndex < triangles.Count; triangleIndex++)
                 {
                     var triangle = triangles[triangleIndex];
+                    var normal = triangle.normal1;
+                    if (normal.z <= 0 && !(triangle.noHidden ?? false)) continue;
+
                     var v1 = (Vector3)triangle.vert1;
                     var v2 = (Vector3)triangle.vert2;
                     var v3 = (Vector3)triangle.vert3;
@@ -143,29 +146,25 @@ namespace _3dTesting._3dRotation
 
                     if (!IsOnScreen(xFactor, yFactor)) continue;
 
-                    var normal = triangle.normal1;
-                    if (normal.z > 0 || (triangle.noHidden ?? false))
+                    //Debugging Object sorting issues for specific objects
+                    if (Logger.ShouldLog(enableLogging) && (objectName == "Seeder" || objectName == "Lazer"))
                     {
-                        //Debugging Object sorting issues for specific objects
-                        if (Logger.ShouldLog(enableLogging) && (objectName == "Seeder" || objectName == "Lazer"))
-                        {
-                            Logger.Log($"Converted 3D object '{objectName}' to 2D. CalculatedZ: {(float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ)}");
-                        }
-                        result.Add(new _2dTriangleMesh
-                        {
-                            X1 = Convert.ToInt32(x1),
-                            Y1 = Convert.ToInt32(y1),
-                            X2 = Convert.ToInt32(x2),
-                            Y2 = Convert.ToInt32(y2),
-                            X3 = Convert.ToInt32(x3),
-                            Y3 = Convert.ToInt32(y3),
-                            CalculatedZ = (float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ),
-                            Normal = normal.z,
-                            TriangleAngle = triangle.angle,
-                            Color = triangle.Color,
-                            PartName = part.PartName
-                        });
+                        Logger.Log($"Converted 3D object '{objectName}' to 2D. CalculatedZ: {(float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ)}");
                     }
+                    result.Add(new _2dTriangleMesh
+                    {
+                        X1 = Convert.ToInt32(x1),
+                        Y1 = Convert.ToInt32(y1),
+                        X2 = Convert.ToInt32(x2),
+                        Y2 = Convert.ToInt32(y2),
+                        X3 = Convert.ToInt32(x3),
+                        Y3 = Convert.ToInt32(y3),
+                        CalculatedZ = (float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ),
+                        Normal = normal.z,
+                        TriangleAngle = triangle.angle,
+                        Color = triangle.Color,
+                        PartName = part.PartName
+                    });
                 }
             }
         }

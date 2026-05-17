@@ -156,7 +156,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
         //  Sync
         // -------------------------------------------------------
         private const float SyncFactorY = 2.5f;
-        private const float SyncAnchorY = 25f;
+        private const float SyncAnchorY = -75f;
         private bool _syncInitialized = false;
         private float _syncY = SyncAnchorY;
 
@@ -276,7 +276,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
 
                 // Face the player ship during descent — same pattern as other motherships
                 UpdateFacingTowardsShip(theObject, (float)deltaSeconds);
-                float descentMaxDelta = RotationDegreesPerSecond * (float)deltaSeconds;
+                float descentMaxDelta = GetRotationDegreesPerSecond() * (float)deltaSeconds;
                 Xrotation = Common3dObjectHelpers.MoveAngleTowards(Xrotation, TargetXrotation, descentMaxDelta);
                 Yrotation = Common3dObjectHelpers.MoveAngleTowards(Yrotation, TargetYrotation, descentMaxDelta);
                 Zrotation = Common3dObjectHelpers.MoveAngleTowards(Zrotation, TargetZrotation, descentMaxDelta);
@@ -316,7 +316,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
                     _cycleState.AltCycleState == MotherShipLargeAi.AltitudeCycleState.WaitForHatchClose)
                     TargetXrotation = MotherShipLargeAi.TiltBackXTarget;
 
-                float maxDelta = RotationDegreesPerSecond * (float)deltaSeconds;
+                float maxDelta = GetRotationDegreesPerSecond() * (float)deltaSeconds;
                 Xrotation = Common3dObjectHelpers.MoveAngleTowards(Xrotation, TargetXrotation, maxDelta);
                 Yrotation = Common3dObjectHelpers.MoveAngleTowards(Yrotation, TargetYrotation, maxDelta);
                 Zrotation = Common3dObjectHelpers.MoveAngleTowards(Zrotation, TargetZrotation, maxDelta);
@@ -604,7 +604,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
         private void UpdateFacingTowardsShip(I3dObject theObject, float deltaSeconds)
         {
             var now = DateTime.Now;
-            if ((now - _lastDirectionUpdateTime).TotalSeconds < DirectionUpdateIntervalSeconds)
+            if ((now - _lastDirectionUpdateTime).TotalSeconds < GetDirectionUpdateIntervalSeconds())
                 return;
             _lastDirectionUpdateTime = now;
 
@@ -1016,7 +1016,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
             float dx = _travelTargetX - wp.x;
             float dz = _travelTargetZ - wp.z;
             float dist = MathF.Sqrt(dx * dx + dz * dz);
-            float step = WorldTravelSpeed * deltaSeconds;
+            float step = MotherShipDifficultySetup.ScaleTravelSpeed(WorldTravelSpeed, GetAggression()) * deltaSeconds;
 
             if (dist > step)
             {
@@ -1156,8 +1156,22 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
 
         private static float GetFireIntervalSeconds()
         {
-            float aggression = MathF.Max(0.25f, GameState.GamePlayState.MotherShipLargeAggression);
-            return FireIntervalSeconds / aggression;
+            return MotherShipDifficultySetup.ScaleCooldown(FireIntervalSeconds, GetAggression());
+        }
+
+        private static float GetRotationDegreesPerSecond()
+        {
+            return MotherShipDifficultySetup.ScaleTurnSpeed(RotationDegreesPerSecond, GetAggression());
+        }
+
+        private static float GetDirectionUpdateIntervalSeconds()
+        {
+            return MotherShipDifficultySetup.ScaleUpdateInterval(DirectionUpdateIntervalSeconds, GetAggression());
+        }
+
+        private static float GetAggression()
+        {
+            return MotherShipDifficultySetup.GetAggression(GameState.GamePlayState.MotherShipLargeAggression);
         }
 
         public void Dispose()

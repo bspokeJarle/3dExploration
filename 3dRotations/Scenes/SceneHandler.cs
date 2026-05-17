@@ -47,11 +47,12 @@ namespace _3DWorld.Scene
         public void SetupActiveScene(I3dWorld world)
         {
             ApplySceneIndexOverrideFromGameState();
+            ResetSurfaceState();
             var scene = GetActiveScene();
             scene.SetupSceneOverlay();
             ClearVideoOverlay();
-            scene.SetupScene((_3dWorld)world);
             ApplySceneSettings(scene);
+            scene.SetupScene((_3dWorld)world);
             InitializeDirector(scene, world);
             ValidateGameSceneSetup(scene, world);
         }
@@ -537,8 +538,8 @@ namespace _3DWorld.Scene
             scenes[0] = introScene;
 
             introScene.SetupSceneOverlay();
-            introScene.SetupScene((_3dWorld)world);
             ApplySceneSettings(introScene);
+            introScene.SetupScene((_3dWorld)world);
         }
 
         private static void ClearVideoOverlay()

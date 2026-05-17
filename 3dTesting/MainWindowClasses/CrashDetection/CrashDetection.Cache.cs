@@ -85,7 +85,11 @@ namespace _3dTesting.Helpers
             objectName == "SmallPalm" ||
             objectName == "BambooHut" ||
             objectName == "Surface" ||
-            objectName == "House";
+            objectName == "House" ||
+            objectName == "Tower" ||
+            objectName == "SnowTower" ||
+            objectName == "SmallIgloo" ||
+            objectName == "LargeIgloo";
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static bool IsTerrainObstacle(ObjectTypeFlags flags) =>

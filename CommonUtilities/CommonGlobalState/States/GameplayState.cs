@@ -31,7 +31,7 @@ namespace Domain
         // Player / ship core stats
         // -----------------------------
         public string PlayerName { get; set; } = "";
-        public int SceneIndex { get; set; } = 0;
+        public int SceneIndex { get; set; } = 9; // DEV: revert to 0 before release
         public int Lives { get; set; } = 3;
 
         // Simulation round counter — increments each time the player enters the simulation after the outro

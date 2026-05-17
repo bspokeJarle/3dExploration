@@ -26,7 +26,7 @@ namespace _3dRotations.Scene.Scene4
 
         public IReadOnlyList<PolarBearPlacementInfo> PolarBearPlacements => _polarBearPlacements;
 
-        public string SceneMusic { get; } = "music_battle";
+        public string SceneMusic { get; } = "music_dontstop";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Winter;
         public ISceneDirector Director { get; } = new Scene4Director();

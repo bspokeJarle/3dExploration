@@ -211,6 +211,9 @@ public class SceneHandlerTests
         Assert.AreEqual(scene.SeederOffscreenSpeedFactor, gps.SeederOffscreenSpeedFactor);
         Assert.AreEqual(scene.LocalInfectionSpreadDelaySec, gps.LocalInfectionSpreadDelaySec);
         Assert.AreEqual(scene.LocalInfectionSpreadRadius, gps.LocalInfectionSpreadRadius);
+        Assert.AreEqual(scene.MotherShipSmallAggression, gps.MotherShipSmallAggression);
+        Assert.AreEqual(scene.MotherShipMediumAggression, gps.MotherShipMediumAggression);
+        Assert.AreEqual(scene.MotherShipLargeAggression, gps.MotherShipLargeAggression);
     }
 
     // -----------------------------------------------------------------

@@ -10,17 +10,21 @@ namespace CommonUtilities.CommonSetup
 
         public const float HeavyRecoveryDurationSeconds = 1.15f;
         public const float HeavyLiftSpeed = 170f;
-        public const float HeavyHorizontalSpeed = 220f;
+        public const float HeavyHorizontalSpeed = 360f;
+        public const float HeavyProactiveAvoidanceDistance = 950f;
 
         private static readonly HashSet<string> TerrainObstacleNames = new()
         {
             "Surface",
             "Tower",
+            "SnowTower",
             "Tree",
             "LargePalm",
             "SmallPalm",
             "BambooHut",
-            "House"
+            "House",
+            "SmallIgloo",
+            "LargeIgloo"
         };
 
         private static readonly HashSet<string> AvoidanceCapableAiNames = new()
@@ -43,6 +47,9 @@ namespace CommonUtilities.CommonSetup
 
         public static bool IsTerrainObstacle(string? objectName) =>
             !string.IsNullOrEmpty(objectName) && TerrainObstacleNames.Contains(objectName);
+
+        public static bool IsProactiveTerrainObstacle(string? objectName) =>
+            IsTerrainObstacle(objectName) && objectName != "Surface";
 
         public static bool IsAvoidanceCapableAi(string? objectName) =>
             !string.IsNullOrEmpty(objectName) && AvoidanceCapableAiNames.Contains(objectName);

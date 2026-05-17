@@ -8,8 +8,8 @@
       "segments": {
         "start": 0.0,
         "loopStart": 0.0,
-        "loopEnd": 204.0,
-        "end": 204.0
+        "loopEnd": 223.9,
+        "end": 223.9
       },
 
       "settings": {
@@ -35,8 +35,8 @@
       "segments": {
         "start": 0,
         "loopStart": 0,
-        "loopEnd": 208.8,
-        "end": 208.8
+        "loopEnd": 298.4,
+        "end": 298.4
       },
 
       "settings": {
@@ -57,13 +57,65 @@
     {
       "id": "music_battle",
       "usage": "MusicBattle",
-      "file": "GeneralError_battle.wav",
+      "file": "GeneralError_Battle.wav",
 
       "segments": {
         "start": 0,
         "loopStart": 0,
-        "loopEnd": 199.8,
-        "end": 199.8
+        "loopEnd": 214.5,
+        "end": 214.5
+      },
+
+      "settings": {
+        "volume": 0.8,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 15
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "music_kanpai",
+      "usage": "MusicBattle",
+      "file": "Kanpai!_Battle.wav",
+
+      "segments": {
+        "start": 0,
+        "loopStart": 0,
+        "loopEnd": 221.6,
+        "end": 221.6
+      },
+
+      "settings": {
+        "volume": 0.8,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 15
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "music_dontstop",
+      "usage": "MusicBattle",
+      "file": "Don'tStop_Intro.wav",
+
+      "segments": {
+        "start": 0,
+        "loopStart": 0,
+        "loopEnd": 223.9,
+        "end": 223.9
       },
 
       "settings": {
@@ -83,13 +135,13 @@
     {
       "id": "music_outro",
       "usage": "MusicOutro",
-      "file": "Goodbye,BytWhy-Outro.wav",
+      "file": "Goodbye,But Why_Outro.wav",
 
       "segments": {
         "start": 0,
         "loopStart": 0,
-        "loopEnd": 201.6,
-        "end": 201.6
+        "loopEnd": 215.6,
+        "end": 215.6
       },
 
       "settings": {
@@ -198,8 +250,8 @@
       },
 
       "settings": {
-        "volume": 1.0,
-        "maxVoices": 5,
+        "volume": 0.6,
+        "maxVoices": 2,
         "is3D": true,
         "priority": 200
       },
@@ -354,7 +406,7 @@
       },
 
       "settings": {
-        "volume": 1.2,
+        "volume": 0.5,
         "maxVoices": 1,
         "is3D": true,
         "priority": 100
@@ -380,8 +432,8 @@
       },
 
       "settings": {
-        "volume": 1.0,
-        "maxVoices": 3,
+        "volume": 0.25,
+        "maxVoices": 1,
         "is3D": false,
         "priority": 200
       },
@@ -770,7 +822,7 @@
       },
 
       "settings": {
-        "volume": 1.4,
+        "volume": 0.4,
         "maxVoices": 6,
         "is3D": true,
         "priority": 90

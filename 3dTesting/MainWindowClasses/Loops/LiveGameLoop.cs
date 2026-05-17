@@ -39,9 +39,9 @@ namespace _3dTesting.MainWindowClasses.Loops
 
         private readonly IAudioPlayer audioPlayer = new NAudioAudioPlayer(AudioSetup.AudioBasePath);
         private readonly ISoundRegistry soundRegistry = new JsonSoundRegistry(AudioSetup.SoundRegistryPath);
-        private static SoundDefinition MusicDef { get; set; } = null;
-        private static bool MusicIsPlaying { get; set; } = false;
-        private static string CurrentSceneMusicId { get; set; } = string.Empty;
+        private SoundDefinition MusicDef { get; set; } = null;
+        private bool MusicIsPlaying { get; set; } = false;
+        private string CurrentSceneMusicId { get; set; } = string.Empty;
 
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
