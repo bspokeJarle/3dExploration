@@ -1,12 +1,12 @@
 using BenchmarkDotNet.Running;
 
-namespace BenchmarkSuite5
+namespace BenchmarkSuite6
 {
     internal class Program
     {
         static void Main(string[] args)
         {
-            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+            var _ = BenchmarkRunner.Run(typeof(Program).Assembly);
         }
     }
 }

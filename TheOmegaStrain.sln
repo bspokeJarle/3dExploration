@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.4.11605.240 stable
+VisualStudioVersion = 18.4.11605.240
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Frontend", "3dTesting\Frontend.csproj", "{035F226A-F07C-44F1-87CF-5B35A3351108}"
 EndProject
@@ -27,6 +27,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkSuite4", "BenchmarkSuite4\BenchmarkSuite4.csproj", "{58DE2B95-B7E5-3E9C-F1E8-6D24C25A34E0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkSuite5", "BenchmarkSuite5\BenchmarkSuite5.csproj", "{37B623E5-D4BD-F358-DE58-EC4F4693BA45}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkSuite6", "BenchmarkSuite6\BenchmarkSuite6.csproj", "{32F56372-1CCB-A9D3-534B-A832DF38C443}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -74,6 +76,10 @@ Global
 		{37B623E5-D4BD-F358-DE58-EC4F4693BA45}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37B623E5-D4BD-F358-DE58-EC4F4693BA45}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{37B623E5-D4BD-F358-DE58-EC4F4693BA45}.Release|Any CPU.Build.0 = Release|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

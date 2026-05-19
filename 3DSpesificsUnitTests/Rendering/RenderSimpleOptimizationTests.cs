@@ -2,9 +2,12 @@ using _3dRotations.World.Objects;
 using _3dTesting._3dRotation;
 using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
+using _3dTesting.Rendering;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
 using Domain;
+using System.Windows.Media;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3DSpesificsUnitTests.Rendering;
@@ -70,6 +73,58 @@ public class RenderSimpleOptimizationTests
 
         Assert.AreSame(reusable, emptyResult);
         Assert.AreEqual(0, emptyResult.Count);
+    }
+
+    [TestMethod]
+    public void CullTrianglesOutsideRenderDepth_RemovesOutOfRangeTrianglesBeforeSort()
+    {
+        var triangles = new List<_2dTriangleMesh>
+        {
+            new() { CalculatedZ = ScreenSetup.RenderNearZ - 1, PartName = "TooNear" },
+            new() { CalculatedZ = 0, PartName = "KeepMiddle" },
+            new() { CalculatedZ = ScreenSetup.RenderFarZ + 1, PartName = "TooFar" },
+            new() { CalculatedZ = ScreenSetup.RenderNearZ, PartName = "KeepNearBoundary" },
+            new() { CalculatedZ = ScreenSetup.RenderFarZ, PartName = "KeepFarBoundary" }
+        };
+
+        int kept = WorldRenderer.CullTrianglesOutsideRenderDepth(triangles);
+
+        Assert.AreEqual(3, kept);
+        Assert.AreEqual(3, triangles.Count);
+        Assert.AreEqual("KeepMiddle", triangles[0].PartName);
+        Assert.AreEqual("KeepNearBoundary", triangles[1].PartName);
+        Assert.AreEqual("KeepFarBoundary", triangles[2].PartName);
+    }
+
+    [TestMethod]
+    public void ProcessTrianglesForRender_CreatesPensForVisibleTrianglesToCoverSeams()
+    {
+        var triangles = new List<_2dTriangleMesh>
+        {
+            new() { CalculatedZ = 0, TriangleAngle = 0.5f, Color = "ffffff", PartName = "Surface" },
+            new() { CalculatedZ = 0, TriangleAngle = 0.5f, Color = "ff0000", PartName = "CrashBox-Test" }
+        };
+        var colorCache = new Dictionary<(float, string), Color>();
+        var brushCache = new Dictionary<Color, SolidColorBrush>();
+        var penCache = new Dictionary<Color, Pen>();
+
+        int processed = WorldRenderer.ProcessTrianglesForRender(triangles, colorCache, brushCache, penCache);
+
+        Assert.AreEqual(2, processed);
+        Assert.AreEqual(2, penCache.Count);
+    }
+
+    [TestMethod]
+    public void IsSameBatch_RequiresSameBrushAndPenInstances()
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(10, 20, 30));
+        var sameColorDifferentBrush = new SolidColorBrush(Color.FromRgb(10, 20, 30));
+        var pen = new Pen(brush, 1);
+        var sameColorDifferentPen = new Pen(brush, 1);
+
+        Assert.IsTrue(WorldRenderer.IsSameBatch(brush, pen, brush, pen));
+        Assert.IsFalse(WorldRenderer.IsSameBatch(brush, pen, sameColorDifferentBrush, pen));
+        Assert.IsFalse(WorldRenderer.IsSameBatch(brush, pen, brush, sameColorDifferentPen));
     }
 
     private static _3dObject CreateRenderableObject()
