@@ -17,7 +17,7 @@ namespace _3dRotations.World.Objects
         private const float TopCannonCrashBoxSizeMultiplier = 0.35f;
         private static readonly Vector3 TopCannonCrashBoxPadding = new() { x = 0.5f, y = 2f, z = 1f };
 
-        public static _3dObject CreateShip(ISurface parentSurface)
+        public static _3dObject CreateShip(ISurface? parentSurface, IObjectMovement? movement = null)
         {
             var upperTriangles = UpperTriangles();
             var lowerTriangles = LowerTriangles();
@@ -63,7 +63,7 @@ namespace _3dRotations.World.Objects
 
             ship.ObjectOffsets = new Vector3 { };
             ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
-            ship.Movement = new ShipControls();
+            ship.Movement = movement ?? new ShipControls();
             ship.Particles = new ParticlesAI();
             ship.ParentSurface = parentSurface;
             ship.CrashBoxes = crashBoxes;

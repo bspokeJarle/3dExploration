@@ -393,11 +393,8 @@ namespace _3dTesting
             if (world.IsPaused)
                 pauseFrameCount++;
 
-            if (pauseFrameCount < limitFrameCount && gameWorldManager.FadeInWorld)
+            if (pauseFrameCount < limitFrameCount && GameState.WorldFade.TryBeginFadeIn(out var fadeInDurationSeconds))
             {
-                // Clear immediately so concurrent async Handle3dWorld calls
-                // from the same render tick don't start overlapping FadeInAsync animations
-                gameWorldManager.FadeInWorld = false;
                 if (!isFading)
                 {
                     // FadeOut was skipped (e.g., ship exploded before the fadeout delay elapsed)
@@ -407,18 +404,18 @@ namespace _3dTesting
                     isFading = true;
                 }
                 _isFadingIn = true;
-                await FadeInAsync(1.5f);
+                await FadeInAsync(fadeInDurationSeconds);
                 _isFadingIn = false;
                 isFading = false;
+                GameState.WorldFade.MarkFadeInComplete();
                 fadeOutTrigged = DateTime.MinValue;
             }
 
-            if (pauseFrameCount <= limitFrameCount && gameWorldManager.FadeOutWorld && !isFading)
+            if (pauseFrameCount <= limitFrameCount && !isFading && GameState.WorldFade.TryBeginFadeOut(out var fadeOutDurationSeconds))
             {
                 isFading = true;
-                await FadeOutAsync(1.0f);
-                gameWorldManager.FadeOutWorld = false;
-                gameWorldManager.SceneResetReady = true;
+                await FadeOutAsync(fadeOutDurationSeconds);
+                GameState.WorldFade.MarkFadeOutComplete();
                 fadeOutTrigged = DateTime.MinValue;
             }
 

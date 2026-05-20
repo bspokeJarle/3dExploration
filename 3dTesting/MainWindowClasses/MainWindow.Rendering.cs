@@ -159,19 +159,20 @@ namespace _3dTesting.Rendering
 
                 foreach (var triangle in screenCoordinates)
                 {
-                    float depthFactor01 = GetDepthFactor01(triangle.CalculatedZ);
-                    float angleFactor01 = NormalizeAngleTo01(triangle.TriangleAngle);
-
-                    // First shade by angle, then by depth => combined factor
-                    float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
-
-                    if (triangle.PartName.Contains("Star_Core"))
+                    if (ShouldUseEffectRenderingPipeline(triangle))
                     {
-                        combinedFactor01 = depthFactor01;
+                        FlushBatch();
+                        DrawEffectTriangle(dc, triangle);
+                        drawCalls++;
+                        batchGeometry = null;
+                        batchContext = null;
+                        batchBrush = null;
+                        batchPen = null;
+                        continue;
                     }
 
+                    float shadeKey = GetTriangleShadeKey(triangle);
                     string baseColor = NormalizeColorCached(triangle.Color);
-                    float shadeKey = (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
 
                     if (!colorCache.TryGetValue((shadeKey, baseColor), out Color color))
                     {
@@ -280,6 +281,8 @@ namespace _3dTesting.Rendering
                 float angleFactor01 = NormalizeAngleTo01(triangle.TriangleAngle);
 
                 float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
+                if (triangle.PartName != null && triangle.PartName.Contains("Star_Core"))
+                    combinedFactor01 = depthFactor01;
 
                 string? baseColor = triangle.Color;
                 if (string.IsNullOrWhiteSpace(baseColor))
@@ -326,6 +329,26 @@ namespace _3dTesting.Rendering
         public static bool IsCrashBoxPartName(string? partName)
         {
             return partName != null && partName.StartsWith("CrashBox-", StringComparison.Ordinal);
+        }
+
+        public static bool ShouldRenderAsSeparateTriangle(string? partName)
+        {
+            return IsDynamicEffectPartName(partName);
+        }
+
+        public static bool ShouldUseEffectRenderingPipeline(_2dTriangleMesh triangle)
+        {
+            return triangle.UseEffectRenderingPipeline || IsDynamicEffectPartName(triangle.PartName);
+        }
+
+        public static bool IsExplodingPartName(string? partName)
+        {
+            return string.Equals(partName, "ExplodingPart", StringComparison.Ordinal);
+        }
+
+        public static bool IsDynamicEffectPartName(string? partName)
+        {
+            return TriangleRenderPipelineMarkers.IsDynamicEffectPartName(partName);
         }
 
         public static int CountCrashBoxParts(string[] partNames)
@@ -397,6 +420,50 @@ namespace _3dTesting.Rendering
             return ReferenceEquals(currentBrush, nextBrush) && ReferenceEquals(currentPen, nextPen);
         }
 
+        private void DrawEffectTriangle(DrawingContext dc, _2dTriangleMesh triangle)
+        {
+            Color color = GetTriangleColorUncached(triangle);
+            var brush = new SolidColorBrush(color);
+            brush.Freeze();
+
+            var pen = new Pen(brush, 1);
+            pen.Freeze();
+
+            var geometry = new StreamGeometry
+            {
+                FillRule = FillRule.Nonzero
+            };
+
+            using (var ctx = geometry.Open())
+            {
+                AddTriangleFigure(ctx, triangle);
+            }
+
+            geometry.Freeze();
+            dc.DrawGeometry(brush, pen, geometry);
+        }
+
+        private static Color GetTriangleColorUncached(_2dTriangleMesh triangle)
+        {
+            float shadeKey = GetTriangleShadeKey(triangle);
+            string baseColor = NormalizeColor(triangle.Color);
+            return HexToColor(Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor));
+        }
+
+        private static float GetTriangleShadeKey(_2dTriangleMesh triangle)
+        {
+            float depthFactor01 = GetDepthFactor01(triangle.CalculatedZ);
+            float angleFactor01 = NormalizeAngleTo01(triangle.TriangleAngle);
+            float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
+
+            if (triangle.PartName != null && triangle.PartName.Contains("Star_Core"))
+            {
+                combinedFactor01 = depthFactor01;
+            }
+
+            return (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
+        }
+
         private static void AddTriangleFigure(StreamGeometryContext ctx, _2dTriangleMesh triangle)
         {
             var p1 = new Point(triangle.X1, triangle.Y1);
@@ -414,12 +481,20 @@ namespace _3dTesting.Rendering
                 return "000000";
             if (_normalizedColorCache.TryGetValue(raw, out var cached))
                 return cached;
+            var normalized = NormalizeColor(raw);
+            _normalizedColorCache[raw] = normalized;
+            return normalized;
+        }
+
+        private static string NormalizeColor(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return "000000";
+
             var normalized = raw.Trim();
             if (normalized.Length > 0 && normalized[0] == '#')
                 normalized = normalized.Substring(1);
-            normalized = normalized.ToLowerInvariant();
-            _normalizedColorCache[raw] = normalized;
-            return normalized;
+            return normalized.ToLowerInvariant();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

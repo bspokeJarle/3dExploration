@@ -355,6 +355,8 @@ namespace GameAiAndControls.Physics
             public string OriginalColor; // NEW: reference color
         }
 
+        // This state crosses LiveGameLoop frame copies. Store copied triangle/vector values here,
+        // never references from the current frame object.
         private List<ExplodingTriangle> _explodingTriangles = new();
         private bool _isExploding = false;
 
@@ -368,7 +370,6 @@ namespace GameAiAndControls.Physics
             var explodingObject = Common3dObjectHelpers.DeepCopySingleObject(originalObject);
             var center = CalculateTriangleGeometryCenter(explodingObject);
 
-            var sharedTriangles = new List<TriangleMeshWithColor>();
             int partIndex = 0;
 
             foreach (var part in explodingObject.ObjectParts)
@@ -377,19 +378,7 @@ namespace GameAiAndControls.Physics
 
                 foreach (var triangle in part.Triangles.OfType<TriangleMeshWithColor>())
                 {
-                    var tri = new TriangleMeshWithColor
-                    {
-                        vert1 = triangle.vert1,
-                        vert2 = triangle.vert2,
-                        vert3 = triangle.vert3,
-                        normal1 = triangle.normal1,
-                        normal2 = triangle.normal2,
-                        normal3 = triangle.normal3,
-                        Color = triangle.Color,
-                        angle = triangle.angle,
-                        landBasedPosition = triangle.landBasedPosition,
-                        noHidden = true
-                    };
+                    var tri = CopyExplosionTriangle(triangle);
 
                     var triCenter = GetTriangleCenter(tri);
                     var rawDir = Subtract(triCenter, center);
@@ -418,22 +407,18 @@ namespace GameAiAndControls.Physics
                         OriginalColor = triangle.Color // Store original color for fading
                     });
 
-                    sharedTriangles.Add(tri);
                     triangleIndex++;
                 }
 
                 partIndex++;
             }
 
-            explodingObject.ObjectParts.Clear();
-            explodingObject.ObjectParts.Add(new _3dObjectPart
+            foreach (var part in originalObject.ObjectParts)
             {
-                PartName = "ExplodingPart",
-                Triangles = sharedTriangles.Cast<ITriangleMeshWithColor>().ToList(),
-                IsVisible = true
-            });
+                part.PartName = "ExplodingPart";
+            }
 
-            return explodingObject;
+            return originalObject;
         }
 
 
@@ -442,6 +427,8 @@ namespace GameAiAndControls.Physics
         {
             if (!_isExploding || _explodingTriangles.Count == 0)
                 return explodingObject;
+
+            MarkAsExplodingParts(explodingObject);
 
             float simulatedElapsedTime = _explodingTriangles[0].ElapsedTime;
             float realElapsedTime = (float)Math.Max(0d, (DateTime.Now - deltaTime).TotalSeconds);
@@ -495,8 +482,10 @@ namespace GameAiAndControls.Physics
                 exploding.Triangle.vert2 = RotateAroundAxis(exploding.Triangle.vert2, exploding.RotationAxis, angle, exploding.Center);
                 exploding.Triangle.vert3 = RotateAroundAxis(exploding.Triangle.vert3, exploding.RotationAxis, angle, exploding.Center);
 
-                // Apply updated triangle
-                explodingObject.ObjectParts[exploding.PartIndex].Triangles[exploding.TriangleIndex] = exploding.Triangle;
+                // The render loop rotates frame geometry in-place after movement updates.
+                // Keep the physics-owned triangle isolated from that per-frame mutation.
+                explodingObject.ObjectParts[exploding.PartIndex].Triangles[exploding.TriangleIndex] =
+                    CopyExplosionTriangle(exploding.Triangle);
             }
 
             if (allTrianglesFinished)
@@ -514,6 +503,41 @@ namespace GameAiAndControls.Physics
             }
 
             return explodingObject;
+        }
+
+        private static void MarkAsExplodingParts(I3dObject explodingObject)
+        {
+            foreach (var part in explodingObject.ObjectParts)
+            {
+                part.PartName = "ExplodingPart";
+            }
+        }
+
+        private static TriangleMeshWithColor CopyExplosionTriangle(TriangleMeshWithColor triangle)
+        {
+            return new TriangleMeshWithColor
+            {
+                vert1 = CopyVector(triangle.vert1),
+                vert2 = CopyVector(triangle.vert2),
+                vert3 = CopyVector(triangle.vert3),
+                normal1 = CopyVector(triangle.normal1),
+                normal2 = CopyVector(triangle.normal2),
+                normal3 = CopyVector(triangle.normal3),
+                Color = triangle.Color,
+                angle = triangle.angle,
+                landBasedPosition = triangle.landBasedPosition,
+                noHidden = true
+            };
+        }
+
+        private static Vector3 CopyVector(IVector3 vector)
+        {
+            return new Vector3
+            {
+                x = vector.x,
+                y = vector.y,
+                z = vector.z
+            };
         }
 
         private string GetExplosionColor(float progress, string originalHex)

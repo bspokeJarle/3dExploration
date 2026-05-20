@@ -76,6 +76,22 @@ public class RenderSimpleOptimizationTests
     }
 
     [TestMethod]
+    public void ConvertTo2dFromObjects_MarksDynamicEffectsForEffectPipeline()
+    {
+        var converter = new _3dTo2d();
+
+        var result = converter.ConvertTo2dFromObjects(
+            new List<_3dObject> { CreateRenderableObject("ExplodingPart") },
+            1);
+
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual("ExplodingPart", result[0].PartName);
+        Assert.IsTrue(result[0].UseEffectRenderingPipeline,
+            "Explosions should be explicitly marked for the separate effect rendering pipeline before they reach WorldRenderer.");
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(result[0]));
+    }
+
+    [TestMethod]
     public void CullTrianglesOutsideRenderDepth_RemovesOutOfRangeTrianglesBeforeSort()
     {
         var triangles = new List<_2dTriangleMesh>
@@ -127,7 +143,35 @@ public class RenderSimpleOptimizationTests
         Assert.IsFalse(WorldRenderer.IsSameBatch(brush, pen, brush, sameColorDifferentPen));
     }
 
-    private static _3dObject CreateRenderableObject()
+    [TestMethod]
+    public void ExplodingPart_RendersOutsideBatching()
+    {
+        Assert.IsTrue(WorldRenderer.ShouldRenderAsSeparateTriangle("ExplodingPart"),
+            "Explosion fragments should not be merged into one StreamGeometry batch.");
+        Assert.IsFalse(WorldRenderer.ShouldRenderAsSeparateTriangle("Surface"),
+            "Normal world geometry should keep the optimized batching path.");
+        Assert.IsTrue(WorldRenderer.IsExplodingPartName("ExplodingPart"),
+            "Renderer should be able to identify explosion fragments for the dynamic effect path.");
+    }
+
+    [TestMethod]
+    public void DynamicEffects_RenderOutsideBatching()
+    {
+        Assert.IsTrue(WorldRenderer.ShouldRenderAsSeparateTriangle("Particle"),
+            "Particle bursts should not be merged into one StreamGeometry batch.");
+        Assert.IsTrue(WorldRenderer.ShouldRenderAsSeparateTriangle("ParticleShadow"),
+            "Particle shadows are dynamic effects and should not share batched geometry.");
+        Assert.IsFalse(WorldRenderer.ShouldRenderAsSeparateTriangle("EarthGlobe"),
+            "Stable world geometry should keep batching enabled.");
+
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(new _2dTriangleMesh
+        {
+            PartName = "Surface",
+            UseEffectRenderingPipeline = true
+        }), "The explicit 2D marker must force the effect pipeline even without a special part name.");
+    }
+
+    private static _3dObject CreateRenderableObject(string partName = "Main")
     {
         return new _3dObject
         {
@@ -141,7 +185,7 @@ public class RenderSimpleOptimizationTests
             {
                 new _3dObjectPart
                 {
-                    PartName = "Main",
+                    PartName = partName,
                     IsVisible = true,
                     Triangles = new List<ITriangleMeshWithColor>
                     {

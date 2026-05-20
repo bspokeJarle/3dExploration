@@ -326,6 +326,93 @@ public class ParticleShadowProjectionTests
             "Particles from surface-based objects must keep the same tile anchor as their source object.");
     }
 
+    [TestMethod]
+    public void HandleParticles_RendersOriginalParticlesWithoutSurfaceViewport()
+    {
+        GameState.SurfaceState.SurfaceViewportObject = null;
+
+        var source = new _3dObject
+        {
+            ObjectId = 2,
+            ObjectName = "Ship",
+            ObjectOffsets = new Vector3 { x = 10f, y = 20f, z = 430f },
+            WorldPosition = new Vector3(),
+            Rotation = new Vector3(),
+            Particles = new ParticlesAI
+            {
+                Particles = new List<IParticle>
+                {
+                    new Particle
+                    {
+                        ParticleTriangle = CreateParticleTriangle(),
+                        Position = new Vector3 { x = 1f, y = 2f, z = 3f },
+                        WorldPosition = new Vector3(),
+                        Rotation = new Vector3(),
+                        RotationSpeed = new Vector3(),
+                        Velocity = new Vector3(),
+                        Acceleration = new Vector3(),
+                        Color = "ff9900",
+                        BirthTime = DateTime.UtcNow,
+                        Visible = true,
+                        ImpactStatus = new ImpactStatus()
+                    }
+                }
+            }
+        };
+
+        var renderedParticles = new List<_3dObject>();
+        new ParticleManager().HandleParticles(source, renderedParticles);
+
+        Assert.AreEqual(1, renderedParticles.Count,
+            "Space scenes without a terrain surface should still render the actual particles.");
+        Assert.AreEqual("Particle", renderedParticles[0].ObjectName);
+    }
+
+    [TestMethod]
+    public void HandleParticles_DoesNotMutateStoredParticleTriangleWhenRotatingForRender()
+    {
+        GameState.SurfaceState.SurfaceViewportObject = null;
+
+        var particleTriangle = CreateParticleTriangle();
+        var source = new _3dObject
+        {
+            ObjectId = 2,
+            ObjectName = "Ship",
+            ObjectOffsets = new Vector3 { x = 10f, y = 20f, z = 430f },
+            WorldPosition = new Vector3(),
+            Rotation = new Vector3(),
+            Particles = new ParticlesAI
+            {
+                Particles = new List<IParticle>
+                {
+                    new Particle
+                    {
+                        ParticleTriangle = particleTriangle,
+                        Position = new Vector3(),
+                        WorldPosition = new Vector3(),
+                        Rotation = new Vector3 { x = 0f, y = 0f, z = 90f },
+                        RotationSpeed = new Vector3(),
+                        Velocity = new Vector3(),
+                        Acceleration = new Vector3(),
+                        Color = "ff9900",
+                        BirthTime = DateTime.UtcNow,
+                        Visible = true,
+                        ImpactStatus = new ImpactStatus()
+                    }
+                }
+            }
+        };
+
+        var renderedParticles = new List<_3dObject>();
+        new ParticleManager().HandleParticles(source, renderedParticles);
+
+        Assert.AreEqual(-1f, particleTriangle.vert1.x, 0.001f,
+            "Render rotation must use a copied particle triangle, not mutate the stored particle state.");
+        Assert.AreEqual(-1f, particleTriangle.vert1.y, 0.001f);
+        Assert.AreNotSame(particleTriangle, renderedParticles[0].ObjectParts[0].Triangles[0],
+            "Rendered particle geometry should be isolated from the particle's persistent state.");
+    }
+
     private static TriangleMeshWithColor CreateParticleTriangle()
     {
         return new TriangleMeshWithColor

@@ -115,6 +115,7 @@ namespace _3dTesting._3dRotation
             var objectOffsets = obj.ObjectOffsets;
             var objectOffsetsZ = objectOffsets.z;
             var objectName = obj.ObjectName;
+            var zSortBias = obj.ZSortBias;
 
             for (int partIndex = 0; partIndex < parts.Count; partIndex++)
             {
@@ -159,14 +160,22 @@ namespace _3dTesting._3dRotation
                         Y2 = Convert.ToInt32(y2),
                         X3 = Convert.ToInt32(x3),
                         Y3 = Convert.ToInt32(y3),
-                        CalculatedZ = (float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ),
+                        CalculatedZ = (float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ) + zSortBias,
                         Normal = normal.z,
                         TriangleAngle = triangle.angle,
                         Color = triangle.Color,
-                        PartName = part.PartName
+                        PartName = part.PartName,
+                        UseEffectRenderingPipeline = ShouldUseEffectRenderingPipeline(objectName, part.PartName)
                     });
                 }
             }
+        }
+
+        private static bool ShouldUseEffectRenderingPipeline(string? objectName, string? partName)
+        {
+            return TriangleRenderPipelineMarkers.IsDynamicEffectPartName(partName)
+                || string.Equals(objectName, "Particle", StringComparison.Ordinal)
+                || string.Equals(objectName, "ParticleShadow", StringComparison.Ordinal);
         }
 
         private (double x, double y) ProjectVertex(Vector3 v, double objPosX, double objPosY, double objPosZ)

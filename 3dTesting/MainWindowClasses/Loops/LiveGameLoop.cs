@@ -46,9 +46,35 @@ namespace _3dTesting.MainWindowClasses.Loops
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
         private const bool enableProgressionLogging = false;
-        public bool FadeOutWorld { get; set; } = false;
-        public bool FadeInWorld { get; set; } = false;
-        public bool SceneResetReady { get; set; } = false;
+        public bool FadeOutWorld
+        {
+            get => GameState.WorldFade.IsFadeOutPendingOrActive;
+            set
+            {
+                if (value)
+                    GameState.WorldFade.RequestFadeOut(1.0f, "LegacyFadeOutWorld");
+            }
+        }
+
+        public bool FadeInWorld
+        {
+            get => GameState.WorldFade.IsFadeInPendingOrActive;
+            set
+            {
+                if (value)
+                    GameState.WorldFade.RequestFadeIn(1.5f, "LegacyFadeInWorld");
+            }
+        }
+
+        public bool SceneResetReady
+        {
+            get => GameState.WorldFade.IsBlack;
+            set
+            {
+                if (value)
+                    GameState.WorldFade.MarkFadeOutComplete();
+            }
+        }
         private bool _deathSequenceStarted = false;
         private bool _victorySequenceStarted = false;
         private long _victoryStartTicks = 0;
@@ -205,17 +231,17 @@ namespace _3dTesting.MainWindowClasses.Loops
             {
                 _deathSequenceStarted = true;
                 _victorySequenceStarted = false;
-                FadeOutWorld = true;
+                GameState.WorldFade.RequestFadeOut(1.0f, "ShipDestroyed");
             }
 
             if (!_deathSequenceStarted && GameState.GamePlayState.IsInfectionCritical)
             {
                 _deathSequenceStarted = true;
                 _victorySequenceStarted = false;
-                FadeOutWorld = true;
+                GameState.WorldFade.RequestFadeOut(1.0f, "InfectionCritical");
             }
 
-            if ((_deathSequenceStarted || _victorySequenceStarted) && SceneResetReady)
+            if ((_deathSequenceStarted || _victorySequenceStarted) && GameState.WorldFade.IsBlack)
             {
                 CleanupWorldObjects(world.WorldInhabitants.OfType<_3dObject>().ToList());
                 world.WorldInhabitants.Clear();
@@ -236,8 +262,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 _deathSequenceStarted = false;
                 _victorySequenceStarted = false;
                 _victoryStartTicks = 0;
-                SceneResetReady = false;
-                FadeInWorld = true;
+                GameState.WorldFade.RequestFadeIn(1.5f, "SceneReset");
                 TrackFrameTiming((int)FrameCounter);
                 return [];
             }
@@ -296,12 +321,12 @@ namespace _3dTesting.MainWindowClasses.Loops
             }
 
             // Victory timer: show overlay briefly then trigger scene transition
-            if (_victorySequenceStarted && !_deathSequenceStarted && !FadeOutWorld)
+            if (_victorySequenceStarted && !_deathSequenceStarted && !GameState.WorldFade.IsFadeOutPendingOrActive)
             {
                 float elapsed = (Stopwatch.GetTimestamp() - _victoryStartTicks) / (float)Stopwatch.Frequency;
                 if (elapsed >= VictoryDisplaySeconds)
                 {
-                    FadeOutWorld = true;
+                    GameState.WorldFade.RequestFadeOut(1.0f, "VictoryComplete");
                 }
             }
 

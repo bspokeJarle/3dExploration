@@ -62,6 +62,8 @@ namespace GameAiAndControls.Controls
                 theObject.Rotation.z = _rotZ;
             }
 
+            theObject.ZSortBias = -300f;  // Earth always renders behind the Outro ship
+
             return theObject;
         }
 

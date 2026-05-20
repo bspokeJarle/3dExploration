@@ -1,9 +1,11 @@
+using _3dRotations.World.Objects;
 using _3dRotations.World.Objects.EarthObject;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
 using System;
+using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.Scenes.Outro
 {
@@ -21,6 +23,18 @@ namespace _3dRotations.Scenes.Outro
             var earth = EarthObject.CreateEarth();
             earth.Movement = new EarthObjectControls();
             world.WorldInhabitants.Add(earth);
+
+            var ship = Ship.CreateShip(null, new OutroShipControls());
+            ship.ObjectName = "Ship";
+            ship.WorldPosition = new Vector3 { x = 0f, y = 0f, z = 0f };
+            ship.ObjectOffsets = OutroShipControls.CreateInitialOffset();
+            ship.Rotation = OutroShipControls.CreateInitialRotation();
+            ship.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+            ship.CrashBoxDebugMode = false;
+            ship.WeaponSystems = null;
+            ship.ParentSurface = null;
+            ship.HasShadow = false;
+            world.WorldInhabitants.Add(ship);
 
             // White icy asteroid — enters from top-left, travels down-right
             var asteroid1 = AsteroidObject.CreateAsteroid(
