@@ -3,6 +3,7 @@ using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
@@ -14,8 +15,15 @@ namespace _3dTesting.Rendering
         private readonly DrawingVisualHost visualHost;
         private readonly DrawingVisual visual = new DrawingVisual();
         private readonly bool _localLoggingEnabled =  false;
+        private const bool enableRenderPerfLogging = true;
+        private const int renderPerfLogInterval = 10;
 
         private int renderingTriangleCount = 0;
+        private long renderFrameCount = 0;
+        private double averageRenderMs = 0;
+        private double averageCullMs = 0;
+        private double averageSortMs = 0;
+        private double averageDrawMs = 0;
 
         private readonly Dictionary<(float, string), Color> colorCache = new();
         private readonly Dictionary<Color, SolidColorBrush> brushCache = new();
@@ -123,9 +131,32 @@ namespace _3dTesting.Rendering
 
         public void RenderTriangles(List<_2dTriangleMesh> screenCoordinates)
         {
+            bool logRenderTiming = Logger.ShouldLog(enableRenderPerfLogging);
+            long renderStartTicks = logRenderTiming ? Stopwatch.GetTimestamp() : 0;
+            long phaseTicks = renderStartTicks;
+            double cullMs = 0;
+            double sortMs = 0;
+            double prepMs = 0;
+            double drawMs = 0;
+            double addVisualMs = 0;
+
+            double MarkPhase()
+            {
+                if (!logRenderTiming)
+                    return 0;
+
+                long now = Stopwatch.GetTimestamp();
+                double elapsedMs = TicksToMs(now - phaseTicks);
+                phaseTicks = now;
+                return elapsedMs;
+            }
+
             CullTrianglesOutsideRenderDepth(screenCoordinates);
+            cullMs = MarkPhase();
+
             renderingTriangleCount = screenCoordinates.Count;
             screenCoordinates.Sort((a, b) => a.CalculatedZ.CompareTo(b.CalculatedZ));
+            sortMs = MarkPhase();
 
             geometryPoolIndex = 0;
 
@@ -134,6 +165,7 @@ namespace _3dTesting.Rendering
             int brushHits = 0, brushMisses = 0;
             int penHits = 0, penMisses = 0;
             int drawCalls = 0;
+            prepMs = MarkPhase();
 
             using (var dc = visual.RenderOpen())
             {
@@ -231,8 +263,27 @@ namespace _3dTesting.Rendering
 
                 FlushBatch();
             }
+            drawMs = MarkPhase();
 
             visualHost.AddVisual(visual);
+            addVisualMs = MarkPhase();
+
+            if (logRenderTiming)
+            {
+                renderFrameCount++;
+                double totalMs = TicksToMs(Stopwatch.GetTimestamp() - renderStartTicks);
+                averageRenderMs += (totalMs - averageRenderMs) / renderFrameCount;
+                averageCullMs += (cullMs - averageCullMs) / renderFrameCount;
+                averageSortMs += (sortMs - averageSortMs) / renderFrameCount;
+                averageDrawMs += (drawMs - averageDrawMs) / renderFrameCount;
+
+                if (renderFrameCount % renderPerfLogInterval == 0)
+                {
+                    Logger.Log(
+                        $"[RenderPerf] frame={renderFrameCount} triangles={renderingTriangleCount} drawCalls={drawCalls} totalMs={totalMs:0.###} cullMs={cullMs:0.###} sortMs={sortMs:0.###} prepMs={prepMs:0.###} drawMs={drawMs:0.###} addVisualMs={addVisualMs:0.###} " +
+                        $"avgRenderMs={averageRenderMs:0.###} avgCullMs={averageCullMs:0.###} avgSortMs={averageSortMs:0.###} avgDrawMs={averageDrawMs:0.###}");
+                }
+            }
 
             if (trackStats)
             {
@@ -422,32 +473,57 @@ namespace _3dTesting.Rendering
 
         private void DrawEffectTriangle(DrawingContext dc, _2dTriangleMesh triangle)
         {
-            Color color = GetTriangleColorUncached(triangle);
-            var brush = new SolidColorBrush(color);
-            brush.Freeze();
-
-            var pen = new Pen(brush, 1);
-            pen.Freeze();
-
-            var geometry = new StreamGeometry
-            {
-                FillRule = FillRule.Nonzero
-            };
+            Color color = GetCachedTriangleColor(triangle);
+            SolidColorBrush brush = GetCachedBrush(color);
+            Pen pen = GetCachedPen(color, brush);
+            StreamGeometry geometry = GetNextGeometry();
 
             using (var ctx = geometry.Open())
             {
                 AddTriangleFigure(ctx, triangle);
             }
 
-            geometry.Freeze();
             dc.DrawGeometry(brush, pen, geometry);
         }
 
-        private static Color GetTriangleColorUncached(_2dTriangleMesh triangle)
+        private Color GetCachedTriangleColor(_2dTriangleMesh triangle)
         {
             float shadeKey = GetTriangleShadeKey(triangle);
             string baseColor = NormalizeColor(triangle.Color);
-            return HexToColor(Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor));
+            if (colorCache.TryGetValue((shadeKey, baseColor), out Color color))
+            {
+                return color;
+            }
+
+            color = HexToColor(Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor));
+            colorCache[(shadeKey, baseColor)] = color;
+            return color;
+        }
+
+        private SolidColorBrush GetCachedBrush(Color color)
+        {
+            if (brushCache.TryGetValue(color, out SolidColorBrush brush))
+            {
+                return brush;
+            }
+
+            brush = new SolidColorBrush(color);
+            brush.Freeze();
+            brushCache[color] = brush;
+            return brush;
+        }
+
+        private Pen GetCachedPen(Color color, SolidColorBrush brush)
+        {
+            if (penCache.TryGetValue(color, out Pen pen))
+            {
+                return pen;
+            }
+
+            pen = new Pen(brush, 1);
+            pen.Freeze();
+            penCache[color] = pen;
+            return pen;
         }
 
         private static float GetTriangleShadeKey(_2dTriangleMesh triangle)
@@ -560,6 +636,12 @@ namespace _3dTesting.Rendering
             byte b = Convert.ToByte(hex.Substring(4, 2), 16);
 
             return Color.FromArgb(255, r, g, b);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static double TicksToMs(long ticks)
+        {
+            return ticks * 1000.0 / Stopwatch.Frequency;
         }
     }
 }

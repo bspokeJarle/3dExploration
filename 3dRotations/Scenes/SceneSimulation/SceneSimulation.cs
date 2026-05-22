@@ -3,6 +3,7 @@ using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
 using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
@@ -20,6 +21,7 @@ namespace _3dRotations.Scenes.SceneSimulation
     public class SceneSimulation : IScene
     {
         Surface Surface = new();
+        private const int TargetWinterPolarBearCount = 31;
 
         private static readonly SceneBiomeTypes[] BiomeCycle = new[]
         {
@@ -128,7 +130,10 @@ namespace _3dRotations.Scenes.SceneSimulation
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
 
-            SpawnJumpingFish(world);
+            if (_biome == SceneBiomeTypes.Winter)
+                SpawnSeals(world);
+            else
+                SpawnJumpingFish(world);
 
             // Zeppelin Bombers
             for (int b = 0; b < _bombers; b++)
@@ -298,6 +303,9 @@ namespace _3dRotations.Scenes.SceneSimulation
             world.WorldInhabitants.Add(surfaceObject);
             GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
 
+            if (_biome == SceneBiomeTypes.Winter)
+                world.WorldInhabitants.Add(SnowEmitter.CreateSnowEmitter(Surface));
+
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
             SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
                 GameState.SurfaceState.Global2DMap,
@@ -351,6 +359,9 @@ namespace _3dRotations.Scenes.SceneSimulation
                 house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId > 0) world.WorldInhabitants.Add(house);
             }
+
+            if (_biome == SceneBiomeTypes.Winter)
+                SpawnPolarBears(world);
         }
 
         public void SetupSceneOverlay()
@@ -453,6 +464,205 @@ namespace _3dRotations.Scenes.SceneSimulation
                 jumpingFish.IsActive = true;
                 world.WorldInhabitants.Add(jumpingFish);
             }
+        }
+
+        private void SpawnSeals(I3dWorld world)
+        {
+            var fishJumpAreas = GameState.SurfaceState.FishJumpAreas;
+            if (fishJumpAreas == null || fishJumpAreas.Count == 0)
+                return;
+
+            int sealCount = Math.Min(80, fishJumpAreas.Count);
+            int tileSize = Surface.TileSize();
+            for (int i = 0; i < sealCount; i++)
+            {
+                int areaIndex = (int)MathF.Floor(i * fishJumpAreas.Count / (float)sealCount);
+                var area = fishJumpAreas[areaIndex];
+                float jumpSpan = Math.Min(tileSize * 2f, Math.Max(tileSize, (area.EndTileX - area.StartTileX - 1) * tileSize));
+                float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
+                float minPathOffsetX = baseOffsetX + ((area.StartTileX - area.CenterTileX) * tileSize);
+                float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
+
+                var seal = Seal.CreateSeal(Surface);
+                seal.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                seal.WorldPosition = new Vector3 { };
+                seal.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
+                seal.ObjectOffsets = new Vector3
+                {
+                    x = baseOffsetX,
+                    y = 500 * ScreenSetup.ScreenScaleY,
+                    z = 400
+                };
+                seal.ObjectName = "Seal";
+                seal.Movement = new JumpingFishControls(jumpSpan, minPathOffsetX, maxPathOffsetX);
+                seal.ImpactStatus = new ImpactStatus { };
+                seal.CrashBoxDebugMode = false;
+                seal.CrashBoxes = new List<List<IVector3>>();
+                seal.IsActive = true;
+                world.WorldInhabitants.Add(seal);
+            }
+        }
+
+        private void SpawnPolarBears(I3dWorld world)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return;
+
+            int sizeZ = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+            int maxHeight = Surface.MaxHeight();
+            int tileSize = Surface.TileSize();
+            float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
+            int mapCenterX = sizeX / 2;
+            int mapCenterZ = sizeZ / 2;
+            int landingAreaSize = 8;
+            int landingBufferTiles = 6;
+            int landingTopLeftX = Math.Max(0, mapCenterX - (landingAreaSize / 2));
+            int landingTopLeftZ = Math.Max(0, mapCenterZ - (landingAreaSize / 2));
+
+            var patrolTiles = new List<(int tileX, int tileZ, int startX, int endX)>();
+            int patrolWidthTiles = 8;
+            int patrolHeightTiles = 2;
+
+            for (int z = 1; z < sizeZ - patrolHeightTiles - 1; z += patrolHeightTiles)
+            {
+                for (int x = 1; x < sizeX - patrolWidthTiles - 1; x += patrolWidthTiles)
+                {
+                    int centerX = x + (patrolWidthTiles / 2);
+                    int centerZ = z + (patrolHeightTiles / 2);
+                    if (IsInsideLandingPlatformOrBuffer(centerX, centerZ, landingTopLeftX, landingTopLeftZ, landingAreaSize, landingBufferTiles))
+                        continue;
+
+                    if (!TryFindDryLandTileInPatrolArea(
+                            map,
+                            maxHeight,
+                            centerX,
+                            centerZ,
+                            x,
+                            x + patrolWidthTiles - 1,
+                            patrolHeightTiles,
+                            out int tileX,
+                            out int tileZ))
+                        continue;
+
+                    patrolTiles.Add((tileX, tileZ, x, x + patrolWidthTiles - 1));
+                }
+            }
+
+            patrolTiles.Sort((a, b) =>
+            {
+                int adx = a.tileX - mapCenterX;
+                int adz = a.tileZ - mapCenterZ;
+                int bdx = b.tileX - mapCenterX;
+                int bdz = b.tileZ - mapCenterZ;
+                return ((adx * adx) + (adz * adz)).CompareTo((bdx * bdx) + (bdz * bdz));
+            });
+
+            int bearsPlaced = 0;
+            for (int i = 0; i < patrolTiles.Count && bearsPlaced < TargetWinterPolarBearCount; i++)
+            {
+                var placement = patrolTiles[i];
+                int tileX = placement.tileX;
+                int tileZ = placement.tileZ;
+
+                if (map[tileZ, tileX].hasLandbasedObject)
+                    continue;
+
+                int mapId = map[tileZ, tileX].mapId;
+                if (mapId <= 0)
+                    continue;
+
+                int centerX = (placement.startX + placement.endX) / 2;
+                int tileDeltaX = tileX - centerX;
+                float centerOffsetX = baseOffsetX + (tileDeltaX * tileSize);
+                float halfSpan = (placement.endX - placement.startX) * 0.5f * tileSize;
+                float minPathOffsetX = centerOffsetX - halfSpan;
+                float maxPathOffsetX = centerOffsetX + halfSpan;
+
+                var polarBear = PolarBear.CreatePolarBear(Surface);
+                polarBear.WorldPosition = new Vector3 { };
+                polarBear.SurfaceBasedId = mapId;
+                polarBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
+                polarBear.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                polarBear.ObjectName = "PolarBear";
+                polarBear.Movement = new PolarBearControls(minPathOffsetX, maxPathOffsetX);
+                polarBear.ImpactStatus = new ImpactStatus { };
+                polarBear.CrashBoxDebugMode = false;
+                polarBear.IsActive = true;
+
+                world.WorldInhabitants.Add(polarBear);
+                GameState.SurfaceState.AiObjects.Add(polarBear);
+                map[tileZ, tileX].hasLandbasedObject = true;
+                bearsPlaced++;
+            }
+        }
+
+        private static bool IsInsideLandingPlatformOrBuffer(int x, int z, int landingTopLeftX, int landingTopLeftZ, int landingSize, int buffer)
+        {
+            int minX = landingTopLeftX - buffer;
+            int minZ = landingTopLeftZ - buffer;
+            int maxX = landingTopLeftX + landingSize - 1 + buffer;
+            int maxZ = landingTopLeftZ + landingSize - 1 + buffer;
+            return x >= minX && x <= maxX && z >= minZ && z <= maxZ;
+        }
+
+        private static bool TryFindDryLandTileInPatrolArea(
+            SurfaceData[,] map,
+            int maxHeight,
+            int centerX,
+            int centerZ,
+            int startX,
+            int endX,
+            int patrolHeightTiles,
+            out int bestTileX,
+            out int bestTileZ)
+        {
+            int sizeZ = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+
+            bestTileX = Math.Clamp(centerX, 0, sizeX - 1);
+            bestTileZ = Math.Clamp(centerZ, 0, sizeZ - 1);
+
+            int bestDistance = int.MaxValue;
+            bool found = false;
+            int minX = Math.Clamp(startX, 1, sizeX - 2);
+            int maxX = Math.Clamp(endX, 1, sizeX - 2);
+            int zSearchRadius = Math.Max(1, patrolHeightTiles);
+            int minZ = Math.Clamp(centerZ - zSearchRadius, 1, sizeZ - 2);
+            int maxZ = Math.Clamp(centerZ + zSearchRadius, 1, sizeZ - 2);
+
+            for (int z = minZ; z <= maxZ; z++)
+            {
+                for (int x = minX; x <= maxX; x++)
+                {
+                    if (map[z, x].hasLandbasedObject)
+                        continue;
+
+                    if (!IsDryLandTerrain(map[z, x], maxHeight))
+                        continue;
+
+                    int dx = x - centerX;
+                    int dz = z - centerZ;
+                    int distance = (dx * dx) + (dz * dz);
+                    if (distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        bestTileX = x;
+                        bestTileZ = z;
+                        found = true;
+                    }
+                }
+            }
+
+            return found;
+        }
+
+        private static bool IsDryLandTerrain(SurfaceData tile, int maxHeight)
+        {
+            var terrain = GamePlayHelpers.GetTerrainType(tile.mapDepth, maxHeight);
+            return terrain == GamePlayHelpers.TerrainType.Grassland ||
+                   terrain == GamePlayHelpers.TerrainType.Highlands;
         }
     }
 }

@@ -76,6 +76,39 @@ public class RenderSimpleOptimizationTests
     }
 
     [TestMethod]
+    public void ConvertTo2dFromObjects_ReservesCapacityForVisibleTriangles()
+    {
+        var converter = new _3dTo2d();
+        var reusable = new List<_2dTriangleMesh>(capacity: 1);
+        var obj = CreateRenderableObject();
+        var triangles = obj.ObjectParts[0].Triangles;
+        var template = triangles[0];
+
+        for (int i = 1; i < 64; i++)
+        {
+            triangles.Add(new TriangleMeshWithColor
+            {
+                Color = template.Color,
+                noHidden = true,
+                normal1 = new Vector3 { x = 0f, y = 0f, z = 1f },
+                vert1 = new Vector3 { x = -10f, y = -10f, z = 0f },
+                vert2 = new Vector3 { x = 10f, y = -10f, z = 0f },
+                vert3 = new Vector3 { x = 0f, y = 10f, z = 0f }
+            });
+        }
+
+        var result = converter.ConvertTo2dFromObjects(
+            new List<_3dObject> { obj },
+            1,
+            reusable);
+
+        Assert.AreSame(reusable, result);
+        Assert.AreEqual(64, result.Count);
+        Assert.IsTrue(result.Capacity >= 64,
+            "Projection output should reserve enough capacity for visible triangles, not just object count.");
+    }
+
+    [TestMethod]
     public void ConvertTo2dFromObjects_MarksDynamicEffectsForEffectPipeline()
     {
         var converter = new _3dTo2d();

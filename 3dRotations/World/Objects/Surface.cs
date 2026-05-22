@@ -263,9 +263,11 @@ namespace _3dRotations.World.Objects
                 }
                 else if (height < maxHeight * 0.4)
                 {
-                    red = 215;
-                    green = 230;
-                    blue = 240;
+                    float t = (height - (maxHeight * 0.15f)) / (maxHeight * 0.25f);
+                    t = Math.Clamp(t, 0f, 1f);
+                    red = 95 + (int)(t * 120);
+                    green = 145 + (int)(t * 85);
+                    blue = 215 + (int)(t * 25);
                 }
                 else if (height < maxHeight * 0.7)
                 {

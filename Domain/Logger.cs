@@ -51,6 +51,7 @@ public static class Logger
                 if (_logBuffer.Count == 0) return;
 
                 List<string> existing = new();
+                EnsureLogDirectoryExists();
 
                 if (File.Exists(LogFilePath))
                 {
@@ -79,6 +80,7 @@ public static class Logger
     {
         try
         {
+            EnsureLogDirectoryExists();
             if (File.Exists(LogFilePath))
                 File.WriteAllText(LogFilePath, "");
         }
@@ -86,5 +88,12 @@ public static class Logger
         {
             Debug.WriteLine($"[Logger Error] Failed to clear log: {ex.Message}");
         }
+    }
+
+    private static void EnsureLogDirectoryExists()
+    {
+        var directory = Path.GetDirectoryName(LogFilePath);
+        if (!string.IsNullOrWhiteSpace(directory))
+            Directory.CreateDirectory(directory);
     }
 }

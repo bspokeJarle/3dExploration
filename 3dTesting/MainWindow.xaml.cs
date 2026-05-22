@@ -1,5 +1,6 @@
 using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
+using _3dTesting.MainWindowClasses.Loops;
 using _3dTesting.MainWindowClasses.Overlays;
 using _3dTesting.Rendering;
 using CommonUtilities.CommonGlobalState;
@@ -43,7 +44,7 @@ namespace _3dTesting
     public partial class MainWindow : Window
     {
         private const bool enableLogging = false;
-        private const bool enableFileLogging = false;
+        private const bool enableFileLogging = LiveGameLoop.EnableCpuHeadroomLogging;
         private DrawingVisualHost visualHost = new DrawingVisualHost();
         private readonly DispatcherTimer timer = new DispatcherTimer();
         private readonly Stopwatch stopwatch = new Stopwatch();
@@ -59,10 +60,13 @@ namespace _3dTesting
         private bool isPaused = false;
         private int pauseFrameCount = 0;
         private const int limitFrameCount = 10;
+        private const int MaxPooledTriangleLists = 4;
         private DateTime fadeOutTrigged = DateTime.MinValue;
         private int _updateInProgress = 0;
         private long _lastTickTimestamp = 0;
         private int _minimapFrameSkip = 0;
+        private readonly object _triangleListPoolLock = new();
+        private readonly Stack<List<_Coordinates._2dTriangleMesh>> _triangleListPool = new();
 
         // Overlay handlers
         private OverlayManager _overlayManager;
@@ -489,11 +493,18 @@ namespace _3dTesting
             {
                 bool shouldLog = Logger.ShouldLog(enableLogging);
                 long startTicks = shouldLog ? Stopwatch.GetTimestamp() : 0;
+                var screenCoordinates = RentTriangleList();
+                var crashBoxCoordinates = RentTriangleList();
+                bool handedToDispatcher = false;
+
+                void ReturnLists()
+                {
+                    ReturnTriangleList(screenCoordinates);
+                    ReturnTriangleList(crashBoxCoordinates);
+                }
+
                 try
                 {
-                    var screenCoordinates = new List<_Coordinates._2dTriangleMesh>();
-                    var crashBoxCoordinates = new List<_Coordinates._2dTriangleMesh>();
-
                     gameWorldManager.UpdateWorld(world, ref screenCoordinates, ref crashBoxCoordinates);
 
                     if (shouldLog)
@@ -503,13 +514,53 @@ namespace _3dTesting
                     }
 
                     if (!isFading || _isFadingIn)
-                        Dispatcher.BeginInvoke(() => worldRenderer.RenderTriangles(screenCoordinates));
+                    {
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            try
+                            {
+                                worldRenderer.RenderTriangles(screenCoordinates);
+                            }
+                            finally
+                            {
+                                ReturnLists();
+                            }
+                        });
+                        handedToDispatcher = true;
+                    }
                 }
                 finally
                 {
+                    if (!handedToDispatcher)
+                    {
+                        ReturnLists();
+                    }
+
                     System.Threading.Interlocked.Exchange(ref _updateInProgress, 0);
                 }
             });
+        }
+
+        private List<_Coordinates._2dTriangleMesh> RentTriangleList()
+        {
+            lock (_triangleListPoolLock)
+            {
+                if (_triangleListPool.Count > 0)
+                    return _triangleListPool.Pop();
+            }
+
+            return new List<_Coordinates._2dTriangleMesh>();
+        }
+
+        private void ReturnTriangleList(List<_Coordinates._2dTriangleMesh> list)
+        {
+            list.Clear();
+
+            lock (_triangleListPoolLock)
+            {
+                if (_triangleListPool.Count < MaxPooledTriangleLists)
+                    _triangleListPool.Push(list);
+            }
         }
 
         private void UpdateVideoOverlay()

@@ -5,6 +5,7 @@ using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.Events;
 using CommonUtilities.Persistence;
 using Domain;
 using GameAiAndControls.Controls;
@@ -21,13 +22,23 @@ namespace _3dTesting.MainWindowClasses.Loops
 {
     public class LiveGameLoop : IGameLoop<_2dTriangleMesh>
     {
+        public const bool EnableCpuHeadroomLogging = true;
+        private const bool EnableAdaptiveGc = true;
         private const int perfLogInterval = 10;
+        private const int adaptiveGcMinFrameInterval = ScreenSetup.targetFps;
+        private const int adaptiveGcGen1EveryAttempts = 6;
+        private const double adaptiveGcMinHeadroomMs = 5.0;
+        private const double adaptiveGcMinHeadroomPct = 45.0;
+        private const long adaptiveGcMinAllocatedBytes = 24L * 1024L * 1024L;
 
         private long FrameCounter = 0;
         private readonly Stopwatch frameTimer = new();
         private long performanceFrameCount = 0;
         private double averageFrameMs = 0;
         private double averageHeadroomMs = 0;
+        private long lastAdaptiveGcFrame = -adaptiveGcMinFrameInterval;
+        private long lastAdaptiveGcAllocatedBytes = GC.GetTotalAllocatedBytes(precise: false);
+        private long adaptiveGcAttempts = 0;
         private int AiUpdateCounter = 0;
         private const int AiUpdateInterval = 5; // Update offscreen AI every 5 frames
         private readonly _3dTo2d From3dTo2d = new();
@@ -35,6 +46,16 @@ namespace _3dTesting.MainWindowClasses.Loops
         private readonly ParticleManager particleManager = new();
         private readonly WeaponsManager weaponsManager = new();
         private readonly ObjectShadowManager objectShadowManager = new();
+        private readonly List<_3dObject> activeWorldBuffer = new();
+        private readonly List<_3dObject> deepCopiedWorldBuffer = new();
+        private readonly List<_3dObject> particleObjectBuffer = new();
+        private readonly List<_3dObject> weaponObjectBuffer = new();
+        private readonly List<_3dObject> shadowObjectBuffer = new();
+        private readonly List<_3dObject> renderedObjectBuffer = new();
+        private readonly Dictionary<int, _3dObject> aiByIdBuffer = new();
+        private readonly HashSet<int> pendingExplosionCleanupIds = new();
+        private readonly HashSet<int> publishedExplosionIds = new();
+        private IGameEventBus? explosionCleanupEventBus;
         private StarFieldHandler StarFieldHandler { get; set; }
 
         private readonly IAudioPlayer audioPlayer = new NAudioAudioPlayer(AudioSetup.AudioBasePath);
@@ -90,8 +111,35 @@ namespace _3dTesting.MainWindowClasses.Loops
         {
             frameTimer.Restart();
             FrameCounter++;
-            List<_3dObject> deepCopiedWorld;
-            List<_3dObject> activeWorld;
+            EnsureExplosionCleanupSubscription(world.EventBus);
+            bool logPhaseTiming = Logger.ShouldLog(EnableCpuHeadroomLogging) && (FrameCounter % perfLogInterval == 0);
+            long phaseTicks = logPhaseTiming ? Stopwatch.GetTimestamp() : 0;
+            double copyMs = 0;
+            double starfieldMs = 0;
+            double prepMs = 0;
+            double moveRotateMs = 0;
+            double mergeMs = 0;
+            double offscreenAiMs = 0;
+            double infectionMs = 0;
+            double projectMs = 0;
+            double crashMs = 0;
+            double cleanupMs = 0;
+            double directorHudMs = 0;
+            double musicMs = 0;
+
+            double MarkPhase()
+            {
+                if (!logPhaseTiming)
+                    return 0;
+
+                long now = Stopwatch.GetTimestamp();
+                double elapsedMs = TicksToMs(now - phaseTicks);
+                phaseTicks = now;
+                return elapsedMs;
+            }
+
+            List<_3dObject> deepCopiedWorld = deepCopiedWorldBuffer;
+            List<_3dObject> activeWorld = activeWorldBuffer;
             lock (_lock)
             {
                 if (GameState.PendingWorldObjects.Count > 0)
@@ -101,7 +149,8 @@ namespace _3dTesting.MainWindowClasses.Loops
                 }
 
                 var inhabitants = world.WorldInhabitants;
-                activeWorld = new List<_3dObject>(inhabitants.Count);
+                activeWorld.Clear();
+                EnsureListCapacity(activeWorld, inhabitants.Count);
 
                 foreach (var inhabitant in inhabitants)
                 {
@@ -114,8 +163,10 @@ namespace _3dTesting.MainWindowClasses.Loops
                     }
                 }
 
-                deepCopiedWorld = Common3dObjectHelpers.DeepCopy3dObjects(activeWorld);
+                Common3dObjectHelpers.DeepCopy3dObjects(activeWorld, deepCopiedWorld);
             }
+            copyMs = MarkPhase();
+
             if (StarFieldHandler == null)
             {
                 var parentSurface = world.WorldInhabitants?.FirstOrDefault(obj => obj.ObjectName == "Surface")?.ParentSurface;
@@ -132,11 +183,17 @@ namespace _3dTesting.MainWindowClasses.Loops
                 SnowfallControls.GlobalSnowOpacity = weatherOpacity;
                 RainfallControls.GlobalRainOpacity = weatherOpacity;
             }
+            starfieldMs = MarkPhase();
 
-            var particleObjectList = new List<_3dObject>();
-            var weaponObjectList = new List<_3dObject>();
-            var shadowObjectList = new List<_3dObject>();
-            var renderedList = new List<_3dObject>(deepCopiedWorld.Count);
+            var particleObjectList = particleObjectBuffer;
+            var weaponObjectList = weaponObjectBuffer;
+            var shadowObjectList = shadowObjectBuffer;
+            var renderedList = renderedObjectBuffer;
+            particleObjectList.Clear();
+            weaponObjectList.Clear();
+            shadowObjectList.Clear();
+            renderedList.Clear();
+            EnsureListCapacity(renderedList, deepCopiedWorld.Count);
             DebugMessage = string.Empty;
 
             AiUpdateCounter++;
@@ -148,6 +205,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             {
                 aiById = InitializeAiOnScreenTracking();
             }
+            prepMs = MarkPhase();
 
             foreach (var inhabitant in deepCopiedWorld)
             {
@@ -159,6 +217,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 }
 
                 inhabitant.Movement?.MoveObject(inhabitant, audioPlayer, soundRegistry);
+                PublishObjectExplodedIfNeeded(world, inhabitant);
                 if (inhabitant.CrashBoxesFollowRotation) inhabitant.CrashBoxes = RotateAllCrashboxes(inhabitant.CrashBoxes, (Vector3)inhabitant.Rotation);
                 if (inhabitant.ObjectName == "Ship")
                 {
@@ -208,6 +267,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 renderedList.Add(inhabitant);
 
             }
+            moveRotateMs = MarkPhase();
 
             if (shadowObjectList.Count > 0)
             {
@@ -223,6 +283,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 renderedList.AddRange(weaponObjectList);
                 DebugMessage += $" Number of Weapons on screen {weaponObjectList.Count}";
             }
+            mergeMs = MarkPhase();
 
             var activeScene = world.SceneHandler.GetActiveScene();
 
@@ -249,6 +310,8 @@ namespace _3dTesting.MainWindowClasses.Loops
                 GameState.SurfaceState.DirtyTiles.Clear();
                 GameState.SurfaceState.PendingLocalInfectionSpread.Clear();
                 GameState.ShipState.BestCandidateStates.Clear();
+                pendingExplosionCleanupIds.Clear();
+                publishedExplosionIds.Clear();
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
                 SnowfallControls.GlobalSnowOpacity = 1f;
@@ -263,6 +326,31 @@ namespace _3dTesting.MainWindowClasses.Loops
                 _victorySequenceStarted = false;
                 _victoryStartTicks = 0;
                 GameState.WorldFade.RequestFadeIn(1.5f, "SceneReset");
+                if (logPhaseTiming)
+                {
+                    LogUpdatePhaseTiming(
+                        (int)FrameCounter,
+                        activeWorld.Count,
+                        deepCopiedWorld.Count,
+                        renderedList.Count,
+                        projectedCoordinates?.Count ?? 0,
+                        particleObjectList.Count,
+                        weaponObjectList.Count,
+                        shadowObjectList.Count,
+                        copyMs,
+                        starfieldMs,
+                        prepMs,
+                        moveRotateMs,
+                        mergeMs,
+                        offscreenAiMs,
+                        infectionMs,
+                        projectMs,
+                        crashMs,
+                        cleanupMs,
+                        directorHudMs,
+                        musicMs,
+                        resetFrame: true);
+                }
                 TrackFrameTiming((int)FrameCounter);
                 return [];
             }
@@ -276,17 +364,25 @@ namespace _3dTesting.MainWindowClasses.Loops
                     if (aiObject.IsOnScreen == false)
                     {
                         aiObject.Movement.MoveObject(aiObject, audioPlayer, soundRegistry);
+                        PublishObjectExplodedIfNeeded(world, aiObject);
                         aiObject.IsOnScreen = false;
                     }
                 }
             }
+            offscreenAiMs = MarkPhase();
 
             // Process cascading local infection spread (seeder-infected tiles spread to neighbors after a delay)
             SeederControls.ProcessLocalInfectionSpread(GameState.SurfaceState);
+            infectionMs = MarkPhase();
 
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter, projectedCoordinates);
+            projectMs = MarkPhase();
+
             CrashDetection.HandleCrashboxes(renderedList, world.IsPaused);
+            crashMs = MarkPhase();
+
             CleanupExplodedObjects(world);
+            cleanupMs = MarkPhase();
 
             // Scene director: centralizes drone activation, mothership activation,
             // victory/defeat conditions, and checkpoint logic per scene.
@@ -329,27 +425,130 @@ namespace _3dTesting.MainWindowClasses.Loops
                     GameState.WorldFade.RequestFadeOut(1.0f, "VictoryComplete");
                 }
             }
+            directorHudMs = MarkPhase();
 
             if (activeScene != null)
             {
                 HandleMusic(renderedList, activeScene.SceneMusic);
+            }
+            musicMs = MarkPhase();
+
+            if (logPhaseTiming)
+            {
+                LogUpdatePhaseTiming(
+                    (int)FrameCounter,
+                    activeWorld.Count,
+                    deepCopiedWorld.Count,
+                    renderedList.Count,
+                    projectedCoordinates.Count,
+                    particleObjectList.Count,
+                    weaponObjectList.Count,
+                    shadowObjectList.Count,
+                    copyMs,
+                    starfieldMs,
+                    prepMs,
+                    moveRotateMs,
+                    mergeMs,
+                    offscreenAiMs,
+                    infectionMs,
+                    projectMs,
+                    crashMs,
+                    cleanupMs,
+                    directorHudMs,
+                    musicMs,
+                    resetFrame: false);
             }
 
             TrackFrameTiming((int)FrameCounter);
             return projectedCoordinates;
         }
 
+        private void EnsureExplosionCleanupSubscription(IGameEventBus? eventBus)
+        {
+            if (ReferenceEquals(explosionCleanupEventBus, eventBus))
+            {
+                return;
+            }
+
+            if (explosionCleanupEventBus != null)
+            {
+                explosionCleanupEventBus.Unsubscribe(GameEventType.ObjectExploded, QueueExplosionCleanup);
+            }
+
+            explosionCleanupEventBus = eventBus;
+            pendingExplosionCleanupIds.Clear();
+            publishedExplosionIds.Clear();
+
+            if (explosionCleanupEventBus != null)
+            {
+                explosionCleanupEventBus.Subscribe(GameEventType.ObjectExploded, QueueExplosionCleanup);
+            }
+        }
+
+        private void QueueExplosionCleanup(IGameEvent gameEvent)
+        {
+            if (gameEvent.Source is not _3dObject obj || obj.ObjectName == "Ship")
+            {
+                return;
+            }
+
+            pendingExplosionCleanupIds.Add(obj.ObjectId);
+        }
+
+        private void PublishObjectExplodedIfNeeded(I3dWorld world, _3dObject obj)
+        {
+            if (obj.ObjectName == "Ship" || obj.ImpactStatus?.HasExploded != true)
+            {
+                return;
+            }
+
+            if (!publishedExplosionIds.Add(obj.ObjectId))
+            {
+                return;
+            }
+
+            world.EventBus?.Publish(new GameEvent
+            {
+                Type = GameEventType.ObjectExploded,
+                Source = obj,
+                ObjectName = obj.ObjectName,
+                HasPowerUp = obj.HasPowerUp
+            });
+        }
+
         private void CleanupExplodedObjects(I3dWorld world)
         {
+            bool useEventDrivenCleanup = explosionCleanupEventBus != null;
+            if (useEventDrivenCleanup && pendingExplosionCleanupIds.Count == 0)
+            {
+                return;
+            }
+
             lock (_lock)
             {
                 List<_3dObject>? explodedObjects = null;
                 HashSet<int>? explodedIds = null;
+                HashSet<int>? observedPendingIds = useEventDrivenCleanup ? new HashSet<int>() : null;
 
                 var inhabitants = world.WorldInhabitants;
                 for (int i = 0; i < inhabitants.Count; i++)
                 {
-                    if (inhabitants[i] is not _3dObject obj || obj.ObjectName == "Ship" || obj.ImpactStatus?.HasExploded != true)
+                    if (inhabitants[i] is not _3dObject obj)
+                    {
+                        continue;
+                    }
+
+                    if (useEventDrivenCleanup)
+                    {
+                        if (!pendingExplosionCleanupIds.Contains(obj.ObjectId))
+                        {
+                            continue;
+                        }
+
+                        observedPendingIds?.Add(obj.ObjectId);
+                    }
+
+                    if (obj.ObjectName == "Ship" || obj.ImpactStatus?.HasExploded != true)
                     {
                         continue;
                     }
@@ -358,6 +557,11 @@ namespace _3dTesting.MainWindowClasses.Loops
                     explodedIds ??= new HashSet<int>(inhabitants.Count);
                     explodedObjects.Add(obj);
                     explodedIds.Add(obj.ObjectId);
+                }
+
+                if (useEventDrivenCleanup)
+                {
+                    ClearMissingExplosionCleanupIds(observedPendingIds);
                 }
 
                 if (explodedObjects == null || explodedIds == null)
@@ -479,6 +683,35 @@ namespace _3dTesting.MainWindowClasses.Loops
                 }
 
                 CleanupWorldObjects(explodedObjects);
+                ClearExplosionCleanupIds(explodedIds);
+            }
+        }
+
+        private void ClearMissingExplosionCleanupIds(HashSet<int>? observedPendingIds)
+        {
+            if (observedPendingIds == null || observedPendingIds.Count == pendingExplosionCleanupIds.Count)
+            {
+                return;
+            }
+
+            foreach (var objectId in pendingExplosionCleanupIds.ToList())
+            {
+                if (observedPendingIds.Contains(objectId))
+                {
+                    continue;
+                }
+
+                pendingExplosionCleanupIds.Remove(objectId);
+                publishedExplosionIds.Remove(objectId);
+            }
+        }
+
+        private void ClearExplosionCleanupIds(HashSet<int> cleanupIds)
+        {
+            foreach (var objectId in cleanupIds)
+            {
+                pendingExplosionCleanupIds.Remove(objectId);
+                publishedExplosionIds.Remove(objectId);
             }
         }
 
@@ -678,7 +911,9 @@ namespace _3dTesting.MainWindowClasses.Loops
             if (aiObjects == null || aiObjects.Count == 0)
                 return null;
 
-            var aiById = new Dictionary<int, _3dObject>(aiObjects.Count);
+            var aiById = aiByIdBuffer;
+            aiById.Clear();
+            aiById.EnsureCapacity(aiObjects.Count);
 
             foreach (var ai in aiObjects)
             {
@@ -687,6 +922,12 @@ namespace _3dTesting.MainWindowClasses.Loops
             }
 
             return aiById;
+        }
+
+        private static void EnsureListCapacity<T>(List<T> list, int capacity)
+        {
+            if (list.Capacity < capacity)
+                list.Capacity = capacity;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -820,16 +1061,26 @@ namespace _3dTesting.MainWindowClasses.Loops
             if (!frameTimer.IsRunning)
                 return;
 
-            frameTimer.Stop();
-            if (!enableLocalLogging)
+            bool logFrameTiming = Logger.ShouldLog(EnableCpuHeadroomLogging);
+            if (!logFrameTiming && !EnableAdaptiveGc)
+            {
+                frameTimer.Stop();
                 return;
-            if (!Logger.ShouldLog(enableLocalLogging))
-                return;
+            }
 
             var budgetMs = 1000.0 / CommonUtilities.CommonSetup.ScreenSetup.targetFps;
+            var preGcElapsedMs = frameTimer.Elapsed.TotalMilliseconds;
+            var preGcHeadroomMs = budgetMs - preGcElapsedMs;
+            var preGcHeadroomPct = (preGcHeadroomMs / budgetMs) * 100.0;
+            var adaptiveGc = TryRunAdaptiveGc(frameIndex, preGcHeadroomMs, preGcHeadroomPct);
+
+            frameTimer.Stop();
             var elapsedMs = frameTimer.Elapsed.TotalMilliseconds;
             var headroomMs = budgetMs - elapsedMs;
             var headroomPct = (headroomMs / budgetMs) * 100.0;
+
+            if (!logFrameTiming)
+                return;
 
             performanceFrameCount++;
             averageFrameMs += (elapsedMs - averageFrameMs) / performanceFrameCount;
@@ -837,11 +1088,119 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             DebugMessage += $" PerfHeadroom: {headroomPct:0.#}%";
 
+            if (adaptiveGc.HasValue)
+            {
+                var gc = adaptiveGc.Value;
+                Logger.Log(
+                    $"[IdleGc] frame={frameIndex} gen={gc.Generation} gcMs={gc.ElapsedMs:0.###} allocatedMb={gc.AllocatedSinceLastMb:0.###} " +
+                    $"preHeadroomPct={preGcHeadroomPct:0.#} postHeadroomPct={headroomPct:0.#} gen0Collections={gc.Gen0Collections} gen1Collections={gc.Gen1Collections}");
+            }
+
             if (performanceFrameCount % perfLogInterval == 0)
             {
                 var avgHeadroomPct = (averageHeadroomMs / budgetMs) * 100.0;
                 Logger.Log($"[LivePerf] frame={frameIndex} frameMs={elapsedMs:0.###} headroomMs={headroomMs:0.###} headroomPct={headroomPct:0.#} avgFrameMs={averageFrameMs:0.###} avgHeadroomMs={averageHeadroomMs:0.###} avgHeadroomPct={avgHeadroomPct:0.#}");
             }
+        }
+
+        private AdaptiveGcResult? TryRunAdaptiveGc(int frameIndex, double headroomMs, double headroomPct)
+        {
+            if (!EnableAdaptiveGc)
+                return null;
+
+            if (headroomMs < adaptiveGcMinHeadroomMs || headroomPct < adaptiveGcMinHeadroomPct)
+                return null;
+
+            if (frameIndex - lastAdaptiveGcFrame < adaptiveGcMinFrameInterval)
+                return null;
+
+            long allocatedBytes = GC.GetTotalAllocatedBytes(precise: false);
+            long allocatedSinceLast = allocatedBytes - lastAdaptiveGcAllocatedBytes;
+            if (allocatedSinceLast < adaptiveGcMinAllocatedBytes)
+                return null;
+
+            int generation = ((adaptiveGcAttempts + 1) % adaptiveGcGen1EveryAttempts == 0)
+                ? 1
+                : 0;
+
+            int gen0Before = GC.CollectionCount(0);
+            int gen1Before = GC.CollectionCount(1);
+            long startTicks = Stopwatch.GetTimestamp();
+
+            GC.Collect(generation, GCCollectionMode.Optimized, blocking: false, compacting: false);
+
+            double elapsedMs = TicksToMs(Stopwatch.GetTimestamp() - startTicks);
+            int gen0Collections = GC.CollectionCount(0) - gen0Before;
+            int gen1Collections = GC.CollectionCount(1) - gen1Before;
+
+            lastAdaptiveGcFrame = frameIndex;
+            lastAdaptiveGcAllocatedBytes = allocatedBytes;
+            adaptiveGcAttempts++;
+
+            return new AdaptiveGcResult(
+                generation,
+                elapsedMs,
+                allocatedSinceLast / (1024.0 * 1024.0),
+                gen0Collections,
+                gen1Collections);
+        }
+
+        private readonly struct AdaptiveGcResult
+        {
+            public AdaptiveGcResult(
+                int generation,
+                double elapsedMs,
+                double allocatedSinceLastMb,
+                int gen0Collections,
+                int gen1Collections)
+            {
+                Generation = generation;
+                ElapsedMs = elapsedMs;
+                AllocatedSinceLastMb = allocatedSinceLastMb;
+                Gen0Collections = gen0Collections;
+                Gen1Collections = gen1Collections;
+            }
+
+            public int Generation { get; }
+            public double ElapsedMs { get; }
+            public double AllocatedSinceLastMb { get; }
+            public int Gen0Collections { get; }
+            public int Gen1Collections { get; }
+        }
+
+        private static void LogUpdatePhaseTiming(
+            int frameIndex,
+            int activeCount,
+            int copiedCount,
+            int renderedCount,
+            int projectedCount,
+            int particleCount,
+            int weaponCount,
+            int shadowCount,
+            double copyMs,
+            double starfieldMs,
+            double prepMs,
+            double moveRotateMs,
+            double mergeMs,
+            double offscreenAiMs,
+            double infectionMs,
+            double projectMs,
+            double crashMs,
+            double cleanupMs,
+            double directorHudMs,
+            double musicMs,
+            bool resetFrame)
+        {
+            Logger.Log(
+                $"[UpdatePhasePerf] frame={frameIndex} reset={resetFrame} active={activeCount} copied={copiedCount} rendered={renderedCount} projected={projectedCount} particles={particleCount} weapons={weaponCount} shadows={shadowCount} " +
+                $"copyMs={copyMs:0.###} starfieldMs={starfieldMs:0.###} prepMs={prepMs:0.###} moveRotateMs={moveRotateMs:0.###} mergeMs={mergeMs:0.###} offscreenAiMs={offscreenAiMs:0.###} " +
+                $"infectionMs={infectionMs:0.###} projectMs={projectMs:0.###} crashMs={crashMs:0.###} cleanupMs={cleanupMs:0.###} directorHudMs={directorHudMs:0.###} musicMs={musicMs:0.###}");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static double TicksToMs(long ticks)
+        {
+            return ticks * 1000.0 / Stopwatch.Frequency;
         }
 
     }

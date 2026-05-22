@@ -30,7 +30,7 @@ namespace _3dTesting._3dRotation
             var screenCoordinates = reusableResult ?? new List<_2dTriangleMesh>(inhabitants.Count * 2);
             screenCoordinates.Clear();
 
-            int expectedCapacity = inhabitants.Count * 2;
+            int expectedCapacity = EstimateTriangleCapacity(inhabitants);
             if (screenCoordinates.Capacity < expectedCapacity)
                 screenCoordinates.Capacity = expectedCapacity;
 
@@ -52,6 +52,33 @@ namespace _3dTesting._3dRotation
             }
 
             return screenCoordinates;
+        }
+
+        private static int EstimateTriangleCapacity(List<_3dObject> inhabitants)
+        {
+            int expectedCapacity = 0;
+            foreach (var obj in inhabitants)
+            {
+                if (obj == null || (obj.ObjectName != "Star" && !obj.CheckInhabitantVisibility()))
+                    continue;
+
+                var parts = obj.ObjectParts;
+                for (int partIndex = 0; partIndex < parts.Count; partIndex++)
+                {
+                    var part = parts[partIndex];
+                    if (!part.IsVisible)
+                        continue;
+
+                    expectedCapacity += part.Triangles.Count;
+                }
+
+                if (obj.CrashBoxDebugMode == true && obj.CrashBoxes != null)
+                {
+                    expectedCapacity += obj.CrashBoxes.Count * 12;
+                }
+            }
+
+            return Math.Max(expectedCapacity, inhabitants.Count * 2);
         }
 
         //This method is for debugging av crashboxes only

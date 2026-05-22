@@ -62,7 +62,7 @@ namespace _3dRotations.Scene.Scene7
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
 
-            SpawnJumpingFish(world);
+            SpawnSeals(world);
 
             for (int b = 0; b < 7; b++)
             {
@@ -337,6 +337,43 @@ namespace _3dRotations.Scene.Scene7
                 jumpingFish.CrashBoxes = new List<List<IVector3>>();
                 jumpingFish.IsActive = true;
                 world.WorldInhabitants.Add(jumpingFish);
+            }
+        }
+
+        private void SpawnSeals(I3dWorld world)
+        {
+            var fishJumpAreas = GameState.SurfaceState.FishJumpAreas;
+            if (fishJumpAreas == null || fishJumpAreas.Count == 0)
+                return;
+
+            int sealCount = Math.Min(80, fishJumpAreas.Count);
+            int tileSize = Surface.TileSize();
+            for (int i = 0; i < sealCount; i++)
+            {
+                int areaIndex = (int)MathF.Floor(i * fishJumpAreas.Count / (float)sealCount);
+                var area = fishJumpAreas[areaIndex];
+                float jumpSpan = Math.Min(tileSize * 2f, Math.Max(tileSize, (area.EndTileX - area.StartTileX - 1) * tileSize));
+                float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
+                float minPathOffsetX = baseOffsetX + ((area.StartTileX - area.CenterTileX) * tileSize);
+                float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
+
+                var seal = Seal.CreateSeal(Surface);
+                seal.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                seal.WorldPosition = new Vector3 { };
+                seal.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
+                seal.ObjectOffsets = new Vector3
+                {
+                    x = baseOffsetX,
+                    y = 500 * ScreenSetup.ScreenScaleY,
+                    z = 400
+                };
+                seal.ObjectName = "Seal";
+                seal.Movement = new JumpingFishControls(jumpSpan, minPathOffsetX, maxPathOffsetX);
+                seal.ImpactStatus = new ImpactStatus { };
+                seal.CrashBoxDebugMode = false;
+                seal.CrashBoxes = new List<List<IVector3>>();
+                seal.IsActive = true;
+                world.WorldInhabitants.Add(seal);
             }
         }
 
