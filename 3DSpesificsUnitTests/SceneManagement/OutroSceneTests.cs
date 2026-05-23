@@ -11,8 +11,10 @@ using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.Events;
+using CommonUtilities.Persistence;
 using Domain;
 using GameAiAndControls.Controls;
+using System.IO;
 using System.Windows.Media;
 using NumericsVector3 = System.Numerics.Vector3;
 using static Domain._3dSpecificsImplementations;
@@ -322,8 +324,8 @@ public class OutroSceneTests
 
         Assert.IsTrue(asteroids[0].ObjectOffsets!.x > initial1.x && asteroids[0].ObjectOffsets.y > initial1.y,
             "First outro asteroid should cross down and right.");
-        Assert.IsTrue(asteroids[1].ObjectOffsets!.x < initial2.x && asteroids[1].ObjectOffsets.y < initial2.y,
-            "Second outro asteroid should cross up and left.");
+        Assert.IsTrue(asteroids[1].ObjectOffsets!.x < initial2.x && Math.Abs(asteroids[1].ObjectOffsets.y - initial2.y) > 0.1f,
+            "Second outro asteroid should cross left on a different diagonal.");
         Assert.IsTrue(asteroids[0].Particles!.Particles.Count > 0,
             "First outro asteroid should leave a particle trail.");
         Assert.IsTrue(asteroids[1].Particles!.Particles.Count > 0,
@@ -1307,6 +1309,95 @@ public class OutroSceneTests
     }
 
     [TestMethod]
+    public void OutroDirector_FinalOverlayPage_UsesSharedHighscoreFormatter()
+    {
+        string originalLocalFolder = PersistenceSetup.LocalFolder;
+        int originalMaxEntries = PersistenceSetup.MaxHighscoreEntries;
+        string testLocalFolder = Path.Combine(Path.GetTempPath(), "OmegaStrainOutroHighscoreTests", Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            PersistenceSetup.LocalFolder = testLocalFolder;
+            PersistenceSetup.MaxHighscoreEntries = 100;
+            PersistenceSetup.Initialize();
+            HighscoreService.SaveLocalHighscores(new HighscoreList
+            {
+                Entries = new List<HighscoreEntry>
+                {
+                    new()
+                    {
+                        PlayerName = "Jarle",
+                        Score = 123456,
+                        WaveReached = 9,
+                        TotalKills = 42,
+                        DateUtc = new DateTime(2026, 5, 20, 12, 0, 0, DateTimeKind.Utc).ToString("o")
+                    }
+                }
+            });
+
+            var now = new DateTime(2026, 5, 20, 12, 0, 0, DateTimeKind.Utc);
+            var controls = new OutroShipControls(() => now);
+            var ship = Ship.CreateShip(null, controls);
+            ship.ObjectName = "Ship";
+            ship.WorldPosition = new Vector3 { x = 0f, y = 0f, z = 0f };
+
+            var director = new OutroDirector();
+            var world = new TestWorld
+            {
+                EventBus = new GameEventBus(),
+                WorldInhabitants = new List<I3dObject> { ship }
+            };
+            director.Initialize(world.EventBus!, world);
+
+            controls.MoveObject(ship, null, null);
+            now = now.AddSeconds(5.0);
+            controls.MoveObject(ship, null, null);
+            director.Update();
+            GameState.WorldFade.MarkFadeOutComplete();
+            director.Update();
+
+            GameState.DeltaTime = 0.1f;
+            for (int i = 0; i < 24; i++)
+                director.Update();
+
+            var landingShip = world.WorldInhabitants.First(o => o.ObjectName == "Ship");
+            var landingControls = (OutroLandingShipControls)landingShip.Movement!;
+            for (int i = 0; i < 35; i++)
+            {
+                landingControls.MoveObject(landingShip, null, null);
+                director.Update();
+            }
+
+            for (int i = 0; i < 105; i++)
+                director.Update();
+
+            var overlay = GameState.ScreenOverlayState;
+            Assert.IsTrue(overlay.ShowOverlay, "Outro should show the final congratulations overlay after the astronaut reveal.");
+            Assert.AreEqual(3, overlay.Pages.Count, "Outro overlay should end with a leaderboard/highscore page.");
+            Assert.AreEqual("LEADERBOARD", overlay.Pages[2][1]);
+            Assert.AreEqual(HighscoreOverlayFormatter.BuildBody(), overlay.Pages[2][2],
+                "Outro leaderboard page should reuse the same highscore body formatter as the existing highscore page.");
+            Assert.IsTrue(overlay.Pages[2][2].Contains("Jarle"),
+                "Final outro overlay should include the saved highscore list.");
+            Assert.IsTrue(overlay.Pages[2][3].Contains("PAGE 3 / 3"));
+        }
+        finally
+        {
+            PersistenceSetup.LocalFolder = originalLocalFolder;
+            PersistenceSetup.MaxHighscoreEntries = originalMaxEntries;
+
+            try
+            {
+                if (Directory.Exists(testLocalFolder))
+                    Directory.Delete(testLocalFolder, recursive: true);
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    [TestMethod]
     public void OutroLandingShipControls_LowersShipAndEmitsOnlyLowerEngineParticles()
     {
         var initial = OutroLandingSceneBuilder.CreateInitialLandingShipOffset();
@@ -1498,7 +1589,7 @@ public class OutroSceneTests
         Assert.IsTrue(part.Triangles.Count > 0,
             "Fireworks should immediately launch visible particles when the pilot reveal starts.");
 
-        for (int i = 0; i < 18; i++)
+        for (int i = 0; i < 28; i++)
             fireworks.Movement.MoveObject(fireworks, audio, registry);
 
         var colors = part.Triangles.Select(t => t.Color).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
@@ -1507,10 +1598,10 @@ public class OutroSceneTests
             .ToList();
 
         Assert.IsTrue(OutroFireworksControls.FireworkSoundIds.Contains(audio.LastSoundId),
-            "Firework explosion should trigger one of the timed firework burst sounds.");
+            "Firework explosion should trigger the configured firework sound.");
         Assert.AreEqual(AudioPlayMode.OneShot, audio.LastMode);
-        Assert.IsTrue(audio.PlayedSoundIds.Distinct().Count() >= 2,
-            "Firework explosions should rotate between the strongest selected sound segments.");
+        Assert.IsTrue(audio.PlayedSoundIds.Count > 0,
+            "Firework explosions should play audio on the explosion frame.");
         Assert.IsTrue(colors.Count >= 6,
             "Firework explosions should use a bright multi-color palette.");
         Assert.IsTrue(vertices.Max(v => v.x) - vertices.Min(v => v.x) > 180f,

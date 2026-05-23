@@ -1,5 +1,6 @@
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.Persistence;
 using Domain;
 using GameAiAndControls.Controls;
 using System;
@@ -143,7 +144,7 @@ namespace _3dRotations.Scenes.Outro
                     "the Kamikaze Drones forgot what they were doing,\n" +
                     "and even the asteroids missed (barely).\n\n" +
                     "Now wave at the locals — they deserve it.",
-                footer: "PAGE 1 / 2 — PRESS ANY KEY TO CONTINUE");
+                footer: "PAGE 1 / 3 - PRESS ANY KEY TO CONTINUE");
             overlay.AddPage(
                 header: "RETROMESH // FIELD ADVISORY",
                 title: "THE STRAIN MAY RETURN",
@@ -155,11 +156,16 @@ namespace _3dRotations.Scenes.Outro
                     "keep your reflexes sharp and your name on the\n" +
                     "leaderboard. Round after round, forever.\n\n" +
                     "Press any key to enter the simulation.",
-                footer: "PAGE 2 / 2 — PRESS ANY KEY TO DEPLOY");
+                footer: "PAGE 2 / 3 - PRESS ANY KEY TO CONTINUE");
+            overlay.AddPage(
+                header: "RETROMESH // HALL OF FAME",
+                title: "LEADERBOARD",
+                body: HighscoreOverlayFormatter.BuildBody(),
+                footer: "PAGE 3 / 3 - PRESS ANY KEY TO DEPLOY");
 
             overlay.CurrentPage = 0;
             overlay.ApplyPageContent();
-            overlay.AutoPageSeconds = 15f;
+            overlay.AutoPageSeconds = CongratulationsOverlayPageSeconds;
             overlay.ShowOverlay = true;
         }
 
