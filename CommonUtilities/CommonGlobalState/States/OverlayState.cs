@@ -213,8 +213,17 @@ namespace Domain
         /// </summary>
         public float AutoHideSeconds { get; set; } = 0f;
 
+        /// <summary>
+        /// When greater than zero, multi-page overlays auto-advance to the next page
+        /// every AutoPageSeconds. Wraps around when the last page is reached.
+        /// Applies to any overlay with HasMultiplePages == true.
+        /// </summary>
+        public float AutoPageSeconds { get; set; } = 0f;
+
         private float _shownTimeSeconds = 0f;
         private bool _wasShowingLastUpdate = false;
+        private float _autoPageElapsedSeconds = 0f;
+        private int _autoPageLastIndex = -1;
 
         // -----------------------------
         // Convenience
@@ -267,6 +276,9 @@ namespace Domain
 
             AutoHide = false;
             AutoHideSeconds = 0f;
+            AutoPageSeconds = 0f;
+            _autoPageElapsedSeconds = 0f;
+            _autoPageLastIndex = -1;
 
             NameEntryBuffer = "";
             NameEntryValidationMessage = "";
@@ -307,6 +319,32 @@ namespace Domain
             if (ShowOverlay && AutoHide && AutoHideSeconds > 0f && _shownTimeSeconds >= AutoHideSeconds)
             {
                 ShowOverlay = false;
+            }
+
+            // Auto-paging behavior (optional): cycle through Pages every AutoPageSeconds.
+            if (ShowOverlay && AutoPageSeconds > 0f && HasMultiplePages)
+            {
+                if (_autoPageLastIndex != CurrentPage)
+                {
+                    _autoPageLastIndex = CurrentPage;
+                    _autoPageElapsedSeconds = 0f;
+                }
+                else
+                {
+                    _autoPageElapsedSeconds += dtSeconds;
+                    if (_autoPageElapsedSeconds >= AutoPageSeconds)
+                    {
+                        _autoPageElapsedSeconds = 0f;
+                        CurrentPage = (CurrentPage + 1) % TotalPages;
+                        ApplyPageContent();
+                        _autoPageLastIndex = CurrentPage;
+                    }
+                }
+            }
+            else
+            {
+                _autoPageElapsedSeconds = 0f;
+                _autoPageLastIndex = CurrentPage;
             }
 
             // Fade to target

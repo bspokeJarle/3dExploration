@@ -264,6 +264,136 @@
       }
     },
     {
+      "id": "fireworks",
+      "usage": "OutroFireworks",
+      "file": "OmegaStrain_fireworks.wav",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 2.0,
+        "end": 2.0
+      },
+
+      "settings": {
+        "volume": 0.8,
+        "maxVoices": 6,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.05, 0.05 ],
+        "min": 0.9,
+        "max": 1.12
+      }
+    },
+    {
+      "id": "fireworks_burst_1",
+      "usage": "OutroFireworks",
+      "file": "OmegaStrain_fireworks.wav",
+
+      "segments": {
+        "start": 2.62,
+        "loopStart": 2.62,
+        "loopEnd": 3.22,
+        "end": 3.22
+      },
+
+      "settings": {
+        "volume": 0.82,
+        "maxVoices": 6,
+        "is3D": false,
+        "priority": 166
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.03, 0.03 ],
+        "min": 0.94,
+        "max": 1.08
+      }
+    },
+    {
+      "id": "fireworks_burst_2",
+      "usage": "OutroFireworks",
+      "file": "OmegaStrain_fireworks.wav",
+
+      "segments": {
+        "start": 4.40,
+        "loopStart": 4.40,
+        "loopEnd": 5.02,
+        "end": 5.02
+      },
+
+      "settings": {
+        "volume": 0.86,
+        "maxVoices": 6,
+        "is3D": false,
+        "priority": 166
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.03, 0.03 ],
+        "min": 0.94,
+        "max": 1.08
+      }
+    },
+    {
+      "id": "fireworks_burst_3",
+      "usage": "OutroFireworks",
+      "file": "OmegaStrain_fireworks.wav",
+
+      "segments": {
+        "start": 13.46,
+        "loopStart": 13.46,
+        "loopEnd": 14.06,
+        "end": 14.06
+      },
+
+      "settings": {
+        "volume": 0.84,
+        "maxVoices": 6,
+        "is3D": false,
+        "priority": 166
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.03, 0.03 ],
+        "min": 0.94,
+        "max": 1.08
+      }
+    },
+    {
+      "id": "fireworks_burst_4",
+      "usage": "OutroFireworks",
+      "file": "OmegaStrain_fireworks.wav",
+
+      "segments": {
+        "start": 14.54,
+        "loopStart": 14.54,
+        "loopEnd": 15.12,
+        "end": 15.12
+      },
+
+      "settings": {
+        "volume": 0.86,
+        "maxVoices": 6,
+        "is3D": false,
+        "priority": 166
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ -0.03, 0.03 ],
+        "min": 0.94,
+        "max": 1.08
+      }
+    },
+    {
       "id": "change_weapon",
       "usage": "ChangeWeapon",
       "file": "OmegaStrain_Change_Weapon.wav",

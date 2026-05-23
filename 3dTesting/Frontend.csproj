@@ -91,6 +91,9 @@
     <None Update="Soundeffects\OmegaStrain_Explosion_Main.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Soundeffects\OmegaStrain_fireworks.wav">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\OmegaStrain_Laser_Main.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

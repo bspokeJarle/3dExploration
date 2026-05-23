@@ -30,9 +30,12 @@
 - `Dispose()` should reset sync state (`_syncInitialized`, `_syncY`) and null out coordinate references, not throw `NotImplementedException`.
 - Objects spawned at runtime (like PowerUp from `CleanupExplodedObjects`) must have `Movement` assigned and be added to both `WorldInhabitants` and `GameState.SurfaceState.AiObjects`.
 - Deep copy / persistence in the game loop:
-  - LiveGameLoop.cs creates a deep copy of all `WorldInhabitants` every frame before calling `MoveObject` and rendering. `theObject` inside `MoveObject` is this deep copy.
-  - Any value set on `theObject` inside `MoveObject` is set on the deep copy and discarded after the frame. To persist a value across frames, set it on the original object in `WorldInhabitants` (via `SyncToOriginal` or by storing state in the control class fields), or re-apply the value on `theObject` every frame inside `MoveObject`.
-  - Never rely on one-time initialization on the deep copy for persistent properties (e.g., `ZSortBias`, `IsActive`, `ObjectOffsets`). Always re-apply per-frame values inside `MoveObject` or propagate them back to the original via `SyncToOriginal`.
+  - `LiveGameLoop.UpdateWorld` deep-copies every active inhabitant each frame via `Common3dObjectHelpers.DeepCopy3dObjects(activeWorld, deepCopiedWorld)`. `Movement?.MoveObject(...)` is invoked on the COPY, so the `theObject` passed into `MoveObject` is the deep copy.
+  - The `Movement` reference is shared between the original and the deep copy. Persistent per-frame state MUST live on the controller (fields) because mutations to `theObject` are applied to the throwaway copy and are lost when the copy is rebuilt next frame.
+  - Do not rely on one-time initialization or on mutations like `theObject.ObjectOffsets += delta` to persist across frames.
+  - To persist values across frames either:
+    - Store persistent state in controller fields and restamp those values onto `theObject` every frame inside `MoveObject`, or
+    - Write updated values back to the original `WorldInhabitants` entry when other systems need to observe them (use `SyncToOriginal` patterns such as `MotherShipLargeControls.SyncToOriginal` / `MotherShipMediumControls.SyncToOriginal`).
   - Use control-class-local fields for persistent progress/state across frames when appropriate (for example, kamikaze/seeder patterns).
 
 ## Coordinate System and Rotation Conventions

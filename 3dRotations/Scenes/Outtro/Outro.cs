@@ -15,6 +15,7 @@ namespace _3dRotations.Scenes.Outro
         public string SceneMusic { get; } = "music_outro";
         public SceneTypes SceneType { get; } = SceneTypes.Outro;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
+        public ISceneDirector Director { get; } = new OutroDirector();
 
         private static readonly Random _rng = new Random(77);
 
@@ -36,30 +37,60 @@ namespace _3dRotations.Scenes.Outro
             ship.HasShadow = false;
             world.WorldInhabitants.Add(ship);
 
-            // White icy asteroid — enters from top-left, travels down-right
+            // White icy asteroid — crosses the screen entirely ABOVE the ship
+            // (both endpoints stay in the upper half of the screen) so it
+            // does not look like it nearly clips the ship at mid-screen.
             var asteroid1 = AsteroidObject.CreateAsteroid(
                 colorPalette: new[] { "E8E8E8", "FFFFFF", "C8D8E8", "B0C8D8" },
-                size: 16f,
+                size: 28f,
                 startOffsetX: -ScreenSetup.screenSizeX * 0.6f,
-                startOffsetY: -ScreenSetup.screenSizeY * 0.5f,
-                depth: 480f,
+                startOffsetY: -ScreenSetup.screenSizeY * 0.55f,
+                depth: 385f,
                 rng: _rng);
-            var ctrl1 = new AsteroidControls(new Random(13), 480f, startImmediately: true);
-            ctrl1.ForceDirection(directionRight: true, directionDown: true);
+            var ctrl1 = new AsteroidControls(new Random(13), 385f, startImmediately: true)
+            {
+                EmitTrailParticles = true,
+                SpeedMultiplier = 1.25f
+            };
+            ctrl1.ForceScreenPath(-0.96f, -0.80f, 0.84f, -0.30f);
             asteroid1.Movement = ctrl1;
+            asteroid1.Particles = new ParticlesAI
+            {
+                MaxParticlesOverride = 42,
+                LifeMultiplier = 0.62f,
+                ThrottleDurationFactor = 0.18f,
+                ColorStartOverride = "E8FAFF",
+                ColorMidOverride = "8FD7FF",
+                ColorEndOverride = "304860"
+            };
             world.WorldInhabitants.Add(asteroid1);
 
-            // Fiery yellow-red asteroid — enters from top-right, travels down-left
+            // Fiery yellow-red asteroid — crosses the screen entirely BELOW
+            // the ship (both endpoints stay in the lower half of the screen)
+            // so it never threads the middle where the ship is flying.
             var asteroid2 = AsteroidObject.CreateAsteroid(
                 colorPalette: new[] { "FF8800", "FF4400", "FFCC00", "CC3300", "FF6600" },
-                size: 14f,
+                size: 26f,
                 startOffsetX:  ScreenSetup.screenSizeX * 0.6f,
-                startOffsetY: -ScreenSetup.screenSizeY * 0.3f,
-                depth: 460f,
+                startOffsetY:  ScreenSetup.screenSizeY * 0.35f,
+                depth: 365f,
                 rng: _rng);
-            var ctrl2 = new AsteroidControls(new Random(37), 460f, startImmediately: true);
-            ctrl2.ForceDirection(directionRight: false, directionDown: true);
+            var ctrl2 = new AsteroidControls(new Random(37), 365f, startImmediately: true)
+            {
+                EmitTrailParticles = true,
+                SpeedMultiplier = 1.18f
+            };
+            ctrl2.ForceScreenPath(0.96f, 0.32f, -0.88f, 0.78f);
             asteroid2.Movement = ctrl2;
+            asteroid2.Particles = new ParticlesAI
+            {
+                MaxParticlesOverride = 42,
+                LifeMultiplier = 0.58f,
+                ThrottleDurationFactor = 0.18f,
+                ColorStartOverride = "FFE46A",
+                ColorMidOverride = "FF6A00",
+                ColorEndOverride = "5A2200"
+            };
             world.WorldInhabitants.Add(asteroid2);
         }
 

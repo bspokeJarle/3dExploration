@@ -20,6 +20,16 @@ namespace GameAiAndControls.Controls
         // Travel direction per frame
         private float _vx;
         private float _vy;
+        // Persistent travel position across frames. Required because
+        // LiveGameLoop deep-copies the asteroid every frame and runs
+        // MoveObject on the copy, so mutating theObject.ObjectOffsets
+        // would never persist back to the original WorldInhabitants
+        // entry. Storing the live position on the controller (which is
+        // shared between original and copy via Movement reference)
+        // ensures the asteroid actually travels across the screen.
+        private float _curX;
+        private float _curY;
+        private bool _hasPosition;
         // Rotation spin
         private float _rotY;
         private float _spinSpeed;
@@ -35,10 +45,19 @@ namespace GameAiAndControls.Controls
         private const float MaxSpeed = 9.0f;
         private const float MinWaitFrames = 180;
         private const float MaxWaitFrames = 500;
+        private const int TrailEmissionFrameInterval = 2;
+        private const int TrailThrust = 2;
+        private const float TrailStartDistance = 14f;
+        private const float TrailGuideDistance = 86f;
 
         // Optional forced direction (null = fully random)
         private bool? _forcedRight;
         private bool? _forcedDown;
+        private ForcedScreenPath? _forcedScreenPath;
+        private int _trailFrameCounter;
+
+        public bool EmitTrailParticles { get; set; }
+        public float SpeedMultiplier { get; set; } = 1f;
 
         /// <summary>
         /// Lock the crossing direction for this asteroid so it always enters from a consistent edge.
@@ -48,6 +67,15 @@ namespace GameAiAndControls.Controls
         {
             _forcedRight = directionRight;
             _forcedDown  = directionDown;
+        }
+
+        /// <summary>
+        /// Lock the crossing path to factors of the asteroid spawn half-width/half-height.
+        /// Values near -1/1 place the asteroid at the screen edge while still keeping it visible.
+        /// </summary>
+        public void ForceScreenPath(float startXFactor, float startYFactor, float targetXFactor, float targetYFactor)
+        {
+            _forcedScreenPath = new ForcedScreenPath(startXFactor, startYFactor, targetXFactor, targetYFactor);
         }
 
         /// <param name="startImmediately">When true the asteroid begins crossing the screen right away instead of waiting.</param>
@@ -67,6 +95,7 @@ namespace GameAiAndControls.Controls
 
             if (!_traveling)
             {
+                theObject.Particles?.MoveParticles();
                 _waitFrames--;
                 if (_waitFrames <= 0)
                     Spawn(theObject);
@@ -79,17 +108,30 @@ namespace GameAiAndControls.Controls
             if (theObject.Rotation != null)
                 theObject.Rotation.y = _rotY;
 
-            // Move
-            var off = theObject.ObjectOffsets;
-            off.x += _vx;
-            off.y += _vy;
+            // Move (use persistent position so movement is not lost
+            // when LiveGameLoop deep-copies the asteroid each frame).
+            if (!_hasPosition && theObject.ObjectOffsets != null)
+            {
+                _curX = theObject.ObjectOffsets.x;
+                _curY = theObject.ObjectOffsets.y;
+                _hasPosition = true;
+            }
+            _curX += _vx;
+            _curY += _vy;
+            if (theObject.ObjectOffsets != null)
+            {
+                theObject.ObjectOffsets.x = _curX;
+                theObject.ObjectOffsets.y = _curY;
+            }
+            EmitTrail(theObject);
 
             // Off-screen? wait again
             float hw = ScreenSetup.screenSizeX * 0.7f;
             float hh = ScreenSetup.screenSizeY * 0.7f;
-            if (off.x < -hw || off.x > hw || off.y < -hh || off.y > hh)
+            if (_curX < -hw || _curX > hw || _curY < -hh || _curY > hh)
             {
                 _traveling = false;
+                _hasPosition = false;
                 _waitFrames = (int)(MinWaitFrames + _rng.NextDouble() * (MaxWaitFrames - MinWaitFrames));
                 theObject.IsActive = false;
             }
@@ -104,7 +146,12 @@ namespace GameAiAndControls.Controls
 
             float ox, oy;
 
-            if (_forcedRight.HasValue && _forcedDown.HasValue)
+            if (_forcedScreenPath != null)
+            {
+                ox = _forcedScreenPath.StartXFactor * hw;
+                oy = _forcedScreenPath.StartYFactor * hh;
+            }
+            else if (_forcedRight.HasValue && _forcedDown.HasValue)
             {
                 // Enter from the top edge, starting x-side determined by direction
                 ox = _forcedRight.Value
@@ -126,7 +173,12 @@ namespace GameAiAndControls.Controls
 
             // Target: opposite side, respecting forced direction if set
             float targetX, targetY;
-            if (_forcedRight.HasValue && _forcedDown.HasValue)
+            if (_forcedScreenPath != null)
+            {
+                targetX = _forcedScreenPath.TargetXFactor * hw;
+                targetY = _forcedScreenPath.TargetYFactor * hh;
+            }
+            else if (_forcedRight.HasValue && _forcedDown.HasValue)
             {
                 float xSign = _forcedRight.Value ? 1f : -1f;
                 targetX = xSign * (hw * 0.3f + (float)_rng.NextDouble() * hw * 0.4f);
@@ -142,14 +194,64 @@ namespace GameAiAndControls.Controls
             float dy = targetY - oy;
             float len = MathF.Sqrt(dx * dx + dy * dy);
             float speed = MinSpeed + (float)_rng.NextDouble() * (MaxSpeed - MinSpeed);
+            speed *= Math.Max(0.1f, SpeedMultiplier);
             _vx = dx / len * speed;
             _vy = dy / len * speed;
 
             theObject.ObjectOffsets.x = ox;
             theObject.ObjectOffsets.y = oy;
             theObject.ObjectOffsets.z = _depth;
+            _curX = ox;
+            _curY = oy;
+            _hasPosition = true;
             theObject.IsActive = true;
             _traveling = true;
+        }
+
+        private void EmitTrail(I3dObject theObject)
+        {
+            if (!EmitTrailParticles || theObject.Particles == null)
+            {
+                theObject.Particles?.MoveParticles();
+                return;
+            }
+
+            _trailFrameCounter++;
+            if (_trailFrameCounter >= TrailEmissionFrameInterval)
+            {
+                float length = MathF.Sqrt((_vx * _vx) + (_vy * _vy));
+                if (length > 0.001f && theObject.ObjectOffsets != null)
+                {
+                    float dirX = _vx / length;
+                    float dirY = _vy / length;
+                    // Emit particles BEHIND the asteroid that drift further
+                    // backwards. ReleaseParticles computes velocity as
+                    // (startPos - guidePos) / life, so to make particles fly
+                    // opposite to the asteroid's travel direction we put
+                    // 'start' just behind the asteroid and 'guide' AHEAD of
+                    // it. That makes (start - guide) point opposite to
+                    // travel direction, producing a true rear-engine trail.
+                    var start = CreatePointTriangle(-dirX * TrailStartDistance, -dirY * TrailStartDistance, 0f);
+                    var guide = CreatePointTriangle( dirX * TrailGuideDistance,  dirY * TrailGuideDistance, -8f);
+                    theObject.Particles.ReleaseParticles(guide, start, theObject.ObjectOffsets, this, TrailThrust, false);
+                }
+
+                _trailFrameCounter = 0;
+            }
+
+            theObject.Particles.MoveParticles();
+        }
+
+        private static TriangleMeshWithColor CreatePointTriangle(float x, float y, float z)
+        {
+            return new TriangleMeshWithColor
+            {
+                Color = "FFFFFF",
+                vert1 = new Vector3 { x = x - 0.5f, y = y, z = z },
+                vert2 = new Vector3 { x = x + 0.5f, y = y, z = z },
+                vert3 = new Vector3 { x = x, y = y + 0.5f, z = z },
+                noHidden = true
+            };
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor s, ITriangleMeshWithColor g) { }
@@ -161,6 +263,22 @@ namespace GameAiAndControls.Controls
         public void Dispose()
         {
             _traveling = false;
+        }
+
+        private sealed class ForcedScreenPath
+        {
+            public ForcedScreenPath(float startXFactor, float startYFactor, float targetXFactor, float targetYFactor)
+            {
+                StartXFactor = startXFactor;
+                StartYFactor = startYFactor;
+                TargetXFactor = targetXFactor;
+                TargetYFactor = targetYFactor;
+            }
+
+            public float StartXFactor { get; }
+            public float StartYFactor { get; }
+            public float TargetXFactor { get; }
+            public float TargetYFactor { get; }
         }
     }
 }

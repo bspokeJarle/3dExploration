@@ -31,6 +31,7 @@ namespace _3DWorld.Scene
         private bool _pendingSceneAdvance = false;
         private int _pendingSceneAdvanceFramesLeft = 0;
         private int? _targetSceneIndex = null;
+        private bool _pendingNextScene = false;
         private SavedGameState? _pendingSavedState = null;
 
         public SceneHandler()
@@ -182,6 +183,13 @@ namespace _3DWorld.Scene
                 scenes[simIndex] = new SceneSimulation();
                 currentSceneIndex = simIndex;
 
+                // Clear all objects from the previous scene (Outro ship, asteroids,
+                // surface, landing pad, astronaut, fireworks, particles) so nothing
+                // bleeds through into the new Simulation scene.
+                world.WorldInhabitants.Clear();
+                if (GameState.SurfaceState.AiObjects != null)
+                    GameState.SurfaceState.AiObjects.Clear();
+
                 ClearVideoOverlay();
                 gps.ResetForNewGame();
                 // Keep SimulationRound — it was incremented above and ResetForNewGame does not touch it
@@ -245,6 +253,13 @@ namespace _3DWorld.Scene
             }
 
             _pendingSceneAdvance = false;
+
+            if (_pendingNextScene)
+            {
+                _pendingNextScene = false;
+                NextScene(world);
+                return;
+            }
 
             if (_targetSceneIndex.HasValue)
             {
@@ -365,6 +380,30 @@ namespace _3DWorld.Scene
             if (scene.SceneType == SceneTypes.Intro)
             {
                 HandleIntroKey(overlay, k);
+                return;
+            }
+
+            if (scene.SceneType == SceneTypes.Outro && overlay.Type == ScreenOverlayType.Outro)
+            {
+                // Page navigation with arrow keys; any other key deploys to the Simulation scene.
+                if (overlay.HasMultiplePages)
+                {
+                    if (k.Key == Key.Right || k.Key == Key.D)
+                    {
+                        overlay.NextPage();
+                        return;
+                    }
+                    if (k.Key == Key.Left || k.Key == Key.A)
+                    {
+                        overlay.PreviousPage();
+                        return;
+                    }
+                }
+
+                overlay.HardHide();
+                _pendingNextScene = true;
+                _pendingSceneAdvance = true;
+                _pendingSceneAdvanceFramesLeft = SceneAdvanceDelayFrames;
                 return;
             }
 

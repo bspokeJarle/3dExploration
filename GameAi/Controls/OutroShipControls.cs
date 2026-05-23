@@ -15,29 +15,32 @@ namespace GameAiAndControls.Controls
         private const float TargetDepth = 1000f; // Depth creates perspective shrink; ZSortBias keeps the ship rendered in front.
         private const float TargetVisualScale = 0.25f;
         private const float ApproachSeconds = 3.0f;
-        private const float DiveSeconds = 2.0f;
-        private const float JourneySeconds = ApproachSeconds + DiveSeconds;
+        private const float TurnToEarthSeconds = 0.8f;
+        private const float DiveSeconds = 1.2f;
+        private const float JourneySeconds = ApproachSeconds + TurnToEarthSeconds + DiveSeconds;
+        private const float DiveArcScreenX = -48f;
+        private const float DiveArcScreenY = -18f;
+        private const float DiveArcHeadingZDegrees = 8f;
+        private const float DiveArcBankYDegrees = -5f;
         private const float BasePitchX = 70f;
         private const float ApproachBankY = -24f;
         private const float DiveHeadingZ = 0f;
         private const float ImpactHoldSeconds = 0.5f;
-        private const float ParticleEmissionIntervalSeconds = 2.0f;
+        private const int ParticleEmissionFrameInterval = 5;
         private const float StartScreenXRatio = 0.45f;
         private const float StartScreenYRatio = -0.10f;
         private const int EngineThrustPerNozzle = 5;
         private const float FrontOfEarthZSortBias = 500f;
-        private const float OutroFadeOutSeconds = 1.5f;
 
         private static readonly Random FlickerRng = new(901);
 
         private readonly Func<DateTime> _utcNow;
         private DateTime _lastUpdateTime;
-        private DateTime _lastParticleReleaseTime = DateTime.MinValue;
+        private int _particleEmissionFrameCounter = ParticleEmissionFrameInterval;
         private float _elapsedSeconds;
         private bool _hasInitialized;
         private bool _finished;
         private bool _audioConfigured;
-        private bool _fadeRequested;
 
         private IAudioPlayer? _audio;
         private SoundDefinition? _rocketSound;
@@ -51,6 +54,8 @@ namespace GameAiAndControls.Controls
         public ITriangleMeshWithColor? RearStartCoordinates { get; set; }
         public ITriangleMeshWithColor? RearGuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
+        public bool HasReachedEarth => _elapsedSeconds >= JourneySeconds;
+        public bool IsFinished => _finished;
 
         public OutroShipControls(Func<DateTime>? utcNow = null)
         {
@@ -106,12 +111,6 @@ namespace GameAiAndControls.Controls
             EnsureRocketLoop(theObject);
             ReleaseParticles(theObject);
 
-            if (!_fadeRequested && _elapsedSeconds >= JourneySeconds)
-            {
-                GameState.WorldFade.RequestFadeOut(OutroFadeOutSeconds, "OutroShipReachedEarth");
-                _fadeRequested = true;
-            }
-
             if (_elapsedSeconds >= JourneySeconds + ImpactHoldSeconds)
             {
                 StopRocket(playEndSegment: true);
@@ -150,9 +149,8 @@ namespace GameAiAndControls.Controls
                 return;
             }
 
-            var now = _lastUpdateTime == DateTime.MinValue ? _utcNow() : _lastUpdateTime;
-            bool shouldEmit = _lastParticleReleaseTime == DateTime.MinValue ||
-                (now - _lastParticleReleaseTime).TotalSeconds >= ParticleEmissionIntervalSeconds;
+            _particleEmissionFrameCounter++;
+            bool shouldEmit = _particleEmissionFrameCounter >= ParticleEmissionFrameInterval;
 
             if (shouldEmit)
             {
@@ -171,9 +169,8 @@ namespace GameAiAndControls.Controls
                     this,
                     EngineThrustPerNozzle,
                     false);
-                _lastParticleReleaseTime = now;
+                _particleEmissionFrameCounter = 0;
             }
-
             theObject.Particles.MoveParticles();
         }
 
@@ -240,13 +237,20 @@ namespace GameAiAndControls.Controls
                 };
             }
 
+            if (_elapsedSeconds <= ApproachSeconds + TurnToEarthSeconds)
+            {
+                return approachTarget;
+            }
+
             var diveTarget = GetDiveTarget();
+            float diveLinearProgress = GetDiveLinearProgress();
             float diveProgress = GetDiveProgress();
+            float arcAmount = MathF.Sin(diveLinearProgress * MathF.PI);
 
             return new Vector3
             {
-                x = approachTarget.x,
-                y = approachTarget.y,
+                x = approachTarget.x + (DiveArcScreenX * arcAmount),
+                y = approachTarget.y + (DiveArcScreenY * arcAmount),
                 z = Lerp(StartDepth, diveTarget.z, diveProgress)
             };
         }
@@ -288,12 +292,13 @@ namespace GameAiAndControls.Controls
             if (forceInitialTurn || _elapsedSeconds <= ApproachSeconds)
                 return initial;
 
-            float diveProgress = GetDiveProgress();
+            float turnProgress = GetTurnToEarthProgress();
+            float diveArcTurn = GetDiveArcTurnAmount();
             return new Vector3
             {
                 x = BasePitchX,
-                y = Lerp(ApproachBankY, 0f, diveProgress),
-                z = Lerp(initial.z, DiveHeadingZ, diveProgress)
+                y = Lerp(ApproachBankY, 0f, turnProgress) + (DiveArcBankYDegrees * diveArcTurn),
+                z = Lerp(initial.z, DiveHeadingZ, turnProgress) - (DiveArcHeadingZDegrees * diveArcTurn)
             };
         }
 
@@ -472,7 +477,22 @@ namespace GameAiAndControls.Controls
 
         private float GetDiveProgress()
         {
-            return SmoothStep(Math.Clamp((_elapsedSeconds - ApproachSeconds) / DiveSeconds, 0f, 1f));
+            return SmoothStep(GetDiveLinearProgress());
+        }
+
+        private float GetDiveLinearProgress()
+        {
+            return Math.Clamp((_elapsedSeconds - ApproachSeconds - TurnToEarthSeconds) / DiveSeconds, 0f, 1f);
+        }
+
+        private float GetDiveArcTurnAmount()
+        {
+            return MathF.Sin(GetDiveLinearProgress() * MathF.PI * 2f);
+        }
+
+        private float GetTurnToEarthProgress()
+        {
+            return SmoothStep(Math.Clamp((_elapsedSeconds - ApproachSeconds) / TurnToEarthSeconds, 0f, 1f));
         }
 
         private static Vector3 CopyVector(IVector3 vector)
