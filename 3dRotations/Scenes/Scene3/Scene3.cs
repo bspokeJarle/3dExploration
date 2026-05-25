@@ -327,13 +327,13 @@ namespace _3dRotations.Scene.Scene3
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "PLANET CYGNUS-9 — PHASE III";
+            o.Title = "PLANET CYGNUS-9 - PHASE III";
 
             o.Body =
                 "Dense jungle world CYGNUS-9 is under siege.\n\n" +
                 "Omega Strain spreads through root systems at extreme speed.\n" +
                 "Twelve seeders confirmed. Escort drones: EIGHT.\n" +
-                "New threat: ZEPPELIN BOMBERS — two patrolling upper canopy.\n" +
+                "New threat: ZEPPELIN BOMBERS - two patrolling upper canopy.\n" +
                 "Infection spread delay: 4.5 seconds. Tolerance: 5%.\n\n" +
                 "DIRECTIVE:\n" +
                 "Neutralize all threats. Watch the skies and the roots.";

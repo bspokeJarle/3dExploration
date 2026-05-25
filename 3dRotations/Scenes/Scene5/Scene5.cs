@@ -323,7 +323,7 @@ namespace _3dRotations.Scene.Scene5
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "PLANET VERIDIAN — PHASE V";
+            o.Title = "PLANET VERIDIAN - PHASE V";
 
             o.Body =
                 "Approach confirmed: dense rainforest world, designation VERIDIAN.\n\n" +

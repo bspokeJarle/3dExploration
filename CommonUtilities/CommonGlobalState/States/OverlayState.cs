@@ -369,7 +369,7 @@ namespace Domain
             {
                 _cursorBlinkTimer += dtSeconds;
                 bool showCursor = ((int)(_cursorBlinkTimer / 0.5f)) % 2 == 0;
-                string cursor = showCursor ? "█" : " ";
+                string cursor = showCursor ? "_" : " ";
                 string display = NameEntryBuffer + cursor;
                 string validation = string.IsNullOrEmpty(NameEntryValidationMessage)
                     ? "" : $"\n{NameEntryValidationMessage}";

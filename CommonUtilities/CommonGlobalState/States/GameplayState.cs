@@ -31,11 +31,13 @@ namespace Domain
         // Player / ship core stats
         // -----------------------------
         public string PlayerName { get; set; } = "";
-        public int SceneIndex { get; set; } = 9;
+        public int SceneIndex { get; set; } = 10;
         public int Lives { get; set; } = 3;
 
         // Simulation round counter — increments each time the player enters the simulation after the outro
         public int SimulationRound { get; set; } = 0;
+
+        public SceneBiomeTypes CurrentSceneBiome { get; set; } = SceneBiomeTypes.HillsWoods;
 
         // Keep as float to allow smooth damage later (e.g., collision damage scaling)
         public float Health { get; set; } = 100f;
@@ -370,6 +372,7 @@ namespace Domain
         public void ResetForNewGame()
         {
             Phase = GamePhase.Intro;
+            CurrentSceneBiome = SceneBiomeTypes.HillsWoods;
 
             Lives = 3;
             MaxHealth = 100f;

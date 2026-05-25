@@ -285,14 +285,14 @@ namespace _3dRotations.Scene.Scene1
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // BOOT SEQUENCE";
-            o.Title = "PLANET NEREID — PHASE I";
+            o.Title = "PLANET NEREID - PHASE I";
 
             o.Body =
                 "Year 2147.\n\n" +
                 "Signal received from the NEREID perimeter colonies.\n" +
                 "Biological anomaly confirmed. Designation: OMEGA STRAIN.\n\n" +
                 "Seeder activity detected. Seven units across grassland sectors.\n" +
-                "Infection is advancing fast — tolerance threshold: 7%.\n" +
+                "Infection is advancing fast - tolerance threshold: 7%.\n" +
                 "Spread delay: 8 seconds. Act before the bio-layer is lost.\n\n" +
                 "PRIMARY DIRECTIVE:\n" +
                 "Eliminate Seeders before Critical Mass. Good luck, pilot.";

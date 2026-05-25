@@ -171,8 +171,8 @@ namespace _3dTesting.MainWindowClasses
             {
                 var dots = new System.Text.StringBuilder();
                 for (int i = 0; i < state.TotalPages; i++)
-                    dots.Append(i == state.CurrentPage ? " ● " : " ○ ");
-                dots.Append("    [← →]");
+                    dots.Append(i == state.CurrentPage ? " [*] " : " [ ] ");
+                dots.Append("    [< >]");
                 _pageIndicator.Text = dots.ToString();
                 _pageIndicator.Visibility = Visibility.Visible;
             }
@@ -239,7 +239,7 @@ namespace _3dTesting.MainWindowClasses
             double finalH = Math.Max(desiredH, minH);
 
             // Soft cap: keep some margin so it won't cover absolutely everything.
-            // (This is not a hard “cut content” cap; it just prevents insane boxes.)
+            // (This is not a hard "cut content" cap; it just prevents insane boxes.)
             double softMax = screenHeight * 0.90;
             if (finalH > softMax) finalH = softMax;
 

@@ -258,9 +258,9 @@ namespace _3dRotations.Scene.Scene8
             o.Type = ScreenOverlayType.Intro;
             o.Anchor = ScreenOverlayAnchor.Top;
             o.Header = "RETROMESH // FINAL BRIEFING";
-            o.Title = "PLANET TERRA-IX — PHASE VIII";
+            o.Title = "PLANET TERRA-IX - PHASE VIII";
             o.Body =
-                "Last stand on TERRA-IX — origin colony world of the outer systems.\n\n" +
+                "Last stand on TERRA-IX - origin colony world of the outer systems.\n\n" +
                 "All previous planets compromised. This is the final perimeter.\n" +
                 "Twenty-two seeders confirmed. Kamikaze escort: EIGHTEEN units.\n" +
                 "Bomber wing: EIGHT. Large-class war carrier: MAXIMUM aggression.\n" +

@@ -267,13 +267,13 @@ namespace _3dRotations.Scene.Scene1
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "PLANET TRITON-7 — PHASE II";
+            o.Title = "PLANET TRITON-7 - PHASE II";
 
             o.Body =
                 "TRITON-7 outer colony has gone dark.\n\n" +
                 "Long-range telemetry: Omega Strain has breached the perimeter.\n" +
                 "Ten seeders confirmed across the highlands. Escort drones: SIX.\n" +
-                "Infection spreading through woodland networks — tolerance: 6%.\n" +
+                "Infection spreading through woodland networks - tolerance: 6%.\n" +
                 "Spread delay: 6 seconds. Window is closing.\n\n" +
                 "REVISED DIRECTIVE:\n" +
                 "Sterilize TRITON-7. Leave nothing behind.";

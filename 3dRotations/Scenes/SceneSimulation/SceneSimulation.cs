@@ -26,9 +26,9 @@ namespace _3dRotations.Scenes.SceneSimulation
         private static readonly SceneBiomeTypes[] BiomeCycle = new[]
         {
             SceneBiomeTypes.HillsWoods,
+            SceneBiomeTypes.Winter,
             SceneBiomeTypes.Rainforrest,
             SceneBiomeTypes.Desert,
-            SceneBiomeTypes.Winter,
         };
 
         private readonly SceneBiomeTypes _biome;
@@ -67,9 +67,7 @@ namespace _3dRotations.Scenes.SceneSimulation
         {
             _simulationRound = GameState.GamePlayState.SimulationRound;
 
-            // Pick biome pseudo-randomly from round seed so each round feels different
-            var rndBiome = new Random(_simulationRound * 7919 + 42);
-            _biome = BiomeCycle[rndBiome.Next(BiomeCycle.Length)];
+            _biome = ResolveBiome(_simulationRound);
             SceneBiome = _biome;
 
             string[] musicCycle = { "music_flight", "music_battle", "music_kanpai", "music_dontstop" };
@@ -104,6 +102,15 @@ namespace _3dRotations.Scenes.SceneSimulation
             MotherShipLargeAggression = _motherShipAggression;
 
             Director = new SceneSimulationDirector();
+        }
+
+        private static SceneBiomeTypes ResolveBiome(int simulationRound)
+        {
+            int index = simulationRound % BiomeCycle.Length;
+            if (index < 0)
+                index += BiomeCycle.Length;
+
+            return BiomeCycle[index];
         }
 
         public void SetupScene(I3dWorld world)
@@ -303,39 +310,103 @@ namespace _3dRotations.Scenes.SceneSimulation
             world.WorldInhabitants.Add(surfaceObject);
             GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
 
-            if (_biome == SceneBiomeTypes.Winter)
-                world.WorldInhabitants.Add(SnowEmitter.CreateSnowEmitter(Surface));
+            AddBiomeWeather(world);
+            AddBiomeLandmarks(world);
 
-            var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
+            if (_biome == SceneBiomeTypes.Winter)
+                SpawnPolarBears(world);
+        }
+
+        private void AddBiomeWeather(I3dWorld world)
+        {
+            if (_biome == SceneBiomeTypes.Winter)
+            {
+                world.WorldInhabitants.Add(SnowEmitter.CreateSnowEmitter(Surface));
+                return;
+            }
+
+            if (_biome == SceneBiomeTypes.Rainforrest)
+            {
+                world.WorldInhabitants.Add(RainEmitter.CreateRainEmitter(Surface));
+                world.WorldInhabitants.Add(LightningEmitter.CreateLightningEmitter(Surface));
+            }
+        }
+
+        private void AddBiomeLandmarks(I3dWorld world)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return;
+
+            var towerPlacements = SurfaceGeneration.FindTowerPlacements(map, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
             SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
-                GameState.SurfaceState.Global2DMap,
+                map,
                 Surface.MaxHeight(),
                 towerPlacements,
                 writeDebugLogs: false);
 
+            AddBiomeTowers(world, towerPlacements);
+
+            if (_biome == SceneBiomeTypes.Rainforrest)
+            {
+                AddRainforestLandmarks(world);
+                return;
+            }
+
+            if (_biome == SceneBiomeTypes.Winter)
+            {
+                AddWinterLandmarks(world);
+                return;
+            }
+
+            AddTreeAndHouseLandmarks(world);
+        }
+
+        private void AddBiomeTowers(I3dWorld world, List<(int x, int y, int height)> towerPlacements)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return;
+
+            bool useSnowTower = _biome == SceneBiomeTypes.Winter;
             foreach (var towerPlacement in towerPlacements)
             {
-                var tower = Tower.CreateTower(Surface);
+                var tower = useSnowTower
+                    ? SnowTower.CreateSnowTower(Surface)
+                    : Tower.CreateTower(Surface);
+
                 tower.Rotation = new Vector3 { };
                 tower.WorldPosition = new Vector3 { };
-                tower.SurfaceBasedId = GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
-                GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
-                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
-                tower.ObjectName = "Tower";
+                tower.SurfaceBasedId = map[towerPlacement.y, towerPlacement.x].mapId;
+                map[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
+                tower.ObjectOffsets = new Vector3
+                {
+                    x = 75 * ScreenSetup.ScreenScaleX,
+                    y = (useSnowTower ? 315f : 280f) * ScreenSetup.ScreenScaleY,
+                    z = 400
+                };
+                tower.ObjectName = useSnowTower ? "SnowTower" : "Tower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
                 tower.ImpactStatus = new ImpactStatus { };
                 world.WorldInhabitants.Add(tower);
             }
+        }
 
-            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), treePlacements, radius: 0);
+        private void AddTreeAndHouseLandmarks(I3dWorld world)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return;
+
+            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(map, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), treePlacements, radius: 0);
             foreach (var treePlacement in treePlacements)
             {
                 var tree = Tree.CreateTree(Surface);
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-                tree.SurfaceBasedId = GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].mapId;
-                GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
+                tree.SurfaceBasedId = map[treePlacement.y, treePlacement.x].mapId;
+                map[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
                 tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
@@ -344,14 +415,14 @@ namespace _3dRotations.Scenes.SceneSimulation
                 if (tree.SurfaceBasedId > 0) world.WorldInhabitants.Add(tree);
             }
 
-            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), housePlacements, radius: 1);
+            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(map, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), housePlacements, radius: 1);
             foreach (var housePlacement in housePlacements)
             {
                 var house = House.CreateHouse(Surface);
                 house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-                house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
-                GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
+                house.SurfaceBasedId = map[housePlacement.y, housePlacement.x].mapId;
+                map[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
                 house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 400 };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
@@ -359,9 +430,139 @@ namespace _3dRotations.Scenes.SceneSimulation
                 house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId > 0) world.WorldInhabitants.Add(house);
             }
+        }
 
-            if (_biome == SceneBiomeTypes.Winter)
-                SpawnPolarBears(world);
+        private void AddRainforestLandmarks(I3dWorld world)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return;
+
+            var palmPlacements = SurfaceGeneration.FindTreePlacementAreas(map, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), palmPlacements, radius: 0);
+            int palmIndex = 0;
+            foreach (var palmPlacement in palmPlacements)
+            {
+                palmIndex++;
+
+                bool useLargePalm = palmIndex % 4 == 0;
+                bool useSmallPalm = palmIndex % 4 == 1;
+                bool useLargeAlienPlant = palmIndex % 4 == 2;
+
+                var plant = useLargePalm
+                    ? PalmTree.CreateLargePalm(Surface)
+                    : useSmallPalm
+                        ? PalmTree.CreateSmallPalm(Surface)
+                        : useLargeAlienPlant
+                            ? AlienPlant.CreateLargeAlienPlant(Surface)
+                            : AlienPlant.CreateSmallAlienPlant(Surface);
+
+                plant.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                plant.SurfaceBasedId = map[palmPlacement.y, palmPlacement.x].mapId;
+                map[palmPlacement.y, palmPlacement.x].hasLandbasedObject = true;
+                plant.ObjectOffsets = new Vector3
+                {
+                    x = 75 * ScreenSetup.ScreenScaleX,
+                    y = (useLargeAlienPlant || (!useLargePalm && !useSmallPalm && !useLargeAlienPlant) ? 410f : 425f) * ScreenSetup.ScreenScaleY,
+                    z = 400
+                };
+
+                if (useLargePalm)
+                {
+                    plant.ObjectName = "LargePalm";
+                    plant.Movement = new LargePalmControls();
+                }
+                else if (useSmallPalm)
+                {
+                    plant.ObjectName = "SmallPalm";
+                    plant.Movement = new SmallPalmControls();
+                }
+                else if (useLargeAlienPlant)
+                {
+                    plant.ObjectName = "LargeAlienPlant";
+                    plant.Movement = new LargePalmControls();
+                }
+                else
+                {
+                    plant.ObjectName = "SmallAlienPlant";
+                    plant.Movement = new SmallPalmControls();
+                }
+
+                plant.ImpactStatus = new ImpactStatus { };
+                plant.CrashBoxDebugMode = false;
+                if (plant.SurfaceBasedId > 0) world.WorldInhabitants.Add(plant);
+            }
+
+            var hutPlacements = SurfaceGeneration.FindHousePlacementAreas(map, Surface.GlobalMapSize(), Surface.MaxHeight(), palmPlacements, 15000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), hutPlacements, radius: 1);
+            foreach (var hutPlacement in hutPlacements)
+            {
+                if (map[hutPlacement.y, hutPlacement.x].hasLandbasedObject)
+                    continue;
+
+                var hut = BambooHut.CreateBambooHut(Surface);
+                hut.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                hut.SurfaceBasedId = map[hutPlacement.y, hutPlacement.x].mapId;
+                map[hutPlacement.y, hutPlacement.x].hasLandbasedObject = true;
+                hut.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 445 * ScreenSetup.ScreenScaleY, z = 400 };
+                hut.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                hut.ObjectName = "BambooHut";
+                hut.Movement = new BambooHutControls();
+                hut.ImpactStatus = new ImpactStatus { };
+                hut.CrashBoxDebugMode = false;
+                if (hut.SurfaceBasedId > 0) world.WorldInhabitants.Add(hut);
+            }
+        }
+
+        private void AddWinterLandmarks(I3dWorld world)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return;
+
+            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(map, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), treePlacements, radius: 0);
+            foreach (var treePlacement in treePlacements)
+            {
+                var tree = Tree.CreateTree(Surface);
+                tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                tree.SurfaceBasedId = map[treePlacement.y, treePlacement.x].mapId;
+                map[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
+                tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
+                tree.ObjectName = "Tree";
+                tree.Movement = new TreeControls();
+                tree.ImpactStatus = new ImpactStatus { };
+                tree.CrashBoxDebugMode = false;
+                if (tree.SurfaceBasedId > 0) world.WorldInhabitants.Add(tree);
+            }
+
+            var iglooPlacements = SurfaceGeneration.FindHousePlacementAreas(map, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 30000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), iglooPlacements, radius: 1);
+            var iglooRotationVariants = new float[] { -30f, -18f, -8f, 0f, 12f, 24f, 36f };
+            int iglooIndex = 0;
+            foreach (var iglooPlacement in iglooPlacements)
+            {
+                if (map[iglooPlacement.y, iglooPlacement.x].hasLandbasedObject)
+                    continue;
+
+                bool useLargeIgloo = iglooIndex % 4 == 0;
+                var igloo = useLargeIgloo
+                    ? Igloo.CreateLargeIgloo(Surface)
+                    : Igloo.CreateSmallIgloo(Surface);
+
+                float rotationZ = iglooRotationVariants[iglooIndex % iglooRotationVariants.Length];
+                igloo.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                igloo.Rotation = new Vector3 { x = 0, y = 0, z = rotationZ };
+                igloo.SurfaceBasedId = map[iglooPlacement.y, iglooPlacement.x].mapId;
+                map[iglooPlacement.y, iglooPlacement.x].hasLandbasedObject = true;
+                float iglooOffsetY = useLargeIgloo ? 462f : 475f;
+                igloo.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = iglooOffsetY * ScreenSetup.ScreenScaleY, z = 400 };
+                igloo.ImpactStatus = new ImpactStatus { };
+                igloo.CrashBoxDebugMode = false;
+                if (igloo.SurfaceBasedId > 0) world.WorldInhabitants.Add(igloo);
+
+                iglooIndex++;
+            }
         }
 
         public void SetupSceneOverlay()
@@ -385,19 +586,19 @@ namespace _3dRotations.Scenes.SceneSimulation
             };
 
             o.Header = "RETROMESH // SIMULATION";
-            o.Title = $"COMBAT SIMULATOR \u2014 {roundLabel}";
+            o.Title = $"COMBAT SIMULATOR - {roundLabel}";
 
             o.Body =
-                $"The galaxy has been cleared \u2014 but the war is not over.\\n\\n" +
-                $"A new infection wave is imminent. Train now.\\n" +
-                $"Simulation type: {biomeName}\\n\\n" +
-                $"ENEMY COUNT: {totalEnemies} units total\\n" +
-                $"  Seeders:          {_seeders + _powerUpSeeders} (incl. {_powerUpSeeders} power-up carriers)\\n" +
-                $"  Kamikaze Drones:  {_drones}\\n" +
-                $"  Zeppelin Bombers: {_bombers}\\n" +
-                $"  MotherShip:       1 \u00d7 {motherShipClass}\\n\\n" +
-                $"Infection tolerance: {_infectionThreshold:F1}%  |  Spread delay: {_spreadDelaySec:F1}s\\n\\n" +
-                "DIRECTIVE:\\n" +
+                $"The galaxy has been cleared - but the war is not over.\n\n" +
+                $"A new infection wave is imminent. Train now.\n" +
+                $"Simulation type: {biomeName}\n\n" +
+                $"ENEMY COUNT: {totalEnemies} units total\n" +
+                $"  Seeders:          {_seeders + _powerUpSeeders} (incl. {_powerUpSeeders} power-up carriers)\n" +
+                $"  Kamikaze Drones:  {_drones}\n" +
+                $"  Zeppelin Bombers: {_bombers}\n" +
+                $"  MotherShip:       1 x {motherShipClass}\n\n" +
+                $"Infection tolerance: {_infectionThreshold:F1}%  |  Spread delay: {_spreadDelaySec:F1}s\n\n" +
+                "DIRECTIVE:\n" +
                 "Survive. Score high. Defend your rank on the leaderboard.";
 
             o.Footer = "PRESS ANY KEY TO ENTER THE SIMULATION";

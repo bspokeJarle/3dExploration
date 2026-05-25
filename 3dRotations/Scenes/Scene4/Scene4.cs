@@ -659,12 +659,12 @@ namespace _3dRotations.Scene.Scene4
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "PLANET KEPLER-22b — PHASE IV";
+            o.Title = "PLANET KEPLER-22b - PHASE IV";
 
             o.Body =
                 "Frozen world KEPLER-22b: Omega Strain has adapted to sub-zero conditions.\n\n" +
                 "Fifteen seeders confirmed. Escort drones: TEN. Bombers: THREE.\n" +
-                "Infection spreading beneath the ice layer — tolerance: 4.5%.\n" +
+                "Infection spreading beneath the ice layer - tolerance: 4.5%.\n" +
                 "Spread delay: 3 seconds. Cascade will not stop until seeders are dead.\n\n" +
                 "DIRECTIVE:\n" +
                 "Purge the frozen world. Accept no losses.";

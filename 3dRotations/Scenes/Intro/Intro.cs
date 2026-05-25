@@ -32,7 +32,7 @@ namespace _3dRotations.Scenes.Intro
         {
             if (SkipLogoCube)
             {
-                // Returning mid-game — show the overlay immediately without the logo animation
+                // Returning mid-game - show the overlay immediately without the logo animation
                 GameState.ScreenOverlayState.ShowOverlay = true;
                 return;
             }
@@ -71,19 +71,19 @@ namespace _3dRotations.Scenes.Intro
                 "RETROMESH // FIELD MANUAL",
                 "TACTICAL BRIEFING",
                 "WEAPONS:\n" +
-                "  [1] BULLET  — High fire rate, effective vs Seeders\n" +
-                "  [2] DECOY   — Lures Kamikaze Drones away from your ship\n" +
-                "  [3] LAZER   — Powerful beam, cuts through targets\n\n" +
+                "  [1] BULLET  - High fire rate, effective vs Seeders\n" +
+                "  [2] DECOY   - Lures Kamikaze Drones away from your ship\n" +
+                "  [3] LAZER   - Powerful beam, cuts through targets\n\n" +
                 "COMBAT TIPS:\n" +
-                "  \u2022 Destroy Seeders to stop the infection from spreading\n" +
-                "  \u2022 Kamikaze Drones will rush your ship — deploy Decoys!\n" +
-                "  \u2022 Decoys unlock after collecting your first PowerUp\n" +
-                "  \u2022 PowerUps drop from glowing Seeders\n" +
-                "  \u2022 Eliminate all enemies to face the MotherShip\n\n" +
+                "  - Destroy Seeders to stop the infection from spreading\n" +
+                "  - Kamikaze Drones will rush your ship - deploy Decoys!\n" +
+                "  - Decoys unlock after collecting your first PowerUp\n" +
+                "  - PowerUps drop from glowing Seeders\n" +
+                "  - Eliminate all enemies to face the MotherShip\n\n" +
                 "NAVIGATION:\n" +
-                "  \u2022 Arrow keys or WASD to move\n" +
-                "  \u2022 Follow the guidance arrow to find Seeders\n" +
-                "  \u2022 Press [X] at any time during a mission to return to this screen",
+                "  - Arrow keys or WASD to move\n" +
+                "  - Follow the guidance arrow to find Seeders\n" +
+                "  - Press [X] at any time during a mission to return to this screen",
                 "PRESS ANY KEY TO INITIATE PROTOCOL");
 
             // Page 3: Highscores
@@ -99,7 +99,7 @@ namespace _3dRotations.Scenes.Intro
             // LogoCube plays first
             o.ShowOverlay = false;
 
-            // This is intro — don't auto-hide until player input
+            // This is intro - don't auto-hide until player input
             o.AutoHide = false;
             o.AutoHideSeconds = 0f;
 

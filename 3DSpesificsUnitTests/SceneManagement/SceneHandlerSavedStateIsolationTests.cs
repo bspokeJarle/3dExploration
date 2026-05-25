@@ -25,7 +25,7 @@ public class SceneHandlerSavedStateIsolationTests
         PersistenceSetup.LocalFolder = _testLocalFolder;
         PersistenceSetup.Initialize();
 
-        GameState.GamePlayState = new GamePlayState();
+        GameState.GamePlayState = new GamePlayState { SceneIndex = 0 };
         GameState.SurfaceState = new SurfaceState();
         GameState.ScreenOverlayState = new ScreenOverlayState();
         GameState.ObjectIdCounter = 0;

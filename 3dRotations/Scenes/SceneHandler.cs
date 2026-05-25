@@ -281,6 +281,7 @@ namespace _3DWorld.Scene
                 var gps = GameState.GamePlayState;
                 gps.Score = _pendingSavedState.Score;
                 gps.SimulationRound = _pendingSavedState.SimulationRound;
+                gps.CurrentSceneBiome = _pendingSavedState.SceneBiome;
                 gps.TotalKills = _pendingSavedState.TotalKills;
                 gps.TotalShotsFired = _pendingSavedState.TotalShotsFired;
                 gps.TotalDeaths = _pendingSavedState.TotalDeaths;
@@ -306,6 +307,7 @@ namespace _3DWorld.Scene
                 if (shouldRestoreCheckpoint)
                 {
                     GameStatePersistence.RestoreToGamePlayState(_pendingSavedState);
+                    ApplySceneSettings(GetActiveScene());
 
                     var snapshot = gps.CaptureCheckpointSnapshot();
                     int restoredMotherShips = ResolveRestoredMotherShipCount(snapshot.MotherShipsRemaining);
@@ -447,7 +449,7 @@ namespace _3DWorld.Scene
                         string.Equals(e.PlayerName, name, StringComparison.OrdinalIgnoreCase));
                     if (taken)
                     {
-                        overlay.NameEntryValidationMessage = ">> CALLSIGN ALREADY IN USE — CHOOSE ANOTHER";
+                        overlay.NameEntryValidationMessage = ">> CALLSIGN ALREADY IN USE - CHOOSE ANOTHER";
                         return;
                     }
                 }
@@ -463,10 +465,8 @@ namespace _3DWorld.Scene
                     // Always restore score and stats so the player builds upon them
                     _pendingSavedState = saved;
 
-                    // Skip to saved scene only if it's a Game scene ahead of current
-                    if (saved.SceneIndex > currentSceneIndex + 1 &&
-                        saved.SceneIndex < scenes.Count &&
-                        scenes[saved.SceneIndex].SceneType == SceneTypes.Game)
+                    // Skip to saved scene only if it's a playable scene ahead of current
+                    if (CanTargetSavedScene(saved))
                     {
                         _targetSceneIndex = saved.SceneIndex;
                     }
@@ -551,6 +551,15 @@ namespace _3DWorld.Scene
             scene.SetupVideoOverlay("introclip.mp4");
         }
 
+        private bool CanTargetSavedScene(SavedGameState saved)
+        {
+            if (saved.SceneIndex <= currentSceneIndex + 1 || saved.SceneIndex >= scenes.Count)
+                return false;
+
+            var sceneType = scenes[saved.SceneIndex].SceneType;
+            return sceneType == SceneTypes.Game || sceneType == SceneTypes.Simulation;
+        }
+
         private IScene? CreateFreshScene() =>
             (IScene?)Activator.CreateInstance(GetActiveScene().GetType());
 
@@ -613,6 +622,7 @@ namespace _3DWorld.Scene
             gps.MotherShipSmallAggression = scene.MotherShipSmallAggression;
             gps.MotherShipMediumAggression = scene.MotherShipMediumAggression;
             gps.MotherShipLargeAggression = scene.MotherShipLargeAggression;
+            gps.CurrentSceneBiome = scene.SceneBiome;
             GameState.SurfaceState.SceneBiome = scene.SceneBiome;
         }
 

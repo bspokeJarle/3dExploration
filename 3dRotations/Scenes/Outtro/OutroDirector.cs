@@ -143,13 +143,13 @@ namespace _3dRotations.Scenes.Outro
                     "The MotherShip is space dust,\n" +
                     "the Kamikaze Drones forgot what they were doing,\n" +
                     "and even the asteroids missed (barely).\n\n" +
-                    "Now wave at the locals — they deserve it.",
+                    "Now wave at the locals - they deserve it.",
                 footer: "PAGE 1 / 3 - PRESS ANY KEY TO CONTINUE");
             overlay.AddPage(
                 header: "RETROMESH // FIELD ADVISORY",
                 title: "THE STRAIN MAY RETURN",
                 body:
-                    "Earth is clean — for now. But the galaxy is big,\n" +
+                    "Earth is clean - for now. But the galaxy is big,\n" +
                     "and somewhere out there a new strain is already\n" +
                     "rehearsing its entrance.\n\n" +
                     "Command has spun up a combat simulator so you can\n" +

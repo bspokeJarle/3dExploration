@@ -269,16 +269,16 @@ namespace _3dRotations.Scene.Scene7
             o.Type = ScreenOverlayType.Intro;
             o.Anchor = ScreenOverlayAnchor.Top;
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "PLANET GLACIUS — PHASE VII";
+            o.Title = "PLANET GLACIUS - PHASE VII";
             o.Body =
-                "Entering orbit of GLACIUS — frozen world, permanent ice storm coverage.\n\n" +
+                "Entering orbit of GLACIUS - frozen world, permanent ice storm coverage.\n\n" +
                 "Omega Strain adapts rapidly under sub-zero conditions.\n" +
                 "Twenty seeders embedded in glacial terrain.\n" +
                 "Kamikaze escort: SIXTEEN units. Bomber wing: SEVEN.\n" +
                 "Spread delay: 1.5 seconds. Bio-tolerance: 2.5%.\n" +
                 "Large-class war carrier incoming.\n\n" +
                 "DIRECTIVE:\n" +
-                "Clear all hostiles — the ice planet will not survive another hour.";
+                "Clear all hostiles - the ice planet will not survive another hour.";
             o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";
             o.ShowOverlay = true;
             o.AutoHide = false;

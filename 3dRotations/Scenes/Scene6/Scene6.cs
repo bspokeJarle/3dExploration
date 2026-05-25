@@ -254,9 +254,9 @@ namespace _3dRotations.Scene.Scene6
             o.Type = ScreenOverlayType.Intro;
             o.Anchor = ScreenOverlayAnchor.Top;
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "PLANET ARIDUS — PHASE VI";
+            o.Title = "PLANET ARIDUS - PHASE VI";
             o.Body =
-                "Descending on ARIDUS — arid desert world, surface temperature extreme.\n\n" +
+                "Descending on ARIDUS - arid desert world, surface temperature extreme.\n\n" +
                 "Sand contamination identified as Omega Strain vector.\n" +
                 "Nineteen seeders detected across dune fields.\n" +
                 "Kamikaze escort: FOURTEEN units. Bomber wing: SIX.\n" +
