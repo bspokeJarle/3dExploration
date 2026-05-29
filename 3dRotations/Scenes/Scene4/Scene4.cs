@@ -31,8 +31,8 @@ namespace _3dRotations.Scene.Scene4
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Winter;
         public ISceneDirector Director { get; } = new Scene4Director();
         public GameModes GameMode { get; } = GameModes.Playback;
-        public float InfectionThresholdPercent { get; } = 4.5f;
-        public int InfectionSpreadRate { get; } = 210;
+        public float InfectionThresholdPercent { get; } = 12.5f;
+        public int InfectionSpreadRate { get; } = 6;
         public int SeederOffscreenSpeedFactor { get; } = 16;
         public float LocalInfectionSpreadDelaySec { get; } = 3.0f;
         public float LocalInfectionSpreadRadius { get; } = 5000f;
@@ -664,7 +664,7 @@ namespace _3dRotations.Scene.Scene4
             o.Body =
                 "Frozen world KEPLER-22b: Omega Strain has adapted to sub-zero conditions.\n\n" +
                 "Fifteen seeders confirmed. Escort drones: TEN. Bombers: THREE.\n" +
-                "Infection spreading beneath the ice layer - tolerance: 4.5%.\n" +
+                "Infection spreading beneath the ice layer - tolerance: 12.5%.\n" +
                 "Spread delay: 3 seconds. Cascade will not stop until seeders are dead.\n\n" +
                 "DIRECTIVE:\n" +
                 "Purge the frozen world. Accept no losses.";

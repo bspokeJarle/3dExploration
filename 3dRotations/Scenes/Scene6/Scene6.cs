@@ -26,8 +26,8 @@ namespace _3dRotations.Scene.Scene6
         public ISceneDirector Director { get; } = new Scene6Director();
         public GameModes GameMode { get; } = GameModes.Playback;
 
-        public float InfectionThresholdPercent { get; } = 3.0f;
-        public int InfectionSpreadRate { get; } = 310;
+        public float InfectionThresholdPercent { get; } = 11.5f;
+        public int InfectionSpreadRate { get; } = 8;
         public int SeederOffscreenSpeedFactor { get; } = 20;
         public float LocalInfectionSpreadDelaySec { get; } = 1.8f;
         public float LocalInfectionSpreadRadius { get; } = 5800f;
@@ -258,9 +258,9 @@ namespace _3dRotations.Scene.Scene6
             o.Body =
                 "Descending on ARIDUS - arid desert world, surface temperature extreme.\n\n" +
                 "Sand contamination identified as Omega Strain vector.\n" +
-                "Nineteen seeders detected across dune fields.\n" +
+                "Twenty-one seeders detected across dune fields.\n" +
                 "Kamikaze escort: FOURTEEN units. Bomber wing: SIX.\n" +
-                "Spread delay: 1.8 seconds. Bio-tolerance: 3.0%.\n\n" +
+                "Spread delay: 1.8 seconds. Bio-tolerance: 11.5%.\n\n" +
                 "DIRECTIVE:\n" +
                 "Destroy all seeders before the desert biome collapses entirely.";
             o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";

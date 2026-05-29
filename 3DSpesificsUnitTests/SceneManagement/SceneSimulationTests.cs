@@ -121,6 +121,43 @@ public class SceneSimulationTests
     }
 
     [TestMethod]
+    public void SceneSimulation_UsesCampaignAlignedInfectionTuning()
+    {
+        var firstRound = CreateSimulationForRound(0);
+        var midRound = CreateSimulationForRound(5);
+        var lateRound = CreateSimulationForRound(12);
+
+        Assert.AreEqual(14.0f, firstRound.InfectionThresholdPercent, 0.0001f);
+        Assert.AreEqual(4, firstRound.InfectionSpreadRate);
+        Assert.AreEqual(2.0f, firstRound.LocalInfectionSpreadDelaySec, 0.0001f);
+        Assert.AreEqual(5500f, firstRound.LocalInfectionSpreadRadius, 0.0001f);
+
+        Assert.AreEqual(11.5f, midRound.InfectionThresholdPercent, 0.0001f);
+        Assert.AreEqual(9, midRound.InfectionSpreadRate);
+        Assert.AreEqual(1.5f, midRound.LocalInfectionSpreadDelaySec, 0.0001f);
+        Assert.AreEqual(6250f, midRound.LocalInfectionSpreadRadius, 0.0001f);
+
+        Assert.AreEqual(10.0f, lateRound.InfectionThresholdPercent, 0.0001f);
+        Assert.AreEqual(10, lateRound.InfectionSpreadRate);
+        Assert.AreEqual(1.2f, lateRound.LocalInfectionSpreadDelaySec, 0.0001f);
+        Assert.AreEqual(6500f, lateRound.LocalInfectionSpreadRadius, 0.0001f);
+    }
+
+    [TestMethod]
+    public void SceneSimulation_BriefingExplainsSeederPriorityAndCurrentTolerance()
+    {
+        var scene = CreateSimulationForRound(5);
+
+        scene.SetupSceneOverlay();
+
+        var body = GameState.ScreenOverlayState.Body;
+        Assert.IsTrue(body.Contains("Infection tolerance: 11.5%", StringComparison.Ordinal));
+        Assert.IsTrue(body.Contains("Spread delay: 1.5s", StringComparison.Ordinal));
+        Assert.IsTrue(body.Contains("Kill Seeders first", StringComparison.Ordinal));
+        Assert.IsTrue(body.Contains("every Seeder destroyed slows the infection cascade", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public void GameStatePersistence_SavesSimulationBiomeAndEnemyCounts()
     {
         var gps = GameState.GamePlayState;

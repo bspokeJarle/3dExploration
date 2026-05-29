@@ -26,8 +26,8 @@ namespace _3dRotations.Scene.Scene1
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
         public ISceneDirector Director { get; } = new Scene2Director();
         public GameModes GameMode { get; } = GameModes.Playback;
-        public float InfectionThresholdPercent { get; } = 6f;
-        public int InfectionSpreadRate { get; } = 130;
+        public float InfectionThresholdPercent { get; } = 13.5f;
+        public int InfectionSpreadRate { get; } = 4;
         public int SeederOffscreenSpeedFactor { get; } = 12;
         public float LocalInfectionSpreadDelaySec { get; } = 6.0f;
         public float LocalInfectionSpreadRadius { get; } = 4200f;
@@ -273,7 +273,7 @@ namespace _3dRotations.Scene.Scene1
                 "TRITON-7 outer colony has gone dark.\n\n" +
                 "Long-range telemetry: Omega Strain has breached the perimeter.\n" +
                 "Ten seeders confirmed across the highlands. Escort drones: SIX.\n" +
-                "Infection spreading through woodland networks - tolerance: 6%.\n" +
+                "Infection spreading through woodland networks - tolerance: 13.5%.\n" +
                 "Spread delay: 6 seconds. Window is closing.\n\n" +
                 "REVISED DIRECTIVE:\n" +
                 "Sterilize TRITON-7. Leave nothing behind.";

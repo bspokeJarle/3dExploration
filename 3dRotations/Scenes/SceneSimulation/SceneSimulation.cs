@@ -14,6 +14,7 @@ using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.JumpingFishControls;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3dRotations.Scenes.SceneSimulation
@@ -83,12 +84,13 @@ namespace _3dRotations.Scenes.SceneSimulation
             // Use large mothership from round 2 onwards, toggle between medium/large
             _useLargeMotherShip = round >= 2;
 
-            // Infection gets progressively more brutal
-            _infectionThreshold = Math.Max(1.0f, 3.5f - round * 0.15f);
-            _infectionSpreadRate = Math.Min(200 + round * 40, 800);
+            // Keep simulation aligned with the campaign balance: Seeders matter,
+            // but the bio-limit must stay playable enough for the player to reach them.
+            _infectionThreshold = Math.Max(10.0f, 14.0f - round * 0.5f);
+            _infectionSpreadRate = Math.Min(4 + round, 10);
             _offscreenSpeedFactor = Math.Min(16 + round * 1, 30);
-            _spreadDelaySec = Math.Max(0.4f, 2.0f - round * 0.12f);
-            _spreadRadius = Math.Min(5500f + round * 200f, 10000f);
+            _spreadDelaySec = Math.Max(1.2f, 2.0f - round * 0.10f);
+            _spreadRadius = Math.Min(5500f + round * 150f, 6500f);
             _motherShipAggression = Math.Min(1.20f + round * 0.08f, 2.2f);
 
             // Assign to interface properties
@@ -577,6 +579,8 @@ namespace _3dRotations.Scenes.SceneSimulation
             string roundLabel = round == 0 ? "INITIAL" : $"ROUND {round + 1}";
             int totalEnemies = _seeders + _powerUpSeeders + _drones + _bombers + 1;
             string motherShipClass = _useLargeMotherShip ? "LARGE-CLASS WAR CARRIER" : "MEDIUM-CLASS CARRIER";
+            string infectionThresholdText = _infectionThreshold.ToString("0.0", CultureInfo.InvariantCulture);
+            string spreadDelayText = _spreadDelaySec.ToString("0.0", CultureInfo.InvariantCulture);
             string biomeName = _biome switch
             {
                 SceneBiomeTypes.Rainforrest => "JUNGLE WORLD",
@@ -597,7 +601,8 @@ namespace _3dRotations.Scenes.SceneSimulation
                 $"  Kamikaze Drones:  {_drones}\n" +
                 $"  Zeppelin Bombers: {_bombers}\n" +
                 $"  MotherShip:       1 x {motherShipClass}\n\n" +
-                $"Infection tolerance: {_infectionThreshold:F1}%  |  Spread delay: {_spreadDelaySec:F1}s\n\n" +
+                $"Infection tolerance: {infectionThresholdText}%  |  Spread delay: {spreadDelayText}s\n" +
+                "Kill Seeders first; every Seeder destroyed slows the infection cascade.\n\n" +
                 "DIRECTIVE:\n" +
                 "Survive. Score high. Defend your rank on the leaderboard.";
 

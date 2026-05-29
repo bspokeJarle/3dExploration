@@ -680,6 +680,58 @@
       }
     },
     {
+      "id": "biomass_critical_warning",
+      "usage": "BiomassCriticalWarning",
+      "file": "OmegaStrain_biomass_critical.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 1.0,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 180
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "biomass_abort_warning",
+      "usage": "BiomassAbortWarning",
+      "file": "OmegaStrain_biomass_reached_abort.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 1.0,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 200
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
       "id": "rain_loop",
       "usage": "RainLoop",
       "file": "OmegaStrain_Rain_Loop.wav",

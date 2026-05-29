@@ -63,6 +63,10 @@ namespace _3dTesting.MainWindowClasses.Loops
         private SoundDefinition MusicDef { get; set; } = null;
         private bool MusicIsPlaying { get; set; } = false;
         private string CurrentSceneMusicId { get; set; } = string.Empty;
+        private const string BiomassCriticalWarningSoundId = "biomass_critical_warning";
+        private const string BiomassAbortWarningSoundId = "biomass_abort_warning";
+        private bool _biomassCriticalWarningPlayed = false;
+        private bool _biomassAbortWarningPlayed = false;
 
         public string DebugMessage { get; set; }
         private bool enableLocalLogging = false;
@@ -287,6 +291,8 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             var activeScene = world.SceneHandler.GetActiveScene();
 
+            HandleBiomassWarnings();
+
             var ship = activeWorld.FirstOrDefault(x => x.ObjectName == "Ship");
             if (ship != null && ship.ImpactStatus.HasExploded && !_deathSequenceStarted)
             {
@@ -373,6 +379,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             // Process cascading local infection spread (seeder-infected tiles spread to neighbors after a delay)
             SeederControls.ProcessLocalInfectionSpread(GameState.SurfaceState);
+            HandleBiomassWarnings();
             infectionMs = MarkPhase();
 
             projectedCoordinates = From3dTo2d.ConvertTo2dFromObjects(renderedList, FrameCounter, projectedCoordinates);
@@ -963,6 +970,44 @@ namespace _3dTesting.MainWindowClasses.Loops
             {
                 audioPlayer.PlayMusic(MusicDef, 0.2f);
                 MusicIsPlaying = true;
+            }
+        }
+
+        private void HandleBiomassWarnings()
+        {
+            var gameplay = GameState.GamePlayState;
+
+            if (gameplay.InfectionCriticalProgress <= 0.01f)
+            {
+                _biomassCriticalWarningPlayed = false;
+                _biomassAbortWarningPlayed = false;
+                return;
+            }
+
+            if (_deathSequenceStarted || _victorySequenceStarted)
+                return;
+
+            if (!_biomassAbortWarningPlayed && gameplay.IsBiomassAbortWarning)
+            {
+                _biomassAbortWarningPlayed = true;
+                _biomassCriticalWarningPlayed = true;
+
+                if (soundRegistry.TryGet(BiomassAbortWarningSoundId, out var abortDefinition))
+                {
+                    audioPlayer.PlayOneShot(abortDefinition);
+                }
+
+                return;
+            }
+
+            if (!_biomassCriticalWarningPlayed && gameplay.IsBiomassCriticalWarning)
+            {
+                _biomassCriticalWarningPlayed = true;
+
+                if (soundRegistry.TryGet(BiomassCriticalWarningSoundId, out var criticalDefinition))
+                {
+                    audioPlayer.PlayOneShot(criticalDefinition);
+                }
             }
         }
 

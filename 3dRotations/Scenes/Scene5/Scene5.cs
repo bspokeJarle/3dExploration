@@ -26,8 +26,8 @@ namespace _3dRotations.Scene.Scene5
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Rainforrest;
         public ISceneDirector Director { get; } = new Scene5Director();
         public GameModes GameMode { get; } = GameModes.Playback;
-        public float InfectionThresholdPercent { get; } = 3.5f;
-        public int InfectionSpreadRate { get; } = 270;
+        public float InfectionThresholdPercent { get; } = 12.0f;
+        public int InfectionSpreadRate { get; } = 7;
         public int SeederOffscreenSpeedFactor { get; } = 18;
         public float LocalInfectionSpreadDelaySec { get; } = 2.0f;
         public float LocalInfectionSpreadRadius { get; } = 5500f;
@@ -330,7 +330,7 @@ namespace _3dRotations.Scene.Scene5
                 "Canopy systems compromised. Omega Strain spreading through root networks.\n" +
                 "Eighteen seeders detected. Kamikaze escort: TWELVE units.\n" +
                 "Bomber wing: FIVE units. Infection cascade: CRITICAL.\n" +
-                "Spread delay: 2 seconds. Tolerance: 3.5%.\n\n" +
+                "Spread delay: 2 seconds. Tolerance: 12.0%.\n\n" +
                 "DIRECTIVE:\n" +
                 "Hunt seeders before the jungle is lost. Eradicate on sight.";
 

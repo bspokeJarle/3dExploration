@@ -79,6 +79,12 @@
     <None Update="Soundeffects\OmegaStrain_Bullet.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Soundeffects\OmegaStrain_biomass_critical.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_biomass_reached_abort.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\OmegaStrain_Change_Weapon.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

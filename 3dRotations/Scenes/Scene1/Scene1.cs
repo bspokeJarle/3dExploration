@@ -28,9 +28,9 @@ namespace _3dRotations.Scene.Scene1
 
         public GameModes GameMode { get; } = GameModes.Playback;
         //How much of the surface needs to be infected for the player to lose, as a percentage of total bio tiles
-        public float InfectionThresholdPercent { get; } = 7f;
+        public float InfectionThresholdPercent { get; } = 14.0f;
         //How many new tiles does each infected tile infect per second, on average? This is used to calculate the local spread delay and the infection progress bar fill rate
-        public int InfectionSpreadRate { get; } = 100;
+        public int InfectionSpreadRate { get; } = 4;
         //When seeders are offscreen, they will move at this speed factor (multiplier to normal speed) to catch up to the player faster. This is used to keep the gameplay engaging and prevent players from kiting seeders indefinitely by staying at the edge of the screen
         public int SeederOffscreenSpeedFactor { get; } = 10;
         //When a tile is infected, it will spread the infection to its neighbors after this delay (in seconds). The delay is calculated based on the InfectionSpreadRate, and determines how quickly the infection spreads across the surface. A lower value means faster spread, while a higher value means slower spread.
@@ -292,7 +292,7 @@ namespace _3dRotations.Scene.Scene1
                 "Signal received from the NEREID perimeter colonies.\n" +
                 "Biological anomaly confirmed. Designation: OMEGA STRAIN.\n\n" +
                 "Seeder activity detected. Seven units across grassland sectors.\n" +
-                "Infection is advancing fast - tolerance threshold: 7%.\n" +
+                "Infection is advancing fast - tolerance threshold: 14.0%.\n" +
                 "Spread delay: 8 seconds. Act before the bio-layer is lost.\n\n" +
                 "PRIMARY DIRECTIVE:\n" +
                 "Eliminate Seeders before Critical Mass. Good luck, pilot.";

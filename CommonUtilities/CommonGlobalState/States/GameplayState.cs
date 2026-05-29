@@ -31,7 +31,7 @@ namespace Domain
         // Player / ship core stats
         // -----------------------------
         public string PlayerName { get; set; } = "";
-        public int SceneIndex { get; set; } = 10;
+        public int SceneIndex { get; set; } = 1;
         public int Lives { get; set; } = 3;
 
         // Simulation round counter — increments each time the player enters the simulation after the outro
@@ -178,11 +178,31 @@ namespace Domain
         /// </summary>
         public float InfectionPercent => TotalBioTiles > 0 ? (InfectionLevel / TotalBioTiles) * 100f : 0f;
 
+        public const float BiomassCriticalWarningRatio = 0.80f;
+        public const float BiomassAbortWarningRatio = 0.96f;
+
         /// <summary>
         /// Infection threshold percentage (0..100). When InfectionPercent
         /// reaches this value, the planet is lost. Configurable per level.
         /// </summary>
         public float InfectionCriticalMass { get; set; } = 100f;
+
+        public float InfectionCriticalProgress
+        {
+            get
+            {
+                if (TotalBioTiles <= 0)
+                    return 0f;
+
+                if (InfectionCriticalMass <= 0f)
+                    return InfectionLevel > 0f ? 1f : 0f;
+
+                return InfectionPercent / InfectionCriticalMass;
+            }
+        }
+
+        public bool IsBiomassCriticalWarning => InfectionCriticalProgress >= BiomassCriticalWarningRatio;
+        public bool IsBiomassAbortWarning => InfectionCriticalProgress >= BiomassAbortWarningRatio;
 
         public bool IsInfectionCritical => TotalBioTiles > 0 && InfectionPercent >= InfectionCriticalMass;
 

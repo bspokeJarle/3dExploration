@@ -22,12 +22,12 @@ namespace _3dRotations.Scene.Scene8
 
         public string SceneMusic { get; } = "music_dontstop";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
-        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
+        public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Rainforrest;
         public ISceneDirector Director { get; } = new Scene8Director();
         public GameModes GameMode { get; } = GameModes.Playback;
 
-        public float InfectionThresholdPercent { get; } = 2.0f;
-        public int InfectionSpreadRate { get; } = 400;
+        public float InfectionThresholdPercent { get; } = 10.0f;
+        public int InfectionSpreadRate { get; } = 10;
         public int SeederOffscreenSpeedFactor { get; } = 22;
         public float LocalInfectionSpreadDelaySec { get; } = 1.2f;
         public float LocalInfectionSpreadRadius { get; } = 6500f;
@@ -194,6 +194,12 @@ namespace _3dRotations.Scene.Scene8
             world.WorldInhabitants.Add(surfaceObject);
             GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
 
+            if (SceneBiome == SceneBiomeTypes.Rainforrest)
+            {
+                world.WorldInhabitants.Add(RainEmitter.CreateRainEmitter(Surface));
+                world.WorldInhabitants.Add(LightningEmitter.CreateLightningEmitter(Surface));
+            }
+
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
             SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
                 GameState.SurfaceState.Global2DMap,
@@ -217,33 +223,78 @@ namespace _3dRotations.Scene.Scene8
                 world.WorldInhabitants.Add(tower);
             }
 
-            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), treePlacements, radius: 1);
-            foreach (var treePlacement in treePlacements)
+            var palmPlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), palmPlacements, radius: 1);
+            var palmIndex = 0;
+            foreach (var palmPlacement in palmPlacements)
             {
-                var tree = Tree.CreateTree(Surface);
-                tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-                tree.SurfaceBasedId = GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].mapId;
-                GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
-                tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
-                tree.ObjectName = "Tree";
-                tree.Movement = new TreeControls();
-                tree.ImpactStatus = new ImpactStatus { };
-                tree.CrashBoxDebugMode = false;
-                if (tree.SurfaceBasedId > 0) world.WorldInhabitants.Add(tree);
+                palmIndex++;
+
+                bool useLargePalm = palmIndex % 4 == 0;
+                bool useSmallPalm = palmIndex % 4 == 1;
+                bool useLargeAlienPlant = palmIndex % 4 == 2;
+
+                var plant = useLargePalm
+                    ? PalmTree.CreateLargePalm(Surface)
+                    : useSmallPalm
+                        ? PalmTree.CreateSmallPalm(Surface)
+                        : useLargeAlienPlant
+                            ? AlienPlant.CreateLargeAlienPlant(Surface)
+                            : AlienPlant.CreateSmallAlienPlant(Surface);
+
+                plant.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                plant.SurfaceBasedId = GameState.SurfaceState.Global2DMap[palmPlacement.y, palmPlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[palmPlacement.y, palmPlacement.x].hasLandbasedObject = true;
+                plant.ObjectOffsets = new Vector3
+                {
+                    x = 75 * ScreenSetup.ScreenScaleX,
+                    y = (useLargeAlienPlant || (!useLargePalm && !useSmallPalm && !useLargeAlienPlant) ? 410f : 425f) * ScreenSetup.ScreenScaleY,
+                    z = 400
+                };
+
+                if (useLargePalm)
+                {
+                    plant.ObjectName = "LargePalm";
+                    plant.Movement = new LargePalmControls();
+                }
+                else if (useSmallPalm)
+                {
+                    plant.ObjectName = "SmallPalm";
+                    plant.Movement = new SmallPalmControls();
+                }
+                else if (useLargeAlienPlant)
+                {
+                    plant.ObjectName = "LargeAlienPlant";
+                    plant.Movement = new LargePalmControls();
+                }
+                else
+                {
+                    plant.ObjectName = "SmallAlienPlant";
+                    plant.Movement = new SmallPalmControls();
+                }
+
+                plant.ImpactStatus = new ImpactStatus { };
+                plant.CrashBoxDebugMode = false;
+                if (plant.SurfaceBasedId > 0) world.WorldInhabitants.Add(plant);
             }
 
-            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
+            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), palmPlacements, 15000);
             SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), housePlacements, radius: 1);
+            var bambooHutIndex = 0;
             foreach (var housePlacement in housePlacements)
             {
-                var house = House.CreateHouse(Surface);
+                if (GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject)
+                    continue;
+
+                bambooHutIndex++;
+                var house = BambooHut.CreateBambooHut(Surface);
                 house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
-                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 400 };
-                house.ObjectName = "House";
-                house.Movement = new HouseControls();
+                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 445 * ScreenSetup.ScreenScaleY, z = 400 };
+                house.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                house.ObjectName = "BambooHut";
+                house.Movement = new BambooHutControls();
                 house.ImpactStatus = new ImpactStatus { };
                 house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId > 0) world.WorldInhabitants.Add(house);
@@ -260,11 +311,12 @@ namespace _3dRotations.Scene.Scene8
             o.Header = "RETROMESH // FINAL BRIEFING";
             o.Title = "PLANET TERRA-IX - PHASE VIII";
             o.Body =
-                "Last stand on TERRA-IX - origin colony world of the outer systems.\n\n" +
-                "All previous planets compromised. This is the final perimeter.\n" +
-                "Twenty-two seeders confirmed. Kamikaze escort: EIGHTEEN units.\n" +
+                "Last stand on TERRA-IX - origin rainforest colony of the outer systems.\n\n" +
+                "All previous planets compromised. This is the final canopy perimeter.\n" +
+                "Twenty-five seeders confirmed. Kamikaze escort: EIGHTEEN units.\n" +
                 "Bomber wing: EIGHT. Large-class war carrier: MAXIMUM aggression.\n" +
-                "Spread delay: 1.2 seconds. Bio-tolerance: 2.0%.\n\n" +
+                "Spread delay: 1.2 seconds. Bio-tolerance: 10.0%.\n" +
+                "Kill Seeders first; every Seeder destroyed slows the infection cascade.\n\n" +
                 "DIRECTIVE:\n" +
                 "Win here. There is nowhere left to fall back to.";
             o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";

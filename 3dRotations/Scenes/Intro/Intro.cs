@@ -75,7 +75,8 @@ namespace _3dRotations.Scenes.Intro
                 "  [2] DECOY   - Lures Kamikaze Drones away from your ship\n" +
                 "  [3] LAZER   - Powerful beam, cuts through targets\n\n" +
                 "COMBAT TIPS:\n" +
-                "  - Destroy Seeders to stop the infection from spreading\n" +
+                "  - Destroy Seeders fast to control infection spread\n" +
+                "  - Every Seeder kill helps slow the infection cascade\n" +
                 "  - Kamikaze Drones will rush your ship - deploy Decoys!\n" +
                 "  - Decoys unlock after collecting your first PowerUp\n" +
                 "  - PowerUps drop from glowing Seeders\n" +

@@ -372,7 +372,7 @@ namespace _3dTesting.MainWindowClasses
 
             SetBarFill(_thrBarFill, gameplay.Thrust/10);
 
-            SetBarFill(_bioBarFill, gameplay.InfectionPercent / 100f);
+            SetBarFill(_bioBarFill, CalculateInfectionMeterFill(gameplay));
 
             // Enemy remaining bars (percentage of initial count)
             float dronePct = gameplay.InitialDrones > 0
@@ -390,6 +390,11 @@ namespace _3dTesting.MainWindowClasses
         }
 
         public void ReloadFrame() => TryLoadFrameImage();
+
+        public static float CalculateInfectionMeterFill(GamePlayState gameplay)
+        {
+            return gameplay == null ? 0f : Clamp01(gameplay.InfectionCriticalProgress);
+        }
 
         /// <summary>
         /// Positions and sizes the viewport rectangle overlay on the minimap.

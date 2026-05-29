@@ -494,17 +494,15 @@ namespace _3dRotations.World.Objects
                     GameState.SurfaceState.Global2DMap);
             }
 
-            // Ensure TotalBioTiles is computed (Playback mode skips SurfaceGeneration which normally sets this)
-            if (GameState.GamePlayState.TotalBioTiles == 0)
-            {
-                int totalBio = 0;
-                var ecoMetas = GameState.SurfaceState.ScreenEcoMetas;
-                for (int sy = 0; sy < ecoMetas.GetLength(0); sy++)
-                    for (int sx = 0; sx < ecoMetas.GetLength(1); sx++)
-                        totalBio += ecoMetas[sy, sx].BioTileCount;
-                GameState.GamePlayState.TotalBioTiles = totalBio;
-                if (Logger.ShouldLog(enableLogging)) Logger.Log($"[Surface] TotalBioTiles computed from EcoMap: {totalBio} (mode={gameMode})", "Surface");
-            }
+            // Playback and saved-game restores can arrive with an old TotalBioTiles value.
+            // Always derive the denominator from the currently loaded map.
+            int totalBio = 0;
+            var ecoMetas = GameState.SurfaceState.ScreenEcoMetas;
+            for (int sy = 0; sy < ecoMetas.GetLength(0); sy++)
+                for (int sx = 0; sx < ecoMetas.GetLength(1); sx++)
+                    totalBio += ecoMetas[sy, sx].BioTileCount;
+            GameState.GamePlayState.TotalBioTiles = totalBio;
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"[Surface] TotalBioTiles computed from EcoMap: {totalBio} (mode={gameMode})", "Surface");
 
             int fishPriorityTileX = (int)(GameState.SurfaceState.GlobalMapPosition.x / TileSize());
             int fishPriorityTileZ = (int)(GameState.SurfaceState.GlobalMapPosition.z / TileSize());

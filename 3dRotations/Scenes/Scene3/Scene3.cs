@@ -26,8 +26,8 @@ namespace _3dRotations.Scene.Scene3
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Rainforrest;
         public ISceneDirector Director { get; } = new Scene3Director();
         public GameModes GameMode { get; } = GameModes.Playback;
-        public float InfectionThresholdPercent { get; } = 5f;
-        public int InfectionSpreadRate { get; } = 170;
+        public float InfectionThresholdPercent { get; } = 13.0f;
+        public int InfectionSpreadRate { get; } = 5;
         public int SeederOffscreenSpeedFactor { get; } = 14;
         public float LocalInfectionSpreadDelaySec { get; } = 4.5f;
         public float LocalInfectionSpreadRadius { get; } = 4500f;
@@ -334,7 +334,7 @@ namespace _3dRotations.Scene.Scene3
                 "Omega Strain spreads through root systems at extreme speed.\n" +
                 "Twelve seeders confirmed. Escort drones: EIGHT.\n" +
                 "New threat: ZEPPELIN BOMBERS - two patrolling upper canopy.\n" +
-                "Infection spread delay: 4.5 seconds. Tolerance: 5%.\n\n" +
+                "Infection spread delay: 4.5 seconds. Tolerance: 13.0%.\n\n" +
                 "DIRECTIVE:\n" +
                 "Neutralize all threats. Watch the skies and the roots.";
 

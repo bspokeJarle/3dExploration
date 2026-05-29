@@ -31,8 +31,8 @@ namespace _3dRotations.Scene.Scene7
         public ISceneDirector Director { get; } = new Scene7Director();
         public GameModes GameMode { get; } = GameModes.Playback;
 
-        public float InfectionThresholdPercent { get; } = 2.5f;
-        public int InfectionSpreadRate { get; } = 350;
+        public float InfectionThresholdPercent { get; } = 11.0f;
+        public int InfectionSpreadRate { get; } = 9;
         public int SeederOffscreenSpeedFactor { get; } = 21;
         public float LocalInfectionSpreadDelaySec { get; } = 1.5f;
         public float LocalInfectionSpreadRadius { get; } = 6000f;
@@ -273,9 +273,9 @@ namespace _3dRotations.Scene.Scene7
             o.Body =
                 "Entering orbit of GLACIUS - frozen world, permanent ice storm coverage.\n\n" +
                 "Omega Strain adapts rapidly under sub-zero conditions.\n" +
-                "Twenty seeders embedded in glacial terrain.\n" +
+                "Twenty-three seeders embedded in glacial terrain.\n" +
                 "Kamikaze escort: SIXTEEN units. Bomber wing: SEVEN.\n" +
-                "Spread delay: 1.5 seconds. Bio-tolerance: 2.5%.\n" +
+                "Spread delay: 1.5 seconds. Bio-tolerance: 11.0%.\n" +
                 "Large-class war carrier incoming.\n\n" +
                 "DIRECTIVE:\n" +
                 "Clear all hostiles - the ice planet will not survive another hour.";
