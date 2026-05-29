@@ -1046,7 +1046,7 @@ namespace _3dRotations.Helpers
         /// Flattens the terrain around a set of placement points.
         /// All tiles within <paramref name="radius"/> of each point are set to the same depth
         /// (at least Highlands minimum) so land-based objects sit on a stable, flat base.
-        /// Radius 1 = 3x3 block (towers), 0 = single tile (trees), 1 also works for houses.
+        /// Radius 1 = 3x3 block and is the standard base for static land-based objects.
         /// </summary>
         public static void FlattenTerrainAroundPlacements(
             SurfaceData[,] map,

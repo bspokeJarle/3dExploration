@@ -218,7 +218,7 @@ namespace _3dRotations.Scene.Scene8
             }
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), treePlacements, radius: 0);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), treePlacements, radius: 1);
             foreach (var treePlacement in treePlacements)
             {
                 var tree = Tree.CreateTree(Surface);

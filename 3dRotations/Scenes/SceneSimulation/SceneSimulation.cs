@@ -400,7 +400,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 return;
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(map, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), treePlacements, radius: 0);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), treePlacements, radius: 1);
             foreach (var treePlacement in treePlacements)
             {
                 var tree = Tree.CreateTree(Surface);
@@ -439,7 +439,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 return;
 
             var palmPlacements = SurfaceGeneration.FindTreePlacementAreas(map, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), palmPlacements, radius: 0);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), palmPlacements, radius: 1);
             int palmIndex = 0;
             foreach (var palmPlacement in palmPlacements)
             {
@@ -521,7 +521,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 return;
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(map, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), treePlacements, radius: 0);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), treePlacements, radius: 1);
             foreach (var treePlacement in treePlacements)
             {
                 var tree = Tree.CreateTree(Surface);

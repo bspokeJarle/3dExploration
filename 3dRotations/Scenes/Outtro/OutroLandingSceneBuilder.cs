@@ -369,7 +369,7 @@ namespace _3dRotations.Scenes.Outro
 
             foreach (var placement in placements)
             {
-                FlattenPlacement(map, placement.x, placement.z, radius: 0, depth: 24);
+                FlattenPlacement(map, placement.x, placement.z, radius: 1, depth: 24);
                 var tree = Tree.CreateTree(surface);
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tree.SurfaceBasedId = map[placement.z, placement.x].mapId;
