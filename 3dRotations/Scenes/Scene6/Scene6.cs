@@ -24,7 +24,7 @@ namespace _3dRotations.Scene.Scene6
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Desert;
         public ISceneDirector Director { get; } = new Scene6Director();
-        public GameModes GameMode { get; } = GameModes.Live;
+        public GameModes GameMode { get; } = GameModes.Playback;
 
         public float InfectionThresholdPercent { get; } = 3.0f;
         public int InfectionSpreadRate { get; } = 310;
@@ -38,7 +38,7 @@ namespace _3dRotations.Scene.Scene6
             var ws = SurfaceSetup.WorldScale;
 
             var ship = Ship.CreateShip(Surface);
-            Surface.Create2DMap(30000, 15000, GameMode, null);
+            Surface.Create2DMap(30000, 15000, GameMode, "Scene6SurfaceRecording_20260526_220746.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };

@@ -40,7 +40,7 @@ namespace _3dRotations.Scene.Scene1
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
-            Surface.Create2DMap(30000,15000,GameMode, "Scene2SurfaceRecording.retro");
+            Surface.Create2DMap(30000,15000,GameMode, "Scene2SurfaceRecording_20260526_192213.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };

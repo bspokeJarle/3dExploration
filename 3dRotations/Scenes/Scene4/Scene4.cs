@@ -30,7 +30,7 @@ namespace _3dRotations.Scene.Scene4
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Winter;
         public ISceneDirector Director { get; } = new Scene4Director();
-        public GameModes GameMode { get; } = GameModes.Live;
+        public GameModes GameMode { get; } = GameModes.Playback;
         public float InfectionThresholdPercent { get; } = 4.5f;
         public int InfectionSpreadRate { get; } = 210;
         public int SeederOffscreenSpeedFactor { get; } = 16;
@@ -43,7 +43,7 @@ namespace _3dRotations.Scene.Scene4
             var ws = SurfaceSetup.WorldScale;
 
             var ship = Ship.CreateShip(Surface);
-            Surface.Create2DMap(30000, 15000, GameMode, null);
+            Surface.Create2DMap(30000, 15000, GameMode, "Scene4SurfaceRecording_20260526_193822.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
