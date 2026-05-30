@@ -1579,6 +1579,8 @@ namespace _3dRotations.Helpers
             bool[,] visited = new bool[mapSizeX, mapSizeY];
             int numCrashBoxes = 0;
             const int MinimumCrashBoxArea = 9; // Example: minimum 9 tiles (3x3 area)
+            const int MaxCrashBoxWidth = 6;
+            const int MaxCrashBoxHeight = 6;
 
             for (int i = 0; i < mapSizeX; i++)
             {
@@ -1589,25 +1591,27 @@ namespace _3dRotations.Helpers
 
                     int height = map[i, j].mapDepth;
 
-                    if (IsHighlandOrMountain(height, maxHeight))
+                    if (ShouldGenerateTerrainCrashBox(height, maxHeight))
                     {
                         int width = 1;
                         int heightBox = 1;
 
                         // Expand horizontally
-                        while (j + width < mapSizeY && !visited[i, j + width] &&
-                               IsHighlandOrMountain(map[i, j + width].mapDepth, maxHeight))
+                        while (width < MaxCrashBoxWidth &&
+                               j + width < mapSizeY && !visited[i, j + width] &&
+                               ShouldGenerateTerrainCrashBox(map[i, j + width].mapDepth, maxHeight))
                         {
                             width++;
                         }
 
                         // Expand vertically
                         bool canExpandDown = true;
-                        while (i + heightBox < mapSizeX && canExpandDown)
+                        while (heightBox < MaxCrashBoxHeight &&
+                               i + heightBox < mapSizeX && canExpandDown)
                         {
                             for (int x = 0; x < width; x++)
                             {
-                                if (visited[i + heightBox, j + x] || !IsHighlandOrMountain(map[i + heightBox, j + x].mapDepth, maxHeight))
+                                if (visited[i + heightBox, j + x] || !ShouldGenerateTerrainCrashBox(map[i + heightBox, j + x].mapDepth, maxHeight))
                                 {
                                     canExpandDown = false;
                                     break;
@@ -1659,10 +1663,15 @@ namespace _3dRotations.Helpers
         }
 
 
-        private static bool IsHighlandOrMountain(int height, int maxHeight)
+        private static bool ShouldGenerateTerrainCrashBox(int height, int maxHeight)
         {
-            // Highland starts at 40% of maximum elevation
-            return height >= maxHeight * 0.4;
+            var terrainType = GamePlayHelpers.GetTerrainType(height, maxHeight);
+
+            if (GameState.SurfaceState.SceneBiome == SceneBiomeTypes.Desert)
+                return terrainType == GamePlayHelpers.TerrainType.Mountains;
+
+            return terrainType == GamePlayHelpers.TerrainType.Highlands ||
+                   terrainType == GamePlayHelpers.TerrainType.Mountains;
         }
 
     }

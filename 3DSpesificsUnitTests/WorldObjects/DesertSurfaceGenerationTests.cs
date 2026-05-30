@@ -4,6 +4,7 @@ using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.GamePlayHelpers;
 using Domain;
+using System.Reflection;
 
 namespace _3DSpesificsUnitTests.WorldObjects;
 
@@ -50,6 +51,49 @@ public class DesertSurfaceGenerationTests
         Assert.IsTrue(placements.Count > 0);
         Assert.IsTrue(placements.All(p => IsDry(map[p.y, p.x], maxHeight)));
         Assert.IsTrue(placements.All(p => HasWaterNearby(map, maxHeight, p.x, p.y)));
+    }
+
+    [TestMethod]
+    public void GenerateCrashBoxes_ForDesert_SkipsHighlandsAndKeepsMountains()
+    {
+        var highlandMap = CreateFlatMap(8, depth: 20);
+        FillArea(highlandMap, startX: 2, startY: 2, width: 3, height: 3, depth: 50);
+
+        InvokeGenerateCrashBoxes(highlandMap, maxHeight: 100);
+
+        Assert.IsFalse(HasAnyCrashBox(highlandMap), "Desert surface crashboxes should not be generated for highland dunes.");
+
+        var mountainMap = CreateFlatMap(8, depth: 20);
+        FillArea(mountainMap, startX: 2, startY: 2, width: 3, height: 3, depth: 80);
+
+        InvokeGenerateCrashBoxes(mountainMap, maxHeight: 100);
+
+        Assert.IsTrue(HasAnyCrashBox(mountainMap), "Desert surface crashboxes should still be generated for mountain terrain.");
+    }
+
+    [TestMethod]
+    public void GenerateCrashBoxes_ForNonDesert_StillIncludesHighlands()
+    {
+        GameState.SurfaceState.SceneBiome = SceneBiomeTypes.HillsWoods;
+        var map = CreateFlatMap(8, depth: 20);
+        FillArea(map, startX: 2, startY: 2, width: 3, height: 3, depth: 50);
+
+        InvokeGenerateCrashBoxes(map, maxHeight: 100);
+
+        Assert.IsTrue(HasAnyCrashBox(map), "Existing non-desert terrain crashbox behavior should be preserved.");
+    }
+
+    [TestMethod]
+    public void GenerateCrashBoxes_SplitsLargeFormationsIntoBoundedBoxes()
+    {
+        var map = CreateFlatMap(18, depth: 20);
+        FillArea(map, startX: 3, startY: 3, width: 12, height: 12, depth: 80);
+
+        InvokeGenerateCrashBoxes(map, maxHeight: 100);
+
+        var crashBoxes = GetCrashBoxes(map);
+        Assert.AreEqual(4, crashBoxes.Count, "A large 12x12 formation should be split into four bounded terrain crashboxes.");
+        Assert.IsTrue(crashBoxes.All(box => box.width <= 6 && box.height <= 6), "Terrain crashboxes should stay small enough to avoid giant phantom collision volumes.");
     }
 
     private static List<WaterComponent> FindDeepWaterComponents(SurfaceData[,] map, int maxHeight)
@@ -106,6 +150,68 @@ public class DesertSurfaceGenerationTests
         }
 
         return components;
+    }
+
+    private static void InvokeGenerateCrashBoxes(SurfaceData[,] map, int maxHeight)
+    {
+        var method = typeof(SurfaceGeneration).GetMethod("GenerateCrashBoxes", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.IsNotNull(method);
+        method.Invoke(null, new object[] { map, maxHeight });
+    }
+
+    private static SurfaceData[,] CreateFlatMap(int size, int depth)
+    {
+        var map = new SurfaceData[size, size];
+        int mapId = 0;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                map[y, x] = new SurfaceData
+                {
+                    mapDepth = depth,
+                    mapId = ++mapId,
+                    isInfected = false
+                };
+            }
+        }
+
+        return map;
+    }
+
+    private static void FillArea(SurfaceData[,] map, int startX, int startY, int width, int height, int depth)
+    {
+        for (int y = startY; y < startY + height; y++)
+        {
+            for (int x = startX; x < startX + width; x++)
+            {
+                var tile = map[y, x];
+                tile.mapDepth = depth;
+                map[y, x] = tile;
+            }
+        }
+    }
+
+    private static bool HasAnyCrashBox(SurfaceData[,] map)
+    {
+        return GetCrashBoxes(map).Count > 0;
+    }
+
+    private static List<SurfaceData.CrashBoxData> GetCrashBoxes(SurfaceData[,] map)
+    {
+        var crashBoxes = new List<SurfaceData.CrashBoxData>();
+
+        for (int y = 0; y < map.GetLength(0); y++)
+        {
+            for (int x = 0; x < map.GetLength(1); x++)
+            {
+                if (map[y, x].crashBox != null)
+                    crashBoxes.Add(map[y, x].crashBox!.Value);
+            }
+        }
+
+        return crashBoxes;
     }
 
     private static bool IsNearPlatform(SurfaceData[,] map, WaterComponent component)

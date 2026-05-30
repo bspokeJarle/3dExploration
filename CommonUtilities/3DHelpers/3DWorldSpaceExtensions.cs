@@ -1,5 +1,4 @@
-﻿using CommonUtilities.CommonGlobalState;
-using Domain;
+﻿using Domain;
 using System.Collections;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -46,22 +45,18 @@ namespace _3dTesting.Helpers
             var local = obj?.ObjectOffsets ?? new Vector3(0, 0, 0);
             var crashOffset = obj?.CalculatedCrashOffset;
 
-            float surfaceYOffset = 0f;
-            if (obj?.ObjectName == "Surface" && GameState.SurfaceState.GlobalMapPosition != null)
-                surfaceYOffset = GameState.SurfaceState.GlobalMapPosition.y;
-
             if (crashOffset != null)
             {
                 return new Vector3(
                     crashOffset.x,
-                    crashOffset.y + surfaceYOffset,
+                    crashOffset.y,
                     crashOffset.z
                 );
             }
 
             return new Vector3(
                 local.x,
-                local.y + surfaceYOffset,
+                local.y,
                 local.z
             );
         }

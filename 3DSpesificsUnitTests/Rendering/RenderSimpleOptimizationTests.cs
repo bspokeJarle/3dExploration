@@ -125,6 +125,54 @@ public class RenderSimpleOptimizationTests
     }
 
     [TestMethod]
+    public void ConvertTo2dFromObjects_ClampsCrashBoxDebugTrianglesToScreenMargin()
+    {
+        var converter = new _3dTo2d();
+        var surface = CreateRenderableObject();
+        surface.ObjectName = "Surface";
+        surface.CrashBoxDebugMode = true;
+        surface.CrashBoxes = new List<List<IVector3>>
+        {
+            _3dObjectHelpers.GenerateCrashBoxCorners(
+                new Vector3 { x = -100000, y = -100000, z = 0 },
+                new Vector3 { x = 100000, y = 100000, z = 50 })
+        };
+        surface.CrashBoxNames = new List<string?> { "TerrainSurface" };
+
+        var result = converter.ConvertTo2dFromObjects(new List<_3dObject> { surface }, 1);
+        var crashTriangles = result.Where(t => t.PartName == "CrashBox-Surface").ToList();
+
+        Assert.IsTrue(crashTriangles.Count > 0, "Expected debug crashbox triangles to be rendered.");
+        foreach (var triangle in crashTriangles)
+        {
+            AssertDebugCoordinateIsClamped(triangle.X1, triangle.Y1);
+            AssertDebugCoordinateIsClamped(triangle.X2, triangle.Y2);
+            AssertDebugCoordinateIsClamped(triangle.X3, triangle.Y3);
+        }
+    }
+
+    [TestMethod]
+    public void ConvertTo2dFromObjects_RendersSurfaceMainCrashBoxDebug()
+    {
+        var converter = new _3dTo2d();
+        var surface = CreateRenderableObject();
+        surface.ObjectName = "Surface";
+        surface.CrashBoxDebugMode = true;
+        surface.CrashBoxes = new List<List<IVector3>>
+        {
+            _3dObjectHelpers.GenerateCrashBoxCorners(
+                new Vector3 { x = -50, y = -50, z = -50 },
+                new Vector3 { x = 50, y = 50, z = 50 })
+        };
+        surface.CrashBoxNames = new List<string?> { "MainSurface" };
+
+        var result = converter.ConvertTo2dFromObjects(new List<_3dObject> { surface }, 1);
+
+        Assert.IsTrue(result.Any(t => t.PartName == "CrashBox-Surface"),
+            "MainSurface should still be visible when surface crashbox debug mode is enabled.");
+    }
+
+    [TestMethod]
     public void CullTrianglesOutsideRenderDepth_RemovesOutOfRangeTrianglesBeforeSort()
     {
         var triangles = new List<_2dTriangleMesh>
@@ -202,6 +250,17 @@ public class RenderSimpleOptimizationTests
             PartName = "Surface",
             UseEffectRenderingPipeline = true
         }), "The explicit 2D marker must force the effect pipeline even without a special part name.");
+    }
+
+    private static void AssertDebugCoordinateIsClamped(int x, int y)
+    {
+        int minX = (int)Math.Floor(-(ScreenSetup.screenSizeX * 0.05));
+        int maxX = (int)Math.Ceiling(ScreenSetup.screenSizeX * 1.05);
+        int minY = (int)Math.Floor(-(ScreenSetup.screenSizeY * 0.05));
+        int maxY = (int)Math.Ceiling(ScreenSetup.screenSizeY * 1.05);
+
+        Assert.IsTrue(x >= minX && x <= maxX, $"Expected debug X coordinate {x} to be inside the crashbox debug screen margin.");
+        Assert.IsTrue(y >= minY && y <= maxY, $"Expected debug Y coordinate {y} to be inside the crashbox debug screen margin.");
     }
 
     private static _3dObject CreateRenderableObject(string partName = "Main")

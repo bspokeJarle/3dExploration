@@ -15,13 +15,15 @@ namespace _3dRotations.World.Objects
 {
     public class Surface : ISurface
     {
-        public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = 0, y = 0, z = 0 };
+        private const float DefaultSurfacePitchDegrees = 70f;
+
+        public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = DefaultSurfacePitchDegrees, y = 0, z = 0 };
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
         public Dictionary<long, ITriangleMeshWithColor> RotatedSurfaceTriangleByLandId { get; set; } = new();
         public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();
         private readonly List<ITriangleMeshWithColor> _surfaceTriangles = new();
         private readonly List<List<IVector3>> _viewPortCrashBoxes = new();
-        private List<List<IVector3>>? _mainSurfaceCrashBoxes;
+        private readonly List<string?> _viewPortCrashBoxNames = new();
 
         // Pre-parsed crater colors (R, G, B) to avoid per-tile string allocation
         private static readonly (int r, int g, int b)[] CraterColorsRgb =
@@ -56,6 +58,7 @@ namespace _3dRotations.World.Objects
             EnsureSurfaceTrianglePool(requiredTriangleCount);
             var surface = new _3dObject { ObjectId = GameState.ObjectIdCounter++ };
             _viewPortCrashBoxes.Clear();
+            _viewPortCrashBoxNames.Clear();
 
             int mapSize = global2DMap.GetLength(0);
             int mapZIndex = ((int)globalMapPosition.z / tileSize) % mapSize;
@@ -127,20 +130,21 @@ namespace _3dRotations.World.Objects
 
                         var min = new Vector3
                         {
-                            x = (XPosition - XRemainer) - tileSize,
+                            x = XPosition - XRemainer,
                             y = YPosition - ZRemainer,
-                            z = 0 // Sealevel
+                            z = -YRemainer // Sealevel synced with surface altitude
                         };
 
                         var max = new Vector3
                         {
-                            x = XPosition + ((box.width * tileSize) - XRemainer) - tileSize,
+                            x = XPosition + (box.width * tileSize) - XRemainer,
                             y = YPosition + (box.height * tileSize) - ZRemainer,
-                            z = 40 + currentTile.mapDepth // Max map depth
+                            z = ResolveTerrainCrashBoxDepth(box, currentTile.mapDepth) - YRemainer
                         };
 
-                        var crashBoxCorners = _3dObjectHelpers.GenerateCrashBoxCorners(min, max);
+                        var crashBoxCorners = RotateTerrainCrashBox(_3dObjectHelpers.GenerateCrashBoxCorners(min, max));
                         _viewPortCrashBoxes.Add(crashBoxCorners);
+                        _viewPortCrashBoxNames.Add("TerrainSurface");
                     }
 
                     // Fade-in: first 3 rows gradually brighten, full brightness from row 4
@@ -171,8 +175,70 @@ namespace _3dRotations.World.Objects
 
             surface.ObjectParts.Add(new _3dObjectPart { PartName = "Surface", Triangles = _surfaceTriangles, IsVisible = true });
             surface.CrashBoxes = _viewPortCrashBoxes;
-            surface.CrashBoxes.AddRange(GetMainSurfaceCrashBox());
+            surface.CrashBoxNames = _viewPortCrashBoxNames;
+            surface.CrashBoxes.AddRange(GetMainSurfaceCrashBox(YRemainer));
+            surface.CrashBoxNames.Add("MainSurface");
             return surface;
+        }
+
+        private List<IVector3> RotateTerrainCrashBox(List<IVector3> crashBox)
+        {
+            if (GlobalMapRotation == null ||
+                (GlobalMapRotation.x == 0 && GlobalMapRotation.y == 0 && GlobalMapRotation.z == 0))
+                return crashBox;
+
+            var rotatedCrashBox = new List<IVector3>(crashBox.Count);
+            for (int i = 0; i < crashBox.Count; i++)
+            {
+                rotatedCrashBox.Add(RotateSurfacePoint((Vector3)crashBox[i], GlobalMapRotation));
+            }
+
+            return rotatedCrashBox;
+        }
+
+        private static IVector3 RotateSurfacePoint(Vector3 point, Vector3 rotation)
+        {
+            var rotatedPoint = RotatePoint(rotation.z, point, 'Z');
+            rotatedPoint = RotatePoint(rotation.y, rotatedPoint, 'Y');
+            return RotatePoint(rotation.x, rotatedPoint, 'X');
+        }
+
+        private static Vector3 RotatePoint(float angleInDegrees, Vector3 point, char axis)
+        {
+            double radians = Math.PI * angleInDegrees / 180.0;
+            float cosRes = (float)Math.Cos(radians);
+            float sinRes = (float)Math.Sin(radians);
+
+            return axis switch
+            {
+                'X' => new Vector3
+                {
+                    x = point.x,
+                    y = (point.y * cosRes) - (point.z * sinRes),
+                    z = (point.z * cosRes) + (point.y * sinRes)
+                },
+                'Y' => new Vector3
+                {
+                    x = (point.x * cosRes) + (point.z * sinRes),
+                    y = point.y,
+                    z = (point.z * cosRes) - (point.x * sinRes)
+                },
+                'Z' => new Vector3
+                {
+                    x = (point.x * cosRes) - (point.y * sinRes),
+                    y = (point.y * cosRes) + (point.x * sinRes),
+                    z = point.z
+                },
+                _ => point
+            };
+        }
+
+        private static int ResolveTerrainCrashBoxDepth(SurfaceData.CrashBoxData box, int anchorDepth)
+        {
+            if (box.boxDepth > 0)
+                return box.boxDepth;
+
+            return 40 + anchorDepth;
         }
 
         private void EnsureSurfaceTrianglePool(int requiredTriangleCount)
@@ -201,23 +267,18 @@ namespace _3dRotations.World.Objects
         }
 
 
-        private List<List<IVector3>> GetMainSurfaceCrashBox()
+        private List<List<IVector3>> GetMainSurfaceCrashBox(float surfaceYOffset)
         {
-            if (_mainSurfaceCrashBoxes != null)
-                return _mainSurfaceCrashBoxes;
-
             //var min = new Vector3 { x = -1200, y = -600, z = -1000 };
             //var max = new Vector3 { x = 1200, y = 1500, z = 400 };
 
-            var min = new Vector3 { x = -500, y = -100, z = 1000 };
-            var max = new Vector3 { x = 500, y = 1000, z = -350 };
+            var min = new Vector3 { x = -500, y = -100 + surfaceYOffset, z = 1000 };
+            var max = new Vector3 { x = 500, y = 1000 + surfaceYOffset, z = -350 };
 
-            _mainSurfaceCrashBoxes = new List<List<IVector3>>
+            return new List<List<IVector3>>
             {
                 _3dObjectHelpers.GenerateCrashBoxCorners(min, max)
             };
-
-            return _mainSurfaceCrashBoxes;
         }
 
         private static string GetTileColorGradient(int height, int maxHeight)
