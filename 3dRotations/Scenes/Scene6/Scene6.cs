@@ -2,6 +2,7 @@ using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
 using Domain;
 using GameAiAndControls.Controls.MotherShipMediumControls;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ using _3dRotations.Helpers;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
+using GameAiAndControls.Controls.JumpingFishControls;
 using GameAiAndControls.Controls.SeederControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using System;
@@ -32,13 +34,16 @@ namespace _3dRotations.Scene.Scene6
         public float LocalInfectionSpreadDelaySec { get; } = 1.8f;
         public float LocalInfectionSpreadRadius { get; } = 5800f;
         public float MotherShipMediumAggression { get; } = 1.35f;
+        private const int GuaranteedStartTentCount = 5;
+        private static readonly float[] BedouinTentRotationVariants = { -32f, -19f, -7f, 6f, 18f, 31f };
 
         public void SetupScene(I3dWorld world)
         {
             var ws = SurfaceSetup.WorldScale;
 
             var ship = Ship.CreateShip(Surface);
-            Surface.Create2DMap(30000, 15000, GameMode, "Scene6SurfaceRecording_20260526_220746.retro");
+            GameState.SurfaceState.SceneBiome = SceneBiome;
+            Surface.Create2DMap(30000, 15000, GameMode, "Scene6SurfaceRecording_20260530_desert_lakes.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -56,6 +61,8 @@ namespace _3dRotations.Scene.Scene6
             guidanceArrow.ImpactStatus = new ImpactStatus { };
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
+
+            SpawnJumpingFish(world);
 
             for (int b = 0; b < 6; b++)
             {
@@ -166,6 +173,7 @@ namespace _3dRotations.Scene.Scene6
 
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
             AddGuaranteedStartTowerPlacements(towerPlacements);
+            RemoveStartPlatformPlacements(towerPlacements);
             SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
                 GameState.SurfaceState.Global2DMap,
                 Surface.MaxHeight(),
@@ -175,6 +183,9 @@ namespace _3dRotations.Scene.Scene6
 
             foreach (var towerPlacement in towerPlacements)
             {
+                if (IsOnStartPlatform(towerPlacement.x, towerPlacement.y))
+                    continue;
+
                 var tower = DesertTower.CreateDesertTower(Surface);
                 tower.Rotation = new Vector3 { };
                 tower.WorldPosition = new Vector3 { };
@@ -188,11 +199,50 @@ namespace _3dRotations.Scene.Scene6
                 world.WorldInhabitants.Add(tower);
             }
 
+            var oasisPlantPlacements = SurfaceGeneration.FindDesertOasisPlantPlacements(
+                GameState.SurfaceState.Global2DMap,
+                Surface.GlobalMapSize(),
+                Surface.MaxHeight(),
+                maxPlants: 90);
+            RemoveStartPlatformPlacements(oasisPlantPlacements);
+            var oasisIndex = 0;
+            foreach (var oasisPlacement in oasisPlantPlacements)
+            {
+                if (IsOnStartPlatform(oasisPlacement.x, oasisPlacement.y))
+                    continue;
+                if (GameState.SurfaceState.Global2DMap[oasisPlacement.y, oasisPlacement.x].hasLandbasedObject)
+                    continue;
+
+                oasisIndex++;
+                bool useLargePlant = oasisIndex % 3 == 0;
+                var plant = useLargePlant
+                    ? AlienPlant.CreateLargeAlienPlant(Surface)
+                    : AlienPlant.CreateSmallAlienPlant(Surface);
+
+                plant.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                plant.SurfaceBasedId = GameState.SurfaceState.Global2DMap[oasisPlacement.y, oasisPlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[oasisPlacement.y, oasisPlacement.x].hasLandbasedObject = true;
+                plant.ObjectOffsets = new Vector3
+                {
+                    x = 75 * ScreenSetup.ScreenScaleX,
+                    y = (useLargePlant ? 410f : 420f) * ScreenSetup.ScreenScaleY,
+                    z = 400
+                };
+                plant.ObjectName = useLargePlant ? "LargeAlienPlant" : "SmallAlienPlant";
+                plant.Movement = useLargePlant ? new LargePalmControls() : new SmallPalmControls();
+                plant.ImpactStatus = new ImpactStatus { };
+                plant.CrashBoxDebugMode = false;
+                if (plant.SurfaceBasedId > 0) world.WorldInhabitants.Add(plant);
+            }
+
             var rockPlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 12000);
             AddGuaranteedStartRockPlacements(rockPlacements);
+            RemoveStartPlatformPlacements(rockPlacements);
             SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), rockPlacements, radius: 1);
             foreach (var rockPlacement in rockPlacements)
             {
+                if (IsOnStartPlatform(rockPlacement.x, rockPlacement.y))
+                    continue;
                 if (GameState.SurfaceState.Global2DMap[rockPlacement.y, rockPlacement.x].hasLandbasedObject)
                     continue;
 
@@ -210,9 +260,13 @@ namespace _3dRotations.Scene.Scene6
 
             var cactusPlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
             AddGuaranteedStartCactusPlacements(cactusPlacements);
+            RemoveStartPlatformPlacements(cactusPlacements);
             SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), cactusPlacements, radius: 1);
             foreach (var cactusPlacement in cactusPlacements)
             {
+                if (IsOnStartPlatform(cactusPlacement.x, cactusPlacement.y))
+                    continue;
+
                 var cactus = Cactus.CreateCactus(Surface);
                 cactus.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 cactus.SurfaceBasedId = GameState.SurfaceState.Global2DMap[cactusPlacement.y, cactusPlacement.x].mapId;
@@ -223,6 +277,328 @@ namespace _3dRotations.Scene.Scene6
                 cactus.ImpactStatus = new ImpactStatus { };
                 cactus.CrashBoxDebugMode = false;
                 if (cactus.SurfaceBasedId > 0) world.WorldInhabitants.Add(cactus);
+            }
+
+            var reservedNaturePlacements = new List<(int x, int y, int height)>();
+            reservedNaturePlacements.AddRange(oasisPlantPlacements);
+            reservedNaturePlacements.AddRange(rockPlacements);
+            reservedNaturePlacements.AddRange(cactusPlacements);
+            var tentPlacements = SurfaceGeneration.FindHousePlacementAreas(
+                GameState.SurfaceState.Global2DMap,
+                Surface.GlobalMapSize(),
+                Surface.MaxHeight(),
+                reservedNaturePlacements,
+                overrideMaxHouses: 15000);
+            AddGuaranteedStartTentPlacements(tentPlacements);
+            RemoveStartPlatformPlacements(tentPlacements);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), tentPlacements, radius: 1);
+            int tentIndex = 0;
+            foreach (var tentPlacement in tentPlacements)
+            {
+                if (IsOnStartPlatform(tentPlacement.x, tentPlacement.y))
+                    continue;
+                if (GameState.SurfaceState.Global2DMap[tentPlacement.y, tentPlacement.x].hasLandbasedObject)
+                    continue;
+
+                var tent = BedouinTent.CreateBedouinTent(Surface);
+                tent.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                tent.SurfaceBasedId = GameState.SurfaceState.Global2DMap[tentPlacement.y, tentPlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[tentPlacement.y, tentPlacement.x].hasLandbasedObject = true;
+                tent.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 445 * ScreenSetup.ScreenScaleY, z = 400 };
+                tent.Rotation = new Vector3 { x = 70, y = 0, z = GetBedouinTentRotationZ(tentIndex, tentPlacement.x, tentPlacement.y) };
+                tent.ObjectName = "BedouinTent";
+                tent.Movement = new BedouinTentControls();
+                tent.ImpactStatus = new ImpactStatus { };
+                tent.CrashBoxDebugMode = false;
+                if (tent.SurfaceBasedId > 0)
+                {
+                    world.WorldInhabitants.Add(tent);
+                    tentIndex++;
+                }
+            }
+        }
+
+        private void AddGuaranteedStartTentPlacements(List<(int x, int y, int height)> tentPlacements)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return;
+
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+            var platformCenter = LandingPlatformHelpers.GetLandingPlatformCenterTile(map);
+            int startX = platformCenter.x;
+            int startY = platformCenter.z;
+
+            int maxHeight = Surface.MaxHeight();
+            int coastCutoff = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.15));
+            const int startTentTargetDistanceTiles = 100;
+            var used = new HashSet<(int x, int y)>();
+            foreach (var placement in tentPlacements)
+                used.Add((placement.x, placement.y));
+
+            int nearStartTentCount = 0;
+            foreach (var placement in tentPlacements)
+            {
+                if (IsUsableNearStartTentPlacement(placement.x, placement.y))
+                    nearStartTentCount++;
+            }
+
+            int[] targetDistances = { 100, 115, 130, 145, 160 };
+            for (int i = 0; nearStartTentCount < GuaranteedStartTentCount && i < targetDistances.Length; i++)
+            {
+                if (TryAddTentPlacementNearTargetDistance(targetDistances[i]))
+                    nearStartTentCount++;
+            }
+
+            bool TryAddTentPlacementNearTargetDistance(int targetDistance)
+            {
+                bool TryAddTentPlacementOnRing(int radius)
+                {
+                    if (radius <= LandingPlatformHelpers.LandingPlatformSizeTiles)
+                        return false;
+
+                    for (int tolerance = 0; tolerance <= 4; tolerance++)
+                    {
+                        int searchRadius = radius + tolerance;
+                        for (int oy = -searchRadius; oy <= searchRadius; oy++)
+                        {
+                            for (int ox = -searchRadius; ox <= searchRadius; ox++)
+                            {
+                                double distance = Math.Sqrt((ox * ox) + (oy * oy));
+                                if (Math.Abs(distance - radius) > tolerance + 0.25)
+                                    continue;
+
+                                int x = (startX + ox + sizeX) % sizeX;
+                                int y = (startY + oy + sizeY) % sizeY;
+                                if (TryAddTentPlacement(x, y))
+                                    return true;
+                            }
+                        }
+                    }
+
+                    return false;
+                }
+
+                for (int delta = 0; delta <= 35; delta++)
+                {
+                    if (TryAddTentPlacementOnRing(targetDistance - delta))
+                        return true;
+                    if (delta > 0 && TryAddTentPlacementOnRing(targetDistance + delta))
+                        return true;
+                }
+
+                return false;
+            }
+
+            bool TryAddTentPlacement(int x, int y)
+            {
+                if (x <= 1 || y <= 1 || x >= sizeX - 2 || y >= sizeY - 2)
+                    return false;
+                if (IsOnStartPlatform(x, y))
+                    return false;
+                if (used.Contains((x, y)))
+                    return false;
+                if (HasPlacementNearby(x, y))
+                    return false;
+
+                var tile = map[y, x];
+                if (tile.hasLandbasedObject)
+                    return false;
+                if (tile.mapDepth <= coastCutoff)
+                    return false;
+
+                used.Add((x, y));
+                tentPlacements.Insert(0, (x, y, tile.mapDepth));
+                return true;
+            }
+
+            bool IsUsableNearStartTentPlacement(int x, int y)
+            {
+                int dx = x - startX;
+                int dy = y - startY;
+                double distance = Math.Sqrt((dx * dx) + (dy * dy));
+                if (Math.Abs(distance - startTentTargetDistanceTiles) > 35)
+                    return false;
+                if (IsOnStartPlatform(x, y))
+                    return false;
+                if (x < 0 || y < 0 || x >= sizeX || y >= sizeY)
+                    return false;
+
+                return !map[y, x].hasLandbasedObject;
+            }
+
+            bool HasPlacementNearby(int x, int y)
+            {
+                const int minSpacing = 5;
+                foreach (var placement in used)
+                {
+                    if (Math.Abs(placement.x - x) <= minSpacing &&
+                        Math.Abs(placement.y - y) <= minSpacing)
+                        return true;
+                }
+
+                return false;
+            }
+        }
+
+        private static float GetBedouinTentRotationZ(int index, int tileX, int tileY)
+        {
+            int variant = Math.Abs((tileX * 31 + tileY * 19 + index * 13) % BedouinTentRotationVariants.Length);
+            return BedouinTentRotationVariants[variant];
+        }
+
+        private void SpawnJumpingFish(I3dWorld world)
+        {
+            var fishJumpAreas = GameState.SurfaceState.FishJumpAreas;
+            var map = GameState.SurfaceState.Global2DMap;
+            if (fishJumpAreas == null || fishJumpAreas.Count == 0 || map == null)
+                return;
+
+            int tileSize = Surface.TileSize();
+            var platformCenter = LandingPlatformHelpers.GetLandingPlatformCenterTile(map);
+
+            foreach (var area in fishJumpAreas)
+            {
+                int fishInArea = GetDesertFishCount(area);
+                for (int i = 0; i < fishInArea; i++)
+                {
+                    var segment = GetFishSegment(area, i, fishInArea);
+                    var placement = GetFishPlacement(map, area, segment, i, fishInArea);
+
+                    float jumpSpan = Math.Min(tileSize * 2f, Math.Max(tileSize, (placement.endX - placement.startX - 1) * tileSize));
+                    float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
+                    float minPathOffsetX = baseOffsetX + ((placement.startX - placement.centerX) * tileSize);
+                    float maxPathOffsetX = baseOffsetX + ((placement.endX - placement.centerX) * tileSize);
+                    int initialJumpDirection = (i % 2 == 0) ? -1 : 1;
+
+                    var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
+                    jumpingFish.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                    jumpingFish.WorldPosition = new Vector3 { };
+                    jumpingFish.SurfaceBasedId = map[placement.centerZ, placement.centerX].mapId;
+                    jumpingFish.ObjectOffsets = new Vector3
+                    {
+                        x = baseOffsetX,
+                        y = 500 * ScreenSetup.ScreenScaleY,
+                        z = 400
+                    };
+                    jumpingFish.ObjectName = "JumpingFish";
+                    jumpingFish.Movement = new JumpingFishControls(jumpSpan, minPathOffsetX, maxPathOffsetX, initialJumpDirection);
+                    jumpingFish.ImpactStatus = new ImpactStatus { };
+                    jumpingFish.CrashBoxDebugMode = false;
+                    jumpingFish.CrashBoxes = new List<List<IVector3>>();
+                    jumpingFish.IsActive = true;
+                    world.WorldInhabitants.Add(jumpingFish);
+                }
+            }
+
+            int GetDesertFishCount(FishJumpArea area)
+            {
+                int count = Math.Clamp(area.ComponentTileCount / 5000, 1, 10);
+                double platformDistance = Math.Sqrt(
+                    ((area.CenterTileX - platformCenter.x) * (area.CenterTileX - platformCenter.x)) +
+                    ((area.CenterTileZ - platformCenter.z) * (area.CenterTileZ - platformCenter.z)));
+
+                if (platformDistance <= 140)
+                    count = Math.Max(count, 4);
+
+                return count;
+            }
+
+            static (int centerX, int centerZ, int startX, int endX) GetFishPlacement(
+                SurfaceData[,] map,
+                FishJumpArea area,
+                (int startX, int endX) segment,
+                int index,
+                int fishCount)
+            {
+                int centerX = segment.startX + ((segment.endX - segment.startX) / 2);
+                int mapHeight = map.GetLength(0);
+
+                foreach (int candidateZ in GetFishZCandidates(area.CenterTileZ, index, fishCount, mapHeight))
+                {
+                    if (!TryGetWaterSpan(map, centerX, candidateZ, out int rowStartX, out int rowEndX))
+                        continue;
+
+                    int startX = Math.Max(segment.startX, rowStartX);
+                    int endX = Math.Min(segment.endX, rowEndX);
+                    if (endX - startX < 3)
+                        continue;
+
+                    centerX = Math.Clamp(centerX, startX, endX);
+                    return (centerX, candidateZ, startX, endX);
+                }
+
+                return (centerX, area.CenterTileZ, segment.startX, segment.endX);
+            }
+
+            static IEnumerable<int> GetFishZCandidates(int centerZ, int index, int fishCount, int mapHeight)
+            {
+                int preferredOffset = GetFishZOffset(index, fishCount);
+                yield return Math.Clamp(centerZ + preferredOffset, 0, mapHeight - 1);
+
+                if (preferredOffset != 0)
+                    yield return Math.Clamp(centerZ, 0, mapHeight - 1);
+
+                for (int distance = 4; distance <= 28; distance += 4)
+                {
+                    yield return Math.Clamp(centerZ - distance, 0, mapHeight - 1);
+                    yield return Math.Clamp(centerZ + distance, 0, mapHeight - 1);
+                }
+            }
+
+            static int GetFishZOffset(int index, int fishCount)
+            {
+                if (fishCount <= 1)
+                    return 0;
+
+                int[] offsets = { -10, 7, -3, 13, -16, 2, 18, -22, 24, -7 };
+                return offsets[index % offsets.Length];
+            }
+
+            static bool TryGetWaterSpan(SurfaceData[,] map, int centerX, int centerZ, out int startX, out int endX)
+            {
+                startX = centerX;
+                endX = centerX;
+                int mapHeight = map.GetLength(0);
+                int mapWidth = map.GetLength(1);
+                if (centerZ < 0 || centerZ >= mapHeight || centerX < 0 || centerX >= mapWidth)
+                    return false;
+                if (!IsFishWaterTile(map[centerZ, centerX]))
+                    return false;
+
+                while (startX > 0 && IsFishWaterTile(map[centerZ, startX - 1]))
+                    startX--;
+                while (endX < mapWidth - 1 && IsFishWaterTile(map[centerZ, endX + 1]))
+                    endX++;
+
+                return true;
+            }
+
+            static bool IsFishWaterTile(SurfaceData tile)
+            {
+                if (tile.hasLandbasedObject || tile.isInfected || tile.isCratered)
+                    return false;
+
+                var terrainType = GamePlayHelpers.GetTerrainType(tile.mapDepth, MapSetup.maxHeight);
+                return terrainType == GamePlayHelpers.TerrainType.DeepWater ||
+                       terrainType == GamePlayHelpers.TerrainType.Coast;
+            }
+
+            static (int startX, int endX) GetFishSegment(FishJumpArea area, int index, int fishCount)
+            {
+                if (fishCount <= 1)
+                    return (area.StartTileX, area.EndTileX);
+
+                int width = Math.Max(1, area.EndTileX - area.StartTileX + 1);
+                int startX = area.StartTileX + (int)MathF.Floor(index * width / (float)fishCount);
+                int endX = area.StartTileX + (int)MathF.Floor((index + 1) * width / (float)fishCount) - 1;
+                if (index == fishCount - 1)
+                    endX = area.EndTileX;
+
+                startX = Math.Clamp(startX, area.StartTileX, area.EndTileX);
+                endX = Math.Clamp(Math.Max(endX, startX), area.StartTileX, area.EndTileX);
+                return (startX, endX);
             }
         }
 
@@ -241,19 +617,31 @@ namespace _3dRotations.Scene.Scene6
             GameState.SurfaceState.AiObjects.Add(seeder);
         }
 
+        private void RemoveStartPlatformPlacements(List<(int x, int y, int height)> placements)
+        {
+            placements.RemoveAll(p => IsOnStartPlatform(p.x, p.y));
+        }
+
+        private bool IsOnStartPlatform(int x, int y)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return false;
+
+            return LandingPlatformHelpers.IsLandingPlatformTile(map, x, y);
+        }
+
         private void AddGuaranteedStartRockPlacements(List<(int x, int y, int height)> rockPlacements)
         {
             var map = GameState.SurfaceState.Global2DMap;
             if (map == null)
                 return;
 
-            int tileSize = Surface.TileSize();
             int sizeY = map.GetLength(0);
             int sizeX = map.GetLength(1);
-            int startX = ((int)(GameState.SurfaceState.GlobalMapPosition.x / tileSize)) % sizeX;
-            int startY = ((int)(GameState.SurfaceState.GlobalMapPosition.z / tileSize)) % sizeY;
-            if (startX < 0) startX += sizeX;
-            if (startY < 0) startY += sizeY;
+            var platformCenter = LandingPlatformHelpers.GetLandingPlatformCenterTile(map);
+            int startX = platformCenter.x;
+            int startY = platformCenter.z;
 
             int maxHeight = Surface.MaxHeight();
             int coastCutoff = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.15));
@@ -263,9 +651,8 @@ namespace _3dRotations.Scene.Scene6
 
             (int dx, int dy)[] nearStartOffsets =
             {
-                (5, 7),
-                (11, 9),
-                (16, 11)
+                (10, 14),
+                (18, 15)
             };
 
             foreach (var (dx, dy) in nearStartOffsets)
@@ -277,7 +664,7 @@ namespace _3dRotations.Scene.Scene6
 
             void TryAddRockPlacementNear(int targetX, int targetY)
             {
-                const int searchRadius = 5;
+                const int searchRadius = 4;
                 for (int radius = 0; radius <= searchRadius; radius++)
                 {
                     for (int oy = -radius; oy <= radius; oy++)
@@ -321,13 +708,11 @@ namespace _3dRotations.Scene.Scene6
             if (map == null)
                 return;
 
-            int tileSize = Surface.TileSize();
             int sizeY = map.GetLength(0);
             int sizeX = map.GetLength(1);
-            int startX = ((int)(GameState.SurfaceState.GlobalMapPosition.x / tileSize)) % sizeX;
-            int startY = ((int)(GameState.SurfaceState.GlobalMapPosition.z / tileSize)) % sizeY;
-            if (startX < 0) startX += sizeX;
-            if (startY < 0) startY += sizeY;
+            var platformCenter = LandingPlatformHelpers.GetLandingPlatformCenterTile(map);
+            int startX = platformCenter.x;
+            int startY = platformCenter.z;
 
             int maxHeight = Surface.MaxHeight();
             int coastCutoff = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.15));
@@ -338,8 +723,7 @@ namespace _3dRotations.Scene.Scene6
 
             (int dx, int dy)[] nearStartOffsets =
             {
-                (7, 3),
-                (15, 6)
+                (12, 5)
             };
 
             foreach (var (dx, dy) in nearStartOffsets)
@@ -351,7 +735,7 @@ namespace _3dRotations.Scene.Scene6
 
             void TryAddTowerPlacementNear(int targetX, int targetY)
             {
-                const int searchRadius = 5;
+                const int searchRadius = 4;
                 for (int radius = 0; radius <= searchRadius; radius++)
                 {
                     for (int oy = -radius; oy <= radius; oy++)
@@ -396,13 +780,11 @@ namespace _3dRotations.Scene.Scene6
             if (map == null)
                 return;
 
-            int tileSize = Surface.TileSize();
             int sizeY = map.GetLength(0);
             int sizeX = map.GetLength(1);
-            int startX = ((int)(GameState.SurfaceState.GlobalMapPosition.x / tileSize)) % sizeX;
-            int startY = ((int)(GameState.SurfaceState.GlobalMapPosition.z / tileSize)) % sizeY;
-            if (startX < 0) startX += sizeX;
-            if (startY < 0) startY += sizeY;
+            var platformCenter = LandingPlatformHelpers.GetLandingPlatformCenterTile(map);
+            int startX = platformCenter.x;
+            int startY = platformCenter.z;
 
             int maxHeight = Surface.MaxHeight();
             int coastCutoff = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.15));
@@ -412,11 +794,9 @@ namespace _3dRotations.Scene.Scene6
 
             (int dx, int dy)[] nearStartOffsets =
             {
-                (4, 4),
-                (10, 5),
-                (14, 8),
-                (6, 11),
-                (12, 13)
+                (7, 8),
+                (14, 10),
+                (9, 15)
             };
 
             foreach (var (dx, dy) in nearStartOffsets)
@@ -428,7 +808,7 @@ namespace _3dRotations.Scene.Scene6
 
             void TryAddCactusPlacementNear(int targetX, int targetY)
             {
-                const int searchRadius = 4;
+                const int searchRadius = 3;
                 for (int radius = 0; radius <= searchRadius; radius++)
                 {
                     for (int oy = -radius; oy <= radius; oy++)

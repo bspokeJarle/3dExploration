@@ -277,14 +277,14 @@ namespace _3dRotations.World.Objects
             return new List<List<IVector3>>
             {
                 _3dObjectHelpers.GenerateCrashBoxCorners(
-                    new Vector3 { x = -BodyRadius, y = -BodyRadius, z = 0 },
-                    new Vector3 { x = BodyRadius, y = BodyRadius, z = bodyHeight }),
+                    new Vector3 { x = -5.2f, y = -5.2f, z = 2f },
+                    new Vector3 { x = 5.2f, y = 5.2f, z = bodyHeight - 5f }),
                 _3dObjectHelpers.GenerateCrashBoxCorners(
-                    new Vector3 { x = -ArmReach - ArmRadius, y = -ArmRadius, z = 21f },
-                    new Vector3 { x = -BodyRadius * 0.2f, y = ArmRadius, z = 51f }),
+                    new Vector3 { x = -ArmReach - 1.5f, y = -3.1f, z = 25f },
+                    new Vector3 { x = -BodyRadius * 0.35f, y = 3.1f, z = 46f }),
                 _3dObjectHelpers.GenerateCrashBoxCorners(
-                    new Vector3 { x = BodyRadius * 0.2f, y = -ArmRadius, z = 21f },
-                    new Vector3 { x = ArmReach + ArmRadius, y = ArmRadius, z = 51f })
+                    new Vector3 { x = BodyRadius * 0.35f, y = -3.1f, z = 24f },
+                    new Vector3 { x = ArmReach, y = 3.1f, z = 43f })
             };
         }
     }

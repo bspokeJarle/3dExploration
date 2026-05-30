@@ -136,8 +136,8 @@ namespace _3dRotations.World.Objects
             return new List<List<IVector3>>
             {
                 _3dObjectHelpers.GenerateCrashBoxCorners(
-                    new Vector3 { x = -38f, y = -28f, z = 0f },
-                    new Vector3 { x = 38f, y = 28f, z = 30f })
+                    new Vector3 { x = -30f, y = -20f, z = 1f },
+                    new Vector3 { x = 30f, y = 20f, z = 22f })
             };
         }
 
