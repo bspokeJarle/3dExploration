@@ -90,52 +90,25 @@ namespace _3dRotations.Scene.Scene6
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-            for (int i = 0; i < 9; i++)
+            foreach (var seederPosition in SeederPlacementHelpers.CreateRingSeederPositions(
+                         count: 17,
+                         center: GameState.SurfaceState.GlobalMapPosition,
+                         seed: 6061,
+                         nearSeederCount: 5,
+                         firstRingRadius: 7500f,
+                         ringRadiusStep: 11500f))
             {
-                var rmd = new Random();
-                var seeder = Seeder.CreateSeeder(Surface);
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-20000, 20000)) * ws, y = 0, z = (92000 + rmd.Next(-20000, 20000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
+                AddSeeder(world, seederPosition, hasPowerUp: false);
             }
 
-            for (int i = 0; i < 8; i++)
+            foreach (var seederPosition in SeederPlacementHelpers.CreateRandomSeederPositions(
+                         count: 4,
+                         center: GameState.SurfaceState.GlobalMapPosition,
+                         seed: 6062,
+                         minRadius: 16000f,
+                         maxRadius: 42000f))
             {
-                var rmd = new Random();
-                var seeder = Seeder.CreateSeeder(Surface);
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-42000, 24000)) * ws, y = 0, z = (92000 + rmd.Next(-42000, 24000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
-            }
-
-            for (int i = 0; i < 4; i++)
-            {
-                var rmd = new Random();
-                var seederPowerup = Seeder.CreateSeeder(Surface);
-                seederPowerup.Rotation = new Vector3 { };
-                seederPowerup.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-32000, 32000)) * ws, y = 0, z = (92000 + rmd.Next(-32000, 32000)) * ws };
-                seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seederPowerup.ObjectName = "Seeder";
-                seederPowerup.Movement = new SeederControls();
-                seederPowerup.CrashBoxDebugMode = false;
-                seederPowerup.ImpactStatus = new ImpactStatus { };
-                seederPowerup.HasPowerUp = true;
-                world.WorldInhabitants.Add(seederPowerup);
-                GameState.SurfaceState.AiObjects.Add(seederPowerup);
+                AddSeeder(world, seederPosition, hasPowerUp: true);
             }
 
             var motherShipMedium = MotherShipMedium.CreateMotherShipMedium(Surface);
@@ -189,8 +162,10 @@ namespace _3dRotations.Scene.Scene6
             surfaceObject.CrashBoxesFollowRotation = false;
             world.WorldInhabitants.Add(surfaceObject);
             GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
+            world.WorldInhabitants.Add(SandEmitter.CreateSandEmitter(Surface));
 
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
+            AddGuaranteedStartTowerPlacements(towerPlacements);
             SurfaceGeneration.FlattenTerrainAroundTowers_ToHighlands(
                 GameState.SurfaceState.Global2DMap,
                 Surface.MaxHeight(),
@@ -200,7 +175,7 @@ namespace _3dRotations.Scene.Scene6
 
             foreach (var towerPlacement in towerPlacements)
             {
-                var tower = Tower.CreateTower(Surface);
+                var tower = DesertTower.CreateDesertTower(Surface);
                 tower.Rotation = new Vector3 { };
                 tower.WorldPosition = new Vector3 { };
                 tower.SurfaceBasedId = GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
@@ -213,36 +188,281 @@ namespace _3dRotations.Scene.Scene6
                 world.WorldInhabitants.Add(tower);
             }
 
-            var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), treePlacements, radius: 1);
-            foreach (var treePlacement in treePlacements)
+            var rockPlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 12000);
+            AddGuaranteedStartRockPlacements(rockPlacements);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), rockPlacements, radius: 1);
+            foreach (var rockPlacement in rockPlacements)
             {
-                var tree = Tree.CreateTree(Surface);
-                tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-                tree.SurfaceBasedId = GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].mapId;
-                GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
-                tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
-                tree.ObjectName = "Tree";
-                tree.Movement = new TreeControls();
-                tree.ImpactStatus = new ImpactStatus { };
-                tree.CrashBoxDebugMode = false;
-                if (tree.SurfaceBasedId > 0) world.WorldInhabitants.Add(tree);
+                if (GameState.SurfaceState.Global2DMap[rockPlacement.y, rockPlacement.x].hasLandbasedObject)
+                    continue;
+
+                var rocks = DesertRockFormation.CreateDesertRockFormation(Surface);
+                rocks.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                rocks.SurfaceBasedId = GameState.SurfaceState.Global2DMap[rockPlacement.y, rockPlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[rockPlacement.y, rockPlacement.x].hasLandbasedObject = true;
+                rocks.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 455 * ScreenSetup.ScreenScaleY, z = 400 };
+                rocks.ObjectName = "DesertRockFormation";
+                rocks.Movement = new DesertRockControls();
+                rocks.ImpactStatus = new ImpactStatus { };
+                rocks.CrashBoxDebugMode = false;
+                if (rocks.SurfaceBasedId > 0) world.WorldInhabitants.Add(rocks);
             }
 
-            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), housePlacements, radius: 1);
-            foreach (var housePlacement in housePlacements)
+            var cactusPlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
+            AddGuaranteedStartCactusPlacements(cactusPlacements);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), cactusPlacements, radius: 1);
+            foreach (var cactusPlacement in cactusPlacements)
             {
-                var house = House.CreateHouse(Surface);
-                house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-                house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
-                GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
-                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 400 };
-                house.ObjectName = "House";
-                house.Movement = new HouseControls();
-                house.ImpactStatus = new ImpactStatus { };
-                house.CrashBoxDebugMode = false;
-                if (house.SurfaceBasedId > 0) world.WorldInhabitants.Add(house);
+                var cactus = Cactus.CreateCactus(Surface);
+                cactus.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                cactus.SurfaceBasedId = GameState.SurfaceState.Global2DMap[cactusPlacement.y, cactusPlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[cactusPlacement.y, cactusPlacement.x].hasLandbasedObject = true;
+                cactus.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
+                cactus.ObjectName = "Cactus";
+                cactus.Movement = new CactusControls();
+                cactus.ImpactStatus = new ImpactStatus { };
+                cactus.CrashBoxDebugMode = false;
+                if (cactus.SurfaceBasedId > 0) world.WorldInhabitants.Add(cactus);
+            }
+        }
+
+        private void AddSeeder(I3dWorld world, Vector3 worldPosition, bool hasPowerUp)
+        {
+            var seeder = Seeder.CreateSeeder(Surface);
+            seeder.Rotation = new Vector3 { };
+            seeder.WorldPosition = worldPosition;
+            seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
+            seeder.ObjectName = "Seeder";
+            seeder.Movement = new SeederControls();
+            seeder.CrashBoxDebugMode = false;
+            seeder.ImpactStatus = new ImpactStatus { };
+            seeder.HasPowerUp = hasPowerUp;
+            world.WorldInhabitants.Add(seeder);
+            GameState.SurfaceState.AiObjects.Add(seeder);
+        }
+
+        private void AddGuaranteedStartRockPlacements(List<(int x, int y, int height)> rockPlacements)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return;
+
+            int tileSize = Surface.TileSize();
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+            int startX = ((int)(GameState.SurfaceState.GlobalMapPosition.x / tileSize)) % sizeX;
+            int startY = ((int)(GameState.SurfaceState.GlobalMapPosition.z / tileSize)) % sizeY;
+            if (startX < 0) startX += sizeX;
+            if (startY < 0) startY += sizeY;
+
+            int maxHeight = Surface.MaxHeight();
+            int coastCutoff = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.15));
+            var used = new HashSet<(int x, int y)>();
+            foreach (var placement in rockPlacements)
+                used.Add((placement.x, placement.y));
+
+            (int dx, int dy)[] nearStartOffsets =
+            {
+                (5, 7),
+                (11, 9),
+                (16, 11)
+            };
+
+            foreach (var (dx, dy) in nearStartOffsets)
+            {
+                int x = (startX + dx) % sizeX;
+                int y = (startY + dy) % sizeY;
+                TryAddRockPlacementNear(x, y);
+            }
+
+            void TryAddRockPlacementNear(int targetX, int targetY)
+            {
+                const int searchRadius = 5;
+                for (int radius = 0; radius <= searchRadius; radius++)
+                {
+                    for (int oy = -radius; oy <= radius; oy++)
+                    {
+                        for (int ox = -radius; ox <= radius; ox++)
+                        {
+                            if (Math.Abs(ox) != radius && Math.Abs(oy) != radius)
+                                continue;
+
+                            int x = (targetX + ox + sizeX) % sizeX;
+                            int y = (targetY + oy + sizeY) % sizeY;
+                            if (TryAddRockPlacement(x, y))
+                                return;
+                        }
+                    }
+                }
+            }
+
+            bool TryAddRockPlacement(int x, int y)
+            {
+                if (x <= 1 || y <= 1 || x >= sizeX - 2 || y >= sizeY - 2)
+                    return false;
+                if (used.Contains((x, y)))
+                    return false;
+
+                var tile = map[y, x];
+                if (tile.hasLandbasedObject)
+                    return false;
+                if (tile.mapDepth <= coastCutoff)
+                    return false;
+
+                used.Add((x, y));
+                rockPlacements.Insert(0, (x, y, tile.mapDepth));
+                return true;
+            }
+        }
+
+        private void AddGuaranteedStartTowerPlacements(List<(int x, int y, int height)> towerPlacements)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return;
+
+            int tileSize = Surface.TileSize();
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+            int startX = ((int)(GameState.SurfaceState.GlobalMapPosition.x / tileSize)) % sizeX;
+            int startY = ((int)(GameState.SurfaceState.GlobalMapPosition.z / tileSize)) % sizeY;
+            if (startX < 0) startX += sizeX;
+            if (startY < 0) startY += sizeY;
+
+            int maxHeight = Surface.MaxHeight();
+            int coastCutoff = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.15));
+            int highlandsMin = Math.Max(coastCutoff + 1, (int)(maxHeight * 0.40));
+            var used = new HashSet<(int x, int y)>();
+            foreach (var placement in towerPlacements)
+                used.Add((placement.x, placement.y));
+
+            (int dx, int dy)[] nearStartOffsets =
+            {
+                (7, 3),
+                (15, 6)
+            };
+
+            foreach (var (dx, dy) in nearStartOffsets)
+            {
+                int x = (startX + dx) % sizeX;
+                int y = (startY + dy) % sizeY;
+                TryAddTowerPlacementNear(x, y);
+            }
+
+            void TryAddTowerPlacementNear(int targetX, int targetY)
+            {
+                const int searchRadius = 5;
+                for (int radius = 0; radius <= searchRadius; radius++)
+                {
+                    for (int oy = -radius; oy <= radius; oy++)
+                    {
+                        for (int ox = -radius; ox <= radius; ox++)
+                        {
+                            if (Math.Abs(ox) != radius && Math.Abs(oy) != radius)
+                                continue;
+
+                            int x = (targetX + ox + sizeX) % sizeX;
+                            int y = (targetY + oy + sizeY) % sizeY;
+                            if (TryAddTowerPlacement(x, y))
+                                return;
+                        }
+                    }
+                }
+            }
+
+            bool TryAddTowerPlacement(int x, int y)
+            {
+                if (x <= 2 || y <= 2 || x >= sizeX - 3 || y >= sizeY - 3)
+                    return false;
+                if (used.Contains((x, y)))
+                    return false;
+
+                var tile = map[y, x];
+                if (tile.hasLandbasedObject)
+                    return false;
+                if (tile.mapDepth <= coastCutoff)
+                    return false;
+
+                int height = Math.Max(tile.mapDepth, highlandsMin);
+                used.Add((x, y));
+                towerPlacements.Insert(0, (x, y, height));
+                return true;
+            }
+        }
+
+        private void AddGuaranteedStartCactusPlacements(List<(int x, int y, int height)> cactusPlacements)
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return;
+
+            int tileSize = Surface.TileSize();
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+            int startX = ((int)(GameState.SurfaceState.GlobalMapPosition.x / tileSize)) % sizeX;
+            int startY = ((int)(GameState.SurfaceState.GlobalMapPosition.z / tileSize)) % sizeY;
+            if (startX < 0) startX += sizeX;
+            if (startY < 0) startY += sizeY;
+
+            int maxHeight = Surface.MaxHeight();
+            int coastCutoff = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.15));
+            var used = new HashSet<(int x, int y)>();
+            foreach (var placement in cactusPlacements)
+                used.Add((placement.x, placement.y));
+
+            (int dx, int dy)[] nearStartOffsets =
+            {
+                (4, 4),
+                (10, 5),
+                (14, 8),
+                (6, 11),
+                (12, 13)
+            };
+
+            foreach (var (dx, dy) in nearStartOffsets)
+            {
+                int x = (startX + dx) % sizeX;
+                int y = (startY + dy) % sizeY;
+                TryAddCactusPlacementNear(x, y);
+            }
+
+            void TryAddCactusPlacementNear(int targetX, int targetY)
+            {
+                const int searchRadius = 4;
+                for (int radius = 0; radius <= searchRadius; radius++)
+                {
+                    for (int oy = -radius; oy <= radius; oy++)
+                    {
+                        for (int ox = -radius; ox <= radius; ox++)
+                        {
+                            if (Math.Abs(ox) != radius && Math.Abs(oy) != radius)
+                                continue;
+
+                            int x = (targetX + ox + sizeX) % sizeX;
+                            int y = (targetY + oy + sizeY) % sizeY;
+                            if (TryAddCactusPlacement(x, y))
+                                return;
+                        }
+                    }
+                }
+            }
+
+            bool TryAddCactusPlacement(int x, int y)
+            {
+                if (x <= 1 || y <= 1 || x >= sizeX - 2 || y >= sizeY - 2)
+                    return false;
+                if (used.Contains((x, y)))
+                    return false;
+
+                var tile = map[y, x];
+                if (tile.hasLandbasedObject)
+                    return false;
+                if (tile.mapDepth <= coastCutoff)
+                    return false;
+
+                used.Add((x, y));
+                cactusPlacements.Insert(0, (x, y, tile.mapDepth));
+                return true;
             }
         }
 

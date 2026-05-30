@@ -24,8 +24,8 @@ namespace _3dTesting.MainWindowClasses.Loops
     {
         public const bool EnableCpuHeadroomLogging = true;
         private const bool EnableAdaptiveGc = true;
-        private const int perfLogInterval = 10;
-        private const int adaptiveGcMinFrameInterval = ScreenSetup.targetFps;
+        private static int PerfLogInterval => ScreenSetup.RuntimeTargetFps;
+        private static int AdaptiveGcMinFrameInterval => ScreenSetup.RuntimeTargetFps;
         private const int adaptiveGcGen1EveryAttempts = 6;
         private const double adaptiveGcMinHeadroomMs = 5.0;
         private const double adaptiveGcMinHeadroomPct = 45.0;
@@ -36,7 +36,7 @@ namespace _3dTesting.MainWindowClasses.Loops
         private long performanceFrameCount = 0;
         private double averageFrameMs = 0;
         private double averageHeadroomMs = 0;
-        private long lastAdaptiveGcFrame = -adaptiveGcMinFrameInterval;
+        private long lastAdaptiveGcFrame = -AdaptiveGcMinFrameInterval;
         private long lastAdaptiveGcAllocatedBytes = GC.GetTotalAllocatedBytes(precise: false);
         private long adaptiveGcAttempts = 0;
         private int AiUpdateCounter = 0;
@@ -116,7 +116,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             frameTimer.Restart();
             FrameCounter++;
             EnsureExplosionCleanupSubscription(world.EventBus);
-            bool logPhaseTiming = Logger.ShouldLog(EnableCpuHeadroomLogging) && (FrameCounter % perfLogInterval == 0);
+            bool logPhaseTiming = Logger.ShouldLog(EnableCpuHeadroomLogging) && (FrameCounter % PerfLogInterval == 0);
             long phaseTicks = logPhaseTiming ? Stopwatch.GetTimestamp() : 0;
             double copyMs = 0;
             double starfieldMs = 0;
@@ -186,6 +186,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 float weatherOpacity = 1f - StarFieldHandler.PoolOpacity;
                 SnowfallControls.GlobalSnowOpacity = weatherOpacity;
                 RainfallControls.GlobalRainOpacity = weatherOpacity;
+                SandDriftControls.GlobalSandOpacity = weatherOpacity;
             }
             starfieldMs = MarkPhase();
 
@@ -1113,7 +1114,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 return;
             }
 
-            var budgetMs = 1000.0 / CommonUtilities.CommonSetup.ScreenSetup.targetFps;
+            var budgetMs = CommonUtilities.CommonSetup.ScreenSetup.TargetFrameIntervalMs;
             var preGcElapsedMs = frameTimer.Elapsed.TotalMilliseconds;
             var preGcHeadroomMs = budgetMs - preGcElapsedMs;
             var preGcHeadroomPct = (preGcHeadroomMs / budgetMs) * 100.0;
@@ -1141,7 +1142,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                     $"preHeadroomPct={preGcHeadroomPct:0.#} postHeadroomPct={headroomPct:0.#} gen0Collections={gc.Gen0Collections} gen1Collections={gc.Gen1Collections}");
             }
 
-            if (performanceFrameCount % perfLogInterval == 0)
+            if (performanceFrameCount % PerfLogInterval == 0)
             {
                 var avgHeadroomPct = (averageHeadroomMs / budgetMs) * 100.0;
                 Logger.Log($"[LivePerf] frame={frameIndex} frameMs={elapsedMs:0.###} headroomMs={headroomMs:0.###} headroomPct={headroomPct:0.#} avgFrameMs={averageFrameMs:0.###} avgHeadroomMs={averageHeadroomMs:0.###} avgHeadroomPct={avgHeadroomPct:0.#}");
@@ -1156,7 +1157,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             if (headroomMs < adaptiveGcMinHeadroomMs || headroomPct < adaptiveGcMinHeadroomPct)
                 return null;
 
-            if (frameIndex - lastAdaptiveGcFrame < adaptiveGcMinFrameInterval)
+            if (frameIndex - lastAdaptiveGcFrame < AdaptiveGcMinFrameInterval)
                 return null;
 
             long allocatedBytes = GC.GetTotalAllocatedBytes(precise: false);

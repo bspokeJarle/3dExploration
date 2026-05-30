@@ -12,7 +12,7 @@ public static class Logger
     public static int MaxLogLines = 5000;
     private static readonly List<string> _logBuffer = new();
     private static readonly object _lock = new();
-    private static readonly int _flushThreshold = 100;
+    private static readonly int _flushThreshold = 10;
 
     static Logger()
     {

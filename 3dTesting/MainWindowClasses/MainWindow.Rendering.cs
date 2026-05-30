@@ -16,7 +16,7 @@ namespace _3dTesting.Rendering
         private readonly DrawingVisual visual = new DrawingVisual();
         private readonly bool _localLoggingEnabled =  false;
         private const bool enableRenderPerfLogging = true;
-        private const int renderPerfLogInterval = 10;
+        private static int RenderPerfLogInterval => ScreenSetup.RuntimeTargetFps;
 
         private int renderingTriangleCount = 0;
         private long renderFrameCount = 0;
@@ -277,7 +277,7 @@ namespace _3dTesting.Rendering
                 averageSortMs += (sortMs - averageSortMs) / renderFrameCount;
                 averageDrawMs += (drawMs - averageDrawMs) / renderFrameCount;
 
-                if (renderFrameCount % renderPerfLogInterval == 0)
+                if (renderFrameCount % RenderPerfLogInterval == 0)
                 {
                     Logger.Log(
                         $"[RenderPerf] frame={renderFrameCount} triangles={renderingTriangleCount} drawCalls={drawCalls} totalMs={totalMs:0.###} cullMs={cullMs:0.###} sortMs={sortMs:0.###} prepMs={prepMs:0.###} drawMs={drawMs:0.###} addVisualMs={addVisualMs:0.###} " +
