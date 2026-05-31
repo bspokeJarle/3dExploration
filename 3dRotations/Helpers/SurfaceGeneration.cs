@@ -1067,7 +1067,12 @@ namespace _3dRotations.Helpers
         }
 
         public static List<(int x, int y, int height)> FindHousePlacementAreas(
-            SurfaceData[,] map, int mapSize, int maxHeight, List<(int x, int y, int height)> existingTrees, int? overrideMaxHouses = null)
+            SurfaceData[,] map,
+            int mapSize,
+            int maxHeight,
+            List<(int x, int y, int height)> existingTrees,
+            int? overrideMaxHouses = null,
+            int? placementSpacing = null)
         {
             int sizeY = map.GetLength(0);
             int sizeX = map.GetLength(1);
@@ -1106,7 +1111,7 @@ namespace _3dRotations.Helpers
                 return true;
             }
 
-            int spacing = 40;
+            int spacing = Math.Max(8, placementSpacing ?? 40);
             int start = spacing / 2;
             int endX = mapSize - spacing / 2 - 1;
             int endY = mapSize - spacing / 2 - 1;

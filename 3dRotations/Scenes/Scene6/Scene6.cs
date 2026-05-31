@@ -34,7 +34,11 @@ namespace _3dRotations.Scene.Scene6
         public float LocalInfectionSpreadDelaySec { get; } = 1.8f;
         public float LocalInfectionSpreadRadius { get; } = 5800f;
         public float MotherShipMediumAggression { get; } = 1.35f;
-        private const int GuaranteedStartTentCount = 5;
+        private const int GuaranteedStartTentCount = 12;
+        private const int DesertRockPlacementMax = 12000;
+        private const int DesertCactusPlacementMax = 16000;
+        private const int DesertTentPlacementMax = 30000;
+        private const int DesertTentPlacementSpacingTiles = 20;
         private static readonly float[] BedouinTentRotationVariants = { -32f, -19f, -7f, 6f, 18f, 31f };
 
         public void SetupScene(I3dWorld world)
@@ -235,7 +239,7 @@ namespace _3dRotations.Scene.Scene6
                 if (plant.SurfaceBasedId > 0) world.WorldInhabitants.Add(plant);
             }
 
-            var rockPlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 12000);
+            var rockPlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), DesertRockPlacementMax);
             AddGuaranteedStartRockPlacements(rockPlacements);
             RemoveStartPlatformPlacements(rockPlacements);
             SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), rockPlacements, radius: 1);
@@ -258,37 +262,16 @@ namespace _3dRotations.Scene.Scene6
                 if (rocks.SurfaceBasedId > 0) world.WorldInhabitants.Add(rocks);
             }
 
-            var cactusPlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
-            AddGuaranteedStartCactusPlacements(cactusPlacements);
-            RemoveStartPlatformPlacements(cactusPlacements);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), cactusPlacements, radius: 1);
-            foreach (var cactusPlacement in cactusPlacements)
-            {
-                if (IsOnStartPlatform(cactusPlacement.x, cactusPlacement.y))
-                    continue;
-
-                var cactus = Cactus.CreateCactus(Surface);
-                cactus.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
-                cactus.SurfaceBasedId = GameState.SurfaceState.Global2DMap[cactusPlacement.y, cactusPlacement.x].mapId;
-                GameState.SurfaceState.Global2DMap[cactusPlacement.y, cactusPlacement.x].hasLandbasedObject = true;
-                cactus.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
-                cactus.ObjectName = "Cactus";
-                cactus.Movement = new CactusControls();
-                cactus.ImpactStatus = new ImpactStatus { };
-                cactus.CrashBoxDebugMode = false;
-                if (cactus.SurfaceBasedId > 0) world.WorldInhabitants.Add(cactus);
-            }
-
             var reservedNaturePlacements = new List<(int x, int y, int height)>();
             reservedNaturePlacements.AddRange(oasisPlantPlacements);
             reservedNaturePlacements.AddRange(rockPlacements);
-            reservedNaturePlacements.AddRange(cactusPlacements);
             var tentPlacements = SurfaceGeneration.FindHousePlacementAreas(
                 GameState.SurfaceState.Global2DMap,
                 Surface.GlobalMapSize(),
                 Surface.MaxHeight(),
                 reservedNaturePlacements,
-                overrideMaxHouses: 15000);
+                overrideMaxHouses: DesertTentPlacementMax,
+                placementSpacing: DesertTentPlacementSpacingTiles);
             AddGuaranteedStartTentPlacements(tentPlacements);
             RemoveStartPlatformPlacements(tentPlacements);
             SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), tentPlacements, radius: 1);
@@ -315,6 +298,29 @@ namespace _3dRotations.Scene.Scene6
                     world.WorldInhabitants.Add(tent);
                     tentIndex++;
                 }
+            }
+
+            var cactusPlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), DesertCactusPlacementMax);
+            AddGuaranteedStartCactusPlacements(cactusPlacements);
+            RemoveStartPlatformPlacements(cactusPlacements);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), cactusPlacements, radius: 1);
+            foreach (var cactusPlacement in cactusPlacements)
+            {
+                if (IsOnStartPlatform(cactusPlacement.x, cactusPlacement.y))
+                    continue;
+                if (GameState.SurfaceState.Global2DMap[cactusPlacement.y, cactusPlacement.x].hasLandbasedObject)
+                    continue;
+
+                var cactus = Cactus.CreateCactus(Surface);
+                cactus.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+                cactus.SurfaceBasedId = GameState.SurfaceState.Global2DMap[cactusPlacement.y, cactusPlacement.x].mapId;
+                GameState.SurfaceState.Global2DMap[cactusPlacement.y, cactusPlacement.x].hasLandbasedObject = true;
+                cactus.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
+                cactus.ObjectName = "Cactus";
+                cactus.Movement = new CactusControls();
+                cactus.ImpactStatus = new ImpactStatus { };
+                cactus.CrashBoxDebugMode = false;
+                if (cactus.SurfaceBasedId > 0) world.WorldInhabitants.Add(cactus);
             }
         }
 
@@ -344,7 +350,7 @@ namespace _3dRotations.Scene.Scene6
                     nearStartTentCount++;
             }
 
-            int[] targetDistances = { 100, 115, 130, 145, 160 };
+            int[] targetDistances = { 90, 105, 120, 135, 150, 165, 180, 195, 210, 225 };
             for (int i = 0; nearStartTentCount < GuaranteedStartTentCount && i < targetDistances.Length; i++)
             {
                 if (TryAddTentPlacementNearTargetDistance(targetDistances[i]))

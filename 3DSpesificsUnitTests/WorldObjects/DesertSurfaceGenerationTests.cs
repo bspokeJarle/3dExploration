@@ -84,6 +84,31 @@ public class DesertSurfaceGenerationTests
     }
 
     [TestMethod]
+    public void FindHousePlacementAreas_WithSmallerPlacementSpacing_ReturnsMorePlacements()
+    {
+        var map = CreateFlatMap(120, depth: 50);
+
+        var sparsePlacements = SurfaceGeneration.FindHousePlacementAreas(
+            map,
+            mapSize: 120,
+            maxHeight: 100,
+            existingTrees: new List<(int x, int y, int height)>(),
+            overrideMaxHouses: 1000,
+            placementSpacing: 40);
+
+        var densePlacements = SurfaceGeneration.FindHousePlacementAreas(
+            map,
+            mapSize: 120,
+            maxHeight: 100,
+            existingTrees: new List<(int x, int y, int height)>(),
+            overrideMaxHouses: 1000,
+            placementSpacing: 20);
+
+        Assert.IsTrue(densePlacements.Count > sparsePlacements.Count,
+            $"Smaller placement spacing should increase available placements. Sparse={sparsePlacements.Count}, Dense={densePlacements.Count}.");
+    }
+
+    [TestMethod]
     public void GenerateCrashBoxes_SplitsLargeFormationsIntoBoundedBoxes()
     {
         var map = CreateFlatMap(18, depth: 20);
