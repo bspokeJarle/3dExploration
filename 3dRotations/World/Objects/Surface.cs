@@ -16,6 +16,7 @@ namespace _3dRotations.World.Objects
     public class Surface : ISurface
     {
         private const float DefaultSurfacePitchDegrees = 70f;
+        private const float MainSurfaceLandingLeadY = 40f;
 
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = DefaultSurfacePitchDegrees, y = 0, z = 0 };
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
@@ -272,7 +273,7 @@ namespace _3dRotations.World.Objects
             //var min = new Vector3 { x = -1200, y = -600, z = -1000 };
             //var max = new Vector3 { x = 1200, y = 1500, z = 400 };
 
-            var min = new Vector3 { x = -500, y = -100 + surfaceYOffset, z = 1000 };
+            var min = new Vector3 { x = -500, y = -100 + surfaceYOffset - MainSurfaceLandingLeadY, z = 1000 };
             var max = new Vector3 { x = 500, y = 1000 + surfaceYOffset, z = -350 };
 
             return new List<List<IVector3>>

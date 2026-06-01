@@ -7,7 +7,6 @@ using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
-using GameAiAndControls.Controls.SeederControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using GameAiAndControls.Controls.JumpingFishControls;
 using System;
@@ -95,58 +94,15 @@ namespace _3dRotations.Scene.Scene5
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-            // Seeders close to the player for immediate pressure
-            for (int i = 0; i < 8; i++)
-            {
-                var rmd = new Random();
-
-                var seeder = Seeder.CreateSeeder(Surface);
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-18000, 18000)) * ws, y = 0, z = (92000 + rmd.Next(-18000, 18000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
-            }
-
-            // Seeders spread further across the map
-            for (int i = 0; i < 7; i++)
-            {
-                var rmd = new Random();
-
-                var seeder = Seeder.CreateSeeder(Surface);
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-40000, 20000)) * ws, y = 0, z = (92000 + rmd.Next(-40000, 20000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
-            }
-
-            // Powerup seeders
-            for (int i = 0; i < 3; i++)
-            {
-                var rmd = new Random();
-                var seederPowerup = Seeder.CreateSeeder(Surface);
-                seederPowerup.Rotation = new Vector3 { };
-                seederPowerup.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-30000, 30000)) * ws, y = 0, z = (92000 + rmd.Next(-30000, 30000)) * ws };
-                seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seederPowerup.ObjectName = "Seeder";
-                seederPowerup.Movement = new SeederControls();
-                seederPowerup.CrashBoxDebugMode = false;
-                seederPowerup.ImpactStatus = new ImpactStatus { };
-                seederPowerup.HasPowerUp = true;
-                world.WorldInhabitants.Add(seederPowerup);
-                GameState.SurfaceState.AiObjects.Add(seederPowerup);
-            }
+            SeederPlacementHelpers.AddSeederGroup(
+                world,
+                Surface,
+                GameState.SurfaceState.GlobalMapPosition,
+                regularCount: 15,
+                powerUpCount: 3,
+                regularSeed: 5051,
+                powerUpSeed: 5052,
+                nearSeederCount: 8);
 
             // Mothership — spawns inactive, enters when all seeders and drones are destroyed
             var motherShipMedium = MotherShipMedium.CreateMotherShipMedium(Surface);

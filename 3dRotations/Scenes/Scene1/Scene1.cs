@@ -7,7 +7,6 @@ using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipSmallControls;
-using GameAiAndControls.Controls.SeederControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using GameAiAndControls.Controls.JumpingFishControls;
 using System;
@@ -88,37 +87,15 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-            //Add seeders close to the player, to make sure they are engaged from the start, and to demonstrate the infection mechanics early on. The rest of the seeders will be more spread out across the surface
-            for (int i = 0; i < 3; i++)
-            {
-                var rmd = new Random();
-
-                var seeder = Seeder.CreateSeeder(Surface);
-                //Initialize the seeder rotation
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-10000, 10000)) * ws, y = 0, z = (92000 + rmd.Next(-10000, 10000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
-            }
-
-            //Special Seeder that has a powerup hidden
-            var seederPowerup = Seeder.CreateSeeder(Surface);
-            seederPowerup.Rotation = new Vector3 { };
-            seederPowerup.WorldPosition = new Vector3 { x = (95700 + -10000) * ws, y = 0, z = (92000 + -10000) * ws };
-            seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-            seederPowerup.ObjectName = "Seeder";
-            seederPowerup.Movement = new SeederControls();
-            seederPowerup.CrashBoxDebugMode = false;
-            seederPowerup.ImpactStatus = new ImpactStatus { };
-            seederPowerup.HasPowerUp = true;
-            world.WorldInhabitants.Add(seederPowerup);
-            GameState.SurfaceState.AiObjects.Add(seederPowerup);
+            SeederPlacementHelpers.AddSeederGroup(
+                world,
+                Surface,
+                GameState.SurfaceState.GlobalMapPosition,
+                regularCount: 6,
+                powerUpCount: 1,
+                regularSeed: 1011,
+                powerUpSeed: 1012,
+                nearSeederCount: 4);
 
             //Mothership for this Scene — spawns inactive, enters when all seeders are destroyed
             var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
@@ -151,25 +128,6 @@ namespace _3dRotations.Scene.Scene1
                 spaceSwan.IsActive = true;
                 world.WorldInhabitants.Add(spaceSwan);
                 GameState.SurfaceState.AiObjects.Add(spaceSwan);
-            }
-
-            //Add more seeders upper left side of the map
-            for (int i = 0; i < 3; i++)
-            {
-                var rmd = new Random();
-
-                var seeder = Seeder.CreateSeeder(Surface);
-                //Initialize the seeder rotation
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-20000, 5000)) * ws, y = 0, z = (92000 + rmd.Next(-20000, 5000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
             }
 
             //Get the surface viewport based on the global Map Position

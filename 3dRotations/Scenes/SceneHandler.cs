@@ -47,6 +47,7 @@ namespace _3DWorld.Scene
 
         public void SetupActiveScene(I3dWorld world)
         {
+            PersistenceSetup.Initialize();
             ApplySceneIndexOverrideFromGameState();
             ResetSurfaceState();
             var scene = GetActiveScene();
@@ -310,6 +311,7 @@ namespace _3DWorld.Scene
                     ApplySceneSettings(GetActiveScene());
 
                     var snapshot = gps.CaptureCheckpointSnapshot();
+                    ApplyCheckpointSnapshotToCurrentState(gps, snapshot);
                     int restoredMotherShips = ResolveRestoredMotherShipCount(snapshot.MotherShipsRemaining);
 
                     TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
@@ -319,14 +321,9 @@ namespace _3DWorld.Scene
                     TrimEnemies(world, "MotherShipLarge", restoredMotherShips);
 
                     // Activate enemies that should already be active at this checkpoint
-                    var aiObjs = GameState.SurfaceState.AiObjects;
                     if (snapshot.SeedersRemaining == 0 && snapshot.DronesRemaining == 0)
                     {
-                        for (int i = 0; i < aiObjs.Count; i++)
-                        {
-                            if ((aiObjs[i].ObjectName == "MotherShipSmall" || aiObjs[i].ObjectName == "MotherShipMedium" || aiObjs[i].ObjectName == "MotherShipLarge") && !aiObjs[i].IsActive)
-                                aiObjs[i].IsActive = true;
-                        }
+                        ActivateMotherShips(world);
                     }
 
                     // Re-initialize director so it sees the trimmed enemy state
@@ -336,7 +333,6 @@ namespace _3DWorld.Scene
                 else if (_pendingSavedState.HasCheckpoint)
                 {
                     ClearCheckpointState(gps);
-                    try { GameStatePersistence.SaveGameState(); } catch { }
                 }
 
                 // Always apply decoy-driven drone activation when loading a saved game,
@@ -393,11 +389,13 @@ namespace _3DWorld.Scene
                     if (k.Key == Key.Right || k.Key == Key.D)
                     {
                         overlay.NextPage();
+                        RefreshCurrentHighscorePage(overlay);
                         return;
                     }
                     if (k.Key == Key.Left || k.Key == Key.A)
                     {
                         overlay.PreviousPage();
+                        RefreshCurrentHighscorePage(overlay);
                         return;
                     }
                 }
@@ -491,11 +489,13 @@ namespace _3DWorld.Scene
                 if (k.Key == Key.Right || k.Key == Key.D)
                 {
                     overlay.NextPage();
+                    RefreshCurrentHighscorePage(overlay);
                     return;
                 }
                 if (k.Key == Key.Left || k.Key == Key.A)
                 {
                     overlay.PreviousPage();
+                    RefreshCurrentHighscorePage(overlay);
                     return;
                 }
             }
@@ -517,11 +517,13 @@ namespace _3DWorld.Scene
                     if (k.Key == Key.Right || k.Key == Key.D)
                     {
                         overlay.NextPage();
+                        RefreshCurrentHighscorePage(overlay);
                         return;
                     }
                     if (k.Key == Key.Left || k.Key == Key.A)
                     {
                         overlay.PreviousPage();
+                        RefreshCurrentHighscorePage(overlay);
                         return;
                     }
                 }
@@ -529,6 +531,11 @@ namespace _3DWorld.Scene
                 if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: Game keypress. Overlay Type={overlay.Type} Show={overlay.ShowOverlay}", "General");
                 scene.SetupGameOverlay();
             }
+        }
+
+        private static void RefreshCurrentHighscorePage(ScreenOverlayState overlay)
+        {
+            HighscoreOverlayFormatter.RefreshCurrentPageIfHighscorePage(overlay);
         }
 
         // -----------------------------------------------------------------
@@ -734,21 +741,6 @@ namespace _3DWorld.Scene
             if (!CheckpointInitialMatchesScene(saved.CheckpointInitialMotherShips, sceneMotherShips))
                 return false;
 
-            if (saved.CheckpointSeedersRemaining == 0 && saved.CheckpointDronesRemaining == 0)
-            {
-                int initialSeeders = saved.CheckpointInitialSeeders > 0
-                    ? saved.CheckpointInitialSeeders
-                    : sceneSeeders;
-                int initialDrones = saved.CheckpointInitialDrones > 0
-                    ? saved.CheckpointInitialDrones
-                    : sceneDrones;
-                int expectedKillsForMothershipPhase = initialSeeders + initialDrones;
-
-                if (expectedKillsForMothershipPhase > 0 &&
-                    saved.CheckpointTotalKills < expectedKillsForMothershipPhase)
-                    return false;
-            }
-
             return true;
         }
 
@@ -804,6 +796,32 @@ namespace _3DWorld.Scene
             return count;
         }
 
+        private static void ActivateMotherShips(I3dWorld world)
+        {
+            for (int i = 0; i < world.WorldInhabitants.Count; i++)
+            {
+                if (IsMotherShipName(world.WorldInhabitants[i].ObjectName))
+                    world.WorldInhabitants[i].IsActive = true;
+            }
+
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null)
+                return;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                if (IsMotherShipName(aiObjects[i].ObjectName))
+                    aiObjects[i].IsActive = true;
+            }
+        }
+
+        private static bool IsMotherShipName(string? objectName)
+        {
+            return objectName == "MotherShipSmall" ||
+                   objectName == "MotherShipMedium" ||
+                   objectName == "MotherShipLarge";
+        }
+
         private static void ClearCheckpointState(GamePlayState gps)
         {
             gps.HasCheckpoint = false;
@@ -822,6 +840,27 @@ namespace _3DWorld.Scene
             gps.CheckpointInitialSeeders = 0;
             gps.CheckpointInitialDrones = 0;
             gps.CheckpointInitialMotherShips = 0;
+        }
+
+        private static void ApplyCheckpointSnapshotToCurrentState(
+            GamePlayState gps,
+            GamePlayState.CheckpointSnapshot snapshot)
+        {
+            gps.Score = snapshot.Score;
+            gps.Lives = snapshot.Lives;
+            gps.Health = snapshot.Health;
+            gps.PowerUpsCollected = snapshot.PowerUpsCollected;
+            gps.SeedersRemaining = snapshot.SeedersRemaining;
+            gps.DronesRemaining = snapshot.DronesRemaining;
+            gps.MotherShipsRemaining = snapshot.MotherShipsRemaining;
+            gps.TotalShotsFired = snapshot.TotalShotsFired;
+            gps.TotalKills = snapshot.TotalKills;
+            gps.TotalDeaths = snapshot.TotalDeaths;
+            gps.InfectionLevel = snapshot.InfectionLevel;
+            gps.WaveNumber = snapshot.WaveNumber;
+            gps.InitialSeeders = snapshot.InitialSeeders;
+            gps.InitialDrones = snapshot.InitialDrones;
+            gps.InitialMotherShips = snapshot.InitialMotherShips;
         }
 
         // -----------------------------------------------------------------

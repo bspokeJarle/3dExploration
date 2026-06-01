@@ -275,6 +275,18 @@ namespace _3dTesting
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
+            try
+            {
+                var sceneType = world.SceneHandler.GetActiveScene().SceneType;
+                if (sceneType == SceneTypes.Game || sceneType == SceneTypes.Simulation)
+                {
+                    HighscoreService.SubmitFromGamePlay(GameState.GamePlayState);
+                    GameStatePersistence.SaveGameState();
+                }
+            }
+            catch
+            {
+            }
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)

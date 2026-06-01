@@ -23,6 +23,8 @@ namespace CommonUtilities.Persistence
 
         // Timestamp of last successful remote fetch — used for cooldown
         private static DateTime _lastRemoteFetch = DateTime.MinValue;
+        internal static Func<int, Task<List<HighscoreEntry>?>> FetchRemoteTopScoresAsync { get; set; } =
+            SupabaseHighscoreClient.FetchTopScoresAsync;
 
         // -----------------------------------------------------------------
         // Local file operations
@@ -207,17 +209,21 @@ namespace CommonUtilities.Persistence
             {
                 try
                 {
-                    var remote = SupabaseHighscoreClient.FetchTopScoresAsync(
-                        PersistenceSetup.MaxHighscoreEntries).Result;
+                    var remote = FetchRemoteTopScoresAsync(PersistenceSetup.MaxHighscoreEntries)
+                        .GetAwaiter()
+                        .GetResult();
 
-                    if (remote != null && remote.Count > 0)
+                    if (remote != null)
                     {
-                        var merged = MergeLists(local.Entries, remote);
-                        local.Entries = merged;
-                        SaveLocalHighscores(local);
-                    }
+                        if (remote.Count > 0)
+                        {
+                            var merged = MergeLists(local.Entries, remote);
+                            local.Entries = merged;
+                            SaveLocalHighscores(local);
+                        }
 
-                    _lastRemoteFetch = DateTime.UtcNow;
+                        _lastRemoteFetch = DateTime.UtcNow;
+                    }
                 }
                 catch
                 {
@@ -329,6 +335,12 @@ namespace CommonUtilities.Persistence
             var normalized = byPlayer.Values.ToList();
             normalized.Sort((a, b) => b.Score.CompareTo(a.Score));
             return normalized;
+        }
+
+        internal static void ResetRemoteFetchStateForTests()
+        {
+            _lastRemoteFetch = DateTime.MinValue;
+            FetchRemoteTopScoresAsync = SupabaseHighscoreClient.FetchTopScoresAsync;
         }
     }
 }

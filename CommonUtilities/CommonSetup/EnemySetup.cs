@@ -9,6 +9,7 @@ namespace CommonUtilities.CommonSetup
     //TODO: Expand this as needed, common enemy properties can go here
     public static class EnemySetup
     {
+        public const int SeederHealth = 55;
         public const int KamikazeDroneHealth = 55;
         public const int KamikazeDroneCollisionDamage = 50;
         public const int MotherShipSmallHealth = 550;

@@ -52,10 +52,85 @@ public class SeederPlacementHelpersTests
         }));
     }
 
+    [TestMethod]
+    public void CreateRandomSeederPositions_AvoidsOccupiedSeederPositions()
+    {
+        var center = new Vector3 { x = 95100f, y = 0, z = 95200f };
+        var regularPositions = SeederPlacementHelpers.CreateRingSeederPositions(
+            count: 21,
+            center: center,
+            seed: 8081,
+            nearSeederCount: 11,
+            firstRingRadius: 7500f,
+            ringRadiusStep: 11500f);
+
+        var powerUpPositions = SeederPlacementHelpers.CreateRandomSeederPositions(
+            count: 4,
+            center: center,
+            seed: 8082,
+            minRadius: 16000f,
+            maxRadius: 42000f,
+            avoidPositions: regularPositions,
+            minDistance: 4500f);
+
+        Assert.AreEqual(4, powerUpPositions.Count);
+        AssertAllSeparated(powerUpPositions, regularPositions, 4500f * SurfaceSetup.WorldScale);
+        AssertAllSeparated(powerUpPositions, powerUpPositions, 4500f * SurfaceSetup.WorldScale);
+    }
+
+    [TestMethod]
+    public void CreateCheckpointSeederPositions_UsesMiddleBandAwayFromStartAndEnd()
+    {
+        var center = new Vector3 { x = 95100f, y = 0, z = 95200f };
+        var regularPositions = SeederPlacementHelpers.CreateRingSeederPositions(
+            count: 17,
+            center: center,
+            seed: 6061,
+            nearSeederCount: 5,
+            firstRingRadius: 7500f,
+            ringRadiusStep: 11500f);
+
+        var checkpointPositions = SeederPlacementHelpers.CreateCheckpointSeederPositions(
+            count: 4,
+            center: center,
+            seed: 6062,
+            firstRingRadius: 7500f,
+            ringRadiusStep: 11500f,
+            avoidPositions: regularPositions,
+            minDistance: 4500f);
+
+        Assert.AreEqual(4, checkpointPositions.Count);
+        Assert.IsTrue(checkpointPositions.All(p => DistanceXZ(center, p) > 11000f * SurfaceSetup.WorldScale),
+            "Checkpoint seeders should not sit in the opening seeder ring.");
+        Assert.IsTrue(checkpointPositions.All(p => DistanceXZ(center, p) < 26000f * SurfaceSetup.WorldScale),
+            "Checkpoint seeders should not drift into the late outer cleanup rings.");
+        AssertAllSeparated(checkpointPositions, regularPositions, 4500f * SurfaceSetup.WorldScale);
+        AssertAllSeparated(checkpointPositions, checkpointPositions, 4500f * SurfaceSetup.WorldScale);
+    }
+
     private static float DistanceXZ(Vector3 a, Vector3 b)
     {
         float dx = a.x - b.x;
         float dz = a.z - b.z;
         return MathF.Sqrt((dx * dx) + (dz * dz));
+    }
+
+    private static void AssertAllSeparated(
+        IReadOnlyList<Vector3> positions,
+        IReadOnlyList<Vector3> otherPositions,
+        float minDistance)
+    {
+        for (int i = 0; i < positions.Count; i++)
+        {
+            for (int j = 0; j < otherPositions.Count; j++)
+            {
+                if (ReferenceEquals(positions, otherPositions) && i == j)
+                    continue;
+
+                Assert.IsTrue(
+                    DistanceXZ(positions[i], otherPositions[j]) >= minDistance,
+                    $"Expected seeder positions to stay at least {minDistance:0.##} apart.");
+            }
+        }
     }
 }

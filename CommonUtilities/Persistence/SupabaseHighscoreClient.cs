@@ -113,26 +113,7 @@ namespace CommonUtilities.Persistence
                 if (!response.IsSuccessStatusCode) return null;
 
                 var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                var rows = JsonSerializer.Deserialize<List<SupabaseHighscoreRow>>(body, JsonOptions);
-                if (rows == null) return null;
-
-                var entries = new List<HighscoreEntry>(rows.Count);
-                foreach (var row in rows)
-                {
-                    entries.Add(new HighscoreEntry
-                    {
-                        PlayerName = row.PlayerName ?? "",
-                        Score = row.Score,
-                        WaveReached = row.WaveReached,
-                        TotalKills = row.TotalKills,
-                        TotalShotsFired = row.TotalShotsFired,
-                        TotalDeaths = row.TotalDeaths,
-                        Accuracy = row.Accuracy,
-                        DateUtc = row.DateUtc ?? ""
-                    });
-                }
-
-                return entries;
+                return ParseHighscoreRows(body);
             }
             catch
             {
@@ -149,6 +130,30 @@ namespace CommonUtilities.Persistence
             request.Headers.Add("apikey", PersistenceSetup.SupabaseAnonKey);
             request.Headers.Authorization =
                 new AuthenticationHeaderValue("Bearer", PersistenceSetup.SupabaseAnonKey);
+        }
+
+        internal static List<HighscoreEntry>? ParseHighscoreRows(string body)
+        {
+            var rows = JsonSerializer.Deserialize<List<SupabaseHighscoreRow>>(body, JsonOptions);
+            if (rows == null) return null;
+
+            var entries = new List<HighscoreEntry>(rows.Count);
+            foreach (var row in rows)
+            {
+                entries.Add(new HighscoreEntry
+                {
+                    PlayerName = row.PlayerName ?? "",
+                    Score = row.Score,
+                    WaveReached = row.WaveReached,
+                    TotalKills = row.TotalKills,
+                    TotalShotsFired = row.TotalShotsFired,
+                    TotalDeaths = row.TotalDeaths,
+                    Accuracy = row.Accuracy,
+                    DateUtc = row.DateUtc ?? ""
+                });
+            }
+
+            return entries;
         }
 
         /// <summary>

@@ -22,7 +22,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 {
     public class LiveGameLoop : IGameLoop<_2dTriangleMesh>
     {
-        public const bool EnableCpuHeadroomLogging = true;
+        public const bool EnableCpuHeadroomLogging = false;
         private const bool EnableAdaptiveGc = true;
         private static int PerfLogInterval => ScreenSetup.RuntimeTargetFps;
         private static int AdaptiveGcMinFrameInterval => ScreenSetup.RuntimeTargetFps;

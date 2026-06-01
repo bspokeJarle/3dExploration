@@ -12,7 +12,6 @@ using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.JumpingFishControls;
-using GameAiAndControls.Controls.SeederControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using System;
 
@@ -101,26 +100,17 @@ namespace _3dRotations.Scene.Scene6
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-            foreach (var seederPosition in SeederPlacementHelpers.CreateRingSeederPositions(
-                         count: 17,
-                         center: GameState.SurfaceState.GlobalMapPosition,
-                         seed: 6061,
-                         nearSeederCount: 5,
-                         firstRingRadius: 7500f,
-                         ringRadiusStep: 11500f))
-            {
-                AddSeeder(world, seederPosition, hasPowerUp: false);
-            }
-
-            foreach (var seederPosition in SeederPlacementHelpers.CreateRandomSeederPositions(
-                         count: 4,
-                         center: GameState.SurfaceState.GlobalMapPosition,
-                         seed: 6062,
-                         minRadius: 16000f,
-                         maxRadius: 42000f))
-            {
-                AddSeeder(world, seederPosition, hasPowerUp: true);
-            }
+            SeederPlacementHelpers.AddSeederGroup(
+                world,
+                Surface,
+                GameState.SurfaceState.GlobalMapPosition,
+                regularCount: 17,
+                powerUpCount: 4,
+                regularSeed: 6061,
+                powerUpSeed: 6062,
+                nearSeederCount: 5,
+                firstRingRadius: 7500f,
+                ringRadiusStep: 11500f);
 
             var motherShipMedium = MotherShipMedium.CreateMotherShipMedium(Surface);
             motherShipMedium.Rotation = new Vector3 { };
@@ -606,21 +596,6 @@ namespace _3dRotations.Scene.Scene6
                 endX = Math.Clamp(Math.Max(endX, startX), area.StartTileX, area.EndTileX);
                 return (startX, endX);
             }
-        }
-
-        private void AddSeeder(I3dWorld world, Vector3 worldPosition, bool hasPowerUp)
-        {
-            var seeder = Seeder.CreateSeeder(Surface);
-            seeder.Rotation = new Vector3 { };
-            seeder.WorldPosition = worldPosition;
-            seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-            seeder.ObjectName = "Seeder";
-            seeder.Movement = new SeederControls();
-            seeder.CrashBoxDebugMode = false;
-            seeder.ImpactStatus = new ImpactStatus { };
-            seeder.HasPowerUp = hasPowerUp;
-            world.WorldInhabitants.Add(seeder);
-            GameState.SurfaceState.AiObjects.Add(seeder);
         }
 
         private void RemoveStartPlatformPlacements(List<(int x, int y, int height)> placements)
