@@ -10,6 +10,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.gitignore = .gitignore
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Installer", "Installer", "{0E61A128-2072-462C-A54F-6C8E4FB0955D}"
+	ProjectSection(SolutionItems) = preProject
+		installer\Build-Installer.ps1 = installer\Build-Installer.ps1
+		installer\README.md = installer\README.md
+		installer\TheOmegaStrain.iss = installer\TheOmegaStrain.iss
+	EndProjectSection
+EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "3dSpesifics", "3dRotations\3dSpesifics.csproj", "{DEE6A875-DA07-4B8F-8D17-7158CF17334E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GameAiAndControls", "GameAi\GameAiAndControls.csproj", "{F5594282-CC6B-415B-855B-C940DDF54AD0}"
