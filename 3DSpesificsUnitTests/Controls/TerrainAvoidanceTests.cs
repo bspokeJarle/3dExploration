@@ -73,6 +73,7 @@ public class TerrainAvoidanceTests
     [DataRow("LargePalm", 2020)]
     [DataRow("SmallPalm", 2021)]
     [DataRow("BambooHut", 2022)]
+    [DataRow("LeafTree", 2023)]
     public void TryStartTerrainRecovery_WhenAiHitsLandBasedDecoration_UsesItAsTerrainObstacle(string obstacleObjectName, int objectId)
     {
         var aiObject = CreateAiObject(objectId, "Seeder", obstacleObjectName);

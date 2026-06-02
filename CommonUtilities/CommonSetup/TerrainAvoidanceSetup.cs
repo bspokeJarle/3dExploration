@@ -20,6 +20,7 @@ namespace CommonUtilities.CommonSetup
             "Tower",
             "SnowTower",
             "Tree",
+            "LeafTree",
             "LargePalm",
             "SmallPalm",
             "BambooHut",

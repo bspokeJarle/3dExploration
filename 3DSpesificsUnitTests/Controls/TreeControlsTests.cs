@@ -75,6 +75,20 @@ public class TreeControlsTests
         Assert.IsTrue(maxDisplacement >= 4f, "The real tree foliage should sway enough to be visible in-game.");
     }
 
+    [TestMethod]
+    public void CreateLeafTree_UsesTreeWindPartsAndLowPolyLeafPalette()
+    {
+        var leafTree = LeafTree.CreateLeafTree(null!);
+        var trunk = GetPart(leafTree, "TreeTrunk");
+        var foliage = GetPart(leafTree, "TreeFoliage");
+
+        Assert.IsTrue(trunk.Triangles.Count > 20, "LeafTree should keep trunk geometry and add branch geometry.");
+        Assert.IsTrue(foliage.Triangles.Count > 20, "LeafTree should use several simple leaf triangles instead of one canopy blob.");
+        Assert.IsTrue(foliage.Triangles.All(triangle => triangle.noHidden == true), "Low-poly leaf triangles should be visible from both sides.");
+        Assert.IsTrue(foliage.Triangles.All(triangle => LeafTree.LeafColors.Contains(triangle.Color)), "LeafTree foliage should use the shared leaf palette.");
+        Assert.IsTrue(leafTree.CrashBoxes.Count >= 3, "LeafTree should have crashboxes like other landbased tree objects.");
+    }
+
     private static _3dObject CreateTreeObject()
     {
         return new _3dObject

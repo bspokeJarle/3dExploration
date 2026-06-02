@@ -22,6 +22,9 @@ namespace _3dRotations.Scenes.SceneSimulation
     {
         Surface Surface = new();
         private const int TargetWinterPolarBearCount = 31;
+        private const int LeafTreePlacementMax = 12000;
+        private const int NearPlatformLeafTreeTarget = 14;
+        private const int NearPlatformLeafTreeSearchRadius = 26;
 
         private static readonly SceneBiomeTypes[] BiomeCycle = new[]
         {
@@ -317,7 +320,8 @@ namespace _3dRotations.Scenes.SceneSimulation
                 return;
             }
 
-            AddTreeAndHouseLandmarks(world);
+            world.WorldInhabitants.Add(LeafEmitter.CreateLeafEmitter(Surface));
+            AddTreeAndHouseLandmarks(world, towerPlacements);
         }
 
         private void AddBiomeTowers(I3dWorld world, List<(int x, int y, int height)> towerPlacements)
@@ -351,7 +355,7 @@ namespace _3dRotations.Scenes.SceneSimulation
             }
         }
 
-        private void AddTreeAndHouseLandmarks(I3dWorld world)
+        private void AddTreeAndHouseLandmarks(I3dWorld world, List<(int x, int y, int height)> towerPlacements)
         {
             var map = GameState.SurfaceState.Global2DMap;
             if (map == null)
@@ -388,6 +392,22 @@ namespace _3dRotations.Scenes.SceneSimulation
                 house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId > 0) world.WorldInhabitants.Add(house);
             }
+
+            LeafTreePlacementHelpers.AddLeafTrees(
+                world,
+                Surface,
+                map,
+                Surface.GlobalMapSize(),
+                Surface.TileSize(),
+                Surface.MaxHeight(),
+                LeafTreePlacementMax,
+                NearPlatformLeafTreeTarget,
+                NearPlatformLeafTreeSearchRadius,
+                treeOffsetX: 75 * ScreenSetup.ScreenScaleX,
+                treeOffsetY: 425 * ScreenSetup.ScreenScaleY,
+                towerPlacements,
+                treePlacements,
+                housePlacements);
         }
 
         private void AddRainforestLandmarks(I3dWorld world)

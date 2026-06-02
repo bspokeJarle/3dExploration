@@ -19,6 +19,9 @@ namespace _3dRotations.Scene.Scene1
     public class Scene2:IScene
     {
         Surface Surface = new();
+        private const int LeafTreePlacementMax = 12000;
+        private const int NearPlatformLeafTreeTarget = 14;
+        private const int NearPlatformLeafTreeSearchRadius = 26;
 
         public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
@@ -139,6 +142,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.CrashBoxesFollowRotation = false;
             world.WorldInhabitants.Add(surfaceObject);
             GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
+            world.WorldInhabitants.Add(LeafEmitter.CreateLeafEmitter(Surface));
 
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
 
@@ -213,6 +217,22 @@ namespace _3dRotations.Scene.Scene1
                 house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
             }
+
+            LeafTreePlacementHelpers.AddLeafTrees(
+                world,
+                Surface,
+                GameState.SurfaceState.Global2DMap,
+                Surface.GlobalMapSize(),
+                Surface.TileSize(),
+                Surface.MaxHeight(),
+                LeafTreePlacementMax,
+                NearPlatformLeafTreeTarget,
+                NearPlatformLeafTreeSearchRadius,
+                treeOffsetX: 75 * ScreenSetup.ScreenScaleX,
+                treeOffsetY: 425 * ScreenSetup.ScreenScaleY,
+                towerPlacements,
+                treePlacements,
+                housePlacements);
         }
 
         public void SetupSceneOverlay()
