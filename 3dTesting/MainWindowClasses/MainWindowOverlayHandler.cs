@@ -15,6 +15,10 @@ namespace _3dTesting.MainWindowClasses
     /// </summary>
     public sealed class OverlayHandler
     {
+        private const double MinimumPanelHeightDip = 160.0;
+        private const double PanelEdgeMarginDip = 24.0;
+        private const double SoftMaxPanelHeightRatio = 0.90;
+
         private readonly Grid _root;
 
         private readonly Grid _overlayRoot;
@@ -232,18 +236,42 @@ namespace _3dTesting.MainWindowClasses
             _panel.Measure(new Size(panelW, double.PositiveInfinity));
             double desiredH = _panel.DesiredSize.Height;
 
-            // Keep a reasonable minimum, but avoid hard max-caps that cause clipping.
-            double minH = screenHeight * 0.18;
-            if (minH < 160) minH = 160;
+            _panel.Height = CalculatePanelHeight(desiredH, screenHeight, yOffset, state.Anchor);
+        }
 
-            double finalH = Math.Max(desiredH, minH);
+        public static double CalculatePanelHeight(
+            double desiredHeight,
+            double screenHeight,
+            double yOffset,
+            ScreenOverlayAnchor anchor)
+        {
+            if (screenHeight <= 0) screenHeight = 1080;
+            if (desiredHeight < 0) desiredHeight = 0;
 
-            // Soft cap: keep some margin so it won't cover absolutely everything.
-            // (This is not a hard "cut content" cap; it just prevents insane boxes.)
-            double softMax = screenHeight * 0.90;
-            if (finalH > softMax) finalH = softMax;
+            double minHeight = Math.Max(screenHeight * 0.18, MinimumPanelHeightDip);
+            double finalHeight = Math.Max(desiredHeight, minHeight);
+            double screenSoftMax = screenHeight * SoftMaxPanelHeightRatio;
+            double availableHeight = CalculateAvailablePanelHeight(screenHeight, yOffset, anchor);
+            double maxHeight = Math.Max(0, Math.Min(screenSoftMax, availableHeight));
 
-            _panel.Height = finalH;
+            return maxHeight <= 0
+                ? 0
+                : Math.Min(finalHeight, maxHeight);
+        }
+
+        public static double CalculateAvailablePanelHeight(
+            double screenHeight,
+            double yOffset,
+            ScreenOverlayAnchor anchor)
+        {
+            if (screenHeight <= 0) screenHeight = 1080;
+
+            yOffset = Math.Max(0, yOffset);
+            double verticalMargin = anchor == ScreenOverlayAnchor.Center
+                ? (PanelEdgeMarginDip * 2.0) + yOffset
+                : PanelEdgeMarginDip + yOffset;
+
+            return Math.Max(0, screenHeight - verticalMargin);
         }
 
         private static double Clamp01(double v)

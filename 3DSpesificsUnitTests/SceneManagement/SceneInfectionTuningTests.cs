@@ -105,9 +105,28 @@ public class SceneInfectionTuningTests
 
         intro.SetupSceneOverlay();
 
-        var gameplayTips = GameState.ScreenOverlayState.Pages[1][2];
+        var gameplayTips = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "TACTICAL TIPS")[2];
         Assert.IsTrue(gameplayTips.Contains("Destroy Seeders fast", StringComparison.Ordinal));
         Assert.IsTrue(gameplayTips.Contains("Every Seeder kill helps slow the infection cascade", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void IntroControls_DescribeKeyboardMouseAndFutureMappingSupport()
+    {
+        var intro = new Intro();
+
+        intro.SetupSceneOverlay();
+
+        var controls = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "FLIGHT CONTROLS")[2];
+        Assert.IsTrue(controls.Contains("[SPACE]       THRUST", StringComparison.Ordinal));
+        Assert.IsTrue(controls.Contains("[RIGHT SHIFT] FIRE CURRENT WEAPON", StringComparison.Ordinal));
+        Assert.IsTrue(controls.Contains("[1] BULLET", StringComparison.Ordinal));
+        Assert.IsTrue(controls.Contains("[2] DECOY", StringComparison.Ordinal));
+        Assert.IsTrue(controls.Contains("[3] LAZER", StringComparison.Ordinal));
+        Assert.IsTrue(controls.Contains("LEFT BUTTON   THRUST", StringComparison.Ordinal));
+        Assert.IsTrue(controls.Contains("RIGHT BUTTON  FIRE CURRENT WEAPON", StringComparison.Ordinal));
+        Assert.IsTrue(controls.Contains("Controller support is coming.", StringComparison.Ordinal));
+        Assert.IsTrue(controls.Contains("Custom key mapping will be supported.", StringComparison.Ordinal));
     }
 
     private static string Format(float value) => value.ToString("0.###", CultureInfo.InvariantCulture);

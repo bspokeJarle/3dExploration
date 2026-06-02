@@ -66,28 +66,42 @@ namespace _3dRotations.Scenes.Intro
                 "Containment probability: 12%.",
                 "PRESS ANY KEY TO INITIATE PROTOCOL");
 
-            // Page 2: Gameplay tips
+            // Page 2: Controls
             o.AddPage(
                 "RETROMESH // FIELD MANUAL",
-                "TACTICAL BRIEFING",
-                "WEAPONS:\n" +
+                "FLIGHT CONTROLS",
+                "KEYBOARD:\n" +
+                "  [SPACE]       THRUST\n" +
+                "  [RIGHT SHIFT] FIRE CURRENT WEAPON\n" +
                 "  [1] BULLET  - High fire rate, effective vs Seeders\n" +
                 "  [2] DECOY   - Lures Kamikaze Drones away from your ship\n" +
                 "  [3] LAZER   - Powerful beam, cuts through targets\n\n" +
+                "MOUSE:\n" +
+                "  LEFT BUTTON   THRUST\n" +
+                "  RIGHT BUTTON  FIRE CURRENT WEAPON\n\n" +
+                "NAVIGATION:\n" +
+                "  - Arrow keys or WASD to move\n" +
+                "  - Follow the guidance arrow to find Seeders\n" +
+                "  - Press [X] at any time during a mission to return to this screen\n\n" +
+                "NOTE:\n" +
+                "  Controller support is coming.\n" +
+                "  Custom key mapping will be supported.",
+                "PRESS ANY KEY TO INITIATE PROTOCOL");
+
+            // Page 3: Gameplay tips
+            o.AddPage(
+                "RETROMESH // FIELD MANUAL",
+                "TACTICAL TIPS",
                 "COMBAT TIPS:\n" +
                 "  - Destroy Seeders fast to control infection spread\n" +
                 "  - Every Seeder kill helps slow the infection cascade\n" +
                 "  - Kamikaze Drones will rush your ship - deploy Decoys!\n" +
                 "  - Decoys unlock after collecting your first PowerUp\n" +
                 "  - PowerUps drop from glowing Seeders\n" +
-                "  - Eliminate all enemies to face the MotherShip\n\n" +
-                "NAVIGATION:\n" +
-                "  - Arrow keys or WASD to move\n" +
-                "  - Follow the guidance arrow to find Seeders\n" +
-                "  - Press [X] at any time during a mission to return to this screen",
+                "  - Eliminate all enemies to face the MotherShip",
                 "PRESS ANY KEY TO INITIATE PROTOCOL");
 
-            // Page 3: Highscores
+            // Page 4: Highscores
             o.AddPage(
                 "RETROMESH // HALL OF FAME",
                 "TOP PILOTS",

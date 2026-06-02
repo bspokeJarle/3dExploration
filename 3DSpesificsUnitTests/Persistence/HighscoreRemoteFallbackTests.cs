@@ -210,9 +210,9 @@ public class HighscoreRemoteFallbackTests
         _ = new _3dWorld();
 
         Assert.IsTrue(PersistenceSetup.IsSupabaseConfigured);
-        Assert.AreEqual("TOP PILOTS", GameState.ScreenOverlayState.Pages[2][1]);
-        Assert.IsTrue(GameState.ScreenOverlayState.Pages[2][2].Contains("STARTUPACE"));
-        Assert.IsFalse(GameState.ScreenOverlayState.Pages[2][2].Contains("No highscores recorded yet"));
+        var highscorePage = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "TOP PILOTS");
+        Assert.IsTrue(highscorePage[2].Contains("STARTUPACE"));
+        Assert.IsFalse(highscorePage[2].Contains("No highscores recorded yet"));
     }
 
     private static void ConfigureSupabase()

@@ -62,6 +62,6 @@ public class OverlayAutoPagingTests
         overlay.Update(ScreenOverlayState.DefaultAutoPageSeconds + 0.016f);
 
         Assert.AreEqual(1, overlay.CurrentPage);
-        Assert.AreEqual("TACTICAL BRIEFING", overlay.Title);
+        Assert.AreEqual("FLIGHT CONTROLS", overlay.Title);
     }
 }
