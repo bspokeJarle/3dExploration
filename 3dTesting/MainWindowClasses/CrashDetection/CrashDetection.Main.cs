@@ -219,9 +219,6 @@ namespace _3dTesting.Helpers
             Vector3 centerB,
             float centerDistance)
         {
-            if (centerDistance > CommonUtilities.CommonSetup.TerrainAvoidanceSetup.HeavyProactiveAvoidanceDistance)
-                return false;
-
             bool aIsAvoidingAi = IsTerrainAvoidanceAiObject(a, flagsA);
             bool bIsAvoidingAi = IsTerrainAvoidanceAiObject(b, flagsB);
             bool aIsProactiveObstacle = CommonUtilities.CommonSetup.TerrainAvoidanceSetup.IsProactiveTerrainObstacle(flagsA.Name);
@@ -248,6 +245,10 @@ namespace _3dTesting.Helpers
             }
 
             if (ai == null || obstacle == null)
+                return false;
+
+            float proactiveAvoidanceDistance = CommonUtilities.CommonSetup.TerrainAvoidanceSetup.GetProactiveAvoidanceDistance(ai.ObjectName);
+            if (centerDistance > proactiveAvoidanceDistance)
                 return false;
 
             bool started = TerrainAvoidanceHelpers.TryStartTerrainProximityRecovery(

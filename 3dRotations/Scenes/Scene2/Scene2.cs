@@ -98,7 +98,7 @@ namespace _3dRotations.Scene.Scene1
             motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
             motherShip.ObjectName = "MotherShipSmall";
             motherShip.Movement = new MotherShipSmallControls();
-            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
+            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.GetMotherShipHealth(motherShip.ObjectName, MotherShipSmallAggression) };
             motherShip.CrashBoxDebugMode = false;
             motherShip.HasPowerUp = false;
             motherShip.IsActive = false;

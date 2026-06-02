@@ -205,7 +205,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                     FireAsEnemyWeapon = true,
                     EnemyLazerName = "EnemyLazerLarge"
                 };
-                motherShipLarge.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipLargeHealth };
+                motherShipLarge.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.GetMotherShipHealth(motherShipLarge.ObjectName, _motherShipAggression) };
                 motherShipLarge.CrashBoxDebugMode = false;
                 motherShipLarge.HasPowerUp = false;
                 motherShipLarge.IsActive = false;
@@ -228,7 +228,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                     FireAsEnemyWeapon = true,
                     EnemyLazerName = "EnemyLazerMedium"
                 };
-                motherShipMedium.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipMediumHealth };
+                motherShipMedium.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.GetMotherShipHealth(motherShipMedium.ObjectName, _motherShipAggression) };
                 motherShipMedium.CrashBoxDebugMode = false;
                 motherShipMedium.HasPowerUp = false;
                 motherShipMedium.IsActive = false;

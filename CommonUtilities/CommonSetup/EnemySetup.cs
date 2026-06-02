@@ -12,11 +12,11 @@ namespace CommonUtilities.CommonSetup
         public const int SeederHealth = 55;
         public const int KamikazeDroneHealth = 55;
         public const int KamikazeDroneCollisionDamage = 50;
-        public const int MotherShipSmallHealth = 550;
+        public const int MotherShipSmallHealth = 1430;
         public const int MotherShipSmallCollisionDamage = 80;
-        public const int MotherShipMediumHealth = 1100;
+        public const int MotherShipMediumHealth = 2200;
         public const int MotherShipMediumCollisionDamage = 150;
-        public const int MotherShipLargeHealth = 1500;
+        public const int MotherShipLargeHealth = 3300;
         public const int MotherShipLargeCollisionDamage = 250;
         public const int SpaceSwanHealth = 300;
         public const int ZeppelinBomberHealth = 105;
@@ -40,6 +40,28 @@ namespace CommonUtilities.CommonSetup
         public static bool IsEnemyTypeValid(string objectName)
         {
             return EnemyTypes.Contains(objectName);
+        }
+
+        public static bool IsMotherShipType(string? objectName)
+        {
+            return objectName == "MotherShipSmall"
+                || objectName == "MotherShipMedium"
+                || objectName == "MotherShipLarge";
+        }
+
+        public static int GetMotherShipBaseHealth(string? objectName)
+        {
+            return objectName switch
+            {
+                "MotherShipLarge" => MotherShipLargeHealth,
+                "MotherShipMedium" => MotherShipMediumHealth,
+                _ => MotherShipSmallHealth
+            };
+        }
+
+        public static int GetMotherShipHealth(string? objectName, float aggression)
+        {
+            return MotherShipDifficultySetup.ScaleHealth(GetMotherShipBaseHealth(objectName), aggression);
         }
     }
 }

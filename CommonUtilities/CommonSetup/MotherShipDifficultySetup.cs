@@ -27,6 +27,12 @@ namespace CommonUtilities.CommonSetup
             return baseUnitsPerSecond * GetAggression(aggression);
         }
 
+        public static int ScaleHealth(int baseHealth, float aggression)
+        {
+            float healthMultiplier = Math.Max(1.0f, GetAggression(aggression));
+            return (int)Math.Round(baseHealth * healthMultiplier);
+        }
+
         public static float ScaleUpdateInterval(float baseSeconds, float aggression)
         {
             return Math.Max(MinDirectionUpdateIntervalSeconds, baseSeconds / GetAggression(aggression));

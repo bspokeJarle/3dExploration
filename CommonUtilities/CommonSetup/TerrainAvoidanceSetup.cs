@@ -12,6 +12,7 @@ namespace CommonUtilities.CommonSetup
         public const float HeavyLiftSpeed = 170f;
         public const float HeavyHorizontalSpeed = 360f;
         public const float HeavyProactiveAvoidanceDistance = 950f;
+        public const float MotherShipSmallProactiveAvoidanceDistance = 350f;
 
         private static readonly HashSet<string> TerrainObstacleNames = new()
         {
@@ -56,5 +57,10 @@ namespace CommonUtilities.CommonSetup
 
         public static bool IsHeavyAvoidanceAi(string? objectName) =>
             !string.IsNullOrEmpty(objectName) && HeavyAiNames.Contains(objectName);
+
+        public static float GetProactiveAvoidanceDistance(string? objectName) =>
+            objectName == "MotherShipSmall"
+                ? MotherShipSmallProactiveAvoidanceDistance
+                : HeavyProactiveAvoidanceDistance;
     }
 }

@@ -327,7 +327,8 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
         {
             if (theObject.ImpactStatus == null) return;
 
-            int currentHealth = theObject.ImpactStatus.ObjectHealth ?? EnemySetup.MotherShipMediumHealth;
+            int maxHealth = EnemySetup.GetMotherShipHealth(theObject.ObjectName, GetAggression());
+            int currentHealth = theObject.ImpactStatus.ObjectHealth ?? maxHealth;
             bool isShipCollision = theObject.ImpactStatus.ObjectName == "Ship";
             if (isShipCollision && (DateTime.Now - _shipCollisionCooldown).TotalSeconds < 2.0)
             {
@@ -337,7 +338,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
 
             int damage = theObject.ImpactStatus.ObjectName switch
             {
-                "Ship" => (int)(EnemySetup.MotherShipMediumHealth * ShipRamDamagePercent),
+                "Ship" => (int)(maxHealth * ShipRamDamagePercent),
                 string objectName when WeaponSetup.IsWeaponTypeValid(objectName) => WeaponSetup.GetWeaponDamage(objectName),
                 _ => 0
             };

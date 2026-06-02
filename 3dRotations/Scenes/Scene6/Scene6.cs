@@ -127,7 +127,7 @@ namespace _3dRotations.Scene.Scene6
                 FireAsEnemyWeapon = true,
                 EnemyLazerName = "EnemyLazerMedium"
             };
-            motherShipMedium.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipMediumHealth };
+            motherShipMedium.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.GetMotherShipHealth(motherShipMedium.ObjectName, MotherShipMediumAggression) };
             motherShipMedium.CrashBoxDebugMode = false;
             motherShipMedium.HasPowerUp = false;
             motherShipMedium.IsActive = false;

@@ -105,7 +105,7 @@ namespace _3dRotations.Scene.Scene1
             motherShip.ObjectName = "MotherShipSmall";
             motherShip.Movement = new MotherShipSmallControls();
             motherShip.CrashBoxDebugMode = false;
-            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
+            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.GetMotherShipHealth(motherShip.ObjectName, MotherShipSmallAggression) };
             motherShip.HasPowerUp = false;
             motherShip.IsActive = false;
             motherShip.CrashBoxDebugMode = false;

@@ -870,19 +870,21 @@ namespace _3dTesting.MainWindowClasses.Loops
             for (int i = 0; i < aiObjects.Count; i++)
             {
                 var obj = aiObjects[i];
-                if ((obj.ObjectName != "MotherShipSmall" && obj.ObjectName != "MotherShipMedium" && obj.ObjectName != "MotherShipLarge") || !obj.IsActive)
-                        continue;
-                    if (obj.ImpactStatus?.HasExploded == true)
-                        continue;
+                if (!EnemySetup.IsMotherShipType(obj.ObjectName) || !obj.IsActive)
+                    continue;
 
-                    foundMotherShip = true;
-                    int maxHealth = obj.ObjectName switch
-                    {
-                        "MotherShipLarge" => EnemySetup.MotherShipLargeHealth,
-                        "MotherShipMedium" => EnemySetup.MotherShipMediumHealth,
-                        _ => EnemySetup.MotherShipSmallHealth
-                    };
-                    int currentHealth = obj.ImpactStatus?.ObjectHealth ?? maxHealth;
+                if (obj.ImpactStatus?.HasExploded == true)
+                    continue;
+
+                foundMotherShip = true;
+                float aggression = obj.ObjectName switch
+                {
+                    "MotherShipLarge" => gps.MotherShipLargeAggression,
+                    "MotherShipMedium" => gps.MotherShipMediumAggression,
+                    _ => gps.MotherShipSmallAggression
+                };
+                int maxHealth = EnemySetup.GetMotherShipHealth(obj.ObjectName, aggression);
+                int currentHealth = obj.ImpactStatus?.ObjectHealth ?? maxHealth;
                 float healthPct = (float)currentHealth / maxHealth;
 
                 gps.ShowMotherShipHealthBar = true;

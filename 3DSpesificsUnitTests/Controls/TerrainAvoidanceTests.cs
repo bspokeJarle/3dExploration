@@ -107,7 +107,7 @@ public class TerrainAvoidanceTests
     public void CrashDetection_WhenMotherShipApproachesTower_StartsRecoveryBeforeCrashBoxOverlap()
     {
         var motherShip = CreateProximityObject(3001, "MotherShipSmall", centerX: 0f);
-        var tower = CreateProximityObject(3002, "Tower", centerX: 450f);
+        var tower = CreateProximityObject(3002, "Tower", centerX: 300f);
         GameState.SurfaceState.AiObjects.Add(motherShip);
         float originalWorldX = motherShip.WorldPosition!.x;
 
@@ -117,6 +117,22 @@ public class TerrainAvoidanceTests
         Assert.IsFalse(motherShip.ImpactStatus!.HasCrashed, "Proximity avoidance should not create a combat crash.");
         Assert.IsTrue(applied, "A nearby tower should start mothership terrain recovery before crashboxes overlap.");
         Assert.IsTrue(motherShip.WorldPosition!.x < originalWorldX, "The mothership should steer away from the tower before passing through it.");
+    }
+
+    [TestMethod]
+    public void CrashDetection_WhenMotherShipSmallTowerIsOutsideSmallProactiveRange_DoesNotStartRecovery()
+    {
+        var motherShip = CreateProximityObject(3003, "MotherShipSmall", centerX: 0f);
+        var tower = CreateProximityObject(3004, "Tower", centerX: 450f);
+        GameState.SurfaceState.AiObjects.Add(motherShip);
+        float originalWorldX = motherShip.WorldPosition!.x;
+
+        CrashDetection.HandleCrashboxes(new List<_3dObject> { motherShip, tower }, isPaused: false);
+        var applied = TerrainAvoidanceHelpers.ApplyTerrainRecovery(motherShip, 0.1f);
+
+        Assert.IsFalse(motherShip.ImpactStatus!.HasCrashed, "Distant proximity should not create a combat crash.");
+        Assert.IsFalse(applied, "MotherShipSmall should not retreat from distant terrain objects that are outside its smaller proactive range.");
+        Assert.AreEqual(originalWorldX, motherShip.WorldPosition!.x);
     }
 
     [TestMethod]

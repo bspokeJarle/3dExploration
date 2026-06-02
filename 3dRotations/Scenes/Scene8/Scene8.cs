@@ -118,7 +118,7 @@ namespace _3dRotations.Scene.Scene8
                 EnemyLazerName = "EnemyLazerLarge"
             };
 
-            motherShipLarge.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipLargeHealth };
+            motherShipLarge.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.GetMotherShipHealth(motherShipLarge.ObjectName, MotherShipLargeAggression) };
             motherShipLarge.CrashBoxDebugMode = false;
             motherShipLarge.HasPowerUp = false;
             motherShipLarge.IsActive = false;
