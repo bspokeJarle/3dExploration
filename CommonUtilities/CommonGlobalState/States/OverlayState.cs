@@ -20,14 +20,16 @@ namespace Domain
         Bottom = 2
     }
 
-    /// <summary>
-    /// ScreenOverlayState is a lightweight, global UI state for modal/cinematic overlays.
+        /// <summary>
+        /// ScreenOverlayState is a lightweight, global UI state for modal/cinematic overlays.
     /// - Objects are allowed to toggle ShowOverlay and set the text fields.
     /// - Rendering is handled elsewhere (renderer reads this state only).
     /// - Update() provides deterministic fade-in/out based on ShowOverlay.
     /// </summary>
-    public sealed class ScreenOverlayState
-    {
+        public sealed class ScreenOverlayState
+        {
+            public const float DefaultAutoPageSeconds = 15f;
+
         // -----------------------------
         // Identity / usage
         // -----------------------------
@@ -122,6 +124,8 @@ namespace Domain
         public int AddPage(string header, string title, string body, string footer)
         {
             Pages.Add(new[] { header, title, body, footer });
+            if (Pages.Count > 1 && AutoPageSeconds <= 0f)
+                AutoPageSeconds = DefaultAutoPageSeconds;
             return Pages.Count - 1;
         }
 
