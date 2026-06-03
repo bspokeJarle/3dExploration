@@ -1,4 +1,5 @@
 using _3dRotations.Scenes.Intro;
+using _3dTesting.MainWindowClasses;
 using CommonUtilities.CommonGlobalState;
 using Domain;
 
@@ -27,6 +28,21 @@ public class OverlayAutoPagingTests
 
         Assert.AreEqual(ScreenOverlayState.DefaultAutoPageSeconds, overlay.AutoPageSeconds,
             "Any overlay with multiple pages should auto-page by default.");
+    }
+
+    [TestMethod]
+    public void DefaultAutoPageSeconds_IsLongEnoughForManualReading()
+    {
+        Assert.AreEqual(20f, ScreenOverlayState.DefaultAutoPageSeconds);
+    }
+
+    [TestMethod]
+    public void PageIndicator_ShowsArrowKeyNavigationHint()
+    {
+        string text = OverlayHandler.BuildPageIndicatorText(totalPages: 3, currentPage: 1);
+
+        Assert.IsTrue(text.Contains("[*]"));
+        Assert.IsTrue(text.Contains("PRESS ARROW KEYS TO NAVIGATE"));
     }
 
     [TestMethod]

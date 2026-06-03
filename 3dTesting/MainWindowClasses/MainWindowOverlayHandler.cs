@@ -18,6 +18,7 @@ namespace _3dTesting.MainWindowClasses
         private const double MinimumPanelHeightDip = 160.0;
         private const double PanelEdgeMarginDip = 24.0;
         private const double SoftMaxPanelHeightRatio = 0.90;
+        private const string MultiPageNavigationHint = "PRESS ARROW KEYS TO NAVIGATE";
 
         private readonly Grid _root;
 
@@ -103,7 +104,8 @@ namespace _3dTesting.MainWindowClasses
                 FontFamily = new FontFamily("Consolas"),
                 FontSize = 18,
                 Foreground = Brushes.Lime,
-                HorizontalAlignment = HorizontalAlignment.Right,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                TextAlignment = TextAlignment.Center,
                 Opacity = 0.9
             };
 
@@ -113,6 +115,8 @@ namespace _3dTesting.MainWindowClasses
                 FontSize = 16,
                 Foreground = Brushes.Lime,
                 HorizontalAlignment = HorizontalAlignment.Center,
+                TextAlignment = TextAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
                 Opacity = 0.7,
                 Margin = new Thickness(0, 8, 0, 0)
             };
@@ -173,11 +177,7 @@ namespace _3dTesting.MainWindowClasses
             // Page indicator
             if (state.HasMultiplePages)
             {
-                var dots = new System.Text.StringBuilder();
-                for (int i = 0; i < state.TotalPages; i++)
-                    dots.Append(i == state.CurrentPage ? " [*] " : " [ ] ");
-                dots.Append("    [< >]");
-                _pageIndicator.Text = dots.ToString();
+                _pageIndicator.Text = BuildPageIndicatorText(state.TotalPages, state.CurrentPage);
                 _pageIndicator.Visibility = Visibility.Visible;
             }
             else
@@ -190,7 +190,7 @@ namespace _3dTesting.MainWindowClasses
             _header.TextAlignment = align;
             _title.TextAlignment = align;
             _body.TextAlignment = align;
-            _footer.TextAlignment = align;
+            _footer.TextAlignment = TextAlignment.Center;
 
             // Panel width from ratio
             double panelW = screenWidth * Clamp01(state.PanelWidthRatio);
@@ -237,6 +237,20 @@ namespace _3dTesting.MainWindowClasses
             double desiredH = _panel.DesiredSize.Height;
 
             _panel.Height = CalculatePanelHeight(desiredH, screenHeight, yOffset, state.Anchor);
+        }
+
+        public static string BuildPageIndicatorText(int totalPages, int currentPage)
+        {
+            if (totalPages <= 1)
+                return string.Empty;
+
+            var dots = new System.Text.StringBuilder();
+            for (int i = 0; i < totalPages; i++)
+                dots.Append(i == currentPage ? " [*] " : " [ ] ");
+
+            dots.Append("   ");
+            dots.Append(MultiPageNavigationHint);
+            return dots.ToString();
         }
 
         public static double CalculatePanelHeight(

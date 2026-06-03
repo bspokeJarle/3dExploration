@@ -3,7 +3,9 @@ using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using Domain;
 using System.Reflection;
+using _3dRotations.World.Objects;
 using _3dTesting.Helpers;
+using GameAiAndControls.Controls;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3DSpesificsUnitTests.Physics;
@@ -272,6 +274,204 @@ public class ShipSurfaceLandingTests
             "Forced Ship -> Surface checks must not refresh the static throttle timer for other static objects.");
     }
 
+    [TestMethod]
+    public void ShipControls_WhenShipFallsBelowSurfaceFloor_StartsExplosionWithoutCrashReport()
+    {
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3();
+        ship.ImpactStatus = new ImpactStatus
+        {
+            ObjectHealth = ShipSetup.DefaultShipHealth,
+            HasCrashed = false,
+            ObjectName = string.Empty
+        };
+
+        GameState.SurfaceState.GlobalMapPosition = new Vector3
+        {
+            x = SurfaceSetup.DefaultMapPosition.x,
+            y = -150f,
+            z = SurfaceSetup.DefaultMapPosition.z
+        };
+
+        ship.Movement!.MoveObject(ship, null, null);
+
+        Assert.AreEqual(0, ship.ImpactStatus.ObjectHealth);
+        Assert.IsFalse(ship.ImpactStatus.HasCrashed);
+        Assert.AreEqual("Surface", ship.ImpactStatus.ObjectName);
+        Assert.IsTrue(
+            ship.ObjectParts.All(part => part.PartName == "ExplodingPart"),
+            "A ship below the surface floor should enter the normal explosion animation even without a reported crash.");
+    }
+
+    [TestMethod]
+    public void ShipControls_WhenLowSpeedSurfaceCrash_AppliesMinimumDamageAndPlaysThud()
+    {
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3();
+        ship.ImpactStatus = new ImpactStatus
+        {
+            ObjectHealth = ShipSetup.DefaultShipHealth,
+            HasCrashed = true,
+            ObjectName = "Surface",
+            ImpactDirection = ImpactDirection.Bottom
+        };
+
+        var audio = new CapturingAudioPlayer();
+        var registry = new FakeSoundRegistry();
+
+        ship.Movement!.MoveObject(ship, audio, registry);
+
+        Assert.AreEqual(ShipSetup.DefaultShipHealth - 2, ship.ImpactStatus.ObjectHealth);
+        Assert.IsFalse(ship.ImpactStatus.HasCrashed);
+        Assert.AreEqual("ship_thud", audio.LastDefinitionId);
+        Assert.AreEqual(1, audio.PlayCount);
+    }
+
+    [TestMethod]
+    public void ShipControls_AfterSmallSurfaceBounce_ReenablesGravityAtTopPoint()
+    {
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3();
+        ship.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+
+        var controls = (ShipControls)ship.Movement!;
+        controls.MoveObject(ship, null, null);
+
+        float restingY = ShipRestingScreenY(ScreenSetup.screenSizeY);
+        ship.ObjectOffsets = new Vector3 { x = 0f, y = restingY + 24f, z = 400f };
+        GameState.SurfaceState.GlobalMapPosition = new Vector3
+        {
+            x = SurfaceSetup.DefaultMapPosition.x,
+            y = -24f,
+            z = SurfaceSetup.DefaultMapPosition.z
+        };
+        ship.ImpactStatus = new ImpactStatus
+        {
+            ObjectHealth = ShipSetup.DefaultShipHealth,
+            HasCrashed = true,
+            ObjectName = "Surface",
+            ImpactDirection = ImpactDirection.Bottom
+        };
+
+        controls.MoveObject(ship, null, null);
+
+        bool reachedTop = false;
+        bool fellAfterTop = false;
+
+        for (int i = 0; i < 240; i++)
+        {
+            controls.ApplyGravity(1f / 90f);
+
+            if (MathF.Abs(ship.ObjectOffsets!.y - restingY) <= 0.75f &&
+                MathF.Abs(GameState.SurfaceState.GlobalMapPosition.y) <= 0.75f)
+            {
+                reachedTop = true;
+            }
+
+            if (reachedTop && ship.ObjectOffsets!.y > restingY + 0.75f)
+            {
+                fellAfterTop = true;
+                break;
+            }
+        }
+
+        Assert.IsTrue(reachedTop, "Small surface bounce should settle back to the top/resting point.");
+        Assert.IsTrue(fellAfterTop, "Gravity should take over at the top point and pull the ship down again.");
+    }
+
+    [TestMethod]
+    public void ShipControls_AfterExplosionStarts_KeepsExplosionTransformFrozen()
+    {
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3 { x = 120f, y = 40f, z = -80f };
+        ship.ObjectOffsets = new Vector3 { x = 25f, y = ShipRestingScreenY(ScreenSetup.screenSizeY), z = 400f };
+        ship.Rotation = new Vector3 { x = 70f, y = 0f, z = 15f };
+        ship.ImpactStatus = new ImpactStatus
+        {
+            ObjectHealth = 1,
+            HasCrashed = true,
+            ObjectName = "Surface",
+            ImpactDirection = ImpactDirection.Bottom
+        };
+
+        GameState.SurfaceState.GlobalMapPosition = new Vector3
+        {
+            x = SurfaceSetup.DefaultMapPosition.x,
+            y = SurfaceSetup.DefaultMapPosition.y,
+            z = SurfaceSetup.DefaultMapPosition.z
+        };
+
+        var controls = (ShipControls)ship.Movement!;
+        controls.MoveObject(ship, null, null);
+
+        var frozenWorldPosition = CopyVector(ship.WorldPosition);
+        var frozenObjectOffsets = CopyVector(ship.ObjectOffsets);
+        var frozenRotation = CopyVector(ship.Rotation);
+
+        controls.ThrustOn = true;
+        controls.Thrust = 10f;
+        controls.Physics.InertiaX = 35f;
+        controls.Physics.InertiaY = 35f;
+        controls.Physics.InertiaZ = -35f;
+        GameState.SurfaceState.GlobalMapPosition = new Vector3 { x = 999f, y = -500f, z = 999f };
+
+        controls.MoveObject(ship, null, null);
+
+        Assert.AreEqual(0f, controls.Thrust, 0.001f, "Explosion should stop ship thrust.");
+        AssertVectorEqual(frozenWorldPosition, ship.WorldPosition, "WorldPosition");
+        AssertVectorEqual(frozenObjectOffsets, ship.ObjectOffsets, "ObjectOffsets");
+        AssertVectorEqual(frozenRotation, ship.Rotation, "Rotation");
+    }
+
+    [TestMethod]
+    public void ShipControls_AfterExplosionStarts_RestoresSnapshotOnNextFrameShipCopy()
+    {
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3();
+        ship.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+
+        var controls = (ShipControls)ship.Movement!;
+        controls.MoveObject(ship, null, null);
+
+        ship.ObjectOffsets = new Vector3 { x = 87f, y = 321f, z = 456f };
+        ship.Rotation = new Vector3 { x = 71f, y = 3f, z = 24f };
+        ship.CalculatedCrashOffset = new Vector3 { x = 87f, y = 321f, z = 456f };
+        ship.ImpactStatus = new ImpactStatus
+        {
+            ObjectHealth = 1,
+            HasCrashed = true,
+            ObjectName = "Surface",
+            ImpactDirection = ImpactDirection.Bottom
+        };
+
+        controls.MoveObject(ship, null, null);
+
+        var frozenWorldPosition = CopyVector(ship.WorldPosition);
+        var frozenObjectOffsets = CopyVector(ship.ObjectOffsets);
+        var frozenRotation = CopyVector(ship.Rotation);
+        var frozenCrashOffset = CopyVector(ship.CalculatedCrashOffset);
+
+        var nextFrameShipCopy = Ship.CreateShip(parentSurface: null, movement: controls);
+        nextFrameShipCopy.ObjectName = "Ship";
+        nextFrameShipCopy.WorldPosition = new Vector3 { x = 1000f, y = 1000f, z = 1000f };
+        nextFrameShipCopy.ObjectOffsets = new Vector3();
+        nextFrameShipCopy.Rotation = new Vector3();
+        nextFrameShipCopy.CalculatedCrashOffset = null;
+        nextFrameShipCopy.ImpactStatus = ship.ImpactStatus;
+
+        controls.MoveObject(nextFrameShipCopy, null, null);
+
+        AssertVectorEqual(frozenWorldPosition, nextFrameShipCopy.WorldPosition, "WorldPosition");
+        AssertVectorEqual(frozenObjectOffsets, nextFrameShipCopy.ObjectOffsets, "ObjectOffsets");
+        AssertVectorEqual(frozenRotation, nextFrameShipCopy.Rotation, "Rotation");
+        AssertVectorEqual(frozenCrashOffset, nextFrameShipCopy.CalculatedCrashOffset, "CalculatedCrashOffset");
+    }
+
     private static _3dObject CreateCrashObject(int id, string name)
     {
         return new _3dObject
@@ -296,6 +496,82 @@ public class ShipSurfaceLandingTests
                 }
             }
         };
+    }
+
+    private static Vector3 CopyVector(IVector3? vector)
+    {
+        Assert.IsNotNull(vector);
+        return new Vector3 { x = vector.x, y = vector.y, z = vector.z };
+    }
+
+    private static void AssertVectorEqual(Vector3 expected, IVector3? actual, string name)
+    {
+        Assert.IsNotNull(actual, $"{name} should not be null.");
+        Assert.AreEqual(expected.x, actual.x, 0.001f, $"{name}.x");
+        Assert.AreEqual(expected.y, actual.y, 0.001f, $"{name}.y");
+        Assert.AreEqual(expected.z, actual.z, 0.001f, $"{name}.z");
+    }
+
+    private sealed class FakeSoundRegistry : ISoundRegistry
+    {
+        public SoundDefinition Get(string id)
+        {
+            return new SoundDefinition
+            {
+                Id = id,
+                Usage = id,
+                File = $"{id}.wav",
+                Settings = new SoundSettings { Volume = 1f }
+            };
+        }
+
+        public bool TryGet(string id, out SoundDefinition definition)
+        {
+            definition = Get(id);
+            return true;
+        }
+    }
+
+    private sealed class CapturingAudioPlayer : IAudioPlayer
+    {
+        public int PlayCount { get; private set; }
+        public string? LastDefinitionId { get; private set; }
+
+        public IAudioInstance Play(SoundDefinition definition, AudioPlayMode mode, AudioPlayOptions? options = null)
+        {
+            PlayCount++;
+            LastDefinitionId = definition.Id;
+            return new CapturingAudioInstance
+            {
+                SoundId = definition.Id,
+                IsPlaying = true,
+                IsLooping = mode == AudioPlayMode.SegmentedLoop,
+                Volume = options?.VolumeOverride ?? definition.Settings.Volume
+            };
+        }
+
+        public void PlayOneShot(SoundDefinition definition, AudioPlayOptions? options = null) =>
+            Play(definition, AudioPlayMode.OneShot, options);
+
+        public void Stop(IAudioInstance instance, bool playEndSegment) => instance.Stop(playEndSegment);
+        public void StopAll() { }
+        public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) { }
+        public void StopMusic() { }
+        public void Update(double deltaTimeSeconds) { }
+    }
+
+    private sealed class CapturingAudioInstance : IAudioInstance
+    {
+        public Guid Id { get; } = Guid.NewGuid();
+        public string SoundId { get; set; } = string.Empty;
+        public bool IsPlaying { get; set; }
+        public bool IsLooping { get; set; }
+        public float Volume { get; set; }
+
+        public void SetVolume(float volume) => Volume = volume;
+        public void SetSpeed(float speed) { }
+        public void SetWorldPosition(System.Numerics.Vector3 position) { }
+        public void Stop(bool playEndSegment) => IsPlaying = false;
     }
 
     }

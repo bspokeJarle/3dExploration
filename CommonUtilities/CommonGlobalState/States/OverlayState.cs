@@ -28,7 +28,7 @@ namespace Domain
     /// </summary>
         public sealed class ScreenOverlayState
         {
-            public const float DefaultAutoPageSeconds = 15f;
+            public const float DefaultAutoPageSeconds = 20f;
 
         // -----------------------------
         // Identity / usage

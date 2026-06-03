@@ -55,6 +55,8 @@ namespace GameAiAndControls.Controls
             WorldSpreadScreenMultiplier: 2.4f,
             OutsideSpawnChance: 0.70d);
 
+        public static float GlobalLeafOpacity { get; set; } = 1f;
+
         private readonly Random _random = new();
         private readonly WorldWeatherField _weatherField;
         private readonly List<FallingLeaf> _leaves = new(TargetLeafCount);
@@ -213,12 +215,26 @@ namespace GameAiAndControls.Controls
 
         private static void WriteTriangle(ITriangleMeshWithColor triangle, FallingLeaf leaf, IVector3 mapPosition, float objectZ)
         {
+            if (string.IsNullOrWhiteSpace(leaf.Color) &&
+                !string.IsNullOrWhiteSpace(triangle.Color) &&
+                triangle.Color != "000000")
+            {
+                leaf.Color = triangle.Color;
+            }
+
+            float opacity = GlobalLeafOpacity;
+            if (opacity <= 0.015f)
+            {
+                CollapseTriangle(triangle);
+                return;
+            }
+
             float relativeX = leaf.WorldX - mapPosition.x;
             float relativeZ = leaf.WorldZ - mapPosition.z;
             float scale = WorldWeatherField.GetProjectionScale(relativeZ, objectZ);
             float centerX = relativeX / scale;
             float centerY = leaf.OffsetY / scale;
-            float size = leaf.Size;
+            float size = leaf.Size * opacity;
             float angle = leaf.Angle + MathF.Sin(leaf.Phase) * 0.42f;
             float cos = MathF.Cos(angle);
             float sin = MathF.Sin(angle);
@@ -228,8 +244,9 @@ namespace GameAiAndControls.Controls
 
             triangle.noHidden = true;
             triangle.angle = 1f;
-            if (string.IsNullOrWhiteSpace(triangle.Color))
-                triangle.Color = FallbackLeafColors[0];
+            triangle.Color = string.IsNullOrWhiteSpace(leaf.Color)
+                ? FallbackLeafColors[0]
+                : leaf.Color;
 
             triangle.vert1.x = centerX - cos * width * 0.5f - sin * length * 0.25f;
             triangle.vert1.y = centerY - sin * width * 0.5f + cos * length * 0.25f;
@@ -242,6 +259,16 @@ namespace GameAiAndControls.Controls
             triangle.vert3.x = centerX + sin * length * 0.70f;
             triangle.vert3.y = centerY - cos * length * 0.70f;
             triangle.vert3.z = relativeZ;
+        }
+
+        private static void CollapseTriangle(ITriangleMeshWithColor triangle)
+        {
+            triangle.Color = "000000";
+            triangle.angle = 0f;
+            triangle.noHidden = true;
+            triangle.vert1.x = triangle.vert2.x = triangle.vert3.x = 0f;
+            triangle.vert1.y = triangle.vert2.y = triangle.vert3.y = 0f;
+            triangle.vert1.z = triangle.vert2.z = triangle.vert3.z = 0f;
         }
 
         private static ITriangleMeshWithColor CreateLeafTriangle(int index)
@@ -302,6 +329,7 @@ namespace GameAiAndControls.Controls
             public float VerticalSway;
             public float SpinSpeed;
             public float Angle;
+            public string? Color;
         }
     }
 }
