@@ -1,6 +1,7 @@
 ﻿using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
 using CommonUtilities.Persistence;
 using Domain;
 using GameAiAndControls.Input;
@@ -32,6 +33,7 @@ namespace GameAiAndControls.Controls
         private const float LowSpeedSurfaceLandingDamageMultiplier = 2f;
         private const float HighSpeedSurfaceLandingDamageMultiplier = 12f;
         private const float SurfaceBounceTopTolerance = 0.5f;
+        private const double UnsafeSurfaceHitResetSeconds = 2.0;
         private static float ShipRestingScreenY => ScreenSetup.screenSizeY * 0.195f;
 
         // Engine glow colors: idle (dark red) when no thrust, active (yellow) at full thrust.
@@ -66,6 +68,8 @@ namespace GameAiAndControls.Controls
         private float _pitchAccumulator = 0f;
         private bool landed = false;
         private bool _surfaceBounceWaitingForGravity = false;
+        private bool _unsafeSurfaceHitArmed = false;
+        private DateTime _unsafeSurfaceHitAt = DateTime.MinValue;
 
         private DateTime lastUpdateTime = DateTime.Now;
 
@@ -645,6 +649,7 @@ namespace GameAiAndControls.Controls
             lastUpdateTime = now;
 
             GameState.GamePlayState.Update(deltaTime);
+            ExpireUnsafeSurfaceHit(now);
 
             if (isExploding)
                 return UpdateExplodingShip(theObject);
@@ -704,6 +709,7 @@ namespace GameAiAndControls.Controls
             if (ThrustOn)
             {
                 ResetSurfaceBounceState();
+                ResetUnsafeSurfaceHit();
                 landed = false;
                 Physics.ResetHover();
                 IncreaseThrustAndRelease();
@@ -821,13 +827,29 @@ namespace GameAiAndControls.Controls
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
                 {
-                    // Surface/terrain landing — stop falling and let the settle
-                        // logic in ApplyGravity smoothly return both the screen
-                        // position and altitude to their resting values.
-                        BeginSurfaceBounceRecovery();
+                    bool overLandingPlatform = IsShipOverLandingPlatform();
 
-                    int landingDamage = CalculateSurfaceLandingDamage(landingSpeed);
-                    theObject.ImpactStatus.ObjectHealth -= landingDamage;
+                    if (overLandingPlatform)
+                    {
+                        ResetUnsafeSurfaceHit();
+                        BeginSurfaceBounceRecovery(reenableGravityAtTop: false);
+                    }
+                    else
+                    {
+                        if (IsUnsafeSurfaceHitActive(now))
+                        {
+                            StartShipExplosion(theObject);
+                            theObject.ImpactStatus.HasCrashed = false;
+                            return UpdateExplodingShip(theObject);
+                        }
+
+                        ArmUnsafeSurfaceHit(now);
+                        BeginSurfaceBounceRecovery(reenableGravityAtTop: true);
+
+                        int landingDamage = CalculateSurfaceLandingDamage(landingSpeed);
+                        theObject.ImpactStatus.ObjectHealth -= landingDamage;
+                    }
+
                     if (theObject.ImpactStatus.ObjectHealth > 0)
                         PlaySurfaceThud(theObject);
 
@@ -967,10 +989,10 @@ namespace GameAiAndControls.Controls
 
         public float CurrentSpeed => Physics.CalculateCurrentSpeed(landed);
 
-        private void BeginSurfaceBounceRecovery()
+        private void BeginSurfaceBounceRecovery(bool reenableGravityAtTop)
         {
             landed = true;
-            _surfaceBounceWaitingForGravity = true;
+            _surfaceBounceWaitingForGravity = reenableGravityAtTop;
             Physics.InertiaY = 0f;
             Physics.InertiaX *= 0.3f;
             Physics.InertiaZ *= 0.3f;
@@ -988,6 +1010,54 @@ namespace GameAiAndControls.Controls
         {
             return MathF.Abs(ParentObject.ObjectOffsets.y - ShipRestingScreenY) <= SurfaceBounceTopTolerance &&
                    MathF.Abs(GameState.SurfaceState.GlobalMapPosition.y) <= SurfaceBounceTopTolerance;
+        }
+
+        private void ArmUnsafeSurfaceHit(DateTime now)
+        {
+            _unsafeSurfaceHitArmed = true;
+            _unsafeSurfaceHitAt = now;
+        }
+
+        private bool IsUnsafeSurfaceHitActive(DateTime now)
+        {
+            ExpireUnsafeSurfaceHit(now);
+            return _unsafeSurfaceHitArmed;
+        }
+
+        private void ExpireUnsafeSurfaceHit(DateTime now)
+        {
+            if (!_unsafeSurfaceHitArmed)
+                return;
+
+            if ((now - _unsafeSurfaceHitAt).TotalSeconds >= UnsafeSurfaceHitResetSeconds)
+                ResetUnsafeSurfaceHit();
+        }
+
+        private void ResetUnsafeSurfaceHit()
+        {
+            _unsafeSurfaceHitArmed = false;
+            _unsafeSurfaceHitAt = DateTime.MinValue;
+        }
+
+        private static bool IsShipOverLandingPlatform()
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return false;
+
+            int tileSize = SurfaceSetup.tileSize;
+            int viewportCenterOffset = (SurfaceSetup.viewPortSize * tileSize) / 2;
+            var mapPosition = GameState.SurfaceState.GlobalMapPosition;
+            int shipTileX = MapCoordinateHelpers.WorldToTileIndex(
+                mapPosition.x + viewportCenterOffset,
+                tileSize,
+                map.GetLength(1));
+            int shipTileZ = MapCoordinateHelpers.WorldToTileIndex(
+                mapPosition.z + viewportCenterOffset,
+                tileSize,
+                map.GetLength(0));
+
+            return LandingPlatformHelpers.IsLandingPlatformTile(map, shipTileX, shipTileZ);
         }
 
         private void CaptureExplosionTransform(I3dObject theObject)
@@ -1021,6 +1091,7 @@ namespace GameAiAndControls.Controls
         private void StopShipMotionForExplosion()
         {
             ResetSurfaceBounceState();
+            ResetUnsafeSurfaceHit();
             ThrustOn = false;
             _fireKeyHeld = false;
             Thrust = 0f;

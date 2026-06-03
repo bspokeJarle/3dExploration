@@ -1,6 +1,7 @@
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
 using Domain;
 using System.Reflection;
 using _3dRotations.World.Objects;
@@ -330,6 +331,108 @@ public class ShipSurfaceLandingTests
     }
 
     [TestMethod]
+    public void ShipControls_WhenSurfaceCrashOnLandingPlatform_RecoversWithoutDamage()
+    {
+        var map = CreateSurfaceMap(40, 40);
+        var centerTile = LandingPlatformHelpers.GetLandingPlatformCenterTile(map);
+        PlaceShipCenterOverTile(map, centerTile.x, centerTile.z);
+
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3();
+        ship.ImpactStatus = CreateSurfaceImpact(ShipSetup.DefaultShipHealth);
+
+        var controls = (ShipControls)ship.Movement!;
+        controls.MoveObject(ship, null, null);
+
+        Assert.AreEqual(ShipSetup.DefaultShipHealth, ship.ImpactStatus.ObjectHealth);
+        Assert.IsFalse(ship.ImpactStatus.HasCrashed);
+        Assert.IsFalse(IsExploding(ship), "Landing platform hits should recover without starting the explosion.");
+    }
+
+    [TestMethod]
+    public void ShipControls_WhenSecondSurfaceCrashOutsideLandingPlatformWithinWindow_Explodes()
+    {
+        var map = CreateSurfaceMap(40, 40);
+        PlaceShipCenterOverTile(map, 0, 0);
+
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3();
+        ship.ImpactStatus = CreateSurfaceImpact(ShipSetup.DefaultShipHealth);
+
+        var controls = (ShipControls)ship.Movement!;
+        controls.MoveObject(ship, null, null);
+
+        Assert.IsFalse(IsExploding(ship), "First outside-pad surface hit should only arm the unsafe-hit window.");
+
+        PlaceShipCenterOverTile(map, 0, 0);
+        ship.ImpactStatus = CreateSurfaceImpact(ShipSetup.DefaultShipHealth);
+
+        controls.MoveObject(ship, null, null);
+
+        Assert.AreEqual(0, ship.ImpactStatus.ObjectHealth);
+        Assert.IsFalse(ship.ImpactStatus.HasCrashed);
+        Assert.IsTrue(IsExploding(ship), "Second outside-pad surface hit inside the window should explode regardless of health.");
+    }
+
+    [TestMethod]
+    public void ShipControls_WhenSecondSurfaceCrashOutsideLandingPlatformAfterResetWindow_DoesNotExplode()
+    {
+        var map = CreateSurfaceMap(40, 40);
+        PlaceShipCenterOverTile(map, 0, 0);
+
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3();
+        ship.ImpactStatus = CreateSurfaceImpact(ShipSetup.DefaultShipHealth);
+
+        var controls = (ShipControls)ship.Movement!;
+        controls.MoveObject(ship, null, null);
+
+        SetUnsafeSurfaceHitTime(controls, DateTime.Now.AddSeconds(-3));
+
+        PlaceShipCenterOverTile(map, 0, 0);
+        ship.ImpactStatus = CreateSurfaceImpact(ShipSetup.DefaultShipHealth);
+
+        controls.MoveObject(ship, null, null);
+
+        Assert.IsFalse(IsExploding(ship), "Unsafe outside-pad hit should reset after two seconds.");
+        Assert.IsTrue(ship.ImpactStatus.ObjectHealth > 0);
+    }
+
+    [TestMethod]
+    public void ShipControls_WhenThrustAfterOutsideSurfaceCrash_ResetsUnsafeHit()
+    {
+        var map = CreateSurfaceMap(40, 40);
+        PlaceShipCenterOverTile(map, 0, 0);
+
+        var surface = new Surface();
+        var ship = Ship.CreateShip(surface);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3();
+        ship.ImpactStatus = CreateSurfaceImpact(ShipSetup.DefaultShipHealth);
+
+        var controls = (ShipControls)ship.Movement!;
+        controls.MoveObject(ship, null, null);
+
+        controls.ThrustOn = true;
+        controls.Thrust = 1f;
+        ship.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+        controls.MoveObject(ship, null, null);
+
+        controls.ThrustOn = false;
+        controls.Thrust = 0f;
+        PlaceShipCenterOverTile(map, 0, 0);
+        ship.ImpactStatus = CreateSurfaceImpact(ShipSetup.DefaultShipHealth);
+
+        controls.MoveObject(ship, null, null);
+
+        Assert.IsFalse(IsExploding(ship), "Thrust should clear the armed unsafe-hit window before the next outside-pad hit.");
+        Assert.IsTrue(ship.ImpactStatus.ObjectHealth > 0);
+    }
+
+    [TestMethod]
     public void ShipControls_AfterSmallSurfaceBounce_ReenablesGravityAtTopPoint()
     {
         var ship = Ship.CreateShip(parentSurface: null);
@@ -510,6 +613,66 @@ public class ShipSurfaceLandingTests
         Assert.AreEqual(expected.x, actual.x, 0.001f, $"{name}.x");
         Assert.AreEqual(expected.y, actual.y, 0.001f, $"{name}.y");
         Assert.AreEqual(expected.z, actual.z, 0.001f, $"{name}.z");
+    }
+
+    private static SurfaceData[,] CreateSurfaceMap(int width, int height)
+    {
+        var map = new SurfaceData[height, width];
+        int mapId = 0;
+        for (int z = 0; z < height; z++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                map[z, x] = new SurfaceData
+                {
+                    mapId = ++mapId,
+                    mapDepth = 50,
+                    isInfected = false
+                };
+            }
+        }
+
+        return map;
+    }
+
+    private static void PlaceShipCenterOverTile(SurfaceData[,] map, int tileX, int tileZ)
+    {
+        int tileSize = SurfaceSetup.tileSize;
+        int viewportCenterOffset = (SurfaceSetup.viewPortSize * tileSize) / 2;
+
+        GameState.SurfaceState.Global2DMap = map;
+        GameState.SurfaceState.GlobalMapPosition = new Vector3
+        {
+            x = tileX * tileSize - viewportCenterOffset,
+            y = 0f,
+            z = tileZ * tileSize - viewportCenterOffset
+        };
+    }
+
+    private static ImpactStatus CreateSurfaceImpact(int health)
+    {
+        return new ImpactStatus
+        {
+            ObjectHealth = health,
+            HasCrashed = true,
+            ObjectName = "Surface",
+            ImpactDirection = ImpactDirection.Bottom
+        };
+    }
+
+    private static bool IsExploding(I3dObject ship)
+    {
+        return ship.ObjectParts.Count > 0 &&
+               ship.ObjectParts.All(part => part.PartName == "ExplodingPart");
+    }
+
+    private static void SetUnsafeSurfaceHitTime(ShipControls controls, DateTime hitTime)
+    {
+        var field = typeof(ShipControls).GetField(
+            "_unsafeSurfaceHitAt",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(field);
+        field.SetValue(controls, hitTime);
     }
 
     private sealed class FakeSoundRegistry : ISoundRegistry
