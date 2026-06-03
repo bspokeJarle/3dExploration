@@ -43,18 +43,11 @@ namespace CommonUtilities._3DHelpers
 
         private TriangleMeshWithColor RotateTriangle(TriangleMeshWithColor coord, float cosRes, float sinRes, char axis)
         {
-            var rotated = new TriangleMeshWithColor
-            {
-                Color = coord.Color,
-                noHidden = coord.noHidden,
-                landBasedPosition = coord.landBasedPosition
-            };
+            RotateToDomain((Vector3)coord.vert1, (Vector3)coord.vert1, cosRes, sinRes, axis);
+            RotateToDomain((Vector3)coord.vert2, (Vector3)coord.vert2, cosRes, sinRes, axis);
+            RotateToDomain((Vector3)coord.vert3, (Vector3)coord.vert3, cosRes, sinRes, axis);
 
-            RotateToDomain((Vector3)coord.vert1, (Vector3)rotated.vert1, cosRes, sinRes, axis);
-            RotateToDomain((Vector3)coord.vert2, (Vector3)rotated.vert2, cosRes, sinRes, axis);
-            RotateToDomain((Vector3)coord.vert3, (Vector3)rotated.vert3, cosRes, sinRes, axis);
-
-            return CalculateNormalAndAngle(rotated);
+            return CalculateNormalAndAngle(coord);
         }
 
         private TriangleMeshWithColor CalculateNormalAndAngle(TriangleMeshWithColor coord)
@@ -102,22 +95,25 @@ namespace CommonUtilities._3DHelpers
 
         private static void RotateToDomainX(Vector3 v, Vector3 target, float cosRes, float sinRes)
         {
+            float y = v.y, z = v.z;
             target.x = v.x;
-            target.y = v.y * cosRes - v.z * sinRes;
-            target.z = v.z * cosRes + v.y * sinRes;
+            target.y = y * cosRes - z * sinRes;
+            target.z = z * cosRes + y * sinRes;
         }
 
         private static void RotateToDomainY(Vector3 v, Vector3 target, float cosRes, float sinRes)
         {
-            target.x = v.x * cosRes + v.z * sinRes;
+            float x = v.x, z = v.z;
+            target.x = x * cosRes + z * sinRes;
             target.y = v.y;
-            target.z = v.z * cosRes - v.x * sinRes;
+            target.z = z * cosRes - x * sinRes;
         }
 
         private static void RotateToDomainZ(Vector3 v, Vector3 target, float cosRes, float sinRes)
         {
-            target.x = v.x * cosRes - v.y * sinRes;
-            target.y = v.y * cosRes + v.x * sinRes;
+            float x = v.x, y = v.y;
+            target.x = x * cosRes - y * sinRes;
+            target.y = y * cosRes + x * sinRes;
             target.z = v.z;
         }
 
@@ -170,7 +166,6 @@ namespace CommonUtilities._3DHelpers
             var cosRes = (float)Math.Cos(radian);
             var sinRes = (float)Math.Sin(radian);
 
-            var rotatedMesh = new List<ITriangleMeshWithColor>(mesh.Count);
             for (int i = 0; i < mesh.Count; i++)
             {
                 var triangle = (TriangleMeshWithColor)mesh[i];
@@ -179,9 +174,9 @@ namespace CommonUtilities._3DHelpers
                     if (Logger.ShouldLog(enableLogging)) Logger.Log("Warning: Skipping uninitialized triangle", "Rotation");
                     continue;
                 }
-                rotatedMesh.Add(RotateTriangle(triangle, cosRes, sinRes, axis));
+                RotateTriangle(triangle, cosRes, sinRes, axis);
             }
-            return rotatedMesh;
+            return mesh;
         }
 
         public List<ITriangleMeshWithColor> RotateXMesh(List<ITriangleMeshWithColor> X, double angle) =>

@@ -129,6 +129,34 @@ public class GroundControlsWaterWaveTests
         Assert.IsTrue(colors.All(IsBlueDominant), "Water tiles should keep water coloring even if a stale infection flag exists.");
     }
 
+    [TestMethod]
+    public void SurfaceViewPort_WinterShoreline_UsesPaletteDepthWithoutSnowWhiteJump()
+    {
+        GameState.SurfaceState.SceneBiome = SceneBiomeTypes.Winter;
+        var map = CreateMapWithWaterRectangle(
+            size: 30,
+            grassDepth: 40,
+            waterDepth: 0,
+            minX: 5,
+            maxX: 5,
+            minZ: 4,
+            maxZ: 4);
+        GameState.SurfaceState.Global2DMap = map;
+
+        Assert.AreEqual(0, map[4, 5].mapDepth);
+        Assert.AreEqual(40, map[4, 6].mapDepth);
+
+        var viewport = new Surface().GetSurfaceViewPort();
+        string shorelineColor = GetFirstSurfaceColorForTile(viewport, map[4, 5].mapId);
+        int renderDepth = (map[4, 5].mapDepth + map[4, 6].mapDepth) / 2;
+        var expectedPaletteColor = Surface.GetTileColorGradientColor(renderDepth, MapSetup.maxHeight);
+
+        Assert.AreEqual(ToHex(expectedPaletteColor), shorelineColor,
+            "Winter shoreline rendering should still use the normal depth-based palette calculation.");
+        Assert.IsTrue(IsColdShorelineNotSnowWhite(shorelineColor),
+            $"Winter low-depth shoreline should not jump to the snow-white land color. Color was {shorelineColor}.");
+    }
+
     private static float AnimateWaterAndGetMaxZ(float amplitude)
     {
         SurfaceAnimationSetup.WaterWaveAmplitude = amplitude;
@@ -263,6 +291,21 @@ public class GroundControlsWaterWaveTests
         int red = Convert.ToInt32(color![..2], 16);
         int blue = Convert.ToInt32(color[4..6], 16);
         return blue > red;
+    }
+
+    private static bool IsColdShorelineNotSnowWhite(string? color)
+    {
+        Assert.IsFalse(string.IsNullOrWhiteSpace(color), "Expected a generated surface color.");
+
+        int red = Convert.ToInt32(color![..2], 16);
+        int green = Convert.ToInt32(color[2..4], 16);
+        int blue = Convert.ToInt32(color[4..6], 16);
+        return red < 180 && green < 210 && blue > red;
+    }
+
+    private static string ToHex(System.Windows.Media.Color color)
+    {
+        return $"{color.R:X2}{color.G:X2}{color.B:X2}";
     }
 
     private static void AssertMapDepthsAre(int expectedDepth)

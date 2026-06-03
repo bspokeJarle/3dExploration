@@ -1,6 +1,7 @@
 ﻿using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using System.Runtime.CompilerServices;
 using static Domain._3dSpecificsImplementations;
 
 
@@ -8,6 +9,7 @@ namespace CommonUtilities._3DHelpers
 {
     public static class Common3dObjectHelpers
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Vector3? CopyVector(IVector3? vector)
         {
             if (vector == null)
@@ -15,6 +17,12 @@ namespace CommonUtilities._3DHelpers
                 return null;
             }
 
+            return new Vector3(vector.x, vector.y, vector.z);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static Vector3 CopyRequiredVector(IVector3 vector)
+        {
             return new Vector3(vector.x, vector.y, vector.z);
         }
 
@@ -227,108 +235,39 @@ namespace CommonUtilities._3DHelpers
         public static List<_3dObject> DeepCopy3dObjects(List<_3dObject> inhabitants)
         {
             var result = new List<_3dObject>(inhabitants.Count);
-
-            foreach (var inhabitant in inhabitants)
-            {
-                var copy = Common3dObjectHelpers.DeepCopySingleObject(inhabitant);
-
-                // Restore crashboxes as well
-                copy.CrashBoxes = CopyCrashboxes(inhabitant.CrashBoxes);
-
-                result.Add((_3dObject)copy);
-            }
-
+            DeepCopy3dObjects(inhabitants, result);
             return result;
+        }
+
+        public static void DeepCopy3dObjects(List<_3dObject> inhabitants, List<_3dObject> result)
+        {
+            result.Clear();
+
+            if (result.Capacity < inhabitants.Count)
+                result.Capacity = inhabitants.Count;
+
+            for (int i = 0; i < inhabitants.Count; i++)
+            {
+                result.Add(DeepCopyObject(inhabitants[i], copyCrashboxes: true));
+            }
         }
 
         public static I3dObject DeepCopySingleObject(I3dObject original)
         {
-            var objectParts = new List<I3dObjectPart>(original.ObjectParts.Count);
+            return original is _3dObject concrete
+                ? DeepCopyObject(concrete, copyCrashboxes: false)
+                : DeepCopyObject(original, copyCrashboxes: false);
+        }
 
-            foreach (var part in original.ObjectParts)
-            {
-                var triangles = new List<ITriangleMeshWithColor>(part.Triangles.Count);
-
-                foreach (var triangle in part.Triangles)
-                {
-                    var mesh = triangle as TriangleMesh;
-                    var triangleCopy = new TriangleMeshWithColor
-                    {
-                        landBasedPosition = triangle.landBasedPosition,
-                        angle = triangle.angle,
-                        Color = triangle.Color,
-                        noHidden = triangle.noHidden
-                    };
-
-                    var vert1 = CopyVector(mesh != null ? mesh.Vert1Raw : triangle.vert1);
-                    if (vert1 != null)
-                    {
-                        triangleCopy.vert1 = vert1;
-                    }
-
-                    var vert2 = CopyVector(mesh != null ? mesh.Vert2Raw : triangle.vert2);
-                    if (vert2 != null)
-                    {
-                        triangleCopy.vert2 = vert2;
-                    }
-
-                    var vert3 = CopyVector(mesh != null ? mesh.Vert3Raw : triangle.vert3);
-                    if (vert3 != null)
-                    {
-                        triangleCopy.vert3 = vert3;
-                    }
-
-                    var normal1 = CopyVector(mesh != null ? mesh.Normal1Raw : triangle.normal1);
-                    if (normal1 != null)
-                    {
-                        triangleCopy.normal1 = normal1;
-                    }
-
-                    var normal2 = CopyVector(mesh != null ? mesh.Normal2Raw : triangle.normal2);
-                    if (normal2 != null)
-                    {
-                        triangleCopy.normal2 = normal2;
-                    }
-
-                    var normal3 = CopyVector(mesh != null ? mesh.Normal3Raw : triangle.normal3);
-                    if (normal3 != null)
-                    {
-                        triangleCopy.normal3 = normal3;
-                    }
-
-                    triangles.Add(triangleCopy);
-                }
-
-                objectParts.Add(new _3dObjectPart
-                {
-                    PartName = part.PartName,
-                    Triangles = triangles,
-                    IsVisible = part.IsVisible
-                });
-            }
-
+        private static _3dObject DeepCopyObject(_3dObject original, bool copyCrashboxes)
+        {
             var copy = new _3dObject
             {
                 ObjectId = original.ObjectId,
-                ObjectOffsets = new Vector3
-                {
-                    x = original.ObjectOffsets.x,
-                    y = original.ObjectOffsets.y,
-                    z = original.ObjectOffsets.z
-                },
-                Rotation = new Vector3
-                {
-                    x = original.Rotation.x,
-                    y = original.Rotation.y,
-                    z = original.Rotation.z
-                },
-                WorldPosition = new Vector3
-                {
-                    x = original.WorldPosition.x,
-                    y = original.WorldPosition.y,
-                    z = original.WorldPosition.z
-                },
-                ObjectParts = objectParts,
+                ObjectOffsets = CopyRequiredVector(original.ObjectOffsets),
+                Rotation = CopyRequiredVector(original.Rotation),
+                WorldPosition = CopyRequiredVector(original.WorldPosition),
+                ObjectParts = CopyObjectParts(original.ObjectParts),
                 Movement = original.Movement,
                 Particles = original.Particles,
                 ImpactStatus = original.ImpactStatus,
@@ -341,36 +280,147 @@ namespace CommonUtilities._3DHelpers
                 SurfaceBasedId = original.SurfaceBasedId,
                 CrashBoxDebugMode = original.CrashBoxDebugMode,
                 WeaponSystems = original.WeaponSystems,
-                CrashBoxes = original.CrashBoxes,
+                CrashBoxes = copyCrashboxes ? CopyCrashboxes(original.CrashBoxes) : original.CrashBoxes,
                 CrashBoxNames = original.CrashBoxNames,
                 CrashBoxesFollowRotation = original.CrashBoxesFollowRotation,
                 CalculatedCrashOffset = original.CalculatedCrashOffset,
                 HasShadow = original.HasShadow,
-                HasPowerUp = original.HasPowerUp
+                HasPowerUp = original.HasPowerUp,
+                ZSortBias = original.ZSortBias
             };
 
             return copy;
         }
 
+        private static _3dObject DeepCopyObject(I3dObject original, bool copyCrashboxes)
+        {
+            var copy = new _3dObject
+            {
+                ObjectId = original.ObjectId,
+                ObjectOffsets = CopyRequiredVector(original.ObjectOffsets),
+                Rotation = CopyRequiredVector(original.Rotation),
+                WorldPosition = CopyRequiredVector(original.WorldPosition),
+                ObjectParts = CopyObjectParts(original.ObjectParts),
+                Movement = original.Movement,
+                Particles = original.Particles,
+                ImpactStatus = original.ImpactStatus,
+                Mass = original.Mass,
+                ObjectName = original.ObjectName,
+                ParentSurface = original.ParentSurface,
+                RotationOffsetX = original.RotationOffsetX,
+                RotationOffsetY = original.RotationOffsetY,
+                RotationOffsetZ = original.RotationOffsetZ,
+                SurfaceBasedId = original.SurfaceBasedId,
+                CrashBoxDebugMode = original.CrashBoxDebugMode,
+                WeaponSystems = original.WeaponSystems,
+                CrashBoxes = copyCrashboxes ? CopyCrashboxes(original.CrashBoxes) : original.CrashBoxes,
+                CrashBoxNames = original.CrashBoxNames,
+                CrashBoxesFollowRotation = original.CrashBoxesFollowRotation,
+                CalculatedCrashOffset = original.CalculatedCrashOffset,
+                HasShadow = original.HasShadow,
+                HasPowerUp = original.HasPowerUp,
+                ZSortBias = original.ZSortBias
+            };
+
+            return copy;
+        }
+
+        private static List<I3dObjectPart> CopyObjectParts(List<I3dObjectPart> originalParts)
+        {
+            var objectParts = new List<I3dObjectPart>(originalParts.Count);
+
+            for (int partIndex = 0; partIndex < originalParts.Count; partIndex++)
+            {
+                var part = originalParts[partIndex];
+                var triangles = part.Triangles;
+                var copiedTriangles = new List<ITriangleMeshWithColor>(triangles.Count);
+
+                for (int triangleIndex = 0; triangleIndex < triangles.Count; triangleIndex++)
+                {
+                    copiedTriangles.Add(CopyTriangle(triangles[triangleIndex]));
+                }
+
+                objectParts.Add(new _3dObjectPart
+                {
+                    PartName = part.PartName,
+                    Triangles = copiedTriangles,
+                    IsVisible = part.IsVisible
+                });
+            }
+
+            return objectParts;
+        }
+
+        private static TriangleMeshWithColor CopyTriangle(ITriangleMeshWithColor triangle)
+        {
+            var mesh = triangle as TriangleMesh;
+            var triangleCopy = new TriangleMeshWithColor
+            {
+                landBasedPosition = triangle.landBasedPosition,
+                angle = triangle.angle,
+                Color = triangle.Color,
+                noHidden = triangle.noHidden
+            };
+
+            var vert1 = CopyVector(mesh != null ? mesh.Vert1Raw : triangle.vert1);
+            if (vert1 != null)
+            {
+                triangleCopy.vert1 = vert1;
+            }
+
+            var vert2 = CopyVector(mesh != null ? mesh.Vert2Raw : triangle.vert2);
+            if (vert2 != null)
+            {
+                triangleCopy.vert2 = vert2;
+            }
+
+            var vert3 = CopyVector(mesh != null ? mesh.Vert3Raw : triangle.vert3);
+            if (vert3 != null)
+            {
+                triangleCopy.vert3 = vert3;
+            }
+
+            var normal1 = CopyVector(mesh != null ? mesh.Normal1Raw : triangle.normal1);
+            if (normal1 != null)
+            {
+                triangleCopy.normal1 = normal1;
+            }
+
+            var normal2 = CopyVector(mesh != null ? mesh.Normal2Raw : triangle.normal2);
+            if (normal2 != null)
+            {
+                triangleCopy.normal2 = normal2;
+            }
+
+            var normal3 = CopyVector(mesh != null ? mesh.Normal3Raw : triangle.normal3);
+            if (normal3 != null)
+            {
+                triangleCopy.normal3 = normal3;
+            }
+
+            return triangleCopy;
+        }
+
         public static List<List<IVector3>> CopyCrashboxes(List<List<IVector3>> original)
         {
-            if (original == null)
+            if (original == null || original.Count == 0)
                 return new List<List<IVector3>>();
+
             var result = new List<List<IVector3>>(original.Count);
-            foreach (var box in original)
+
+            for (int boxIndex = 0; boxIndex < original.Count; boxIndex++)
             {
+                var box = original[boxIndex];
                 var copiedBox = new List<IVector3>(box.Count);
-                foreach (var point in box)
+
+                for (int pointIndex = 0; pointIndex < box.Count; pointIndex++)
                 {
-                    copiedBox.Add(new Vector3
-                    {
-                        x = point.x,
-                        y = point.y,
-                        z = point.z
-                    });
+                    copiedBox.Add(CopyRequiredVector(box[pointIndex]));
                 }
+
                 result.Add(copiedBox);
             }
+
             return result;
         }
 

@@ -61,13 +61,13 @@ namespace _3dTesting.MainWindowClasses
             }
 
             var surfaceObj = GameState.SurfaceState.SurfaceViewportObject;
-            if (surfaceObj?.ObjectOffsets == null) return;
+            bool canRenderGroundShadow = surfaceObj?.ObjectOffsets != null;
 
-            float surfaceY = surfaceObj.ObjectOffsets.y;
-            float surfaceX = surfaceObj.ObjectOffsets.x;
+            float surfaceY = canRenderGroundShadow ? surfaceObj!.ObjectOffsets.y : 0f;
+            float surfaceX = canRenderGroundShadow ? surfaceObj!.ObjectOffsets.x : 0f;
 
             // Tile cache for ground projection.
-            var rotatedTiles = inhabitant.ParentSurface?.RotatedSurfaceTriangles;
+            var rotatedTiles = canRenderGroundShadow ? inhabitant.ParentSurface?.RotatedSurfaceTriangles : null;
 
             // Pull the same light direction used by ObjectShadowManager so all
             // shadows (objects + particles) cast in one consistent direction.
@@ -105,10 +105,14 @@ namespace _3dTesting.MainWindowClasses
                         y = particleOffsetY,
                         z = particleOffsetZ
                     },
+                    ZSortBias = inhabitant.ZSortBias,
                     CrashBoxes = CreateCrashBoxFromTriangle(particleTriangle),
                     ImpactStatus = new ImpactStatus { HasCrashed = false, SourceParticle = particle, HasExploded = false, ObjectName = inhabitant.ObjectName },
                     Rotation = particle.Rotation
                 });
+
+                if (!canRenderGroundShadow)
+                    continue;
 
                 // ---------------------------------------------------------
                 // GROUND-PARENTED PARTICLE SHADOW
@@ -140,7 +144,7 @@ namespace _3dTesting.MainWindowClasses
                 //   - Z from the PARTICLE (continuous, not snapped)
                 //   - Y from the nearest TILE (ground surface depth below)
                 float targetX = particleOffsetX - surfaceX;
-                float targetZ = particleOffsetZ - surfaceObj.ObjectOffsets.z;
+                float targetZ = particleOffsetZ - surfaceObj!.ObjectOffsets.z;
                 float groundLocalX = targetX;
                 float groundLocalY = 0f;
                 float groundLocalZ = targetZ;
@@ -219,9 +223,9 @@ namespace _3dTesting.MainWindowClasses
                     },
                     ObjectOffsets = new Vector3
                     {
-                        x = surfaceObj.ObjectOffsets.x,
-                        y = surfaceObj.ObjectOffsets.y,
-                        z = surfaceObj.ObjectOffsets.z
+                        x = surfaceObj!.ObjectOffsets.x,
+                        y = surfaceObj!.ObjectOffsets.y,
+                        z = surfaceObj!.ObjectOffsets.z
                     },
                     // Tilt is already baked into the verts — keep Rotation
                     // at zero so LiveGameLoop doesn't rotate them AGAIN.
@@ -262,13 +266,42 @@ namespace _3dTesting.MainWindowClasses
 
         private ITriangleMeshWithColor RotateParticle(ITriangleMeshWithColor particleTriangle, Vector3 rotation)
         {
+            var triangleCopy = CopyParticleTriangle(particleTriangle);
+
             return Rotate3d.RotateXMesh(
                 Rotate3d.RotateYMesh(
-                    Rotate3d.RotateZMesh(new List<ITriangleMeshWithColor> { particleTriangle }, rotation.z),
+                    Rotate3d.RotateZMesh(new List<ITriangleMeshWithColor> { triangleCopy }, rotation.z),
                     rotation.y
                 ),
                 rotation.x
             ).First();
+        }
+
+        private static TriangleMeshWithColor CopyParticleTriangle(ITriangleMeshWithColor triangle)
+        {
+            return new TriangleMeshWithColor
+            {
+                Color = triangle.Color,
+                angle = triangle.angle,
+                landBasedPosition = triangle.landBasedPosition,
+                noHidden = triangle.noHidden,
+                normal1 = CopyVector(triangle.normal1),
+                normal2 = CopyVector(triangle.normal2),
+                normal3 = CopyVector(triangle.normal3),
+                vert1 = CopyVector(triangle.vert1),
+                vert2 = CopyVector(triangle.vert2),
+                vert3 = CopyVector(triangle.vert3)
+            };
+        }
+
+        private static Vector3 CopyVector(IVector3 vector)
+        {
+            return new Vector3
+            {
+                x = vector.x,
+                y = vector.y,
+                z = vector.z
+            };
         }
     }
 }

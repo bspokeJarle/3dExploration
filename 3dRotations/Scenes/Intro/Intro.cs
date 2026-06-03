@@ -7,7 +7,6 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using static Domain._3dSpecificsImplementations;
 
@@ -15,6 +14,8 @@ namespace _3dRotations.Scenes.Intro
 {
     public class Intro : IScene
     {
+        public bool SkipLogoCube { get; set; } = false;
+
         public GameModes GameMode { get; } = GameModes.Live;
 
         public string SceneMusic { get; } = "music_intro";
@@ -29,6 +30,13 @@ namespace _3dRotations.Scenes.Intro
 
         public void SetupScene(I3dWorld world)
         {
+            if (SkipLogoCube)
+            {
+                // Returning mid-game - show the overlay immediately without the logo animation
+                GameState.ScreenOverlayState.ShowOverlay = true;
+                return;
+            }
+
             var TheOmegaStrainLogo = LogoCube.CreateLogoCube();
             TheOmegaStrainLogo.ObjectOffsets = new Vector3 { x = 1000, y = 0, z = 0 };
             TheOmegaStrainLogo.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
@@ -58,30 +66,46 @@ namespace _3dRotations.Scenes.Intro
                 "Containment probability: 12%.",
                 "PRESS ANY KEY TO INITIATE PROTOCOL");
 
-            // Page 2: Gameplay tips
+            // Page 2: Controls
             o.AddPage(
                 "RETROMESH // FIELD MANUAL",
-                "TACTICAL BRIEFING",
-                "WEAPONS:\n" +
-                "  [1] BULLET  — High fire rate, effective vs Seeders\n" +
-                "  [2] DECOY   — Lures Kamikaze Drones away from your ship\n" +
-                "  [3] LAZER   — Powerful beam, cuts through targets\n\n" +
-                "COMBAT TIPS:\n" +
-                "  \u2022 Destroy Seeders to stop the infection from spreading\n" +
-                "  \u2022 Kamikaze Drones will rush your ship — deploy Decoys!\n" +
-                "  \u2022 Decoys unlock after collecting your first PowerUp\n" +
-                "  \u2022 PowerUps drop from glowing Seeders\n" +
-                "  \u2022 Eliminate all enemies to face the MotherShip\n\n" +
+                "FLIGHT CONTROLS",
+                "KEYBOARD:\n" +
+                "  [SPACE]       THRUST\n" +
+                "  [RIGHT SHIFT] FIRE CURRENT WEAPON\n" +
+                "  [1] BULLET  - High fire rate, effective vs Seeders\n" +
+                "  [2] DECOY   - Lures Kamikaze Drones away from your ship\n" +
+                "  [3] LAZER   - Powerful beam, cuts through targets\n\n" +
+                "MOUSE:\n" +
+                "  LEFT BUTTON   THRUST\n" +
+                "  RIGHT BUTTON  FIRE CURRENT WEAPON\n\n" +
                 "NAVIGATION:\n" +
-                "  \u2022 Arrow keys or WASD to move\n" +
-                "  \u2022 Follow the guidance arrow to find Seeders",
+                "  - Arrow keys or WASD to move\n" +
+                "  - Follow the guidance arrow to find Seeders\n" +
+                "  - Press [X] at any time during a mission to return to this screen\n\n" +
+                "NOTE:\n" +
+                "  Controller support is coming.\n" +
+                "  Custom key mapping will be supported.",
                 "PRESS ANY KEY TO INITIATE PROTOCOL");
 
-            // Page 3: Highscores
+            // Page 3: Gameplay tips
+            o.AddPage(
+                "RETROMESH // FIELD MANUAL",
+                "TACTICAL TIPS",
+                "COMBAT TIPS:\n" +
+                "  - Destroy Seeders fast to control infection spread\n" +
+                "  - Every Seeder kill helps slow the infection cascade\n" +
+                "  - Kamikaze Drones will rush your ship - deploy Decoys!\n" +
+                "  - Decoys unlock after collecting your first PowerUp\n" +
+                "  - PowerUps drop from glowing Seeders\n" +
+                "  - Eliminate all enemies to face the MotherShip",
+                "PRESS ANY KEY TO INITIATE PROTOCOL");
+
+            // Page 4: Highscores
             o.AddPage(
                 "RETROMESH // HALL OF FAME",
                 "TOP PILOTS",
-                BuildHighscoreBody(),
+                HighscoreOverlayFormatter.BuildBody(),
                 "PRESS ANY KEY TO INITIATE PROTOCOL");
 
             o.CurrentPage = 0;
@@ -90,7 +114,7 @@ namespace _3dRotations.Scenes.Intro
             // LogoCube plays first
             o.ShowOverlay = false;
 
-            // This is intro — don't auto-hide until player input
+            // This is intro - don't auto-hide until player input
             o.AutoHide = false;
             o.AutoHideSeconds = 0f;
 
@@ -108,31 +132,5 @@ namespace _3dRotations.Scenes.Intro
             GameState.ScreenOverlayState.VideoClipPath = Path.Combine("gamegraphics", "introclip.mp4");
         }
 
-        private static string BuildHighscoreBody()
-        {
-            var list = HighscoreService.LoadLocalHighscores();
-            var entries = list.Entries
-                .OrderByDescending(e => e.Score)
-                .Take(25)
-                .ToList();
-
-            if (entries.Count == 0)
-                return "No highscores recorded yet.\n\nBe the first pilot to make history!";
-
-            var sb = new StringBuilder();
-            sb.AppendLine("RANK  PILOT             SCORE      KILLS");
-            sb.AppendLine("----  -----             -----      -----");
-
-            for (int i = 0; i < entries.Count; i++)
-            {
-                var e = entries[i];
-                var name = e.PlayerName.Length > 16
-                    ? e.PlayerName[..16]
-                    : e.PlayerName.PadRight(16);
-                sb.AppendLine($" {(i + 1),2}.  {name}  {e.Score,9}  {e.TotalKills,5}");
-            }
-
-            return sb.ToString().TrimEnd();
-        }
     }
 }

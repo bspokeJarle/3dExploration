@@ -59,6 +59,7 @@ public class WeaponsAimAssistTests
         weapons.MoveWeapon(null, null);
 
         Assert.IsTrue(lazer.Trajectory.x > 0.35f, $"Visible enemy should pull lazer right; actual x={lazer.Trajectory.x:0.###}.");
+        Assert.IsTrue(lazer.Trajectory.x < 0.45f, $"Aim assist should help without snapping fully to the enemy; actual x={lazer.Trajectory.x:0.###}.");
         Assert.IsTrue(lazer.Trajectory.y < -0.75f, $"Lazer should still mostly move forward; actual y={lazer.Trajectory.y:0.###}.");
 
         Assert.IsTrue(GameState.GamePlayState.AimAssistTargetActive, "Aim guide should be visible for an on-screen target.");

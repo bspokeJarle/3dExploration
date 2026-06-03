@@ -16,6 +16,7 @@ namespace CommonUtilities.CommonGlobalState
         public static ShipState ShipState = new ShipState();
         public static SurfaceState SurfaceState = new SurfaceState();
         public static ScreenOverlayState ScreenOverlayState = new ScreenOverlayState();
+        public static WorldFadeState WorldFade = new WorldFadeState();
         public static WeatherVisualState WeatherVisualState = new WeatherVisualState();
         public static GamePlayState GamePlayState = new GamePlayState();
         public static List<_3dSpecificsImplementations._3dObject> PendingWorldObjects { get; } = new();

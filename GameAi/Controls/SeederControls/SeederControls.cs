@@ -284,7 +284,24 @@ namespace GameAiAndControls.Controls.SeederControls
 
         public void HandleCrash(I3dObject theObject)
         {
-            theObject.ImpactStatus.ObjectHealth = theObject.ImpactStatus.ObjectHealth - WeaponSetup.GetWeaponDamage("Lazer");
+            if (theObject.ImpactStatus == null)
+                return;
+
+            int currentHealth = theObject.ImpactStatus.ObjectHealth ?? EnemySetup.SeederHealth;
+            int damage = theObject.ImpactStatus.ObjectName switch
+            {
+                "Ship" => currentHealth,
+                string objectName when WeaponSetup.IsWeaponTypeValid(objectName) => WeaponSetup.GetWeaponDamage(objectName),
+                _ => 0
+            };
+
+            if (damage <= 0)
+            {
+                theObject.ImpactStatus.HasCrashed = false;
+                return;
+            }
+
+            theObject.ImpactStatus.ObjectHealth = currentHealth - damage;
             if (theObject.ImpactStatus.ObjectHealth <= 0)
             {
                 if (_seederEngineInstance != null)
@@ -326,6 +343,11 @@ namespace GameAiAndControls.Controls.SeederControls
                 SeederAi.RemoveAiState(theObject.ObjectId);
                 if (Logger.ShouldLog(enableLogging)) Logger.Log($"Seeder has exploded.");
             }
+            else
+            {
+                theObject.ImpactStatus.HasCrashed = false;
+            }
+
             if (Logger.ShouldLog(enableLogging)) Logger.Log($"Seeder has crashed, current health {theObject.ImpactStatus.ObjectHealth}. CrashedWith:{theObject.ImpactStatus.ObjectName} ObjectId:{theObject.ObjectId}");
         }
 

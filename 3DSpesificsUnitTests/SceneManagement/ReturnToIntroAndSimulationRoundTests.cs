@@ -1,0 +1,244 @@
+using _3DWorld.Scene;
+using _3dRotations.World.Objects;
+using _3dTesting._3dWorld;
+using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.Persistence;
+using Domain;
+using System;
+using System.IO;
+using System.Reflection;
+using static Domain._3dSpecificsImplementations;
+
+namespace _3DSpesificsUnitTests.SceneManagement;
+
+/// <summary>
+/// Tests covering:
+///   - Pressing X saves progress, does NOT delete the save file.
+///   - After returning to intro the world is cleared (no bleed-through from the game scene).
+///   - After returning to intro the scene resets to index 0 (Intro).
+///   - SimulationRound is persisted across save/load cycles.
+///   - SimulationRound survives ReturnToIntro (X press) and is restored on next login.
+///   - SimulationRound is NOT reset by ResetForNewGame.
+/// </summary>
+[TestClass]
+public class ReturnToIntroAndSimulationRoundTests
+{
+    private string _originalLocalFolder = string.Empty;
+    private string _testLocalFolder = string.Empty;
+
+    [TestInitialize]
+    public void Setup()
+    {
+        _originalLocalFolder = PersistenceSetup.LocalFolder;
+        _testLocalFolder = Path.Combine(Path.GetTempPath(), "OmegaStrainXTests", Guid.NewGuid().ToString("N"));
+        PersistenceSetup.LocalFolder = _testLocalFolder;
+        PersistenceSetup.Initialize();
+
+        GameState.GamePlayState = new GamePlayState();
+        GameState.SurfaceState = new SurfaceState();
+        GameState.ScreenOverlayState = new ScreenOverlayState();
+        GameState.ObjectIdCounter = 0;
+    }
+
+    [TestCleanup]
+    public void Cleanup()
+    {
+        PersistenceSetup.LocalFolder = _originalLocalFolder;
+        try
+        {
+            if (Directory.Exists(_testLocalFolder))
+                Directory.Delete(_testLocalFolder, recursive: true);
+        }
+        catch { }
+    }
+
+    // ------------------------------------------------------------------
+    // X key: save file must survive
+    // ------------------------------------------------------------------
+
+    [TestMethod]
+    public void ReturnToIntro_SaveFileIsPreserved_NotDeleted()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Pilot";
+        gps.SceneIndex = 3;
+        gps.Score = 5000;
+        GameStatePersistence.SaveGameState();
+
+        Assert.IsTrue(PersistenceSetup.HasPlayerSaveFile("Pilot"), "Pre-condition: save file must exist.");
+
+        var handler = new SceneHandler();
+        var world = CreateMinimalWorld(handler);
+
+        SetCurrentSceneIndex(handler, 3);
+        InvokeReturnToIntro(handler, world);
+
+        Assert.IsTrue(PersistenceSetup.HasPlayerSaveFile("Pilot"),
+            "X should NOT delete the save file — the player's progress must be preserved.");
+    }
+
+    [TestMethod]
+    public void ReturnToIntro_SaveFileContainsUpdatedState()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Pilot";
+        gps.SceneIndex = 3;
+        gps.Score = 5000;
+        gps.TotalKills = 42;
+        GameStatePersistence.SaveGameState();
+
+        // Accumulate more score in-session before pressing X
+        gps.Score = 7500;
+        gps.TotalKills = 60;
+
+        var handler = new SceneHandler();
+        var world = CreateMinimalWorld(handler);
+        SetCurrentSceneIndex(handler, 3);
+        InvokeReturnToIntro(handler, world);
+
+        var saved = GameStatePersistence.LoadGameState("Pilot");
+        Assert.IsNotNull(saved);
+        Assert.AreEqual(7500, saved.Score, "Save should reflect the score at the time X was pressed.");
+        Assert.AreEqual(60, saved.TotalKills, "Kill count at X time should be saved.");
+    }
+
+    // ------------------------------------------------------------------
+    // X key: world must be cleared
+    // ------------------------------------------------------------------
+
+    [TestMethod]
+    public void ReturnToIntro_WorldInhabitantsAreCleared()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Pilot";
+        gps.SceneIndex = 2;
+
+        var handler = new SceneHandler();
+        var world = CreateMinimalWorld(handler);
+
+        // Add some fake inhabitants simulating a live game scene
+        world.WorldInhabitants.Add(new _3dObject { ObjectId = 1, ObjectName = "Seeder" });
+        world.WorldInhabitants.Add(new _3dObject { ObjectId = 2, ObjectName = "Ship" });
+
+        SetCurrentSceneIndex(handler, 2);
+        InvokeReturnToIntro(handler, world);
+
+        Assert.AreEqual(0, world.WorldInhabitants.Count,
+            "All world inhabitants must be cleared when returning to intro via X.");
+    }
+
+    // ------------------------------------------------------------------
+    // X key: scene index resets to 0
+    // ------------------------------------------------------------------
+
+    [TestMethod]
+    public void ReturnToIntro_SceneIndexResetsToZero()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Pilot";
+        gps.SceneIndex = 5;
+
+        var handler = new SceneHandler();
+        var world = CreateMinimalWorld(handler);
+        SetCurrentSceneIndex(handler, 5);
+        InvokeReturnToIntro(handler, world);
+
+        Assert.AreEqual(SceneTypes.Intro, handler.GetActiveScene().SceneType,
+            "Active scene must be Intro after pressing X.");
+        Assert.AreEqual(0, GameState.GamePlayState.SceneIndex,
+            "SceneIndex in GamePlayState must be 0 after returning to intro.");
+    }
+
+    // ------------------------------------------------------------------
+    // SimulationRound: persisted and restored
+    // ------------------------------------------------------------------
+
+    [TestMethod]
+    public void SimulationRound_IsSavedAndRestoredCorrectly()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Pilot";
+        gps.SceneIndex = 10;
+        gps.SimulationRound = 4;
+        gps.Score = 99000;
+        GameStatePersistence.SaveGameState();
+
+        var saved = GameStatePersistence.LoadGameState("Pilot");
+        Assert.IsNotNull(saved);
+        Assert.AreEqual(4, saved.SimulationRound,
+            "SimulationRound must be persisted to the save file.");
+
+        GameState.GamePlayState = new GamePlayState();
+        GameStatePersistence.RestoreToGamePlayState(saved);
+
+        Assert.AreEqual(4, GameState.GamePlayState.SimulationRound,
+            "SimulationRound must be restored from the save file.");
+    }
+
+    [TestMethod]
+    public void SimulationRound_SurvivesReturnToIntro()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Pilot";
+        gps.SceneIndex = 10;
+        gps.SimulationRound = 3;
+        gps.Score = 50000;
+
+        var handler = new SceneHandler();
+        var world = CreateMinimalWorld(handler);
+        SetCurrentSceneIndex(handler, 10);
+        InvokeReturnToIntro(handler, world);
+
+        // Load the save that X wrote
+        var saved = GameStatePersistence.LoadGameState("Pilot");
+        Assert.IsNotNull(saved);
+        Assert.AreEqual(3, saved.SimulationRound,
+            "SimulationRound must be included in the save written by X.");
+    }
+
+    [TestMethod]
+    public void SimulationRound_IsNotResetByResetForNewGame()
+    {
+        var gps = GameState.GamePlayState;
+        gps.SimulationRound = 7;
+
+        gps.ResetForNewGame();
+
+        Assert.AreEqual(7, gps.SimulationRound,
+            "ResetForNewGame must NOT reset SimulationRound — it must escalate across rounds.");
+    }
+
+    [TestMethod]
+    public void SimulationRound_StartsAtZeroForNewPlayer()
+    {
+        var fresh = new GamePlayState();
+        Assert.AreEqual(0, fresh.SimulationRound,
+            "A brand-new GamePlayState must start with SimulationRound = 0.");
+    }
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
+    private static _3dWorld CreateMinimalWorld(SceneHandler handler)
+    {
+        var world = new _3dWorld();
+        world.SceneHandler = handler;
+        world.WorldInhabitants.Clear();
+        return world;
+    }
+
+    private static void SetCurrentSceneIndex(SceneHandler handler, int index)
+    {
+        var field = typeof(SceneHandler).GetField("currentSceneIndex", BindingFlags.NonPublic | BindingFlags.Instance);
+        field?.SetValue(handler, index);
+        GameState.GamePlayState.SceneIndex = index;
+    }
+
+    private static void InvokeReturnToIntro(SceneHandler handler, _3dWorld world)
+    {
+        var method = typeof(SceneHandler).GetMethod("ReturnToIntro", BindingFlags.NonPublic | BindingFlags.Instance);
+        method?.Invoke(handler, new object[] { world });
+    }
+}

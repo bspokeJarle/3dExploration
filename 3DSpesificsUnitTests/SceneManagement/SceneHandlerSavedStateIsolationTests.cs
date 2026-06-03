@@ -25,7 +25,7 @@ public class SceneHandlerSavedStateIsolationTests
         PersistenceSetup.LocalFolder = _testLocalFolder;
         PersistenceSetup.Initialize();
 
-        GameState.GamePlayState = new GamePlayState();
+        GameState.GamePlayState = new GamePlayState { SceneIndex = 0 };
         GameState.SurfaceState = new SurfaceState();
         GameState.ScreenOverlayState = new ScreenOverlayState();
         GameState.ObjectIdCounter = 0;
@@ -184,6 +184,85 @@ public class SceneHandlerSavedStateIsolationTests
         int motherShipCount = GameState.SurfaceState.AiObjects.Count(o => o.ObjectName == "MotherShipSmall");
         Assert.AreEqual(1, motherShipCount,
             "Loaded checkpoint restore should keep Scene3 mothership candidate even when checkpoint mother ship count is zero.");
+    }
+
+    [TestMethod]
+    public void UpdateFrame_LoadedScene1MothershipCheckpoint_RestoresEvenWhenKillCountIsLowerThanCurrentEnemyTotal()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        var loaded = new SavedGameState
+        {
+            PlayerName = "CharlieB",
+            SceneIndex = 1,
+            Score = 900,
+            TotalKills = 8,
+            TotalShotsFired = 14,
+            TotalDeaths = 1,
+            PowerUpsCollected = 1,
+            HasCheckpoint = true,
+            CheckpointScore = 900,
+            CheckpointLives = 3,
+            CheckpointHealth = 100,
+            CheckpointPowerUpsCollected = 1,
+            CheckpointSeedersRemaining = 0,
+            CheckpointDronesRemaining = 0,
+            CheckpointMotherShipsRemaining = 1,
+            CheckpointInitialSeeders = 7,
+            CheckpointInitialDrones = 4,
+            CheckpointInitialMotherShips = 1,
+            CheckpointTotalKills = 8,
+            CheckpointTotalShotsFired = 14,
+            CheckpointTotalDeaths = 1
+        };
+
+        SetPrivateField(handler, "_pendingSavedState", loaded);
+        SetPrivateField(handler, "_targetSceneIndex", 1);
+        SetPrivateField(handler, "_pendingSceneAdvance", true);
+        SetPrivateField(handler, "_pendingSceneAdvanceFramesLeft", 0);
+
+        handler.UpdateFrame(world);
+
+        var gps = GameState.GamePlayState;
+        Assert.IsTrue(gps.HasCheckpoint, "A saved mothership-phase checkpoint should not be rejected only because kill counters differ.");
+        Assert.AreEqual(0, gps.SeedersRemaining);
+        Assert.AreEqual(0, gps.DronesRemaining);
+        Assert.AreEqual(1, gps.MotherShipsRemaining);
+        Assert.AreEqual(1, GameState.SurfaceState.AiObjects.Count(o => o.ObjectName == "MotherShipSmall" && o.IsActive));
+    }
+
+    [TestMethod]
+    public void UpdateFrame_MismatchedCheckpoint_DoesNotOverwritePersistedSave()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        GameState.GamePlayState = new GamePlayState
+        {
+            PlayerName = "CharlieB",
+            SceneIndex = 1,
+            Score = 900,
+            HasCheckpoint = true,
+            CheckpointInitialSeeders = 999,
+            CheckpointInitialDrones = 999,
+            CheckpointInitialMotherShips = 1
+        };
+        GameStatePersistence.SaveGameState();
+        var loaded = GameStatePersistence.LoadGameState("CharlieB");
+        Assert.IsNotNull(loaded);
+
+        SetPrivateField(handler, "_pendingSavedState", loaded);
+        SetPrivateField(handler, "_targetSceneIndex", 1);
+        SetPrivateField(handler, "_pendingSceneAdvance", true);
+        SetPrivateField(handler, "_pendingSceneAdvanceFramesLeft", 0);
+
+        handler.UpdateFrame(world);
+
+        var savedAfterLoadAttempt = GameStatePersistence.LoadGameState("CharlieB");
+        Assert.IsNotNull(savedAfterLoadAttempt);
+        Assert.IsTrue(savedAfterLoadAttempt!.HasCheckpoint,
+            "A checkpoint that cannot be applied should not be destructively rewritten as HasCheckpoint=false during load.");
     }
 
     private static void SetPrivateField<T>(SceneHandler handler, string fieldName, T value)

@@ -10,8 +10,8 @@ namespace CommonUtilities.CommonSetup
         public static int ShipShadowSubdivisionLevels { get; set; } = 2;
 
         // Kamikaze drone hunt timing
-        public static int KamikazeDroneMinHuntDelay { get; set; } = 15;
-        public static int KamikazeDroneMaxHuntDelay { get; set; } = 165;
+        public static int KamikazeDroneMinHuntDelay { get; set; } = 5;
+        public static int KamikazeDroneMaxHuntDelay { get; set; } = 45;
         public static float KamikazeDroneProximityHuntDistance { get; set; } = 10_000f;
 
         // Decoy blast radius: exploding decoys damage nearby objects within this distance.

@@ -6,6 +6,8 @@
         public const int perspectiveAdjustment = 1500;
         public const int defaultObjectZoom = 2;
         public const int targetFps = 90;
+        public static int RuntimeTargetFps { get; private set; } = targetFps;
+        public static double TargetFrameIntervalMs => 1000.0 / RuntimeTargetFps;
 
         // Screen dimensions — initialized at startup from the actual window size.
         // Default values match the original constants so the engine works even
@@ -31,6 +33,28 @@
         {
             screenSizeX = width;
             screenSizeY = height;
+        }
+
+        public static void ConfigureRuntimeTargetFps(int displayRefreshHz)
+        {
+            if (displayRefreshHz < 30)
+            {
+                RuntimeTargetFps = targetFps;
+                return;
+            }
+
+            RuntimeTargetFps = System.Math.Min(targetFps, NormalizeRefreshRate(displayRefreshHz));
+        }
+
+        private static int NormalizeRefreshRate(int displayRefreshHz)
+        {
+            return displayRefreshHz switch
+            {
+                59 => 60,
+                119 => 120,
+                143 => 144,
+                _ => displayRefreshHz
+            };
         }
     }
 }

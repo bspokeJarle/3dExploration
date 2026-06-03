@@ -56,6 +56,7 @@ namespace GameAiAndControls.Controls
                     var newViewPort = theObject.ParentSurface.GetSurfaceViewPort();
                     theObject.ObjectParts = newViewPort.ObjectParts;
                     theObject.CrashBoxes = newViewPort.CrashBoxes;
+                    theObject.CrashBoxNames = newViewPort.CrashBoxNames;
                 }
                 finally
                 {

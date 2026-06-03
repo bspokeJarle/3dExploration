@@ -22,7 +22,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
         // Sync offsets:
         private const float SyncFactorY = 2.5f;
-        private const float SyncAnchorY = 75f;
+        private const float SyncAnchorY = -25f;
 
         // Weak spot animation:
         private const float WeakSpotSpinSpeed = 1.5f;
@@ -275,7 +275,9 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
             UpdateFacingTowardsShip(theObject);
 
-            float maxDelta = RotationDegreesPerSecond * (float)deltaSeconds;
+            float maxDelta = MotherShipDifficultySetup.ScaleTurnSpeed(
+                RotationDegreesPerSecond,
+                GameState.GamePlayState.MotherShipSmallAggression) * (float)deltaSeconds;
             Xrotation = Common3dObjectHelpers.MoveAngleTowards(Xrotation, TargetXrotation, maxDelta);
             Yrotation = Common3dObjectHelpers.MoveAngleTowards(Yrotation, TargetYrotation, maxDelta);
             Zrotation = Common3dObjectHelpers.MoveAngleTowards(Zrotation, TargetZrotation, maxDelta);
@@ -302,7 +304,10 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
         private void UpdateFacingTowardsShip(I3dObject theObject)
         {
             var now = DateTime.Now;
-            if ((now - _lastDirectionUpdateTime).TotalSeconds < DirectionUpdateIntervalSeconds)
+            float updateInterval = MotherShipDifficultySetup.ScaleUpdateInterval(
+                DirectionUpdateIntervalSeconds,
+                GameState.GamePlayState.MotherShipSmallAggression);
+            if ((now - _lastDirectionUpdateTime).TotalSeconds < updateInterval)
                 return;
             _lastDirectionUpdateTime = now;
 
@@ -406,7 +411,8 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
             if (theObject.ImpactStatus == null)
                 return;
 
-            int currentHealth = theObject.ImpactStatus.ObjectHealth ?? EnemySetup.MotherShipSmallHealth;
+            int maxHealth = EnemySetup.GetMotherShipHealth(theObject.ObjectName, GameState.GamePlayState.MotherShipSmallAggression);
+            int currentHealth = theObject.ImpactStatus.ObjectHealth ?? maxHealth;
             bool isShipCollision = theObject.ImpactStatus.ObjectName == "Ship";
             if (isShipCollision && (DateTime.Now - _shipCollisionCooldown).TotalSeconds < 2.0)
             {
@@ -414,14 +420,10 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                 return;
             }
 
-            bool isVulnerablePart = theObject.ImpactStatus.CrashBoxName == "WeakSpot";
-
             int damage = theObject.ImpactStatus.ObjectName switch
             {
-                "Ship" => (int)(EnemySetup.MotherShipSmallHealth * ShipRamDamagePercent),
-                string objectName when WeaponSetup.IsWeaponTypeValid(objectName) => isVulnerablePart
-                    ? (int)(WeaponSetup.GetWeaponDamage(objectName) * ((float)HullHitsToDestroy / VulnerableHitsToDestroy))
-                    : WeaponSetup.GetWeaponDamage(objectName),
+                "Ship" => (int)(maxHealth * ShipRamDamagePercent),
+                string objectName when WeaponSetup.IsWeaponTypeValid(objectName) => WeaponSetup.GetWeaponDamage(objectName),
                 _ => 0
             };
 

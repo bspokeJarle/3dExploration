@@ -34,6 +34,11 @@ namespace Domain
         public int SceneIndex { get; set; } = 0;
         public int Lives { get; set; } = 3;
 
+        // Simulation round counter — increments each time the player enters the simulation after the outro
+        public int SimulationRound { get; set; } = 0;
+
+        public SceneBiomeTypes CurrentSceneBiome { get; set; } = SceneBiomeTypes.HillsWoods;
+
         // Keep as float to allow smooth damage later (e.g., collision damage scaling)
         public float Health { get; set; } = 100f;
         public float Alt { get; set; } = 0f;
@@ -173,11 +178,31 @@ namespace Domain
         /// </summary>
         public float InfectionPercent => TotalBioTiles > 0 ? (InfectionLevel / TotalBioTiles) * 100f : 0f;
 
+        public const float BiomassCriticalWarningRatio = 0.80f;
+        public const float BiomassAbortWarningRatio = 0.96f;
+
         /// <summary>
         /// Infection threshold percentage (0..100). When InfectionPercent
         /// reaches this value, the planet is lost. Configurable per level.
         /// </summary>
         public float InfectionCriticalMass { get; set; } = 100f;
+
+        public float InfectionCriticalProgress
+        {
+            get
+            {
+                if (TotalBioTiles <= 0)
+                    return 0f;
+
+                if (InfectionCriticalMass <= 0f)
+                    return InfectionLevel > 0f ? 1f : 0f;
+
+                return InfectionPercent / InfectionCriticalMass;
+            }
+        }
+
+        public bool IsBiomassCriticalWarning => InfectionCriticalProgress >= BiomassCriticalWarningRatio;
+        public bool IsBiomassAbortWarning => InfectionCriticalProgress >= BiomassAbortWarningRatio;
 
         public bool IsInfectionCritical => TotalBioTiles > 0 && InfectionPercent >= InfectionCriticalMass;
 
@@ -367,6 +392,7 @@ namespace Domain
         public void ResetForNewGame()
         {
             Phase = GamePhase.Intro;
+            CurrentSceneBiome = SceneBiomeTypes.HillsWoods;
 
             Lives = 3;
             MaxHealth = 100f;

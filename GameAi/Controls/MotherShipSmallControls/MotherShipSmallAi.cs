@@ -12,10 +12,11 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
         // AI CONFIGURATION PARAMETERS
         // ============================
         // Ram cycle:
-        private const float RamCycleTotalSeconds = 10.0f;
+        private const float RamCycleTotalSeconds = 11.5f;
         private const float RamLockOnSecond = 5.0f;
         private const float RamWarningDurationSeconds = 1.2f;
-        private const float RamChargeSpeed = 1200f;
+        private const float RamChargeSpeed = 1450f;
+        private const float AggressionChargeWindowBonusSeconds = 2.0f;
         // Flash pattern: on 0.0-0.25, off 0.25-0.55, on 0.55-0.80, off 0.80-1.2
         private const float Flash1Start = 0.0f;
         private const float Flash1End = 0.25f;
@@ -39,7 +40,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
             if (state.RamCycleStart == DateTime.MinValue)
                 state.RamCycleStart = now;
 
-            float aggression = MathF.Max(0.25f, GameState.GamePlayState.MotherShipSmallAggression);
+            float aggression = MotherShipDifficultySetup.GetAggression(GameState.GamePlayState.MotherShipSmallAggression);
             float elapsed = (float)(now - state.RamCycleStart).TotalSeconds * aggression;
 
             if (elapsed >= RamLockOnSecond && !state.RamTargetLocked)
@@ -52,6 +53,8 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
             float warningStart = RamLockOnSecond;
             float warningEnd = RamLockOnSecond + RamWarningDurationSeconds;
+            float chargeEnd = RamCycleTotalSeconds
+                + MathF.Max(0f, aggression - 1f) * AggressionChargeWindowBonusSeconds;
 
             if (elapsed >= warningStart && elapsed < warningEnd && state.RamTargetLocked)
             {
@@ -68,7 +71,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                 GameState.GamePlayState.MotherShipRamWarningActive = false;
             }
 
-            if (elapsed >= warningEnd && elapsed < RamCycleTotalSeconds && state.RamTargetLocked)
+            if (elapsed >= warningEnd && elapsed < chargeEnd && state.RamTargetLocked)
             {
                 if (!state.IsCharging)
                     state.IsCharging = true;
@@ -79,7 +82,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                     float dx = state.RamTargetWorldPosition.x - wp.x;
                     float dz = state.RamTargetWorldPosition.z - wp.z;
                     float dist = MathF.Sqrt(dx * dx + dz * dz);
-                    float step = RamChargeSpeed * aggression * deltaSeconds;
+                    float step = MotherShipDifficultySetup.ScaleTravelSpeed(RamChargeSpeed, aggression) * deltaSeconds;
 
                     if (dist > step)
                     {
@@ -103,7 +106,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                 }
             }
 
-            if (elapsed >= RamCycleTotalSeconds)
+            if (elapsed >= chargeEnd)
             {
                 state.RamCycleStart = now;
                 state.RamTargetLocked = false;

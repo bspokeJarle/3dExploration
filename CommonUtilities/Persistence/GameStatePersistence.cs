@@ -31,6 +31,8 @@ namespace CommonUtilities.Persistence
             {
                 PlayerName = state.PlayerName,
                 SceneIndex = state.SceneIndex,
+                SimulationRound = state.SimulationRound,
+                SceneBiome = state.CurrentSceneBiome,
                 Score = state.Score,
                 Lives = state.Lives,
                 Health = state.Health,
@@ -114,6 +116,8 @@ namespace CommonUtilities.Persistence
 
             state.Score = saved.Score;
             state.SceneIndex = saved.SceneIndex;
+            state.SimulationRound = saved.SimulationRound;
+            state.CurrentSceneBiome = saved.SceneBiome;
             state.Lives = saved.Lives;
             state.Health = saved.Health;
             state.MaxHealth = saved.MaxHealth;
@@ -184,6 +188,7 @@ namespace CommonUtilities.Persistence
 
             saved.PlayerName = playerName;
             saved.SceneIndex = 1;
+            saved.SceneBiome = Domain.SceneBiomeTypes.HillsWoods;
             saved.Score = 0;
             saved.WaveNumber = 1;
             saved.PowerUpsCollected = 0;
@@ -228,6 +233,7 @@ namespace CommonUtilities.Persistence
             if (string.Equals(state.PlayerName, playerName, StringComparison.OrdinalIgnoreCase))
             {
                 state.SceneIndex = 1;
+                state.CurrentSceneBiome = Domain.SceneBiomeTypes.HillsWoods;
                 state.Score = 0;
                 state.WaveNumber = 1;
                 state.PowerUpsCollected = 0;

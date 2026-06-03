@@ -70,19 +70,19 @@ namespace Domain
 
         /// <summary>
         /// Per-scene aggression multiplier for MotherShipSmall behavior.
-        /// 1.0 = baseline, higher = more aggressive.
+        /// 1.0 = baseline; higher means faster movement, quicker attacks and tighter tracking.
         /// </summary>
         float MotherShipSmallAggression => 1.0f;
 
         /// <summary>
         /// Per-scene aggression multiplier for MotherShipMedium behavior.
-        /// 1.0 = baseline, higher = more aggressive.
+        /// 1.0 = baseline; higher means faster movement, quicker attacks and tighter tracking.
         /// </summary>
         float MotherShipMediumAggression => 1.0f;
 
         /// <summary>
         /// Per-scene aggression multiplier for MotherShipLarge behavior.
-        /// 1.0 = baseline, higher = more aggressive.
+        /// 1.0 = baseline; higher means faster movement, quicker attacks and tighter tracking.
         /// </summary>
         float MotherShipLargeAggression => 1.0f;
     }

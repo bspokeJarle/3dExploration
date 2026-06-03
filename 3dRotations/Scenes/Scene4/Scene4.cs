@@ -9,7 +9,6 @@ using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipMediumControls;
-using GameAiAndControls.Controls.SeederControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using System;
 using System.Collections.Generic;
@@ -26,16 +25,16 @@ namespace _3dRotations.Scene.Scene4
 
         public IReadOnlyList<PolarBearPlacementInfo> PolarBearPlacements => _polarBearPlacements;
 
-        public string SceneMusic { get; } = "music_battle";
+        public string SceneMusic { get; } = "music_dontstop";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Winter;
         public ISceneDirector Director { get; } = new Scene4Director();
-        public GameModes GameMode { get; } = GameModes.Live;
-        public float InfectionThresholdPercent { get; } = 6f;
-        public int InfectionSpreadRate { get; } = 150;
-        public int SeederOffscreenSpeedFactor { get; } = 14;
-        public float LocalInfectionSpreadDelaySec { get; } = 4.0f;
-        public float LocalInfectionSpreadRadius { get; } = 4500f;
+        public GameModes GameMode { get; } = GameModes.Playback;
+        public float InfectionThresholdPercent { get; } = 12.5f;
+        public int InfectionSpreadRate { get; } = 6;
+        public int SeederOffscreenSpeedFactor { get; } = 16;
+        public float LocalInfectionSpreadDelaySec { get; } = 3.0f;
+        public float LocalInfectionSpreadRadius { get; } = 5000f;
         public float MotherShipMediumAggression { get; } = 1.05f;
 
         public void SetupScene(I3dWorld world)
@@ -43,7 +42,7 @@ namespace _3dRotations.Scene.Scene4
             var ws = SurfaceSetup.WorldScale;
 
             var ship = Ship.CreateShip(Surface);
-            Surface.Create2DMap(30000, 15000, GameMode, null);
+            Surface.Create2DMap(30000, 15000, GameMode, "Scene4SurfaceRecording_20260526_193822.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -100,58 +99,15 @@ namespace _3dRotations.Scene.Scene4
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-            // Seeders close to the player for immediate pressure
-            for (int i = 0; i < 7; i++)
-            {
-                var rmd = new Random();
-
-                var seeder = Seeder.CreateSeeder(Surface);
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-15000, 15000)) * ws, y = 0, z = (92000 + rmd.Next(-15000, 15000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
-            }
-
-            // Seeders spread further across the map
-            for (int i = 0; i < 5; i++)
-            {
-                var rmd = new Random();
-
-                var seeder = Seeder.CreateSeeder(Surface);
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-35000, 15000)) * ws, y = 0, z = (92000 + rmd.Next(-35000, 15000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
-            }
-
-            // Powerup seeders
-            for (int i = 0; i < 3; i++)
-            {
-                var rmd = new Random();
-                var seederPowerup = Seeder.CreateSeeder(Surface);
-                seederPowerup.Rotation = new Vector3 { };
-                seederPowerup.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-25000, 25000)) * ws, y = 0, z = (92000 + rmd.Next(-25000, 25000)) * ws };
-                seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seederPowerup.ObjectName = "Seeder";
-                seederPowerup.Movement = new SeederControls();
-                seederPowerup.CrashBoxDebugMode = false;
-                seederPowerup.ImpactStatus = new ImpactStatus { };
-                seederPowerup.HasPowerUp = true;
-                world.WorldInhabitants.Add(seederPowerup);
-                GameState.SurfaceState.AiObjects.Add(seederPowerup);
-            }
+            SeederPlacementHelpers.AddSeederGroup(
+                world,
+                Surface,
+                GameState.SurfaceState.GlobalMapPosition,
+                regularCount: 12,
+                powerUpCount: 3,
+                regularSeed: 4041,
+                powerUpSeed: 4042,
+                nearSeederCount: 7);
 
             // Mothership — spawns inactive, enters when all seeders and drones are destroyed
             var motherShip = MotherShipMedium.CreateMotherShipMedium(Surface);
@@ -169,7 +125,7 @@ namespace _3dRotations.Scene.Scene4
                 FireAsEnemyWeapon = true,
                 EnemyLazerName = "EnemyLazerMedium"
             };
-            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipMediumHealth };
+            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.GetMotherShipHealth(motherShip.ObjectName, MotherShipMediumAggression) };
             motherShip.CrashBoxDebugMode = false;
             motherShip.HasPowerUp = false;
             motherShip.IsActive = false;
@@ -659,18 +615,15 @@ namespace _3dRotations.Scene.Scene4
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "THE OMEGA STRAIN — PHASE IV";
+            o.Title = "PLANET KEPLER-22b - PHASE IV";
 
             o.Body =
-                "Mining station KEPLER-22b reports critical breach.\n\n" +
-                "Omega Strain has mutated. Fifteen seeders confirmed.\n" +
-                "Escort drones: TEN. Formation pattern: aggressive.\n" +
-                "Bomber squadron: THREE units in orbit.\n" +
-                "Infection spread rate: EXTREME.\n" +
-                "Local cascade delay: MINIMAL.\n\n" +
-                "Bio-contamination tolerance: 6%.\n\n" +
+                "Frozen world KEPLER-22b: Omega Strain has adapted to sub-zero conditions.\n\n" +
+                "Fifteen seeders confirmed. Escort drones: TEN. Bombers: THREE.\n" +
+                "Infection spreading beneath the ice layer - tolerance: 12.5%.\n" +
+                "Spread delay: 3 seconds. Cascade will not stop until seeders are dead.\n\n" +
                 "DIRECTIVE:\n" +
-                "Purge the station. Accept no losses.";
+                "Purge the frozen world. Accept no losses.";
 
             o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";
 

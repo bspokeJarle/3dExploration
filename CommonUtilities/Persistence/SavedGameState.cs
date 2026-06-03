@@ -1,5 +1,7 @@
 namespace CommonUtilities.Persistence
 {
+    using Domain;
+
     /// <summary>
     /// Serializable snapshot of the player's game progress.
     /// Only the fields that matter for save/restore are included;
@@ -9,6 +11,8 @@ namespace CommonUtilities.Persistence
     {
         public string PlayerName { get; set; } = "";
         public int SceneIndex { get; set; }
+        public int SimulationRound { get; set; }
+        public SceneBiomeTypes SceneBiome { get; set; } = SceneBiomeTypes.HillsWoods;
         public long Score { get; set; }
         public int Lives { get; set; }
         public float Health { get; set; }

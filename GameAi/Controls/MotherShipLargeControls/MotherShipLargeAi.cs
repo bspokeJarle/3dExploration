@@ -52,11 +52,13 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
             IAudioPlayer?  audio,
             SoundDefinition? imminentSound)
         {
+            float aggression = MotherShipDifficultySetup.GetAggression(GameState.GamePlayState.MotherShipLargeAggression);
+
             switch (state.AltCycleState)
             {
                 case AltitudeCycleState.GroundHold:
                     state.AltitudeDelta = 0f;
-                    state.CycleTimer += deltaSeconds;
+                    state.CycleTimer += deltaSeconds * aggression;
                     if (state.CycleTimer >= GroundHoldSeconds)
                     {
                         state.CycleTimer      = 0f;
@@ -67,7 +69,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
 
                 case AltitudeCycleState.Ascending:
                     // Rise until target altitude delta is reached; tilt-back runs in parallel.
-                    state.AltitudeDelta -= AscentSpeedUps * deltaSeconds;
+                    state.AltitudeDelta -= MotherShipDifficultySetup.ScaleTravelSpeed(AscentSpeedUps, aggression) * deltaSeconds;
                     if (state.AltitudeDelta <= state.AltitudeHoldDelta)
                     {
                         state.AltitudeDelta  = state.AltitudeHoldDelta;
@@ -88,7 +90,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
                 case AltitudeCycleState.AltitudeHold:
                     state.AltitudeDelta = state.AltitudeHoldDelta;
 
-                    state.CycleTimer += deltaSeconds;
+                    state.CycleTimer += deltaSeconds * aggression;
                     if (state.CycleTimer >= AltitudeHoldSeconds)
                     {
                         state.CycleTimer    = 0f;
@@ -104,7 +106,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
                     break;
 
                 case AltitudeCycleState.Descending:
-                    state.AltitudeDelta += DescentSpeedUps * deltaSeconds;
+                    state.AltitudeDelta += MotherShipDifficultySetup.ScaleTravelSpeed(DescentSpeedUps, aggression) * deltaSeconds;
                     if (state.AltitudeDelta >= 0f)
                     {
                         state.AltitudeDelta  = 0f;

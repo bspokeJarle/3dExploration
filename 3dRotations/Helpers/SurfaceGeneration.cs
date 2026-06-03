@@ -22,7 +22,7 @@ namespace _3dRotations.Helpers
         const double waterPatchProbability = 0.50;
         const float heightExponent = 1.7f;
         const int wrapSize = 18;
-        const int landingAreaSize = 8;
+        const int landingAreaSize = LandingPlatformHelpers.LandingPlatformSizeTiles;
         public static int maxTrees { get; set; }
         public static int maxHouses { get; set; }
         public static bool IncludeTestTreesInFrontOfPlatform = true;
@@ -39,10 +39,18 @@ namespace _3dRotations.Helpers
             SurfaceData[,] surfaceValues = GeneratePerlinNoiseMap(mapSize, out maxHeight);
 
             // 2) Water patches (depth=0) – this can change effective max height indirectly later
-            surfaceValues = AddWaterPatches(surfaceValues, mapSize);
+            bool isDesert = GameState.SurfaceState.SceneBiome == SceneBiomeTypes.Desert;
+            if (!isDesert)
+            {
+                surfaceValues = AddWaterPatches(surfaceValues, mapSize);
+            }
 
             // 3) Smoothing (and slight flattening of mid-range) – uses current maxHeight thresholds
             surfaceValues = SmoothTerrain(surfaceValues, mapSize, maxHeight);
+            if (isDesert)
+            {
+                surfaceValues = AddDesertLakePatches(surfaceValues, mapSize, maxHeight);
+            }
 
             // 4) Flat landing area plateau (uses current maxHeight)
             EnsureFlatLandingArea(surfaceValues, mapSize, maxHeight);
@@ -481,6 +489,124 @@ namespace _3dRotations.Helpers
             return map;
         }
 
+        private static SurfaceData[,] AddDesertLakePatches(SurfaceData[,] map, int mapSize, int maxHeight)
+        {
+            RemoveIncidentalDesertWater(map, mapSize, maxHeight);
+
+            int lakeCount = 3 + random.Next(2);
+            int center = mapSize / 2;
+            int minCenter = Math.Max(18, mapSize / 7);
+            int maxCenter = mapSize - minCenter;
+            int coastDepth = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.10));
+            int shoreDepth = Math.Max(coastDepth + 1, (int)Math.Ceiling(maxHeight * 0.18));
+            var lakeCenters = new List<(int x, int y, int rx, int ry, double phaseA, double phaseB, double phaseC)>();
+
+            for (int lake = 0; lake < lakeCount; lake++)
+            {
+                if (lake == 0)
+                {
+                    int nearOffset = Math.Max(18, mapSize / 55);
+                    int nearX = Math.Min(mapSize - 24, center + nearOffset);
+                    int nearY = Math.Max(24, center - nearOffset / 2);
+                    lakeCenters.Add((nearX, nearY, Math.Max(11, mapSize / 30), Math.Max(11, mapSize / 34), NextLakePhase(), NextLakePhase(), NextLakePhase()));
+                    continue;
+                }
+
+                int attempts = 0;
+                while (attempts++ < 80)
+                {
+                    int rx = random.Next(Math.Max(11, mapSize / 28), Math.Max(14, mapSize / 19));
+                    int ry = random.Next(Math.Max(11, mapSize / 34), Math.Max(14, mapSize / 25));
+                    int x = random.Next(minCenter, maxCenter);
+                    int y = random.Next(minCenter, maxCenter);
+
+                    if (Math.Abs(x - center) < landingAreaSize * 3 && Math.Abs(y - center) < landingAreaSize * 3)
+                        continue;
+
+                    bool overlapsExisting = false;
+                    foreach (var existing in lakeCenters)
+                    {
+                        int dx = x - existing.x;
+                        int dy = y - existing.y;
+                        int minDistance = rx + existing.rx + Math.Max(8, mapSize / 35);
+                        if ((dx * dx) + (dy * dy) < minDistance * minDistance)
+                        {
+                            overlapsExisting = true;
+                            break;
+                        }
+                    }
+
+                    if (overlapsExisting)
+                        continue;
+
+                    lakeCenters.Add((x, y, rx, ry, NextLakePhase(), NextLakePhase(), NextLakePhase()));
+                    break;
+                }
+            }
+
+            foreach (var lake in lakeCenters)
+            {
+                int paddedRx = (int)Math.Ceiling(lake.rx * 1.25) + 3;
+                int paddedRy = (int)Math.Ceiling(lake.ry * 1.25) + 3;
+                for (int y = lake.y - paddedRy; y <= lake.y + paddedRy; y++)
+                {
+                    if (y < 1 || y >= mapSize - 1)
+                        continue;
+
+                    for (int x = lake.x - paddedRx; x <= lake.x + paddedRx; x++)
+                    {
+                        if (x < 1 || x >= mapSize - 1)
+                            continue;
+
+                        double nx = (x - lake.x) / (double)lake.rx;
+                        double ny = (y - lake.y) / (double)lake.ry;
+                        double distance = Math.Sqrt((nx * nx) + (ny * ny));
+                        double angle = Math.Atan2(ny, nx);
+                        double edgeScale =
+                            1.0 +
+                            (0.12 * Math.Sin((angle * 3.0) + lake.phaseA)) +
+                            (0.07 * Math.Sin((angle * 5.0) + lake.phaseB)) +
+                            (0.04 * Math.Sin(((x + lake.x) * 0.11) + ((y - lake.y) * 0.07) + lake.phaseC));
+                        double shapedDistance = distance / Math.Max(0.76, edgeScale);
+
+                        if (shapedDistance <= 0.82)
+                        {
+                            map[y, x].mapDepth = 0;
+                        }
+                        else if (shapedDistance <= 1.0)
+                        {
+                            map[y, x].mapDepth = Math.Min(map[y, x].mapDepth, coastDepth);
+                        }
+                        else if (shapedDistance <= 1.14)
+                        {
+                            map[y, x].mapDepth = Math.Max(map[y, x].mapDepth, shoreDepth);
+                        }
+                    }
+                }
+            }
+
+            return map;
+
+            static double NextLakePhase()
+            {
+                return random.NextDouble() * Math.PI * 2.0;
+            }
+        }
+
+        private static void RemoveIncidentalDesertWater(SurfaceData[,] map, int mapSize, int maxHeight)
+        {
+            int dryFloor = Math.Max((int)Math.Ceiling(maxHeight * 0.22), zFactor * 6);
+
+            for (int y = 0; y < mapSize; y++)
+            {
+                for (int x = 0; x < mapSize; x++)
+                {
+                    if (map[y, x].mapDepth < dryFloor)
+                        map[y, x].mapDepth = dryFloor + random.Next(0, Math.Max(2, zFactor));
+                }
+            }
+        }
+
         private static SurfaceData[,] SmoothTerrain(SurfaceData[,] map, int mapSize, int maxHeight)
         {
             SurfaceData[,] newMap = new SurfaceData[mapSize, mapSize];
@@ -519,16 +645,14 @@ namespace _3dRotations.Helpers
 
         private static void EnsureFlatLandingArea(SurfaceData[,] map, int mapSize, int maxHeight)
         {
-            int center = mapSize / 2;
-            int startX = center - landingAreaSize / 2;
-            int startY = center - landingAreaSize / 2;
+            var landingPlatform = LandingPlatformHelpers.GetLandingPlatformRect(map);
             int landingHeight = (int)(maxHeight * 0.75); // High flat plateau
 
-            for (int i = startX; i < startX + landingAreaSize; i++)
+            for (int y = landingPlatform.MinZ; y <= landingPlatform.MaxZ; y++)
             {
-                for (int j = startY; j < startY + landingAreaSize; j++)
+                for (int x = landingPlatform.MinX; x <= landingPlatform.MaxX; x++)
                 {
-                    map[i, j].mapDepth = landingHeight;
+                    map[y, x].mapDepth = landingHeight;
                 }
             }
         }
@@ -943,7 +1067,12 @@ namespace _3dRotations.Helpers
         }
 
         public static List<(int x, int y, int height)> FindHousePlacementAreas(
-            SurfaceData[,] map, int mapSize, int maxHeight, List<(int x, int y, int height)> existingTrees, int? overrideMaxHouses = null)
+            SurfaceData[,] map,
+            int mapSize,
+            int maxHeight,
+            List<(int x, int y, int height)> existingTrees,
+            int? overrideMaxHouses = null,
+            int? placementSpacing = null)
         {
             int sizeY = map.GetLength(0);
             int sizeX = map.GetLength(1);
@@ -982,7 +1111,7 @@ namespace _3dRotations.Helpers
                 return true;
             }
 
-            int spacing = 40;
+            int spacing = Math.Max(8, placementSpacing ?? 40);
             int start = spacing / 2;
             int endX = mapSize - spacing / 2 - 1;
             int endY = mapSize - spacing / 2 - 1;
@@ -1038,6 +1167,95 @@ namespace _3dRotations.Helpers
             return houseLocations;
         }
 
+        public static List<(int x, int y, int height)> FindDesertOasisPlantPlacements(
+            SurfaceData[,] map,
+            int mapSize,
+            int maxHeight,
+            int maxPlants = 120)
+        {
+            int sizeY = map.GetLength(0);
+            int sizeX = map.GetLength(1);
+            mapSize = Math.Min(sizeX, sizeY);
+            var placements = new List<(int x, int y, int height)>();
+            if (maxPlants <= 0)
+                return placements;
+
+            int coastCutoff = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.15));
+            var used = new HashSet<(int x, int y)>();
+
+            bool IsDryPlantTile(int x, int y)
+            {
+                if (x <= 1 || y <= 1 || x >= sizeX - 2 || y >= sizeY - 2)
+                    return false;
+
+                var tile = map[y, x];
+                if (tile.hasLandbasedObject || tile.mapDepth <= coastCutoff)
+                    return false;
+
+                var terrainType = GamePlayHelpers.GetTerrainType(tile.mapDepth, maxHeight);
+                return terrainType == GamePlayHelpers.TerrainType.Grassland ||
+                       terrainType == GamePlayHelpers.TerrainType.Highlands;
+            }
+
+            bool HasWaterInRing(int x, int y)
+            {
+                bool hasNearWater = false;
+                bool hasFarWater = false;
+
+                for (int oy = -4; oy <= 4; oy++)
+                {
+                    for (int ox = -4; ox <= 4; ox++)
+                    {
+                        int nx = x + ox;
+                        int ny = y + oy;
+                        if (nx < 0 || ny < 0 || nx >= sizeX || ny >= sizeY)
+                            continue;
+
+                        int distance = Math.Max(Math.Abs(ox), Math.Abs(oy));
+                        bool isWater = map[ny, nx].mapDepth <= coastCutoff;
+                        if (isWater && distance <= 1)
+                            hasNearWater = true;
+                        if (isWater && distance >= 2 && distance <= 4)
+                            hasFarWater = true;
+                    }
+                }
+
+                return !hasNearWater && hasFarWater;
+            }
+
+            bool HasPlacementNearby(int x, int y)
+            {
+                const int minSpacing = 4;
+                foreach (var placement in used)
+                {
+                    if (Math.Abs(placement.x - x) <= minSpacing && Math.Abs(placement.y - y) <= minSpacing)
+                        return true;
+                }
+
+                return false;
+            }
+
+            int start = wrapSize;
+            int end = mapSize - wrapSize - 1;
+            for (int y = start; y <= end && placements.Count < maxPlants; y++)
+            {
+                for (int x = start; x <= end && placements.Count < maxPlants; x++)
+                {
+                    if (!IsDryPlantTile(x, y))
+                        continue;
+                    if (!HasWaterInRing(x, y))
+                        continue;
+                    if (HasPlacementNearby(x, y))
+                        continue;
+
+                    used.Add((x, y));
+                    placements.Add((x, y, map[y, x].mapDepth));
+                }
+            }
+
+            return placements;
+        }
+
         // ============================================================
         //  TOWER PLACEMENT (1 near platform + total N across map)
         // ============================================================
@@ -1046,7 +1264,7 @@ namespace _3dRotations.Helpers
         /// Flattens the terrain around a set of placement points.
         /// All tiles within <paramref name="radius"/> of each point are set to the same depth
         /// (at least Highlands minimum) so land-based objects sit on a stable, flat base.
-        /// Radius 1 = 3x3 block (towers), 0 = single tile (trees), 1 also works for houses.
+        /// Radius 1 = 3x3 block and is the standard base for static land-based objects.
         /// </summary>
         public static void FlattenTerrainAroundPlacements(
             SurfaceData[,] map,
@@ -1366,6 +1584,8 @@ namespace _3dRotations.Helpers
             bool[,] visited = new bool[mapSizeX, mapSizeY];
             int numCrashBoxes = 0;
             const int MinimumCrashBoxArea = 9; // Example: minimum 9 tiles (3x3 area)
+            const int MaxCrashBoxWidth = 6;
+            const int MaxCrashBoxHeight = 6;
 
             for (int i = 0; i < mapSizeX; i++)
             {
@@ -1376,25 +1596,27 @@ namespace _3dRotations.Helpers
 
                     int height = map[i, j].mapDepth;
 
-                    if (IsHighlandOrMountain(height, maxHeight))
+                    if (ShouldGenerateTerrainCrashBox(height, maxHeight))
                     {
                         int width = 1;
                         int heightBox = 1;
 
                         // Expand horizontally
-                        while (j + width < mapSizeY && !visited[i, j + width] &&
-                               IsHighlandOrMountain(map[i, j + width].mapDepth, maxHeight))
+                        while (width < MaxCrashBoxWidth &&
+                               j + width < mapSizeY && !visited[i, j + width] &&
+                               ShouldGenerateTerrainCrashBox(map[i, j + width].mapDepth, maxHeight))
                         {
                             width++;
                         }
 
                         // Expand vertically
                         bool canExpandDown = true;
-                        while (i + heightBox < mapSizeX && canExpandDown)
+                        while (heightBox < MaxCrashBoxHeight &&
+                               i + heightBox < mapSizeX && canExpandDown)
                         {
                             for (int x = 0; x < width; x++)
                             {
-                                if (visited[i + heightBox, j + x] || !IsHighlandOrMountain(map[i + heightBox, j + x].mapDepth, maxHeight))
+                                if (visited[i + heightBox, j + x] || !ShouldGenerateTerrainCrashBox(map[i + heightBox, j + x].mapDepth, maxHeight))
                                 {
                                     canExpandDown = false;
                                     break;
@@ -1419,11 +1641,13 @@ namespace _3dRotations.Helpers
                             }
 
                             // Set crashbox
+                            int padding = GameState.SurfaceState.SceneBiome == SceneBiomeTypes.Desert ? 8 : 20;
+
                             map[i, j].crashBox = new SurfaceData.CrashBoxData
                             {
                                 width = width,
                                 height = heightBox,
-                                boxDepth = maxDepth + 20//Add some padding
+                                boxDepth = maxDepth + padding
                             };
 
                             numCrashBoxes++;
@@ -1444,10 +1668,15 @@ namespace _3dRotations.Helpers
         }
 
 
-        private static bool IsHighlandOrMountain(int height, int maxHeight)
+        private static bool ShouldGenerateTerrainCrashBox(int height, int maxHeight)
         {
-            // Highland starts at 40% of maximum elevation
-            return height >= maxHeight * 0.4;
+            var terrainType = GamePlayHelpers.GetTerrainType(height, maxHeight);
+
+            if (GameState.SurfaceState.SceneBiome == SceneBiomeTypes.Desert)
+                return terrainType == GamePlayHelpers.TerrainType.Mountains;
+
+            return terrainType == GamePlayHelpers.TerrainType.Highlands ||
+                   terrainType == GamePlayHelpers.TerrainType.Mountains;
         }
 
     }

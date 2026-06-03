@@ -285,8 +285,9 @@ public class ParticlesAI : IParticles
             return p.BirthTime.Ticks + life + p.VariedStart <= pruneTicks;
         });
 
-        int effectiveMaxParticles = MaxParticlesOverride > 0 ? MaxParticlesOverride : MaxDynamicParticles;
-        int dynamicMaxParticles = Math.Min(effectiveMaxParticles, thrust * 2 + MaxParticlesBase);
+        int dynamicMaxParticles = MaxParticlesOverride > 0
+            ? MaxParticlesOverride
+            : Math.Min(MaxDynamicParticles, thrust * 2 + MaxParticlesBase);
 
         // During the initial burst the cap is raised so the jet ignition looks punchy.
         // Once the normal steady-state cap has been reached, the burst ends and the

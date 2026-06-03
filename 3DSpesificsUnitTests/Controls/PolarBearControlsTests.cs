@@ -77,45 +77,101 @@ public class PolarBearControlsTests
     }
 
     [TestMethod]
-    public void MoveObject_KeepsBearYOffsetJustAboveShadowBaseline()
+    public void MoveObject_KeepsBearYOffsetAtLandObjectBaseOffset()
     {
         var control = new PolarBearControls(-20f, 20f);
         var bear = CreateBear();
 
         MoveOneFrame(control, bear, null, null);
 
-        Assert.AreEqual(400f, bear.ObjectOffsets!.z, 0.001f, "Bear should stay on the same depth layer as its shadow baseline.");
-        Assert.IsTrue(
-            bear.ObjectOffsets.y < 275.5f && bear.ObjectOffsets.y > 273.5f,
-            $"Bear Y offset should stay close above shadow baseline (expected about 274-275). Actual: {bear.ObjectOffsets.y:0.###}");
+        Assert.AreEqual(400f, bear.ObjectOffsets!.z, 0.001f, "Bear should stay on the same depth layer as its land-object placement.");
+        Assert.AreEqual(
+            ExpectedBaseOffsetYAfterFrames(1),
+            bear.ObjectOffsets.y,
+            0.001f,
+            "Bear Y offset should remain the spawned land-object base offset plus ground-contact nudge; terrain height is applied by surface-based rendering.");
 
         control.Dispose();
     }
 
-    private static _3dObject CreateBear()
+    [TestMethod]
+    public void MoveObject_OnRoarRearUp_DoesNotLiftBearAwayFromShadow()
+    {
+        var control = new PolarBearControls(-20f, 20f);
+        var bear = CreateBear();
+
+        MoveOneFrame(control, bear, null, null);
+        MoveOneFrame(control, bear, null, null);
+        MoveOneFrame(control, bear, null, null);
+        MoveOneFrame(control, bear, null, null);
+
+        MoveOneFrame(control, bear, null, null);
+
+        Assert.IsTrue(
+            ((Vector3)bear.Rotation!).x < 60f,
+            "Bear should rear up into the roar pose during the turn pause.");
+        Assert.AreEqual(
+            ExpectedBaseOffsetYAfterFrames(5),
+            bear.ObjectOffsets!.y,
+            0.001f,
+            "Rear-up should be a pose change, not a jump away from the shadow/ground anchor.");
+
+        control.Dispose();
+    }
+
+    [TestMethod]
+    public void MoveObject_DoesNotBakeSurfaceTileYIntoObjectOffset()
+    {
+        var control = new PolarBearControls(-20f, 20f);
+        var nearSurfaceBear = CreateBear(tileY1: -260f, tileY2: -240f, tileY3: -250f);
+
+        MoveOneFrame(control, nearSurfaceBear, null, null);
+        float nearSurfaceOffsetY = nearSurfaceBear.ObjectOffsets!.y;
+
+        control.Dispose();
+        GameState.SurfaceState.GlobalMapPosition = new Vector3 { x = 1000f, y = 900f, z = 1000f };
+        GameState.SurfaceState.SurfaceViewportObject!.ObjectOffsets = new Vector3 { x = 75f, y = 650f, z = 400f };
+
+        control = new PolarBearControls(-20f, 20f);
+        var farSurfaceBear = CreateBear(tileY1: 80f, tileY2: 120f, tileY3: 100f);
+
+        MoveOneFrame(control, farSurfaceBear, null, null);
+
+        Assert.AreEqual(
+            nearSurfaceOffsetY,
+            farSurfaceBear.ObjectOffsets!.y,
+            0.001f,
+            "Surface/tile Y belongs to CenterObjectAt in the render path; PolarBearControls must not bake it into ObjectOffsets.y.");
+
+        control.Dispose();
+    }
+
+    private static _3dObject CreateBear(float tileY1 = -205f, float tileY2 = -205f, float tileY3 = -205f)
     {
         const int bearTileId = 1234;
+        var rotatedTile = new TriangleMeshWithColor
+        {
+            landBasedPosition = bearTileId,
+            vert1 = new Vector3 { x = 0f, y = tileY1, z = 0f },
+            vert2 = new Vector3 { x = 20f, y = tileY2, z = 0f },
+            vert3 = new Vector3 { x = 10f, y = tileY3, z = 20f }
+        };
+        var cachedTile = new TriangleMeshWithColor
+        {
+            landBasedPosition = bearTileId,
+            vert1 = new Vector3 { x = 0f, y = tileY1, z = 0f },
+            vert2 = new Vector3 { x = 20f, y = tileY2, z = 0f },
+            vert3 = new Vector3 { x = 10f, y = tileY3, z = 20f }
+        };
         var surface = new Surface
         {
             RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>
             {
-                new TriangleMeshWithColor
-                {
-                    landBasedPosition = bearTileId,
-                    vert1 = new Vector3 { x = 0f, y = -205f, z = 0f },
-                    vert2 = new Vector3 { x = 20f, y = -205f, z = 0f },
-                    vert3 = new Vector3 { x = 10f, y = -205f, z = 20f }
-                }
+                rotatedTile
             },
             RotatedSurfaceTriangleByLandId = new Dictionary<long, ITriangleMeshWithColor>
             {
-                [bearTileId] = new TriangleMeshWithColor
-                {
-                    landBasedPosition = bearTileId,
-                    vert1 = new Vector3 { x = 0f, y = -205f, z = 0f },
-                    vert2 = new Vector3 { x = 20f, y = -205f, z = 0f },
-                    vert3 = new Vector3 { x = 10f, y = -205f, z = 20f }
-                }
+                [bearTileId] = cachedTile
             }
         };
 
@@ -130,6 +186,12 @@ public class PolarBearControlsTests
         bear.IsOnScreen = true;
         bear.IsActive = true;
         return bear;
+    }
+
+    private static float ExpectedBaseOffsetYAfterFrames(int frameCount)
+    {
+        float phase = frameCount * 0.1f * 4.8f;
+        return 280f + LandBasedObjectSetup.GroundContactNudgeYScaled - (MathF.Abs(MathF.Sin(phase)) * 0.45f);
     }
 
     private static Vector3 ExpectedAudioPosition(IVector3 worldPosition, IVector3 objectOffsets, IVector3 globalMapPosition)

@@ -30,5 +30,6 @@ namespace Domain
         IVector3? ShadowOffset { get; set; }
         bool HasPowerUp { get; set; }
         bool IsActive { get; set; }
+        float ZSortBias { get; set; }
     }
 }

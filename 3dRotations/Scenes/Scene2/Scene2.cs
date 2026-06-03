@@ -8,7 +8,6 @@ using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipSmallControls;
-using GameAiAndControls.Controls.SeederControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using GameAiAndControls.Controls.JumpingFishControls;
 using System;
@@ -20,17 +19,20 @@ namespace _3dRotations.Scene.Scene1
     public class Scene2:IScene
     {
         Surface Surface = new();
+        private const int LeafTreePlacementMax = 12000;
+        private const int NearPlatformLeafTreeTarget = 14;
+        private const int NearPlatformLeafTreeSearchRadius = 26;
 
         public string SceneMusic { get; } = "music_battle";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
         public ISceneDirector Director { get; } = new Scene2Director();
         public GameModes GameMode { get; } = GameModes.Playback;
-        public float InfectionThresholdPercent { get; } = 10f;
-        public int InfectionSpreadRate { get; } = 75;
-        public int SeederOffscreenSpeedFactor { get; } = 10;
-        public float LocalInfectionSpreadDelaySec { get; } = 8.0f;
-        public float LocalInfectionSpreadRadius { get; } = 3500f;
+        public float InfectionThresholdPercent { get; } = 13.5f;
+        public int InfectionSpreadRate { get; } = 4;
+        public int SeederOffscreenSpeedFactor { get; } = 12;
+        public float LocalInfectionSpreadDelaySec { get; } = 6.0f;
+        public float LocalInfectionSpreadRadius { get; } = 4200f;
         public float MotherShipSmallAggression { get; } = 1.00f;
 
         public void SetupScene(I3dWorld world)
@@ -40,7 +42,7 @@ namespace _3dRotations.Scene.Scene1
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
-            Surface.Create2DMap(30000,15000,GameMode, "Scene2SurfaceRecording.retro");
+            Surface.Create2DMap(30000,15000,GameMode, "Scene2SurfaceRecording_20260526_192213.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -81,58 +83,16 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-            // Seeders close to the player for immediate pressure
-            for (int i = 0; i < 5; i++)
-            {
-                var rmd = new Random();
-
-                var seeder = Seeder.CreateSeeder(Surface);
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-12000, 12000)) * ws, y = 0, z = (92000 + rmd.Next(-12000, 12000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
-            }
-
-            // Seeders spread further across the map
-            for (int i = 0; i < 3; i++)
-            {
-                var rmd = new Random();
-
-                var seeder = Seeder.CreateSeeder(Surface);
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-25000, 5000)) * ws, y = 0, z = (92000 + rmd.Next(-25000, 5000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
-            }
-
-            // Powerup seeders — unlock decoy and lazer
-            for (int i = 0; i < 2; i++)
-            {
-                var rmd = new Random();
-                var seederPowerup = Seeder.CreateSeeder(Surface);
-                seederPowerup.Rotation = new Vector3 { };
-                seederPowerup.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-15000, 15000)) * ws, y = 0, z = (92000 + rmd.Next(-15000, 15000)) * ws };
-                seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seederPowerup.ObjectName = "Seeder";
-                seederPowerup.Movement = new SeederControls();
-                seederPowerup.CrashBoxDebugMode = false;
-                seederPowerup.ImpactStatus = new ImpactStatus { };
-                seederPowerup.HasPowerUp = true;
-                world.WorldInhabitants.Add(seederPowerup);
-                GameState.SurfaceState.AiObjects.Add(seederPowerup);
-            }
+            // Seeders in rings around the player for immediate pressure
+            SeederPlacementHelpers.AddSeederGroup(
+                world,
+                Surface,
+                GameState.SurfaceState.GlobalMapPosition,
+                regularCount: 8,
+                powerUpCount: 2,
+                regularSeed: 2021,
+                powerUpSeed: 2022,
+                nearSeederCount: 5);
 
             // Mothership — spawns inactive, enters when all seeders and drones are destroyed
             var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
@@ -141,7 +101,7 @@ namespace _3dRotations.Scene.Scene1
             motherShip.ObjectOffsets = new Vector3 { x = 0, y = -2500, z = 400 };
             motherShip.ObjectName = "MotherShipSmall";
             motherShip.Movement = new MotherShipSmallControls();
-            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
+            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.GetMotherShipHealth(motherShip.ObjectName, MotherShipSmallAggression) };
             motherShip.CrashBoxDebugMode = false;
             motherShip.HasPowerUp = false;
             motherShip.IsActive = false;
@@ -182,6 +142,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.CrashBoxesFollowRotation = false;
             world.WorldInhabitants.Add(surfaceObject);
             GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
+            world.WorldInhabitants.Add(LeafEmitter.CreateLeafEmitter(Surface));
 
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
 
@@ -211,7 +172,7 @@ namespace _3dRotations.Scene.Scene1
             }
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight(), 30000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), treePlacements, radius: 0);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), treePlacements, radius: 1);
             var treeIndex = 0;
             foreach (var treePlacement in treePlacements)
             {
@@ -256,6 +217,22 @@ namespace _3dRotations.Scene.Scene1
                 house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
             }
+
+            LeafTreePlacementHelpers.AddLeafTrees(
+                world,
+                Surface,
+                GameState.SurfaceState.Global2DMap,
+                Surface.GlobalMapSize(),
+                Surface.TileSize(),
+                Surface.MaxHeight(),
+                LeafTreePlacementMax,
+                NearPlatformLeafTreeTarget,
+                NearPlatformLeafTreeSearchRadius,
+                treeOffsetX: 75 * ScreenSetup.ScreenScaleX,
+                treeOffsetY: 425 * ScreenSetup.ScreenScaleY,
+                towerPlacements,
+                treePlacements,
+                housePlacements);
         }
 
         public void SetupSceneOverlay()
@@ -267,16 +244,14 @@ namespace _3dRotations.Scene.Scene1
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // SECTOR BRIEFING";
-            o.Title = "THE OMEGA STRAIN — PHASE II";
+            o.Title = "PLANET TRITON-7 - PHASE II";
 
             o.Body =
-                "NEREID outer colony TRITON-7 has gone dark.\n\n" +
-                "Long-range telemetry confirms Omega Strain\n" +
-                "has breached the quarantine perimeter.\n" +
-                "Seeder count: TEN. Escort drones: SIX.\n" +
-                "Infection spread rate: ACCELERATED.\n" +
-                "Terrain: unknown — no prior survey data.\n\n" +
-                "Bio-contamination tolerance: 10%.\n\n" +
+                "TRITON-7 outer colony has gone dark.\n\n" +
+                "Long-range telemetry: Omega Strain has breached the perimeter.\n" +
+                "Ten seeders confirmed across the highlands. Escort drones: SIX.\n" +
+                "Infection spreading through woodland networks - tolerance: 13.5%.\n" +
+                "Spread delay: 6 seconds. Window is closing.\n\n" +
                 "REVISED DIRECTIVE:\n" +
                 "Sterilize TRITON-7. Leave nothing behind.";
 

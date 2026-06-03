@@ -7,7 +7,6 @@ using Domain;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipSmallControls;
-using GameAiAndControls.Controls.SeederControls;
 using GameAiAndControls.Controls.SpaceSwanControls;
 using GameAiAndControls.Controls.JumpingFishControls;
 using System;
@@ -20,6 +19,9 @@ namespace _3dRotations.Scene.Scene1
     public class Scene1 : IScene
     {
         Surface Surface = new();
+        private const int LeafTreePlacementMax = 12000;
+        private const int NearPlatformLeafTreeTarget = 14;
+        private const int NearPlatformLeafTreeSearchRadius = 26;
 
         public string SceneMusic { get; } = "music_flight";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
@@ -28,15 +30,15 @@ namespace _3dRotations.Scene.Scene1
 
         public GameModes GameMode { get; } = GameModes.Playback;
         //How much of the surface needs to be infected for the player to lose, as a percentage of total bio tiles
-        public float InfectionThresholdPercent { get; } = 12f;
+        public float InfectionThresholdPercent { get; } = 14.0f;
         //How many new tiles does each infected tile infect per second, on average? This is used to calculate the local spread delay and the infection progress bar fill rate
-        public int InfectionSpreadRate { get; } = 50;
+        public int InfectionSpreadRate { get; } = 4;
         //When seeders are offscreen, they will move at this speed factor (multiplier to normal speed) to catch up to the player faster. This is used to keep the gameplay engaging and prevent players from kiting seeders indefinitely by staying at the edge of the screen
-        public int SeederOffscreenSpeedFactor { get; } = 8;
+        public int SeederOffscreenSpeedFactor { get; } = 10;
         //When a tile is infected, it will spread the infection to its neighbors after this delay (in seconds). The delay is calculated based on the InfectionSpreadRate, and determines how quickly the infection spreads across the surface. A lower value means faster spread, while a higher value means slower spread.
-        public float LocalInfectionSpreadDelaySec { get; } = 12.0f;
+        public float LocalInfectionSpreadDelaySec { get; } = 8.0f;
         //Killing a seeder will stop the cascade of infections from spreading to its neighbors. If there is a seeder within this radius the infection will go on until it is killed
-        public float LocalInfectionSpreadRadius { get; } = 3500f;
+        public float LocalInfectionSpreadRadius { get; } = 4000f;
         public float MotherShipSmallAggression { get; } = 0.90f;
 
         public void SetupScene(I3dWorld world)
@@ -88,37 +90,15 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.AiObjects.Add(kamikaze);
             }
 
-            //Add seeders close to the player, to make sure they are engaged from the start, and to demonstrate the infection mechanics early on. The rest of the seeders will be more spread out across the surface
-            for (int i = 0; i < 3; i++)
-            {
-                var rmd = new Random();
-
-                var seeder = Seeder.CreateSeeder(Surface);
-                //Initialize the seeder rotation
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-10000, 10000)) * ws, y = 0, z = (92000 + rmd.Next(-10000, 10000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
-            }
-
-            //Special Seeder that has a powerup hidden
-            var seederPowerup = Seeder.CreateSeeder(Surface);
-            seederPowerup.Rotation = new Vector3 { };
-            seederPowerup.WorldPosition = new Vector3 { x = (95700 + -10000) * ws, y = 0, z = (92000 + -10000) * ws };
-            seederPowerup.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-            seederPowerup.ObjectName = "Seeder";
-            seederPowerup.Movement = new SeederControls();
-            seederPowerup.CrashBoxDebugMode = false;
-            seederPowerup.ImpactStatus = new ImpactStatus { };
-            seederPowerup.HasPowerUp = true;
-            world.WorldInhabitants.Add(seederPowerup);
-            GameState.SurfaceState.AiObjects.Add(seederPowerup);
+            SeederPlacementHelpers.AddSeederGroup(
+                world,
+                Surface,
+                GameState.SurfaceState.GlobalMapPosition,
+                regularCount: 6,
+                powerUpCount: 1,
+                regularSeed: 1011,
+                powerUpSeed: 1012,
+                nearSeederCount: 4);
 
             //Mothership for this Scene — spawns inactive, enters when all seeders are destroyed
             var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);
@@ -128,7 +108,7 @@ namespace _3dRotations.Scene.Scene1
             motherShip.ObjectName = "MotherShipSmall";
             motherShip.Movement = new MotherShipSmallControls();
             motherShip.CrashBoxDebugMode = false;
-            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipSmallHealth };
+            motherShip.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.GetMotherShipHealth(motherShip.ObjectName, MotherShipSmallAggression) };
             motherShip.HasPowerUp = false;
             motherShip.IsActive = false;
             motherShip.CrashBoxDebugMode = false;
@@ -153,25 +133,6 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.AiObjects.Add(spaceSwan);
             }
 
-            //Add more seeders upper left side of the map
-            for (int i = 0; i < 3; i++)
-            {
-                var rmd = new Random();
-
-                var seeder = Seeder.CreateSeeder(Surface);
-                //Initialize the seeder rotation
-                seeder.Rotation = new Vector3 { };
-                seeder.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-20000, 5000)) * ws, y = 0, z = (92000 + rmd.Next(-20000, 5000)) * ws };
-                seeder.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 600 };
-                seeder.ObjectName = "Seeder";
-                seeder.Movement = new SeederControls();
-                seeder.CrashBoxDebugMode = false;
-                seeder.ImpactStatus = new ImpactStatus { };
-                seeder.HasPowerUp = false;
-                world.WorldInhabitants.Add(seeder);
-                GameState.SurfaceState.AiObjects.Add(seeder);
-            }
-
             //Get the surface viewport based on the global Map Position
             //Important: In a Scene, Surface should be amongst the first objects added to the world
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
@@ -188,6 +149,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.CrashBoxesFollowRotation = false;
             world.WorldInhabitants.Add(surfaceObject);
             GameState.SurfaceState.SurfaceViewportObject = surfaceObject;
+            world.WorldInhabitants.Add(LeafEmitter.CreateLeafEmitter(Surface));
 
             var towerPlacements = SurfaceGeneration.FindTowerPlacements(GameState.SurfaceState.Global2DMap, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight());
 
@@ -222,7 +184,7 @@ namespace _3dRotations.Scene.Scene1
 
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(GameState.SurfaceState.Global2DMap,Surface.GlobalMapSize(),Surface.TileSize(),Surface.MaxHeight(), 30000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), treePlacements, radius: 0);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(GameState.SurfaceState.Global2DMap, Surface.MaxHeight(), treePlacements, radius: 1);
             var treeIndex = 0;
             foreach (var treePlacement in treePlacements)
             {
@@ -265,6 +227,22 @@ namespace _3dRotations.Scene.Scene1
                 house.CrashBoxDebugMode = false;
                 if (house.SurfaceBasedId>0) world.WorldInhabitants.Add(house);
             }
+
+            LeafTreePlacementHelpers.AddLeafTrees(
+                world,
+                Surface,
+                GameState.SurfaceState.Global2DMap,
+                Surface.GlobalMapSize(),
+                Surface.TileSize(),
+                Surface.MaxHeight(),
+                LeafTreePlacementMax,
+                NearPlatformLeafTreeTarget,
+                NearPlatformLeafTreeSearchRadius,
+                treeOffsetX: 40 * ScreenSetup.ScreenScaleX,
+                treeOffsetY: 430 * ScreenSetup.ScreenScaleY,
+                towerPlacements,
+                treePlacements,
+                housePlacements);
         }
 
         public void SetupGameOverlay()
@@ -285,18 +263,17 @@ namespace _3dRotations.Scene.Scene1
             o.Anchor = ScreenOverlayAnchor.Top;
 
             o.Header = "RETROMESH // BOOT SEQUENCE";
-            o.Title = "THE OMEGA STRAIN";
+            o.Title = "PLANET NEREID - PHASE I";
 
             o.Body =
                 "Year 2147.\n\n" +
                 "Signal received from the NEREID perimeter colonies.\n" +
-                "Biological anomaly confirmed.\n" +
-                "Designation: OMEGA STRAIN.\n\n" +
-                "Seeder activity detected across multiple sectors.\n" +
-                "Infection rate: ACCELERATING.\n" +
-                "Containment probability: 12%.\n\n" +
+                "Biological anomaly confirmed. Designation: OMEGA STRAIN.\n\n" +
+                "Seeder activity detected. Seven units across grassland sectors.\n" +
+                "Infection is advancing fast - tolerance threshold: 14.0%.\n" +
+                "Spread delay: 8 seconds. Act before the bio-layer is lost.\n\n" +
                 "PRIMARY DIRECTIVE:\n" +
-                "Eliminate Seeders before Critical Mass.";
+                "Eliminate Seeders before Critical Mass. Good luck, pilot.";
 
             o.Footer = "PRESS ANY KEY TO INITIATE PROTOCOL";
 

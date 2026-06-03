@@ -1,13 +1,20 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.4.11605.240 stable
+VisualStudioVersion = 18.4.11605.240
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Frontend", "3dTesting\Frontend.csproj", "{035F226A-F07C-44F1-87CF-5B35A3351108}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{098E60BA-0020-4ECE-B255-925164831E12}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Installer", "Installer", "{0E61A128-2072-462C-A54F-6C8E4FB0955D}"
+	ProjectSection(SolutionItems) = preProject
+		installer\Build-Installer.ps1 = installer\Build-Installer.ps1
+		installer\README.md = installer\README.md
+		installer\TheOmegaStrain.iss = installer\TheOmegaStrain.iss
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "3dSpesifics", "3dRotations\3dSpesifics.csproj", "{DEE6A875-DA07-4B8F-8D17-7158CF17334E}"
@@ -27,6 +34,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkSuite4", "BenchmarkSuite4\BenchmarkSuite4.csproj", "{58DE2B95-B7E5-3E9C-F1E8-6D24C25A34E0}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkSuite5", "BenchmarkSuite5\BenchmarkSuite5.csproj", "{37B623E5-D4BD-F358-DE58-EC4F4693BA45}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BenchmarkSuite6", "BenchmarkSuite6\BenchmarkSuite6.csproj", "{32F56372-1CCB-A9D3-534B-A832DF38C443}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -74,6 +83,10 @@ Global
 		{37B623E5-D4BD-F358-DE58-EC4F4693BA45}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{37B623E5-D4BD-F358-DE58-EC4F4693BA45}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{37B623E5-D4BD-F358-DE58-EC4F4693BA45}.Release|Any CPU.Build.0 = Release|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{32F56372-1CCB-A9D3-534B-A832DF38C443}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

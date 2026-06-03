@@ -3,6 +3,7 @@ using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
@@ -14,8 +15,15 @@ namespace _3dTesting.Rendering
         private readonly DrawingVisualHost visualHost;
         private readonly DrawingVisual visual = new DrawingVisual();
         private readonly bool _localLoggingEnabled =  false;
+        private const bool enableRenderPerfLogging = true;
+        private static int RenderPerfLogInterval => ScreenSetup.RuntimeTargetFps;
 
         private int renderingTriangleCount = 0;
+        private long renderFrameCount = 0;
+        private double averageRenderMs = 0;
+        private double averageCullMs = 0;
+        private double averageSortMs = 0;
+        private double averageDrawMs = 0;
 
         private readonly Dictionary<(float, string), Color> colorCache = new();
         private readonly Dictionary<Color, SolidColorBrush> brushCache = new();
@@ -123,8 +131,32 @@ namespace _3dTesting.Rendering
 
         public void RenderTriangles(List<_2dTriangleMesh> screenCoordinates)
         {
+            bool logRenderTiming = Logger.ShouldLog(enableRenderPerfLogging);
+            long renderStartTicks = logRenderTiming ? Stopwatch.GetTimestamp() : 0;
+            long phaseTicks = renderStartTicks;
+            double cullMs = 0;
+            double sortMs = 0;
+            double prepMs = 0;
+            double drawMs = 0;
+            double addVisualMs = 0;
+
+            double MarkPhase()
+            {
+                if (!logRenderTiming)
+                    return 0;
+
+                long now = Stopwatch.GetTimestamp();
+                double elapsedMs = TicksToMs(now - phaseTicks);
+                phaseTicks = now;
+                return elapsedMs;
+            }
+
+            CullTrianglesOutsideRenderDepth(screenCoordinates);
+            cullMs = MarkPhase();
+
             renderingTriangleCount = screenCoordinates.Count;
             screenCoordinates.Sort((a, b) => a.CalculatedZ.CompareTo(b.CalculatedZ));
+            sortMs = MarkPhase();
 
             geometryPoolIndex = 0;
 
@@ -132,34 +164,52 @@ namespace _3dTesting.Rendering
             int colorHits = 0, colorMisses = 0;
             int brushHits = 0, brushMisses = 0;
             int penHits = 0, penMisses = 0;
+            int drawCalls = 0;
+            prepMs = MarkPhase();
 
             using (var dc = visual.RenderOpen())
             {
                 dc.DrawRectangle(GetBackgroundBrush(), null, new Rect(0, 0, ScreenSetup.screenSizeX, ScreenSetup.screenSizeY));
 
-                foreach (var triangle in screenCoordinates)
+                StreamGeometry? batchGeometry = null;
+                StreamGeometryContext? batchContext = null;
+                SolidColorBrush? batchBrush = null;
+                Pen? batchPen = null;
+
+                void FlushBatch()
                 {
-                    if (triangle.CalculatedZ > FarZ || triangle.CalculatedZ < NearZ)
-                        continue;
-
-                    float depthFactor01 = GetDepthFactor01(triangle.CalculatedZ);
-                    float angleFactor01 = NormalizeAngleTo01(triangle.TriangleAngle);
-
-                    // First shade by angle, then by depth => combined factor
-                    float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
-
-                    if (triangle.PartName.Contains("Star_Core"))
+                    if (batchGeometry == null || batchContext == null || batchBrush == null || batchPen == null)
                     {
-                        combinedFactor01 = depthFactor01;
+                        return;
                     }
 
-                    float shadeKey = (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
+                    batchContext.Close();
+                    batchContext = null;
+                    dc.DrawGeometry(batchBrush, batchPen, batchGeometry);
+                    drawCalls++;
+                }
 
+                foreach (var triangle in screenCoordinates)
+                {
+                    if (ShouldUseEffectRenderingPipeline(triangle))
+                    {
+                        FlushBatch();
+                        DrawEffectTriangle(dc, triangle);
+                        drawCalls++;
+                        batchGeometry = null;
+                        batchContext = null;
+                        batchBrush = null;
+                        batchPen = null;
+                        continue;
+                    }
+
+                    float shadeKey = GetTriangleShadeKey(triangle);
                     string baseColor = NormalizeColorCached(triangle.Color);
 
                     if (!colorCache.TryGetValue((shadeKey, baseColor), out Color color))
                     {
                         if (ShouldLog()) Logger.Log($"[WorldRenderer] ⚠️ Color cache miss for key ({shadeKey}, {baseColor}). CalculatedZ:{triangle.CalculatedZ} Angle:{triangle.TriangleAngle:0.00}");
+
                         string hex = Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor);
 
                         color = HexToColor(hex);
@@ -195,17 +245,72 @@ namespace _3dTesting.Rendering
                         penHits++;
                     }
 
-                    DrawTriangle(dc, triangle, brush, pen);
+                    var effectiveBrush = IsCrashBoxPartName(triangle.PartName)
+                        ? CreateCrashBoxBrush(brush.Color)
+                        : brush;
+
+                    if (!IsSameBatch(batchBrush, batchPen, effectiveBrush, pen))
+                    {
+                        FlushBatch();
+                        batchGeometry = GetNextGeometry();
+                        batchContext = batchGeometry.Open();
+                        batchBrush = effectiveBrush;
+                        batchPen = pen;
+                    }
+
+                    AddTriangleFigure(batchContext, triangle);
                 }
+
+                FlushBatch();
             }
+            drawMs = MarkPhase();
 
             visualHost.AddVisual(visual);
+            addVisualMs = MarkPhase();
+
+            if (logRenderTiming)
+            {
+                renderFrameCount++;
+                double totalMs = TicksToMs(Stopwatch.GetTimestamp() - renderStartTicks);
+                averageRenderMs += (totalMs - averageRenderMs) / renderFrameCount;
+                averageCullMs += (cullMs - averageCullMs) / renderFrameCount;
+                averageSortMs += (sortMs - averageSortMs) / renderFrameCount;
+                averageDrawMs += (drawMs - averageDrawMs) / renderFrameCount;
+
+                if (renderFrameCount % RenderPerfLogInterval == 0)
+                {
+                    Logger.Log(
+                        $"[RenderPerf] frame={renderFrameCount} triangles={renderingTriangleCount} drawCalls={drawCalls} totalMs={totalMs:0.###} cullMs={cullMs:0.###} sortMs={sortMs:0.###} prepMs={prepMs:0.###} drawMs={drawMs:0.###} addVisualMs={addVisualMs:0.###} " +
+                        $"avgRenderMs={averageRenderMs:0.###} avgCullMs={averageCullMs:0.###} avgSortMs={averageSortMs:0.###} avgDrawMs={averageDrawMs:0.###}");
+                }
+            }
 
             if (trackStats)
             {
                 Logger.Log($"[WorldRenderer] Caching stats - Colors: {colorHits} hits / {colorMisses} misses, " +
-                           $"Brushes: {brushHits} hits / {brushMisses} misses, Pens: {penHits} hits / {penMisses} misses");
+                           $"Brushes: {brushHits} hits / {brushMisses} misses, Pens: {penHits} hits / {penMisses} misses, DrawCalls: {drawCalls}");
             }
+        }
+
+        public static int CullTrianglesOutsideRenderDepth(List<_2dTriangleMesh> triangles)
+        {
+            int writeIndex = 0;
+            for (int readIndex = 0; readIndex < triangles.Count; readIndex++)
+            {
+                var triangle = triangles[readIndex];
+                if (triangle.CalculatedZ > FarZ || triangle.CalculatedZ < NearZ)
+                    continue;
+
+                if (writeIndex != readIndex)
+                    triangles[writeIndex] = triangle;
+
+                writeIndex++;
+            }
+
+            if (writeIndex < triangles.Count)
+                triangles.RemoveRange(writeIndex, triangles.Count - writeIndex);
+
+            return writeIndex;
         }
 
         public static int ProcessTrianglesForRender(
@@ -227,7 +332,8 @@ namespace _3dTesting.Rendering
                 float angleFactor01 = NormalizeAngleTo01(triangle.TriangleAngle);
 
                 float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
-                float shadeKey = (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
+                if (triangle.PartName != null && triangle.PartName.Contains("Star_Core"))
+                    combinedFactor01 = depthFactor01;
 
                 string? baseColor = triangle.Color;
                 if (string.IsNullOrWhiteSpace(baseColor))
@@ -241,6 +347,8 @@ namespace _3dTesting.Rendering
                         baseColor = baseColor.Substring(1);
                     baseColor = baseColor.ToLowerInvariant();
                 }
+
+                float shadeKey = (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
 
                 if (!colorCache.TryGetValue((shadeKey, baseColor), out Color color))
                 {
@@ -272,6 +380,26 @@ namespace _3dTesting.Rendering
         public static bool IsCrashBoxPartName(string? partName)
         {
             return partName != null && partName.StartsWith("CrashBox-", StringComparison.Ordinal);
+        }
+
+        public static bool ShouldRenderAsSeparateTriangle(string? partName)
+        {
+            return IsDynamicEffectPartName(partName);
+        }
+
+        public static bool ShouldUseEffectRenderingPipeline(_2dTriangleMesh triangle)
+        {
+            return triangle.UseEffectRenderingPipeline || IsDynamicEffectPartName(triangle.PartName);
+        }
+
+        public static bool IsExplodingPartName(string? partName)
+        {
+            return string.Equals(partName, "ExplodingPart", StringComparison.Ordinal);
+        }
+
+        public static bool IsDynamicEffectPartName(string? partName)
+        {
+            return TriangleRenderPipelineMarkers.IsDynamicEffectPartName(partName);
         }
 
         public static int CountCrashBoxParts(string[] partNames)
@@ -328,33 +456,99 @@ namespace _3dTesting.Rendering
             return brush;
         }
 
-        private void DrawTriangle(DrawingContext dc, _2dTriangleMesh triangle, SolidColorBrush brush, Pen pen)
+        private StreamGeometry GetNextGeometry()
+        {
+            if (geometryPoolIndex >= geometryPool.Count)
+                geometryPool.Add(new StreamGeometry());
+
+            var geometry = geometryPool[geometryPoolIndex++];
+            geometry.FillRule = FillRule.Nonzero;
+            return geometry;
+        }
+
+        public static bool IsSameBatch(SolidColorBrush? currentBrush, Pen? currentPen, SolidColorBrush nextBrush, Pen nextPen)
+        {
+            return ReferenceEquals(currentBrush, nextBrush) && ReferenceEquals(currentPen, nextPen);
+        }
+
+        private void DrawEffectTriangle(DrawingContext dc, _2dTriangleMesh triangle)
+        {
+            Color color = GetCachedTriangleColor(triangle);
+            SolidColorBrush brush = GetCachedBrush(color);
+            Pen pen = GetCachedPen(color, brush);
+            StreamGeometry geometry = GetNextGeometry();
+
+            using (var ctx = geometry.Open())
+            {
+                AddTriangleFigure(ctx, triangle);
+            }
+
+            dc.DrawGeometry(brush, pen, geometry);
+        }
+
+        private Color GetCachedTriangleColor(_2dTriangleMesh triangle)
+        {
+            float shadeKey = GetTriangleShadeKey(triangle);
+            string baseColor = NormalizeColor(triangle.Color);
+            if (colorCache.TryGetValue((shadeKey, baseColor), out Color color))
+            {
+                return color;
+            }
+
+            color = HexToColor(Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor));
+            colorCache[(shadeKey, baseColor)] = color;
+            return color;
+        }
+
+        private SolidColorBrush GetCachedBrush(Color color)
+        {
+            if (brushCache.TryGetValue(color, out SolidColorBrush brush))
+            {
+                return brush;
+            }
+
+            brush = new SolidColorBrush(color);
+            brush.Freeze();
+            brushCache[color] = brush;
+            return brush;
+        }
+
+        private Pen GetCachedPen(Color color, SolidColorBrush brush)
+        {
+            if (penCache.TryGetValue(color, out Pen pen))
+            {
+                return pen;
+            }
+
+            pen = new Pen(brush, 1);
+            pen.Freeze();
+            penCache[color] = pen;
+            return pen;
+        }
+
+        private static float GetTriangleShadeKey(_2dTriangleMesh triangle)
+        {
+            float depthFactor01 = GetDepthFactor01(triangle.CalculatedZ);
+            float angleFactor01 = NormalizeAngleTo01(triangle.TriangleAngle);
+            float combinedFactor01 = Math.Clamp(angleFactor01 * depthFactor01, 0f, 1f);
+
+            if (triangle.PartName != null && triangle.PartName.Contains("Star_Core"))
+            {
+                combinedFactor01 = depthFactor01;
+            }
+
+            return (float)Math.Round(combinedFactor01, 2, MidpointRounding.AwayFromZero);
+        }
+
+        private static void AddTriangleFigure(StreamGeometryContext ctx, _2dTriangleMesh triangle)
         {
             var p1 = new Point(triangle.X1, triangle.Y1);
             var p2 = new Point(triangle.X2, triangle.Y2);
             var p3 = new Point(triangle.X3, triangle.Y3);
 
-            if (geometryPoolIndex >= geometryPool.Count)
-                geometryPool.Add(new StreamGeometry());
-
-            var geometry = geometryPool[geometryPoolIndex++];
-            using (var ctx = geometry.Open())
-            {
-                ctx.BeginFigure(p1, true, true);
-                ctx.LineTo(p2, true, false);
-                ctx.LineTo(p3, true, false);
-            }
-
-            if (IsCrashBoxPartName(triangle.PartName))
-            {
-                var transparentBrush = CreateCrashBoxBrush(brush.Color);
-                dc.DrawGeometry(transparentBrush, pen, geometry);
-            }
-            else
-            {
-                // Normal rendering
-                dc.DrawGeometry(brush, pen, geometry);
-            }
+            ctx.BeginFigure(p1, true, true);
+            ctx.LineTo(p2, true, false);
+            ctx.LineTo(p3, true, false);
         }
 
         private string NormalizeColorCached(string? raw)
@@ -363,12 +557,20 @@ namespace _3dTesting.Rendering
                 return "000000";
             if (_normalizedColorCache.TryGetValue(raw, out var cached))
                 return cached;
+            var normalized = NormalizeColor(raw);
+            _normalizedColorCache[raw] = normalized;
+            return normalized;
+        }
+
+        private static string NormalizeColor(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return "000000";
+
             var normalized = raw.Trim();
             if (normalized.Length > 0 && normalized[0] == '#')
                 normalized = normalized.Substring(1);
-            normalized = normalized.ToLowerInvariant();
-            _normalizedColorCache[raw] = normalized;
-            return normalized;
+            return normalized.ToLowerInvariant();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -434,6 +636,12 @@ namespace _3dTesting.Rendering
             byte b = Convert.ToByte(hex.Substring(4, 2), 16);
 
             return Color.FromArgb(255, r, g, b);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static double TicksToMs(long ticks)
+        {
+            return ticks * 1000.0 / Stopwatch.Frequency;
         }
     }
 }

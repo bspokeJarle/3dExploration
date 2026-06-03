@@ -1,5 +1,6 @@
 using _3dTesting.Helpers;
 using _3dTesting.MainWindowClasses;
+using _3dTesting.MainWindowClasses.Loops;
 using _3dTesting.MainWindowClasses.Overlays;
 using _3dTesting.Rendering;
 using CommonUtilities.CommonGlobalState;
@@ -10,6 +11,7 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -17,6 +19,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Interop;
 using System.Windows.Threading;
 
 namespace _3dTesting
@@ -43,7 +46,7 @@ namespace _3dTesting
     public partial class MainWindow : Window
     {
         private const bool enableLogging = false;
-        private const bool enableFileLogging = false;
+        private const bool enableFileLogging = LiveGameLoop.EnableCpuHeadroomLogging;
         private DrawingVisualHost visualHost = new DrawingVisualHost();
         private readonly DispatcherTimer timer = new DispatcherTimer();
         private readonly Stopwatch stopwatch = new Stopwatch();
@@ -59,10 +62,13 @@ namespace _3dTesting
         private bool isPaused = false;
         private int pauseFrameCount = 0;
         private const int limitFrameCount = 10;
+        private const int MaxPooledTriangleLists = 4;
         private DateTime fadeOutTrigged = DateTime.MinValue;
         private int _updateInProgress = 0;
         private long _lastTickTimestamp = 0;
         private int _minimapFrameSkip = 0;
+        private readonly object _triangleListPoolLock = new();
+        private readonly Stack<List<_Coordinates._2dTriangleMesh>> _triangleListPool = new();
 
         // Overlay handlers
         private OverlayManager _overlayManager;
@@ -95,26 +101,32 @@ namespace _3dTesting
         private bool _isFadingIn = false;
         private int Fps = 0;
 
-        private const int TargetFps = ScreenSetup.targetFps;
-        private readonly double targetFrameIntervalMs = 1000.0 / TargetFps;
+        private static int TargetFps => ScreenSetup.RuntimeTargetFps;
+        private static double TargetFrameIntervalMs => ScreenSetup.TargetFrameIntervalMs;
         private long _lastFrameTick = 0;
         private double _tickAccumulatorMs = 0;
+        private int _currentDisplayRefreshHz = ScreenSetup.targetFps;
 
         public MainWindow()
         {
+            ScreenSetup.ConfigureRuntimeTargetFps(_currentDisplayRefreshHz);
+
             Logger.EnableFileLogging = enableFileLogging;
             if (Logger.EnableFileLogging)
             {
                 Logger.ClearLog();
+                Logger.Log($"[PerfLogging] enabled targetFps={TargetFps} targetFrameMs={TargetFrameIntervalMs:0.###} displayRefreshHz={_currentDisplayRefreshHz} source=StartupFallback");
             }
 
-            GameState.SurfaceState.RecordingFps = ScreenSetup.targetFps;
+            GameState.SurfaceState.RecordingFps = ScreenSetup.RuntimeTargetFps;
 
             PersistenceSetup.Initialize();
             GameState.GamePlayState.PlayerName = PersistenceSetup.LoadLastPlayerName();
 
             InitializeComponent();
             this.PreviewKeyDown += new KeyEventHandler(HandleKeys);
+            SourceInitialized += (_, _) => ConfigureRuntimeFpsForCurrentMonitor("SourceInitialized");
+            LocationChanged += (_, _) => ConfigureRuntimeFpsForCurrentMonitor("LocationChanged");
             Closing += MainWindow_Closing;
             Loaded += Window_Loaded;
 
@@ -263,10 +275,24 @@ namespace _3dTesting
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
+            try
+            {
+                var sceneType = world.SceneHandler.GetActiveScene().SceneType;
+                if (sceneType == SceneTypes.Game || sceneType == SceneTypes.Simulation)
+                {
+                    HighscoreService.SubmitFromGamePlay(GameState.GamePlayState);
+                    GameStatePersistence.SaveGameState();
+                }
+            }
+            catch
+            {
+            }
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
+            ConfigureRuntimeFpsForCurrentMonitor("Loaded");
+
             int w = (int)ActualWidth;
             int h = (int)ActualHeight;
             if (w > 0 && h > 0)
@@ -355,18 +381,123 @@ namespace _3dTesting
             _lastFrameTick = nowTicks;
             _tickAccumulatorMs += elapsedMs;
 
-            if (_tickAccumulatorMs < targetFrameIntervalMs)
+            if (_tickAccumulatorMs < TargetFrameIntervalMs)
                 return;
 
-            int steps = (int)Math.Floor(_tickAccumulatorMs / targetFrameIntervalMs);
+            int steps = (int)Math.Floor(_tickAccumulatorMs / TargetFrameIntervalMs);
             if (steps > 3) steps = 3;
 
-            _tickAccumulatorMs -= steps * targetFrameIntervalMs;
+            _tickAccumulatorMs -= steps * TargetFrameIntervalMs;
 
             for (int i = 0; i < steps; i++)
             {
-                Handle3dWorld(targetFrameIntervalMs / 1000.0);
+                Handle3dWorld(TargetFrameIntervalMs / 1000.0);
             }
+        }
+
+        private void ConfigureRuntimeFpsForCurrentMonitor(string source)
+        {
+            int displayRefreshHz = GetDisplayRefreshHzForWindow();
+            int previousTargetFps = ScreenSetup.RuntimeTargetFps;
+            int previousRefreshHz = _currentDisplayRefreshHz;
+
+            ScreenSetup.ConfigureRuntimeTargetFps(displayRefreshHz);
+            GameState.SurfaceState.RecordingFps = ScreenSetup.RuntimeTargetFps;
+            _currentDisplayRefreshHz = displayRefreshHz;
+
+            if (Logger.EnableFileLogging &&
+                (previousTargetFps != ScreenSetup.RuntimeTargetFps || previousRefreshHz != displayRefreshHz))
+            {
+                Logger.Log($"[PerfLogging] enabled targetFps={TargetFps} targetFrameMs={TargetFrameIntervalMs:0.###} displayRefreshHz={displayRefreshHz} source={source}");
+            }
+        }
+
+        private int GetDisplayRefreshHzForWindow()
+        {
+            var handle = new WindowInteropHelper(this).Handle;
+            string? deviceName = null;
+
+            if (handle != IntPtr.Zero)
+            {
+                var monitor = MonitorFromWindow(handle, MonitorDefaultToNearest);
+                if (monitor != IntPtr.Zero)
+                {
+                    var monitorInfo = new MonitorInfoEx();
+                    monitorInfo.cbSize = Marshal.SizeOf<MonitorInfoEx>();
+                    if (GetMonitorInfo(monitor, ref monitorInfo))
+                    {
+                        deviceName = monitorInfo.szDevice;
+                    }
+                }
+            }
+
+            var mode = new DevMode();
+            mode.dmSize = (short)Marshal.SizeOf<DevMode>();
+
+            return EnumDisplaySettings(deviceName, EnumCurrentSettings, ref mode)
+                ? mode.dmDisplayFrequency
+                : ScreenSetup.targetFps;
+        }
+
+        private const int EnumCurrentSettings = -1;
+        private const uint MonitorDefaultToNearest = 2;
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern bool EnumDisplaySettings(string? deviceName, int modeNum, ref DevMode devMode);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfoEx monitorInfo);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Rect
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct MonitorInfoEx
+        {
+            public int cbSize;
+            public Rect rcMonitor;
+            public Rect rcWork;
+            public int dwFlags;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+            public string szDevice;
+        }
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct DevMode
+        {
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+            public string dmDeviceName;
+            public short dmSpecVersion;
+            public short dmDriverVersion;
+            public short dmSize;
+            public short dmDriverExtra;
+            public int dmFields;
+            public int dmPositionX;
+            public int dmPositionY;
+            public int dmDisplayOrientation;
+            public int dmDisplayFixedOutput;
+            public short dmColor;
+            public short dmDuplex;
+            public short dmYResolution;
+            public short dmTTOption;
+            public short dmCollate;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
+            public string dmFormName;
+            public short dmLogPixels;
+            public int dmBitsPerPel;
+            public int dmPelsWidth;
+            public int dmPelsHeight;
+            public int dmDisplayFlags;
+            public int dmDisplayFrequency;
         }
 
         private async void Handle3dWorld(double dtSeconds)
@@ -393,11 +524,8 @@ namespace _3dTesting
             if (world.IsPaused)
                 pauseFrameCount++;
 
-            if (pauseFrameCount < limitFrameCount && gameWorldManager.FadeInWorld)
+            if (pauseFrameCount < limitFrameCount && GameState.WorldFade.TryBeginFadeIn(out var fadeInDurationSeconds))
             {
-                // Clear immediately so concurrent async Handle3dWorld calls
-                // from the same render tick don't start overlapping FadeInAsync animations
-                gameWorldManager.FadeInWorld = false;
                 if (!isFading)
                 {
                     // FadeOut was skipped (e.g., ship exploded before the fadeout delay elapsed)
@@ -407,18 +535,18 @@ namespace _3dTesting
                     isFading = true;
                 }
                 _isFadingIn = true;
-                await FadeInAsync(1.5f);
+                await FadeInAsync(fadeInDurationSeconds);
                 _isFadingIn = false;
                 isFading = false;
+                GameState.WorldFade.MarkFadeInComplete();
                 fadeOutTrigged = DateTime.MinValue;
             }
 
-            if (pauseFrameCount <= limitFrameCount && gameWorldManager.FadeOutWorld && !isFading)
+            if (pauseFrameCount <= limitFrameCount && !isFading && GameState.WorldFade.TryBeginFadeOut(out var fadeOutDurationSeconds))
             {
                 isFading = true;
-                await FadeOutAsync(1.0f);
-                gameWorldManager.FadeOutWorld = false;
-                gameWorldManager.SceneResetReady = true;
+                await FadeOutAsync(fadeOutDurationSeconds);
+                GameState.WorldFade.MarkFadeOutComplete();
                 fadeOutTrigged = DateTime.MinValue;
             }
 
@@ -492,11 +620,18 @@ namespace _3dTesting
             {
                 bool shouldLog = Logger.ShouldLog(enableLogging);
                 long startTicks = shouldLog ? Stopwatch.GetTimestamp() : 0;
+                var screenCoordinates = RentTriangleList();
+                var crashBoxCoordinates = RentTriangleList();
+                bool handedToDispatcher = false;
+
+                void ReturnLists()
+                {
+                    ReturnTriangleList(screenCoordinates);
+                    ReturnTriangleList(crashBoxCoordinates);
+                }
+
                 try
                 {
-                    var screenCoordinates = new List<_Coordinates._2dTriangleMesh>();
-                    var crashBoxCoordinates = new List<_Coordinates._2dTriangleMesh>();
-
                     gameWorldManager.UpdateWorld(world, ref screenCoordinates, ref crashBoxCoordinates);
 
                     if (shouldLog)
@@ -506,13 +641,53 @@ namespace _3dTesting
                     }
 
                     if (!isFading || _isFadingIn)
-                        Dispatcher.BeginInvoke(() => worldRenderer.RenderTriangles(screenCoordinates));
+                    {
+                        Dispatcher.BeginInvoke(() =>
+                        {
+                            try
+                            {
+                                worldRenderer.RenderTriangles(screenCoordinates);
+                            }
+                            finally
+                            {
+                                ReturnLists();
+                            }
+                        });
+                        handedToDispatcher = true;
+                    }
                 }
                 finally
                 {
+                    if (!handedToDispatcher)
+                    {
+                        ReturnLists();
+                    }
+
                     System.Threading.Interlocked.Exchange(ref _updateInProgress, 0);
                 }
             });
+        }
+
+        private List<_Coordinates._2dTriangleMesh> RentTriangleList()
+        {
+            lock (_triangleListPoolLock)
+            {
+                if (_triangleListPool.Count > 0)
+                    return _triangleListPool.Pop();
+            }
+
+            return new List<_Coordinates._2dTriangleMesh>();
+        }
+
+        private void ReturnTriangleList(List<_Coordinates._2dTriangleMesh> list)
+        {
+            list.Clear();
+
+            lock (_triangleListPoolLock)
+            {
+                if (_triangleListPool.Count < MaxPooledTriangleLists)
+                    _triangleListPool.Push(list);
+            }
         }
 
         private void UpdateVideoOverlay()

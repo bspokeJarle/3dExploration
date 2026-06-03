@@ -1,29 +1,42 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace _3dTesting.Helpers
 {
     public class Colors
     {
-        public static System.Windows.Media.Color getShadeOfColorFromNormal(float normal,string color)
+        private static readonly char[] HexChars = "0123456789ABCDEF".ToCharArray();
+
+        public static System.Windows.Media.Color getShadeOfColorFromNormal(float normal, string color)
         {
-            string rs = color[0..2];
-            string gs = color[2..4];
-            string bs = color[4..6];
-            var r = Convert.ToInt16(Convert.ToInt16(rs,16)*normal);
-            var g = Convert.ToInt16(Convert.ToInt16(gs,16)*normal);
-            var b = Convert.ToInt16(Convert.ToInt16(bs,16)*normal);
-            //Make sure the color is within the range of 0-255
-            if (r > 255) r = 255;
-            if (g > 255) g = 255;
-            if (b > 255) b = 255;
-            if (r < 0) r = 0;
-            if (g < 0) g = 0;
-            if (b < 0) b = 0;
-            var rhex = r.ToString("X").PadLeft(2,'0');
-            var ghex = g.ToString("X").PadLeft(2,'0');
-            var bhex = b.ToString("X").PadLeft(2,'0');
-            var hex = "#"+rhex + ghex + bhex;
-            return (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex);
+            ReadOnlySpan<char> span = string.IsNullOrEmpty(color)
+                ? "000000".AsSpan()
+                : color.AsSpan();
+
+            if (span.Length > 0 && span[0] == '#')
+                span = span[1..];
+
+            if (span.Length < 6)
+                return System.Windows.Media.Colors.Black;
+
+            byte r = (byte)Math.Clamp((int)(ParseHexByte(span[0], span[1]) * normal), 0, 255);
+            byte g = (byte)Math.Clamp((int)(ParseHexByte(span[2], span[3]) * normal), 0, 255);
+            byte b = (byte)Math.Clamp((int)(ParseHexByte(span[4], span[5]) * normal), 0, 255);
+
+            return System.Windows.Media.Color.FromArgb(255, r, g, b);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ParseHexByte(char hi, char lo)
+            => (HexDigit(hi) << 4) | HexDigit(lo);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int HexDigit(char c)
+        {
+            if (c >= '0' && c <= '9') return c - '0';
+            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+            return 0;
         }
     }
 }

@@ -33,12 +33,26 @@ internal sealed class SegmentedLoopSampleProvider : ISampleProvider
         _segments = segments;
         _format = targetFormat;
 
-        _loopStartTs = TimeSpan.FromSeconds(_segments.LoopStart);
-        _loopEndTs = TimeSpan.FromSeconds(_segments.LoopEnd);
-        _endTs = TimeSpan.FromSeconds(_segments.End);
+        var fileStartTs = TimeSpan.Zero;
+        var fileEndTs = _file.TotalTime;
+        var startTs = Clamp(TimeSpan.FromSeconds(_segments.Start), fileStartTs, fileEndTs);
+
+        _loopStartTs = Clamp(TimeSpan.FromSeconds(_segments.LoopStart), fileStartTs, fileEndTs);
+
+        var configuredLoopEndTs = TimeSpan.FromSeconds(
+            _segments.LoopEnd > _segments.LoopStart
+                ? _segments.LoopEnd
+                : fileEndTs.TotalSeconds);
+        _loopEndTs = Clamp(configuredLoopEndTs, _loopStartTs, fileEndTs);
+
+        var configuredEndTs = TimeSpan.FromSeconds(
+            _segments.End > _segments.LoopEnd
+                ? _segments.End
+                : _loopEndTs.TotalSeconds);
+        _endTs = Clamp(configuredEndTs, _loopEndTs, fileEndTs);
 
         // Start playback at the configured intro position.
-        _file.CurrentTime = TimeSpan.FromSeconds(_segments.Start);
+        _file.CurrentTime = startTs;
     }
 
     public WaveFormat WaveFormat => _format;
@@ -75,6 +89,13 @@ internal sealed class SegmentedLoopSampleProvider : ISampleProvider
     {
         if (_finished)
             return 0;
+
+        // Loop before reading so we never depend on exact EOF behavior from the decoder.
+        if (!_stopRequested && _file.CurrentTime >= _loopEndTs)
+        {
+            if (Logger.ShouldLog(enableLogging)) Logger.Log($"Audio: SegmentedLoop - pre-read loop at t={_file.CurrentTime.TotalSeconds:F2}s -> loopStart={_segments.LoopStart:F2}s");
+            _file.CurrentTime = _loopStartTs;
+        }
 
         int read = _source.Read(buffer, offset, count);
         if (read == 0)
@@ -119,6 +140,20 @@ internal sealed class SegmentedLoopSampleProvider : ISampleProvider
         }
 
         return read;
+    }
+
+    private static TimeSpan Clamp(TimeSpan value, TimeSpan min, TimeSpan max)
+    {
+        if (max < min)
+            max = min;
+
+        if (value < min)
+            return min;
+
+        if (value > max)
+            return max;
+
+        return value;
     }
 }
 

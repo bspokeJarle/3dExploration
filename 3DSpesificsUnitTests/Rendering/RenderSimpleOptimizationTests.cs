@@ -2,9 +2,12 @@ using _3dRotations.World.Objects;
 using _3dTesting._3dRotation;
 using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
+using _3dTesting.Rendering;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
 using Domain;
+using System.Windows.Media;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3DSpesificsUnitTests.Rendering;
@@ -72,7 +75,195 @@ public class RenderSimpleOptimizationTests
         Assert.AreEqual(0, emptyResult.Count);
     }
 
-    private static _3dObject CreateRenderableObject()
+    [TestMethod]
+    public void ConvertTo2dFromObjects_ReservesCapacityForVisibleTriangles()
+    {
+        var converter = new _3dTo2d();
+        var reusable = new List<_2dTriangleMesh>(capacity: 1);
+        var obj = CreateRenderableObject();
+        var triangles = obj.ObjectParts[0].Triangles;
+        var template = triangles[0];
+
+        for (int i = 1; i < 64; i++)
+        {
+            triangles.Add(new TriangleMeshWithColor
+            {
+                Color = template.Color,
+                noHidden = true,
+                normal1 = new Vector3 { x = 0f, y = 0f, z = 1f },
+                vert1 = new Vector3 { x = -10f, y = -10f, z = 0f },
+                vert2 = new Vector3 { x = 10f, y = -10f, z = 0f },
+                vert3 = new Vector3 { x = 0f, y = 10f, z = 0f }
+            });
+        }
+
+        var result = converter.ConvertTo2dFromObjects(
+            new List<_3dObject> { obj },
+            1,
+            reusable);
+
+        Assert.AreSame(reusable, result);
+        Assert.AreEqual(64, result.Count);
+        Assert.IsTrue(result.Capacity >= 64,
+            "Projection output should reserve enough capacity for visible triangles, not just object count.");
+    }
+
+    [TestMethod]
+    public void ConvertTo2dFromObjects_MarksDynamicEffectsForEffectPipeline()
+    {
+        var converter = new _3dTo2d();
+
+        var result = converter.ConvertTo2dFromObjects(
+            new List<_3dObject> { CreateRenderableObject("ExplodingPart") },
+            1);
+
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual("ExplodingPart", result[0].PartName);
+        Assert.IsTrue(result[0].UseEffectRenderingPipeline,
+            "Explosions should be explicitly marked for the separate effect rendering pipeline before they reach WorldRenderer.");
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(result[0]));
+    }
+
+    [TestMethod]
+    public void ConvertTo2dFromObjects_ClampsCrashBoxDebugTrianglesToScreenMargin()
+    {
+        var converter = new _3dTo2d();
+        var surface = CreateRenderableObject();
+        surface.ObjectName = "Surface";
+        surface.CrashBoxDebugMode = true;
+        surface.CrashBoxes = new List<List<IVector3>>
+        {
+            _3dObjectHelpers.GenerateCrashBoxCorners(
+                new Vector3 { x = -100000, y = -100000, z = 0 },
+                new Vector3 { x = 100000, y = 100000, z = 50 })
+        };
+        surface.CrashBoxNames = new List<string?> { "TerrainSurface" };
+
+        var result = converter.ConvertTo2dFromObjects(new List<_3dObject> { surface }, 1);
+        var crashTriangles = result.Where(t => t.PartName == "CrashBox-Surface").ToList();
+
+        Assert.IsTrue(crashTriangles.Count > 0, "Expected debug crashbox triangles to be rendered.");
+        foreach (var triangle in crashTriangles)
+        {
+            AssertDebugCoordinateIsClamped(triangle.X1, triangle.Y1);
+            AssertDebugCoordinateIsClamped(triangle.X2, triangle.Y2);
+            AssertDebugCoordinateIsClamped(triangle.X3, triangle.Y3);
+        }
+    }
+
+    [TestMethod]
+    public void ConvertTo2dFromObjects_RendersSurfaceMainCrashBoxDebug()
+    {
+        var converter = new _3dTo2d();
+        var surface = CreateRenderableObject();
+        surface.ObjectName = "Surface";
+        surface.CrashBoxDebugMode = true;
+        surface.CrashBoxes = new List<List<IVector3>>
+        {
+            _3dObjectHelpers.GenerateCrashBoxCorners(
+                new Vector3 { x = -50, y = -50, z = -50 },
+                new Vector3 { x = 50, y = 50, z = 50 })
+        };
+        surface.CrashBoxNames = new List<string?> { "MainSurface" };
+
+        var result = converter.ConvertTo2dFromObjects(new List<_3dObject> { surface }, 1);
+
+        Assert.IsTrue(result.Any(t => t.PartName == "CrashBox-Surface"),
+            "MainSurface should still be visible when surface crashbox debug mode is enabled.");
+    }
+
+    [TestMethod]
+    public void CullTrianglesOutsideRenderDepth_RemovesOutOfRangeTrianglesBeforeSort()
+    {
+        var triangles = new List<_2dTriangleMesh>
+        {
+            new() { CalculatedZ = ScreenSetup.RenderNearZ - 1, PartName = "TooNear" },
+            new() { CalculatedZ = 0, PartName = "KeepMiddle" },
+            new() { CalculatedZ = ScreenSetup.RenderFarZ + 1, PartName = "TooFar" },
+            new() { CalculatedZ = ScreenSetup.RenderNearZ, PartName = "KeepNearBoundary" },
+            new() { CalculatedZ = ScreenSetup.RenderFarZ, PartName = "KeepFarBoundary" }
+        };
+
+        int kept = WorldRenderer.CullTrianglesOutsideRenderDepth(triangles);
+
+        Assert.AreEqual(3, kept);
+        Assert.AreEqual(3, triangles.Count);
+        Assert.AreEqual("KeepMiddle", triangles[0].PartName);
+        Assert.AreEqual("KeepNearBoundary", triangles[1].PartName);
+        Assert.AreEqual("KeepFarBoundary", triangles[2].PartName);
+    }
+
+    [TestMethod]
+    public void ProcessTrianglesForRender_CreatesPensForVisibleTrianglesToCoverSeams()
+    {
+        var triangles = new List<_2dTriangleMesh>
+        {
+            new() { CalculatedZ = 0, TriangleAngle = 0.5f, Color = "ffffff", PartName = "Surface" },
+            new() { CalculatedZ = 0, TriangleAngle = 0.5f, Color = "ff0000", PartName = "CrashBox-Test" }
+        };
+        var colorCache = new Dictionary<(float, string), Color>();
+        var brushCache = new Dictionary<Color, SolidColorBrush>();
+        var penCache = new Dictionary<Color, Pen>();
+
+        int processed = WorldRenderer.ProcessTrianglesForRender(triangles, colorCache, brushCache, penCache);
+
+        Assert.AreEqual(2, processed);
+        Assert.AreEqual(2, penCache.Count);
+    }
+
+    [TestMethod]
+    public void IsSameBatch_RequiresSameBrushAndPenInstances()
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(10, 20, 30));
+        var sameColorDifferentBrush = new SolidColorBrush(Color.FromRgb(10, 20, 30));
+        var pen = new Pen(brush, 1);
+        var sameColorDifferentPen = new Pen(brush, 1);
+
+        Assert.IsTrue(WorldRenderer.IsSameBatch(brush, pen, brush, pen));
+        Assert.IsFalse(WorldRenderer.IsSameBatch(brush, pen, sameColorDifferentBrush, pen));
+        Assert.IsFalse(WorldRenderer.IsSameBatch(brush, pen, brush, sameColorDifferentPen));
+    }
+
+    [TestMethod]
+    public void ExplodingPart_RendersOutsideBatching()
+    {
+        Assert.IsTrue(WorldRenderer.ShouldRenderAsSeparateTriangle("ExplodingPart"),
+            "Explosion fragments should not be merged into one StreamGeometry batch.");
+        Assert.IsFalse(WorldRenderer.ShouldRenderAsSeparateTriangle("Surface"),
+            "Normal world geometry should keep the optimized batching path.");
+        Assert.IsTrue(WorldRenderer.IsExplodingPartName("ExplodingPart"),
+            "Renderer should be able to identify explosion fragments for the dynamic effect path.");
+    }
+
+    [TestMethod]
+    public void DynamicEffects_RenderOutsideBatching()
+    {
+        Assert.IsTrue(WorldRenderer.ShouldRenderAsSeparateTriangle("Particle"),
+            "Particle bursts should not be merged into one StreamGeometry batch.");
+        Assert.IsTrue(WorldRenderer.ShouldRenderAsSeparateTriangle("ParticleShadow"),
+            "Particle shadows are dynamic effects and should not share batched geometry.");
+        Assert.IsFalse(WorldRenderer.ShouldRenderAsSeparateTriangle("EarthGlobe"),
+            "Stable world geometry should keep batching enabled.");
+
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(new _2dTriangleMesh
+        {
+            PartName = "Surface",
+            UseEffectRenderingPipeline = true
+        }), "The explicit 2D marker must force the effect pipeline even without a special part name.");
+    }
+
+    private static void AssertDebugCoordinateIsClamped(int x, int y)
+    {
+        int minX = (int)Math.Floor(-(ScreenSetup.screenSizeX * 0.05));
+        int maxX = (int)Math.Ceiling(ScreenSetup.screenSizeX * 1.05);
+        int minY = (int)Math.Floor(-(ScreenSetup.screenSizeY * 0.05));
+        int maxY = (int)Math.Ceiling(ScreenSetup.screenSizeY * 1.05);
+
+        Assert.IsTrue(x >= minX && x <= maxX, $"Expected debug X coordinate {x} to be inside the crashbox debug screen margin.");
+        Assert.IsTrue(y >= minY && y <= maxY, $"Expected debug Y coordinate {y} to be inside the crashbox debug screen margin.");
+    }
+
+    private static _3dObject CreateRenderableObject(string partName = "Main")
     {
         return new _3dObject
         {
@@ -86,7 +277,7 @@ public class RenderSimpleOptimizationTests
             {
                 new _3dObjectPart
                 {
-                    PartName = "Main",
+                    PartName = partName,
                     IsVisible = true,
                     Triangles = new List<ITriangleMeshWithColor>
                     {

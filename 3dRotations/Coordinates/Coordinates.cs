@@ -4,9 +4,20 @@ using System.Text;
 
 namespace _3dTesting._Coordinates
 {
+    public static class TriangleRenderPipelineMarkers
+    {
+        public static bool IsDynamicEffectPartName(string? partName)
+        {
+            return string.Equals(partName, "ExplodingPart", StringComparison.Ordinal)
+                || string.Equals(partName, "Particle", StringComparison.Ordinal)
+                || string.Equals(partName, "ParticleShadow", StringComparison.Ordinal);
+        }
+    }
+
     public struct _2dTriangleMesh
     {
         public string PartName { get; set; }
+        public bool UseEffectRenderingPipeline { get; set; }
         public float CalculatedZ { get; set; }
         public float Normal { get; set; }
         public float TriangleAngle { get; set; }

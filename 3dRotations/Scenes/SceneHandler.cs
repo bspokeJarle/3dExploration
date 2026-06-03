@@ -7,6 +7,7 @@ using _3dRotations.Scene.Scene7;
 using _3dRotations.Scene.Scene8;
 using _3dRotations.Scenes.Intro;
 using _3dRotations.Scenes.Outro;
+using _3dRotations.Scenes.SceneSimulation;
 using _3dTesting._3dWorld;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
@@ -23,13 +24,14 @@ namespace _3DWorld.Scene
 {
     public class SceneHandler : ISceneHandler
     {
-        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Scene3(), new Scene4(), new Scene5(), new Scene6(), new Scene7(), new Scene8(), new Outro() };
+        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Scene3(), new Scene4(), new Scene5(), new Scene6(), new Scene7(), new Scene8(), new Outro(), new SceneSimulation() };
         private int currentSceneIndex = 0;
         private const bool enableLogging = false;
         private const int SceneAdvanceDelayFrames = 5;
         private bool _pendingSceneAdvance = false;
         private int _pendingSceneAdvanceFramesLeft = 0;
         private int? _targetSceneIndex = null;
+        private bool _pendingNextScene = false;
         private SavedGameState? _pendingSavedState = null;
 
         public SceneHandler()
@@ -45,12 +47,14 @@ namespace _3DWorld.Scene
 
         public void SetupActiveScene(I3dWorld world)
         {
+            PersistenceSetup.Initialize();
             ApplySceneIndexOverrideFromGameState();
+            ResetSurfaceState();
             var scene = GetActiveScene();
             scene.SetupSceneOverlay();
             ClearVideoOverlay();
-            scene.SetupScene((_3dWorld)world);
             ApplySceneSettings(scene);
+            scene.SetupScene((_3dWorld)world);
             InitializeDirector(scene, world);
             ValidateGameSceneSetup(scene, world);
         }
@@ -165,9 +169,49 @@ namespace _3DWorld.Scene
             }
             catch { }
 
+            var currentScene = GetActiveScene();
+            bool isOutro = currentScene.SceneType == SceneTypes.Outro;
+            bool isSimulation = currentScene.SceneType == SceneTypes.Simulation;
+
+            if (isOutro || isSimulation)
+            {
+                // After Outro or completing a Simulation round, always go to Simulation
+                gps.SimulationRound++;
+
+                // Replace the simulation slot with a fresh instance for the new round
+                int simIndex = scenes.FindIndex(s => s.SceneType == SceneTypes.Simulation);
+                if (simIndex < 0) simIndex = scenes.Count - 1;
+                scenes[simIndex] = new SceneSimulation();
+                currentSceneIndex = simIndex;
+
+                // Clear all objects from the previous scene (Outro ship, asteroids,
+                // surface, landing pad, astronaut, fireworks, particles) so nothing
+                // bleeds through into the new Simulation scene.
+                world.WorldInhabitants.Clear();
+                if (GameState.SurfaceState.AiObjects != null)
+                    GameState.SurfaceState.AiObjects.Clear();
+
+                ClearVideoOverlay();
+                gps.ResetForNewGame();
+                // Keep SimulationRound — it was incremented above and ResetForNewGame does not touch it
+                gps.SceneIndex = currentSceneIndex;
+                ResetSurfaceState();
+                SetupActiveScene(world);
+
+                // Carry forward score and stats into simulation
+                gps.Score = prevScore;
+                gps.TotalKills = prevKills;
+                gps.TotalShotsFired = prevShots;
+                gps.TotalDeaths = prevDeaths;
+                gps.PowerUpsCollected = prevPowerUps;
+
+                try { GameStatePersistence.SaveGameState(); } catch { }
+                return;
+            }
+
             currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
 
-            // Game completed — delete save so the next playthrough starts fresh
+            // Game completed normally (wrapped to 0 or Outro index) — delete save
             if (currentSceneIndex == 0)
             {
                 try { GameStatePersistence.DeleteSave(gps.PlayerName); } catch { }
@@ -179,9 +223,9 @@ namespace _3DWorld.Scene
             ResetSurfaceState();
             SetupActiveScene(world);
 
-            // Carry forward score, stats, and powerups into game scenes
+            // Carry forward score, stats, and powerups into game and simulation scenes
             var nextScene = GetActiveScene();
-            if (nextScene.SceneType == SceneTypes.Game)
+            if (nextScene.SceneType == SceneTypes.Game || nextScene.SceneType == SceneTypes.Simulation)
             {
                 gps.Score = prevScore;
                 gps.TotalKills = prevKills;
@@ -211,6 +255,13 @@ namespace _3DWorld.Scene
 
             _pendingSceneAdvance = false;
 
+            if (_pendingNextScene)
+            {
+                _pendingNextScene = false;
+                NextScene(world);
+                return;
+            }
+
             if (_targetSceneIndex.HasValue)
             {
                 currentSceneIndex = _targetSceneIndex.Value;
@@ -230,10 +281,24 @@ namespace _3DWorld.Scene
             {
                 var gps = GameState.GamePlayState;
                 gps.Score = _pendingSavedState.Score;
+                gps.SimulationRound = _pendingSavedState.SimulationRound;
+                gps.CurrentSceneBiome = _pendingSavedState.SceneBiome;
                 gps.TotalKills = _pendingSavedState.TotalKills;
                 gps.TotalShotsFired = _pendingSavedState.TotalShotsFired;
                 gps.TotalDeaths = _pendingSavedState.TotalDeaths;
                 gps.PowerUpsCollected = _pendingSavedState.PowerUpsCollected;
+
+                // If loading into the simulation slot, rebuild it for the restored round
+                if (GetActiveScene().SceneType == SceneTypes.Simulation)
+                {
+                    int simIndex = scenes.FindIndex(s => s.SceneType == SceneTypes.Simulation);
+                    if (simIndex >= 0)
+                    {
+                        scenes[simIndex] = new SceneSimulation();
+                        ResetSurfaceState();
+                        SetupActiveScene(world);
+                    }
+                }
 
                 // If there's a checkpoint, trim enemies and restore full checkpoint state
                 bool shouldRestoreCheckpoint =
@@ -243,8 +308,10 @@ namespace _3DWorld.Scene
                 if (shouldRestoreCheckpoint)
                 {
                     GameStatePersistence.RestoreToGamePlayState(_pendingSavedState);
+                    ApplySceneSettings(GetActiveScene());
 
                     var snapshot = gps.CaptureCheckpointSnapshot();
+                    ApplyCheckpointSnapshotToCurrentState(gps, snapshot);
                     int restoredMotherShips = ResolveRestoredMotherShipCount(snapshot.MotherShipsRemaining);
 
                     TrimEnemies(world, "Seeder", snapshot.SeedersRemaining);
@@ -254,14 +321,9 @@ namespace _3DWorld.Scene
                     TrimEnemies(world, "MotherShipLarge", restoredMotherShips);
 
                     // Activate enemies that should already be active at this checkpoint
-                    var aiObjs = GameState.SurfaceState.AiObjects;
                     if (snapshot.SeedersRemaining == 0 && snapshot.DronesRemaining == 0)
                     {
-                        for (int i = 0; i < aiObjs.Count; i++)
-                        {
-                            if ((aiObjs[i].ObjectName == "MotherShipSmall" || aiObjs[i].ObjectName == "MotherShipMedium" || aiObjs[i].ObjectName == "MotherShipLarge") && !aiObjs[i].IsActive)
-                                aiObjs[i].IsActive = true;
-                        }
+                        ActivateMotherShips(world);
                     }
 
                     // Re-initialize director so it sees the trimmed enemy state
@@ -271,7 +333,6 @@ namespace _3DWorld.Scene
                 else if (_pendingSavedState.HasCheckpoint)
                 {
                     ClearCheckpointState(gps);
-                    try { GameStatePersistence.SaveGameState(); } catch { }
                 }
 
                 // Always apply decoy-driven drone activation when loading a saved game,
@@ -309,6 +370,8 @@ namespace _3DWorld.Scene
             {
                 if (scene.SceneType == SceneTypes.Intro)
                     SkipLogoCube(world, scene);
+                else if ((scene.SceneType == SceneTypes.Game || scene.SceneType == SceneTypes.Simulation) && k.Key == Key.X)
+                    ReturnToIntro(world);
                 return;
             }
 
@@ -318,8 +381,41 @@ namespace _3DWorld.Scene
                 return;
             }
 
-            if (scene.SceneType == SceneTypes.Game)
+            if (scene.SceneType == SceneTypes.Outro && overlay.Type == ScreenOverlayType.Outro)
+            {
+                // Page navigation with arrow keys; any other key deploys to the Simulation scene.
+                if (overlay.HasMultiplePages)
+                {
+                    if (k.Key == Key.Right || k.Key == Key.D)
+                    {
+                        overlay.NextPage();
+                        RefreshCurrentHighscorePage(overlay);
+                        return;
+                    }
+                    if (k.Key == Key.Left || k.Key == Key.A)
+                    {
+                        overlay.PreviousPage();
+                        RefreshCurrentHighscorePage(overlay);
+                        return;
+                    }
+                }
+
+                overlay.HardHide();
+                _pendingNextScene = true;
+                _pendingSceneAdvance = true;
+                _pendingSceneAdvanceFramesLeft = SceneAdvanceDelayFrames;
+                return;
+            }
+
+            if (scene.SceneType == SceneTypes.Game || scene.SceneType == SceneTypes.Simulation)
+            {
+                if (k.Key == Key.X)
+                {
+                    ReturnToIntro(world);
+                    return;
+                }
                 HandleGameKey(k, scene, overlay);
+            }
         }
 
         private void HandleNameEntryKey(KeyEventArgs k, IScene scene, ScreenOverlayState overlay)
@@ -351,7 +447,7 @@ namespace _3DWorld.Scene
                         string.Equals(e.PlayerName, name, StringComparison.OrdinalIgnoreCase));
                     if (taken)
                     {
-                        overlay.NameEntryValidationMessage = ">> CALLSIGN ALREADY IN USE — CHOOSE ANOTHER";
+                        overlay.NameEntryValidationMessage = ">> CALLSIGN ALREADY IN USE - CHOOSE ANOTHER";
                         return;
                     }
                 }
@@ -367,10 +463,8 @@ namespace _3DWorld.Scene
                     // Always restore score and stats so the player builds upon them
                     _pendingSavedState = saved;
 
-                    // Skip to saved scene only if it's a Game scene ahead of current
-                    if (saved.SceneIndex > currentSceneIndex + 1 &&
-                        saved.SceneIndex < scenes.Count &&
-                        scenes[saved.SceneIndex].SceneType == SceneTypes.Game)
+                    // Skip to saved scene only if it's a playable scene ahead of current
+                    if (CanTargetSavedScene(saved))
                     {
                         _targetSceneIndex = saved.SceneIndex;
                     }
@@ -395,11 +489,13 @@ namespace _3DWorld.Scene
                 if (k.Key == Key.Right || k.Key == Key.D)
                 {
                     overlay.NextPage();
+                    RefreshCurrentHighscorePage(overlay);
                     return;
                 }
                 if (k.Key == Key.Left || k.Key == Key.A)
                 {
                     overlay.PreviousPage();
+                    RefreshCurrentHighscorePage(overlay);
                     return;
                 }
             }
@@ -421,11 +517,13 @@ namespace _3DWorld.Scene
                     if (k.Key == Key.Right || k.Key == Key.D)
                     {
                         overlay.NextPage();
+                        RefreshCurrentHighscorePage(overlay);
                         return;
                     }
                     if (k.Key == Key.Left || k.Key == Key.A)
                     {
                         overlay.PreviousPage();
+                        RefreshCurrentHighscorePage(overlay);
                         return;
                     }
                 }
@@ -433,6 +531,11 @@ namespace _3DWorld.Scene
                 if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: Game keypress. Overlay Type={overlay.Type} Show={overlay.ShowOverlay}", "General");
                 scene.SetupGameOverlay();
             }
+        }
+
+        private static void RefreshCurrentHighscorePage(ScreenOverlayState overlay)
+        {
+            HighscoreOverlayFormatter.RefreshCurrentPageIfHighscorePage(overlay);
         }
 
         // -----------------------------------------------------------------
@@ -455,8 +558,44 @@ namespace _3DWorld.Scene
             scene.SetupVideoOverlay("introclip.mp4");
         }
 
+        private bool CanTargetSavedScene(SavedGameState saved)
+        {
+            if (saved.SceneIndex <= currentSceneIndex + 1 || saved.SceneIndex >= scenes.Count)
+                return false;
+
+            var sceneType = scenes[saved.SceneIndex].SceneType;
+            return sceneType == SceneTypes.Game || sceneType == SceneTypes.Simulation;
+        }
+
         private IScene? CreateFreshScene() =>
             (IScene?)Activator.CreateInstance(GetActiveScene().GetType());
+
+        private void ReturnToIntro(I3dWorld world)
+        {
+            DisposeDirector();
+            var gps = GameState.GamePlayState;
+            try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
+            try { GameStatePersistence.SaveGameState(); } catch { }
+
+            // Clear all game objects so nothing from the current scene bleeds through
+            world.WorldInhabitants.Clear();
+            if (GameState.SurfaceState.AiObjects != null)
+                GameState.SurfaceState.AiObjects.Clear();
+
+            currentSceneIndex = 0;
+            ClearVideoOverlay();
+            gps.ResetForNewGame();
+            gps.SceneIndex = 0;
+            ResetSurfaceState();
+
+            // Replace the intro scene instance so SkipLogoCube is set before SetupScene runs
+            var introScene = new Intro { SkipLogoCube = true };
+            scenes[0] = introScene;
+
+            introScene.SetupSceneOverlay();
+            ApplySceneSettings(introScene);
+            introScene.SetupScene((_3dWorld)world);
+        }
 
         private static void ClearVideoOverlay()
         {
@@ -490,6 +629,7 @@ namespace _3DWorld.Scene
             gps.MotherShipSmallAggression = scene.MotherShipSmallAggression;
             gps.MotherShipMediumAggression = scene.MotherShipMediumAggression;
             gps.MotherShipLargeAggression = scene.MotherShipLargeAggression;
+            gps.CurrentSceneBiome = scene.SceneBiome;
             GameState.SurfaceState.SceneBiome = scene.SceneBiome;
         }
 
@@ -601,21 +741,6 @@ namespace _3DWorld.Scene
             if (!CheckpointInitialMatchesScene(saved.CheckpointInitialMotherShips, sceneMotherShips))
                 return false;
 
-            if (saved.CheckpointSeedersRemaining == 0 && saved.CheckpointDronesRemaining == 0)
-            {
-                int initialSeeders = saved.CheckpointInitialSeeders > 0
-                    ? saved.CheckpointInitialSeeders
-                    : sceneSeeders;
-                int initialDrones = saved.CheckpointInitialDrones > 0
-                    ? saved.CheckpointInitialDrones
-                    : sceneDrones;
-                int expectedKillsForMothershipPhase = initialSeeders + initialDrones;
-
-                if (expectedKillsForMothershipPhase > 0 &&
-                    saved.CheckpointTotalKills < expectedKillsForMothershipPhase)
-                    return false;
-            }
-
             return true;
         }
 
@@ -671,6 +796,32 @@ namespace _3DWorld.Scene
             return count;
         }
 
+        private static void ActivateMotherShips(I3dWorld world)
+        {
+            for (int i = 0; i < world.WorldInhabitants.Count; i++)
+            {
+                if (IsMotherShipName(world.WorldInhabitants[i].ObjectName))
+                    world.WorldInhabitants[i].IsActive = true;
+            }
+
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null)
+                return;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                if (IsMotherShipName(aiObjects[i].ObjectName))
+                    aiObjects[i].IsActive = true;
+            }
+        }
+
+        private static bool IsMotherShipName(string? objectName)
+        {
+            return objectName == "MotherShipSmall" ||
+                   objectName == "MotherShipMedium" ||
+                   objectName == "MotherShipLarge";
+        }
+
         private static void ClearCheckpointState(GamePlayState gps)
         {
             gps.HasCheckpoint = false;
@@ -689,6 +840,27 @@ namespace _3DWorld.Scene
             gps.CheckpointInitialSeeders = 0;
             gps.CheckpointInitialDrones = 0;
             gps.CheckpointInitialMotherShips = 0;
+        }
+
+        private static void ApplyCheckpointSnapshotToCurrentState(
+            GamePlayState gps,
+            GamePlayState.CheckpointSnapshot snapshot)
+        {
+            gps.Score = snapshot.Score;
+            gps.Lives = snapshot.Lives;
+            gps.Health = snapshot.Health;
+            gps.PowerUpsCollected = snapshot.PowerUpsCollected;
+            gps.SeedersRemaining = snapshot.SeedersRemaining;
+            gps.DronesRemaining = snapshot.DronesRemaining;
+            gps.MotherShipsRemaining = snapshot.MotherShipsRemaining;
+            gps.TotalShotsFired = snapshot.TotalShotsFired;
+            gps.TotalKills = snapshot.TotalKills;
+            gps.TotalDeaths = snapshot.TotalDeaths;
+            gps.InfectionLevel = snapshot.InfectionLevel;
+            gps.WaveNumber = snapshot.WaveNumber;
+            gps.InitialSeeders = snapshot.InitialSeeders;
+            gps.InitialDrones = snapshot.InitialDrones;
+            gps.InitialMotherShips = snapshot.InitialMotherShips;
         }
 
         // -----------------------------------------------------------------

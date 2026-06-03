@@ -5,6 +5,7 @@ using GameAiAndControls.Controls.Weather;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using static Domain._3dSpecificsImplementations;
 
 namespace GameAiAndControls.Controls
@@ -492,12 +493,41 @@ namespace GameAiAndControls.Controls
         private static string ScaleHexColor(string color, float factor)
         {
             factor = Math.Clamp(factor, 0f, 1f);
-            string hex = color.Trim().TrimStart('#');
-            int red = Convert.ToInt32(hex.Substring(0, 2), 16);
-            int green = Convert.ToInt32(hex.Substring(2, 2), 16);
-            int blue = Convert.ToInt32(hex.Substring(4, 2), 16);
 
-            return $"{(int)(red * factor):X2}{(int)(green * factor):X2}{(int)(blue * factor):X2}";
+            ReadOnlySpan<char> span = string.IsNullOrEmpty(color)
+                ? "000000".AsSpan()
+                : color.AsSpan().TrimStart('#');
+
+            if (span.Length < 6)
+                return "000000";
+
+            int r = Math.Clamp((int)(ParseHexByte(span[0], span[1]) * factor), 0, 255);
+            int g = Math.Clamp((int)(ParseHexByte(span[2], span[3]) * factor), 0, 255);
+            int b = Math.Clamp((int)(ParseHexByte(span[4], span[5]) * factor), 0, 255);
+
+            return string.Create(6, (r, g, b), static (dst, rgb) =>
+            {
+                const string hex = "0123456789ABCDEF";
+                dst[0] = hex[rgb.r >> 4];
+                dst[1] = hex[rgb.r & 0xF];
+                dst[2] = hex[rgb.g >> 4];
+                dst[3] = hex[rgb.g & 0xF];
+                dst[4] = hex[rgb.b >> 4];
+                dst[5] = hex[rgb.b & 0xF];
+            });
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ParseHexByte(char hi, char lo)
+            => (HexDigit(hi) << 4) | HexDigit(lo);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int HexDigit(char c)
+        {
+            if (c >= '0' && c <= '9') return c - '0';
+            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+            return 0;
         }
 
         private void PlayNextThunder()

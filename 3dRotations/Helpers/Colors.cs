@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 
 namespace _3dTesting.Helpers
 {
@@ -6,31 +7,50 @@ namespace _3dTesting.Helpers
     {
         //Add some brightness to the colors, temp solution
         const int brightness = 3;
-        public static string getShadeOfColorFromNormal(float normal, string color)
-        { 
-            if (color==null) color = "#000000";
-            //Remove the # from the color if it exists
-            color = color.Replace("#", "");
-            var localNormal = Math.Abs(normal);
-            string rs = color[0..2];
-            string gs = color[2..4];
-            string bs = color[4..6];
-            var r = Convert.ToInt16(Convert.ToInt16(rs, 16) * localNormal) + brightness;
-            var g = Convert.ToInt16(Convert.ToInt16(gs, 16) * localNormal) + brightness;
-            var b = Convert.ToInt16(Convert.ToInt16(bs, 16) * localNormal) + brightness;
-            //Make sure the color is within the range of 0-255
-            if (r > 255) r = 255;
-            if (g > 255) g = 255;
-            if (b > 255) b = 255;
-            if (r < 0) r = 0;
-            if (g < 0) g = 0;
-            if (b < 0) b = 0;
-            var rhex = r.ToString("X").PadLeft(2, '0');
-            var ghex = g.ToString("X").PadLeft(2, '0');
-            var bhex = b.ToString("X").PadLeft(2, '0');
-            var hex = "#" + rhex + ghex + bhex;
 
-            return hex;
+        private static readonly char[] HexChars = "0123456789ABCDEF".ToCharArray();
+
+        public static string getShadeOfColorFromNormal(float normal, string color)
+        {
+            ReadOnlySpan<char> span = string.IsNullOrEmpty(color)
+                ? "000000".AsSpan()
+                : color.AsSpan();
+
+            if (span.Length > 0 && span[0] == '#')
+                span = span[1..];
+
+            if (span.Length < 6)
+                return "#000000";
+
+            float localNormal = Math.Abs(normal);
+
+            int r = Math.Clamp((int)(ParseHexByte(span[0], span[1]) * localNormal) + brightness, 0, 255);
+            int g = Math.Clamp((int)(ParseHexByte(span[2], span[3]) * localNormal) + brightness, 0, 255);
+            int b = Math.Clamp((int)(ParseHexByte(span[4], span[5]) * localNormal) + brightness, 0, 255);
+
+            return string.Create(7, (r, g, b), static (dst, rgb) =>
+            {
+                dst[0] = '#';
+                dst[1] = HexChars[rgb.r >> 4];
+                dst[2] = HexChars[rgb.r & 0xF];
+                dst[3] = HexChars[rgb.g >> 4];
+                dst[4] = HexChars[rgb.g & 0xF];
+                dst[5] = HexChars[rgb.b >> 4];
+                dst[6] = HexChars[rgb.b & 0xF];
+            });
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ParseHexByte(char hi, char lo)
+            => (HexDigit(hi) << 4) | HexDigit(lo);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int HexDigit(char c)
+        {
+            if (c >= '0' && c <= '9') return c - '0';
+            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+            return 0;
         }
     }
 }

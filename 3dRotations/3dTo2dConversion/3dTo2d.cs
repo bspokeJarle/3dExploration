@@ -13,6 +13,7 @@ namespace _3dTesting._3dRotation
         private readonly bool enableLogging = false;
         private static int screenCenterX => ScreenSetup.screenSizeX / 2;
         private static int screenCenterY => ScreenSetup.screenSizeY / 2;
+        private const double DebugCrashBoxScreenMargin = 0.05;
         private long CurrentFrame = 0;
 
         public List<_2dTriangleMesh> ConvertTo2dFromObjects(List<_3dObject> inhabitants, long? currentFrame)
@@ -30,7 +31,7 @@ namespace _3dTesting._3dRotation
             var screenCoordinates = reusableResult ?? new List<_2dTriangleMesh>(inhabitants.Count * 2);
             screenCoordinates.Clear();
 
-            int expectedCapacity = inhabitants.Count * 2;
+            int expectedCapacity = EstimateTriangleCapacity(inhabitants);
             if (screenCoordinates.Capacity < expectedCapacity)
                 screenCoordinates.Capacity = expectedCapacity;
 
@@ -54,11 +55,39 @@ namespace _3dTesting._3dRotation
             return screenCoordinates;
         }
 
+        private static int EstimateTriangleCapacity(List<_3dObject> inhabitants)
+        {
+            int expectedCapacity = 0;
+            foreach (var obj in inhabitants)
+            {
+                if (obj == null || (obj.ObjectName != "Star" && !obj.CheckInhabitantVisibility()))
+                    continue;
+
+                var parts = obj.ObjectParts;
+                for (int partIndex = 0; partIndex < parts.Count; partIndex++)
+                {
+                    var part = parts[partIndex];
+                    if (!part.IsVisible)
+                        continue;
+
+                    expectedCapacity += part.Triangles.Count;
+                }
+
+                if (obj.CrashBoxDebugMode == true && obj.CrashBoxes != null)
+                {
+                    expectedCapacity += obj.CrashBoxes.Count * 12;
+                }
+            }
+
+            return Math.Max(expectedCapacity, inhabitants.Count * 2);
+        }
+
         //This method is for debugging av crashboxes only
         private void ConvertCrashBoxesTo2d(_3dObject obj, double objPosX, double objPosY, double objPosZ, List<_2dTriangleMesh> result)
         {
-            foreach (var crashBox in obj.CrashBoxes)
+            for (int boxIndex = 0; boxIndex < obj.CrashBoxes.Count; boxIndex++)
             {
+                var crashBox = obj.CrashBoxes[boxIndex];
                 // Skip if not a valid 8-corner box
                 if (crashBox.Count != 8) continue;
 
@@ -86,10 +115,53 @@ namespace _3dTesting._3dRotation
                     var p2 = ProjectVertex((Vector3)corners[i2], objPosX, objPosY, objPosZ);
                     var p3 = ProjectVertex((Vector3)corners[i3], objPosX, objPosY, objPosZ);
 
+                    if (!TryClampDebugCrashBoxTriangle(ref p1, ref p2, ref p3))
+                        continue;
+
                     var triangle = CreateCrashBoxTriangle(p1, p2, p3, "FF00FF", obj); // Magenta for visibility
                     result.Add(triangle);
                 }
             }
+        }
+
+        private static bool TryClampDebugCrashBoxTriangle(
+            ref (double x, double y) p1,
+            ref (double x, double y) p2,
+            ref (double x, double y) p3)
+        {
+            if (double.IsNaN(p1.x) || double.IsNaN(p1.y) ||
+                double.IsNaN(p2.x) || double.IsNaN(p2.y) ||
+                double.IsNaN(p3.x) || double.IsNaN(p3.y))
+                return false;
+
+            double minX = -(ScreenSetup.screenSizeX * DebugCrashBoxScreenMargin);
+            double maxX = ScreenSetup.screenSizeX * (1 + DebugCrashBoxScreenMargin);
+            double minY = -(ScreenSetup.screenSizeY * DebugCrashBoxScreenMargin);
+            double maxY = ScreenSetup.screenSizeY * (1 + DebugCrashBoxScreenMargin);
+
+            if ((p1.x < minX && p2.x < minX && p3.x < minX) ||
+                (p1.x > maxX && p2.x > maxX && p3.x > maxX) ||
+                (p1.y < minY && p2.y < minY && p3.y < minY) ||
+                (p1.y > maxY && p2.y > maxY && p3.y > maxY))
+                return false;
+
+            p1 = ClampDebugPoint(p1, minX, maxX, minY, maxY);
+            p2 = ClampDebugPoint(p2, minX, maxX, minY, maxY);
+            p3 = ClampDebugPoint(p3, minX, maxX, minY, maxY);
+            return true;
+        }
+
+        private static (double x, double y) ClampDebugPoint(
+            (double x, double y) point,
+            double minX,
+            double maxX,
+            double minY,
+            double maxY)
+        {
+            return (
+                Math.Clamp(point.x, minX, maxX),
+                Math.Clamp(point.y, minY, maxY)
+            );
         }
 
         // Creating Triangles for rendring the CrashBoxes for debugging purposes
@@ -115,6 +187,7 @@ namespace _3dTesting._3dRotation
             var objectOffsets = obj.ObjectOffsets;
             var objectOffsetsZ = objectOffsets.z;
             var objectName = obj.ObjectName;
+            var zSortBias = obj.ZSortBias;
 
             for (int partIndex = 0; partIndex < parts.Count; partIndex++)
             {
@@ -125,6 +198,9 @@ namespace _3dTesting._3dRotation
                 for (int triangleIndex = 0; triangleIndex < triangles.Count; triangleIndex++)
                 {
                     var triangle = triangles[triangleIndex];
+                    var normal = triangle.normal1;
+                    if (normal.z <= 0 && !(triangle.noHidden ?? false)) continue;
+
                     var v1 = (Vector3)triangle.vert1;
                     var v2 = (Vector3)triangle.vert2;
                     var v3 = (Vector3)triangle.vert3;
@@ -143,31 +219,35 @@ namespace _3dTesting._3dRotation
 
                     if (!IsOnScreen(xFactor, yFactor)) continue;
 
-                    var normal = triangle.normal1;
-                    if (normal.z > 0 || (triangle.noHidden ?? false))
+                    //Debugging Object sorting issues for specific objects
+                    if (Logger.ShouldLog(enableLogging) && (objectName == "Seeder" || objectName == "Lazer"))
                     {
-                        //Debugging Object sorting issues for specific objects
-                        if (Logger.ShouldLog(enableLogging) && (objectName == "Seeder" || objectName == "Lazer"))
-                        {
-                            Logger.Log($"Converted 3D object '{objectName}' to 2D. CalculatedZ: {(float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ)}");
-                        }
-                        result.Add(new _2dTriangleMesh
-                        {
-                            X1 = Convert.ToInt32(x1),
-                            Y1 = Convert.ToInt32(y1),
-                            X2 = Convert.ToInt32(x2),
-                            Y2 = Convert.ToInt32(y2),
-                            X3 = Convert.ToInt32(x3),
-                            Y3 = Convert.ToInt32(y3),
-                            CalculatedZ = (float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ),
-                            Normal = normal.z,
-                            TriangleAngle = triangle.angle,
-                            Color = triangle.Color,
-                            PartName = part.PartName
-                        });
+                        Logger.Log($"Converted 3D object '{objectName}' to 2D. CalculatedZ: {(float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ)}");
                     }
+                    result.Add(new _2dTriangleMesh
+                    {
+                        X1 = Convert.ToInt32(x1),
+                        Y1 = Convert.ToInt32(y1),
+                        X2 = Convert.ToInt32(x2),
+                        Y2 = Convert.ToInt32(y2),
+                        X3 = Convert.ToInt32(x3),
+                        Y3 = Convert.ToInt32(y3),
+                        CalculatedZ = (float)((float)(((v1.z + v2.z + v3.z) / 3) + objectOffsetsZ) - objPosZ) + zSortBias,
+                        Normal = normal.z,
+                        TriangleAngle = triangle.angle,
+                        Color = triangle.Color,
+                        PartName = part.PartName,
+                        UseEffectRenderingPipeline = ShouldUseEffectRenderingPipeline(objectName, part.PartName)
+                    });
                 }
             }
+        }
+
+        private static bool ShouldUseEffectRenderingPipeline(string? objectName, string? partName)
+        {
+            return TriangleRenderPipelineMarkers.IsDynamicEffectPartName(partName)
+                || string.Equals(objectName, "Particle", StringComparison.Ordinal)
+                || string.Equals(objectName, "ParticleShadow", StringComparison.Ordinal);
         }
 
         private (double x, double y) ProjectVertex(Vector3 v, double objPosX, double objPosY, double objPosZ)

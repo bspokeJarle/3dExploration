@@ -29,6 +29,14 @@
 - Position sync back to `AiObjects`: Include a `SyncToOriginal()` method that copies `WorldPosition` and `ObjectOffsets` from the deep copy back to the matching object in `GameState.SurfaceState.AiObjects` (by ObjectId), with a `ReferenceEquals` early-out.
 - `Dispose()` should reset sync state (`_syncInitialized`, `_syncY`) and null out coordinate references, not throw `NotImplementedException`.
 - Objects spawned at runtime (like PowerUp from `CleanupExplodedObjects`) must have `Movement` assigned and be added to both `WorldInhabitants` and `GameState.SurfaceState.AiObjects`.
+- Deep copy / persistence in the game loop:
+  - `LiveGameLoop.UpdateWorld` deep-copies every active inhabitant each frame via `Common3dObjectHelpers.DeepCopy3dObjects(activeWorld, deepCopiedWorld)`. `Movement?.MoveObject(...)` is invoked on the COPY, so the `theObject` passed into `MoveObject` is the deep copy.
+  - The `Movement` reference is shared between the original and the deep copy. Persistent per-frame state MUST live on the controller (fields) because mutations to `theObject` are applied to the throwaway copy and are lost when the copy is rebuilt next frame.
+  - Do not rely on one-time initialization or on mutations like `theObject.ObjectOffsets += delta` to persist across frames.
+  - To persist values across frames either:
+    - Store persistent state in controller fields and restamp those values onto `theObject` every frame inside `MoveObject`, or
+    - Write updated values back to the original `WorldInhabitants` entry when other systems need to observe them (use `SyncToOriginal` patterns such as `MotherShipLargeControls.SyncToOriginal` / `MotherShipMediumControls.SyncToOriginal`).
+  - Use control-class-local fields for persistent progress/state across frames when appropriate (for example, kamikaze/seeder patterns).
 
 ## Coordinate System and Rotation Conventions
 - The project uses a custom 3D engine with `Vector3` having x, y, z fields.

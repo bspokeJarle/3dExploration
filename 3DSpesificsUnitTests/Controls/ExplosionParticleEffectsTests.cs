@@ -70,29 +70,88 @@ public class ExplosionParticleEffectsTests
     }
 
     [TestMethod]
-    public void KamikazeDroneTargetsDecoyWorldPositionWithoutRenderOffsetZ()
+    public void KamikazeDroneFindsDecoyCompensatedCoordinatesWithinTwoFrames()
     {
         GameState.GamePlayState.PowerUpsCollected = 1;
 
-        var decoy = CreateNavigationDecoy();
+        var decoy = CreateNavigationDecoy(7102, worldX: -10_000f, worldZ: 0f, offsetX: 10_100f, offsetZ: 400f);
         GameState.SurfaceState.AiObjects.Add(decoy);
 
         var drone = CreateHuntingDrone();
+        drone.ObjectOffsets = new Vector3 { x = 0f, y = 0f, z = 400f };
         var controls = new KamikazeDroneControls
         {
             StartHuntDateTime = DateTime.Now.AddSeconds(-1)
         };
 
         controls.MoveObject(drone, null, null);
-        SetPrivateDateTime(controls, "LastMovementDateTime", DateTime.Now.AddSeconds(-1));
+
+        for (int frame = 0; frame < 2; frame++)
+        {
+            SetPrivateDateTime(controls, "LastMovementDateTime", DateTime.Now.AddSeconds(-0.1));
+            controls.MoveObject(drone, null, null);
+        }
+
+        Assert.AreEqual(
+            100f,
+            drone.WorldPosition!.x,
+            2f,
+            "Drone should find the decoy's compensated hunt coordinate, not chase the decoy's raw WorldPosition.");
+        Assert.AreEqual(
+            0f,
+            drone.WorldPosition.z,
+            2f,
+            "Drone should stay on the decoy's compensated hunt depth when the decoy is directly sideways.");
+    }
+
+    [TestMethod]
+    public void KamikazeDroneChoosesClosestDecoyByCompensatedHuntPosition()
+    {
+        GameState.GamePlayState.PowerUpsCollected = 1;
+
+        var nearDecoy = CreateNavigationDecoy(7301, worldX: -10_000f, worldZ: 0f, offsetX: 10_100f, offsetZ: 400f);
+        var farDecoy = CreateNavigationDecoy(7302, worldX: -1000f, worldZ: 0f, offsetX: 0f, offsetZ: 0f);
+        GameState.SurfaceState.AiObjects.Add(nearDecoy);
+        GameState.SurfaceState.AiObjects.Add(farDecoy);
+
+        var drone = CreateHuntingDrone();
+        drone.ObjectOffsets = new Vector3 { x = 0f, y = 0f, z = 400f };
+        var controls = new KamikazeDroneControls
+        {
+            StartHuntDateTime = DateTime.Now.AddSeconds(-1)
+        };
+
+        controls.MoveObject(drone, null, null);
+        SetPrivateDateTime(controls, "LastMovementDateTime", DateTime.Now.AddSeconds(-0.1));
 
         controls.MoveObject(drone, null, null);
 
-        Assert.AreEqual(
-            drone.WorldPosition!.x,
-            drone.WorldPosition.z,
-            2f,
-            "Decoy render Z offset should not pull the drone toward a different navigation Z than the decoy world position.");
+        Assert.IsTrue(
+            drone.WorldPosition!.x > 0f,
+            "Drone should chase the nearest decoy by compensated hunt position, not by raw WorldPosition.");
+    }
+
+    [TestMethod]
+    public void KamikazeDroneHitsDecoyByCompensatedHuntPosition()
+    {
+        GameState.GamePlayState.PowerUpsCollected = 1;
+
+        var decoy = CreateNavigationDecoy(7304, worldX: -10_000f, worldZ: 0f, offsetX: 10_000f, offsetZ: 400f);
+        GameState.SurfaceState.AiObjects.Add(decoy);
+
+        var drone = CreateHuntingDrone();
+        drone.ObjectOffsets = new Vector3 { x = 0f, y = 0f, z = 400f };
+        var controls = new KamikazeDroneControls
+        {
+            StartHuntDateTime = DateTime.Now.AddSeconds(-1)
+        };
+
+        controls.MoveObject(drone, null, null);
+
+        Assert.IsTrue(drone.ImpactStatus!.HasCrashed, "Navigation overlap with a decoy should trigger the drone impact.");
+        Assert.AreEqual("DroneDecoy", drone.ImpactStatus.ObjectName);
+        Assert.IsTrue(decoy.ImpactStatus!.HasCrashed, "The decoy should receive the drone impact at its navigation position.");
+        Assert.AreEqual("KamikazeDrone", decoy.ImpactStatus.ObjectName);
     }
 
     [TestMethod]
@@ -159,14 +218,19 @@ public class ExplosionParticleEffectsTests
 
     private static _3dObject CreateNavigationDecoy()
     {
+        return CreateNavigationDecoy(7102, worldX: 300f, worldZ: 300f, offsetX: 0f, offsetZ: 1000f);
+    }
+
+    private static _3dObject CreateNavigationDecoy(int objectId, float worldX, float worldZ, float offsetX, float offsetZ)
+    {
         return new _3dObject
         {
-            ObjectId = 7102,
+            ObjectId = objectId,
             ObjectName = "DroneDecoy",
             IsOnScreen = true,
             ParentSurface = null,
-            WorldPosition = new Vector3 { x = 300f, y = 0f, z = 300f },
-            ObjectOffsets = new Vector3 { x = 0f, y = 0f, z = 1000f },
+            WorldPosition = new Vector3 { x = worldX, y = 0f, z = worldZ },
+            ObjectOffsets = new Vector3 { x = offsetX, y = 0f, z = offsetZ },
             Rotation = new Vector3 { x = 0f, y = 0f, z = 0f },
             Particles = new ParticlesAI(),
             CrashBoxes = CreateCrashBoxes(),

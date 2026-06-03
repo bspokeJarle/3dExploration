@@ -20,14 +20,16 @@ namespace Domain
         Bottom = 2
     }
 
-    /// <summary>
-    /// ScreenOverlayState is a lightweight, global UI state for modal/cinematic overlays.
+        /// <summary>
+        /// ScreenOverlayState is a lightweight, global UI state for modal/cinematic overlays.
     /// - Objects are allowed to toggle ShowOverlay and set the text fields.
     /// - Rendering is handled elsewhere (renderer reads this state only).
     /// - Update() provides deterministic fade-in/out based on ShowOverlay.
     /// </summary>
-    public sealed class ScreenOverlayState
-    {
+        public sealed class ScreenOverlayState
+        {
+            public const float DefaultAutoPageSeconds = 15f;
+
         // -----------------------------
         // Identity / usage
         // -----------------------------
@@ -122,6 +124,8 @@ namespace Domain
         public int AddPage(string header, string title, string body, string footer)
         {
             Pages.Add(new[] { header, title, body, footer });
+            if (Pages.Count > 1 && AutoPageSeconds <= 0f)
+                AutoPageSeconds = DefaultAutoPageSeconds;
             return Pages.Count - 1;
         }
 
@@ -213,8 +217,17 @@ namespace Domain
         /// </summary>
         public float AutoHideSeconds { get; set; } = 0f;
 
+        /// <summary>
+        /// When greater than zero, multi-page overlays auto-advance to the next page
+        /// every AutoPageSeconds. Wraps around when the last page is reached.
+        /// Applies to any overlay with HasMultiplePages == true.
+        /// </summary>
+        public float AutoPageSeconds { get; set; } = 0f;
+
         private float _shownTimeSeconds = 0f;
         private bool _wasShowingLastUpdate = false;
+        private float _autoPageElapsedSeconds = 0f;
+        private int _autoPageLastIndex = -1;
 
         // -----------------------------
         // Convenience
@@ -267,6 +280,9 @@ namespace Domain
 
             AutoHide = false;
             AutoHideSeconds = 0f;
+            AutoPageSeconds = 0f;
+            _autoPageElapsedSeconds = 0f;
+            _autoPageLastIndex = -1;
 
             NameEntryBuffer = "";
             NameEntryValidationMessage = "";
@@ -309,6 +325,32 @@ namespace Domain
                 ShowOverlay = false;
             }
 
+            // Auto-paging behavior (optional): cycle through Pages every AutoPageSeconds.
+            if (ShowOverlay && AutoPageSeconds > 0f && HasMultiplePages)
+            {
+                if (_autoPageLastIndex != CurrentPage)
+                {
+                    _autoPageLastIndex = CurrentPage;
+                    _autoPageElapsedSeconds = 0f;
+                }
+                else
+                {
+                    _autoPageElapsedSeconds += dtSeconds;
+                    if (_autoPageElapsedSeconds >= AutoPageSeconds)
+                    {
+                        _autoPageElapsedSeconds = 0f;
+                        CurrentPage = (CurrentPage + 1) % TotalPages;
+                        ApplyPageContent();
+                        _autoPageLastIndex = CurrentPage;
+                    }
+                }
+            }
+            else
+            {
+                _autoPageElapsedSeconds = 0f;
+                _autoPageLastIndex = CurrentPage;
+            }
+
             // Fade to target
             float target = ShowOverlay ? 1f : 0f;
 
@@ -331,7 +373,7 @@ namespace Domain
             {
                 _cursorBlinkTimer += dtSeconds;
                 bool showCursor = ((int)(_cursorBlinkTimer / 0.5f)) % 2 == 0;
-                string cursor = showCursor ? "█" : " ";
+                string cursor = showCursor ? "_" : " ";
                 string display = NameEntryBuffer + cursor;
                 string validation = string.IsNullOrEmpty(NameEntryValidationMessage)
                     ? "" : $"\n{NameEntryValidationMessage}";

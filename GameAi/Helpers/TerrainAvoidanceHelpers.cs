@@ -35,23 +35,54 @@ namespace GameAiAndControls.Helpers
 
             var tuning = GetTuning(obj.ObjectName);
             var push = GetPushDirection(obj);
-
-            if (!RecoveryStates.TryGetValue(obj.ObjectId, out var state))
-            {
-                state = new RecoveryState();
-                RecoveryStates[obj.ObjectId] = state;
-            }
-
-            state.DurationSeconds = tuning.durationSeconds;
-            state.RemainingSeconds = MathF.Max(state.RemainingSeconds, tuning.durationSeconds);
-            state.LiftSpeed = MathF.Max(state.LiftSpeed, tuning.liftSpeed);
-            state.HorizontalSpeedX = push.x * tuning.horizontalSpeed;
-            state.HorizontalSpeedZ = push.z * tuning.horizontalSpeed;
+            StartRecovery(obj, tuning.durationSeconds, tuning.liftSpeed, tuning.horizontalSpeed, push);
 
             obj.ImpactStatus.HasCrashed = false;
             obj.ImpactStatus.ObjectName = string.Empty;
             obj.ImpactStatus.ImpactDirection = null;
             obj.ImpactStatus.CrashBoxName = null;
+            return true;
+        }
+
+        public static bool TryStartTerrainProximityRecovery(
+            I3dObject obj,
+            string? obstacleObjectName,
+            IVector3? aiCenter,
+            IVector3? obstacleCenter)
+        {
+            if (obj == null)
+                return false;
+
+            if (!TerrainAvoidanceSetup.IsHeavyAvoidanceAi(obj.ObjectName))
+                return false;
+
+            if (!TerrainAvoidanceSetup.IsProactiveTerrainObstacle(obstacleObjectName))
+                return false;
+
+            if (obj.ImpactStatus?.HasCrashed == true &&
+                !TerrainAvoidanceSetup.IsTerrainObstacle(obj.ImpactStatus.ObjectName))
+            {
+                return false;
+            }
+
+            if (!CanReactToTerrain(obj, obstacleObjectName))
+                return false;
+
+            if (RecoveryStates.ContainsKey(obj.ObjectId))
+                return true;
+
+            var tuning = GetTuning(obj.ObjectName);
+            var push = GetPushDirectionAwayFromObstacle(obj, aiCenter, obstacleCenter);
+            StartRecovery(obj, tuning.durationSeconds, tuning.liftSpeed, tuning.horizontalSpeed, push);
+
+            if (obj.ImpactStatus?.HasCrashed == true)
+            {
+                obj.ImpactStatus.HasCrashed = false;
+                obj.ImpactStatus.ObjectName = string.Empty;
+                obj.ImpactStatus.ImpactDirection = null;
+                obj.ImpactStatus.CrashBoxName = null;
+            }
+
             return true;
         }
 
@@ -135,6 +166,26 @@ namespace GameAiAndControls.Helpers
                 TerrainAvoidanceSetup.DefaultHorizontalSpeed);
         }
 
+        private static void StartRecovery(
+            I3dObject obj,
+            float durationSeconds,
+            float liftSpeed,
+            float horizontalSpeed,
+            Vector3 push)
+        {
+            if (!RecoveryStates.TryGetValue(obj.ObjectId, out var state))
+            {
+                state = new RecoveryState();
+                RecoveryStates[obj.ObjectId] = state;
+            }
+
+            state.DurationSeconds = durationSeconds;
+            state.RemainingSeconds = MathF.Max(state.RemainingSeconds, durationSeconds);
+            state.LiftSpeed = MathF.Max(state.LiftSpeed, liftSpeed);
+            state.HorizontalSpeedX = push.x * horizontalSpeed;
+            state.HorizontalSpeedZ = push.z * horizontalSpeed;
+        }
+
         private static Vector3 GetPushDirection(I3dObject obj)
         {
             float side = obj.ObjectId % 2 == 0 ? 1f : -1f;
@@ -173,6 +224,47 @@ namespace GameAiAndControls.Helpers
                 return new Vector3 { x = side, y = 0f, z = 0.35f * side };
 
             return new Vector3 { x = dx, y = 0f, z = dz };
+        }
+
+        private static Vector3 GetPushDirectionAwayFromObstacle(
+            I3dObject obj,
+            IVector3? aiCenter,
+            IVector3? obstacleCenter)
+        {
+            if (aiCenter == null || obstacleCenter == null)
+                return GetFallbackPushFromMap(obj, obj.ObjectId % 2 == 0 ? 1f : -1f);
+
+            float awayX = aiCenter.x - obstacleCenter.x;
+            float awayZ = aiCenter.z - obstacleCenter.z;
+            float awayLength = MathF.Sqrt(awayX * awayX + awayZ * awayZ);
+
+            if (awayLength <= 0.001f)
+                return GetFallbackPushFromMap(obj, obj.ObjectId % 2 == 0 ? 1f : -1f);
+
+            awayX /= awayLength;
+            awayZ /= awayLength;
+
+            float side = obj.ObjectId % 2 == 0 ? 1f : -1f;
+            float sideX = -awayZ * side;
+            float sideZ = awayX * side;
+
+            var push = new Vector3
+            {
+                x = awayX * 0.7f + sideX * 0.3f,
+                y = 0f,
+                z = awayZ * 0.7f + sideZ * 0.3f
+            };
+
+            float length = MathF.Sqrt(push.x * push.x + push.z * push.z);
+            if (length <= 0.001f)
+                return new Vector3 { x = awayX, y = 0f, z = awayZ };
+
+            return new Vector3
+            {
+                x = push.x / length,
+                y = 0f,
+                z = push.z / length
+            };
         }
     }
 }

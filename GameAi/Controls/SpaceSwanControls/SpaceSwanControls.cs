@@ -382,7 +382,10 @@ namespace GameAiAndControls.Controls.SpaceSwanControls
         {
             TranslateTrianglesYZ(triangles, -pivotY, -pivotZ);
             var rotated = _rotate.RotateXMesh(triangles, angleDegrees);
-            TranslateTrianglesYZ(triangles, pivotY, pivotZ); // restore input so subsequent calls see unshifted data
+            if (!ReferenceEquals(rotated, triangles))
+            {
+                TranslateTrianglesYZ(triangles, pivotY, pivotZ);
+            }
             TranslateTrianglesYZ(rotated, pivotY, pivotZ);
             return rotated;
         }
