@@ -30,6 +30,9 @@ namespace CommonUtilities.CommonSetup
         public static int ZeppelinBomberKillScore { get; set; } = 75;
         public static int DefaultKillScore { get; set; } = 25;
         public static int PowerUpCollectScore { get; set; } = 150;
+        public static int PlanetStyleBonusScoreCap { get; set; } = 2000;
+        public static int CleanLoopStyleBonusScore { get; set; } = 250;
+        public static int CollisionLoopStyleBonusScore { get; set; } = 0;
 
         // Score penalty deducted each time the player dies
         public static int DeathScorePenalty { get; set; } = 200;

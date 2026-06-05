@@ -36,7 +36,7 @@ public class ParticleShadowProjectionTests
     private const float ShadowSlopeX = -0.15f;   // ObjectShadowManager.ShadowSlopeX
     private const float ShadowSlopeY = -0.55f;   // ObjectShadowManager.ShadowSlopeY
 
-    private const float SurfaceTiltDegrees = 70f;
+    private const float SurfaceTiltDegrees = WorldViewSetup.SurfacePitchDegrees;
     private static readonly float SurfaceTiltCos = MathF.Cos(SurfaceTiltDegrees * MathF.PI / 180f);
     private static readonly float SurfaceTiltSin = MathF.Sin(SurfaceTiltDegrees * MathF.PI / 180f);
 

@@ -1,4 +1,5 @@
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -17,7 +18,7 @@ namespace _3dRotations.World.Objects.EarthObject
                 ObjectId = GameState.ObjectIdCounter++,
                 ObjectName = "Asteroid",
                 ObjectOffsets = new Vector3 { x = startOffsetX, y = startOffsetY, z = depth },
-                Rotation = new Vector3 { x = 70f, y = 0f, z = 90f },
+                Rotation = new Vector3 { x = WorldViewSetup.WorldPitchDegrees, y = 0f, z = 90f },
                 WorldPosition = new Vector3 { x = 0f, y = 0f, z = 0f },
                 CrashBoxes = new List<List<IVector3>>(),
                 IsActive = true

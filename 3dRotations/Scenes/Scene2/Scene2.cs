@@ -55,7 +55,7 @@ namespace _3dRotations.Scene.Scene1
             // Guidance arrow — on-screen indicator pointing toward closest seeder
             var guidanceArrow = SeederGuidanceArrow.CreateSeederGuidanceArrow(Surface);
             guidanceArrow.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 200 };
-            guidanceArrow.Rotation = new Vector3 { x = 70, y = 0, z = 90 };
+            guidanceArrow.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 90 };
             guidanceArrow.WorldPosition = new Vector3 { };
             guidanceArrow.ObjectName = "SeederGuidanceArrow";
             guidanceArrow.ImpactStatus = new ImpactStatus { };
@@ -132,7 +132,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
             surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 400 };
-            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            surfaceObject.Rotation = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Crashboxes are added n the GetSurfaceViewPort method
             surfaceObject.Movement = new GroundControls();
@@ -299,7 +299,7 @@ namespace _3dRotations.Scene.Scene1
                 float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
 
                 var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
-                jumpingFish.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                jumpingFish.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 jumpingFish.WorldPosition = new Vector3 { };
                 jumpingFish.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
                 jumpingFish.ObjectOffsets = new Vector3

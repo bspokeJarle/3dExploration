@@ -57,7 +57,7 @@ namespace GameAiAndControls.Controls
 
             if (theObject.Rotation != null)
             {
-                theObject.Rotation.x = 70f;
+                theObject.Rotation.x = WorldViewSetup.WorldPitchDegrees;
                 theObject.Rotation.y = _rotY;
                 theObject.Rotation.z = _rotZ;
             }

@@ -290,7 +290,7 @@ namespace _3dRotations.Scenes.Outro
             var surfaceObject = (_3dObject)surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             surfaceObject.ObjectOffsets = CreateInitialSurfaceOffset();
-            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            surfaceObject.Rotation = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             surfaceObject.Movement = new GroundControls();
             surfaceObject.ParentSurface = surface;

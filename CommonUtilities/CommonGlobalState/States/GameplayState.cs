@@ -54,6 +54,8 @@ namespace Domain
         // Score / progression
         // -----------------------------
         public long Score { get; set; } = 0;
+        public int PlanetStyleBonusScore { get; set; } = 0;
+        public int PlanetStyleBonusSceneIndex { get; set; } = 0;
 
         // Wave/level can drive seeder spawn intensity later
         public int WaveNumber { get; set; } = 1;
@@ -79,7 +81,8 @@ namespace Domain
             int SeedersRemaining, int DronesRemaining, int MotherShipsRemaining,
             int TotalShotsFired, int TotalKills, int TotalDeaths,
             float InfectionLevel, int WaveNumber,
-            int InitialSeeders, int InitialDrones, int InitialMotherShips);
+            int InitialSeeders, int InitialDrones, int InitialMotherShips,
+            int PlanetStyleBonusScore, int PlanetStyleBonusSceneIndex);
 
         public bool HasCheckpoint { get; set; } = false;
         public long CheckpointScore { get; set; } = 0;
@@ -97,6 +100,8 @@ namespace Domain
         public int CheckpointInitialSeeders { get; set; } = 0;
         public int CheckpointInitialDrones { get; set; } = 0;
         public int CheckpointInitialMotherShips { get; set; } = 0;
+        public int CheckpointPlanetStyleBonusScore { get; set; } = 0;
+        public int CheckpointPlanetStyleBonusSceneIndex { get; set; } = 0;
 
         /// <summary>
         /// Captures the current checkpoint fields into a snapshot value type.
@@ -107,7 +112,8 @@ namespace Domain
             CheckpointSeedersRemaining, CheckpointDronesRemaining, CheckpointMotherShipsRemaining,
             CheckpointTotalShotsFired, CheckpointTotalKills, CheckpointTotalDeaths,
             CheckpointInfectionLevel, CheckpointWaveNumber,
-            CheckpointInitialSeeders, CheckpointInitialDrones, CheckpointInitialMotherShips);
+            CheckpointInitialSeeders, CheckpointInitialDrones, CheckpointInitialMotherShips,
+            CheckpointPlanetStyleBonusScore, CheckpointPlanetStyleBonusSceneIndex);
 
         /// <summary>
         /// Restores both current gameplay state and checkpoint fields from a snapshot.
@@ -130,6 +136,8 @@ namespace Domain
             InitialSeeders = cp.InitialSeeders;
             InitialDrones = cp.InitialDrones;
             InitialMotherShips = cp.InitialMotherShips;
+            PlanetStyleBonusScore = cp.PlanetStyleBonusScore;
+            PlanetStyleBonusSceneIndex = cp.PlanetStyleBonusSceneIndex;
 
             // Preserve checkpoint fields for future deaths
             CheckpointScore = cp.Score;
@@ -147,6 +155,8 @@ namespace Domain
             CheckpointInitialSeeders = cp.InitialSeeders;
             CheckpointInitialDrones = cp.InitialDrones;
             CheckpointInitialMotherShips = cp.InitialMotherShips;
+            CheckpointPlanetStyleBonusScore = cp.PlanetStyleBonusScore;
+            CheckpointPlanetStyleBonusSceneIndex = cp.PlanetStyleBonusSceneIndex;
         }
 
         // -----------------------------
@@ -400,6 +410,8 @@ namespace Domain
             InvulnerableSecondsLeft = 0f;
 
             Score = 0;
+            PlanetStyleBonusScore = 0;
+            PlanetStyleBonusSceneIndex = SceneIndex;
             WaveNumber = 1;
 
             TotalShotsFired = 0;
@@ -422,6 +434,8 @@ namespace Domain
             CheckpointInitialSeeders = 0;
             CheckpointInitialDrones = 0;
             CheckpointInitialMotherShips = 0;
+            CheckpointPlanetStyleBonusScore = 0;
+            CheckpointPlanetStyleBonusSceneIndex = SceneIndex;
 
             DronesRemaining = 0;
             SeedersRemaining = 0;
@@ -476,12 +490,49 @@ namespace Domain
             Score += GameSetup.GetKillScore(enemyType);
         }
 
+        public int AwardStyleBonus(int requestedScore)
+        {
+            if (requestedScore <= 0)
+                return 0;
+
+            EnsurePlanetStyleBonusScene();
+
+            int remaining = Math.Max(0, GameSetup.PlanetStyleBonusScoreCap - PlanetStyleBonusScore);
+            int awarded = Math.Min(requestedScore, remaining);
+            if (awarded <= 0)
+                return 0;
+
+            PlanetStyleBonusScore += awarded;
+            Score += awarded;
+            return awarded;
+        }
+
+        public int PlanetStyleBonusRemaining
+        {
+            get
+            {
+                EnsurePlanetStyleBonusScene();
+                return Math.Max(0, GameSetup.PlanetStyleBonusScoreCap - PlanetStyleBonusScore);
+            }
+        }
+
+        private void EnsurePlanetStyleBonusScene()
+        {
+            if (PlanetStyleBonusSceneIndex == SceneIndex)
+                return;
+
+            PlanetStyleBonusSceneIndex = SceneIndex;
+            PlanetStyleBonusScore = 0;
+        }
+
         /// <summary>
         /// Snapshots the current game state as a checkpoint.
         /// Triggered when a powerup enemy or MotherShip is killed.
         /// </summary>
         public void SaveCheckpoint()
         {
+            EnsurePlanetStyleBonusScene();
+
             HasCheckpoint = true;
             CheckpointScore = Score;
             CheckpointLives = Lives;
@@ -498,6 +549,8 @@ namespace Domain
             CheckpointInitialSeeders = InitialSeeders;
             CheckpointInitialDrones = InitialDrones;
             CheckpointInitialMotherShips = InitialMotherShips;
+            CheckpointPlanetStyleBonusScore = PlanetStyleBonusScore;
+            CheckpointPlanetStyleBonusSceneIndex = PlanetStyleBonusSceneIndex;
         }
 
         /// <summary>
@@ -519,6 +572,8 @@ namespace Domain
             TotalKills = CheckpointTotalKills;
             InfectionLevel = CheckpointInfectionLevel;
             WaveNumber = CheckpointWaveNumber;
+            PlanetStyleBonusScore = CheckpointPlanetStyleBonusScore;
+            PlanetStyleBonusSceneIndex = CheckpointPlanetStyleBonusSceneIndex;
         }
 
         /// <summary>

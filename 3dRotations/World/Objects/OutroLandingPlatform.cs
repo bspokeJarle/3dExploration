@@ -1,5 +1,6 @@
 using _3dTesting.Helpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -29,7 +30,7 @@ namespace _3dRotations.World.Objects
             platform.ParentSurface = parentSurface;
             platform.WorldPosition = new Vector3();
             platform.ObjectOffsets = new Vector3();
-            platform.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            platform.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
             platform.CrashBoxes = LandingPlatformCrashBoxes();
             platform.CrashBoxNames = new List<string?> { "LandingPad" };
             platform.CrashBoxesFollowRotation = true;

@@ -1,4 +1,5 @@
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
 using _3dRotations.World.Objects;
@@ -66,7 +67,7 @@ public class ShipVsMotherShipMediumLazerTests
             ObjectName = objectName,
             ObjectOffsets = objectOffsets,
             WorldPosition = worldPosition,
-            Rotation = new Vector3 { x = 70, y = 0, z = 0 }, // camera-tilt baseline both use
+            Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0, z = 0 }, // camera-tilt baseline both use
             ImpactStatus = new ImpactStatus { ObjectName = objectName },
             CrashBoxes = new List<List<IVector3>>(),
         };

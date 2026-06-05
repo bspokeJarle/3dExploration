@@ -31,7 +31,7 @@ namespace CommonUtilities._3DHelpers
         //  Shared heading logic for pointing objects toward a target.
         //  Z rotation is applied first to geometry (+X forward).
         //  After Z rotation by θ: tip at (cosθ, sinθ, 0).
-        //  After X=70 camera tilt: screenX ∝ cosθ, screenY ∝ sinθ.
+        //  After X=WorldViewSetup.CameraPitchDegrees camera tilt: screenX ∝ cosθ, screenY ∝ sinθ.
         //  Z=0→right, Z=90→down, Z=180→left, Z=270→up.
         //  World-to-screen: screen right = world +X, screen down = world +Z.
         //  Therefore heading Z = atan2(dz, dx).
@@ -39,17 +39,17 @@ namespace CommonUtilities._3DHelpers
 
         /// <summary>
         /// Computes the Z rotation (heading) that points an object's +X forward
-        /// along the given world-space XZ direction. Base X rotation = 70 (camera tilt).
+        /// along the given world-space XZ direction. Base X rotation = WorldViewSetup.CameraPitchDegrees.
         /// Returns (Xrotation, Yrotation, Zrotation).
         /// </summary>
         public static (float X, float Y, float Z) GetHeadingFromDirection(float dx, float dz)
         {
             float len = MathF.Sqrt(dx * dx + dz * dz);
             if (len < 1e-4f)
-                return (70f, 0f, 0f);
+                return (WorldViewSetup.CameraPitchDegrees, 0f, 0f);
 
             float headingDeg = MathF.Atan2(dz, dx) * (180f / MathF.PI);
-            return (70f, 0f, headingDeg);
+            return (WorldViewSetup.CameraPitchDegrees, 0f, headingDeg);
         }
 
         /// <summary>

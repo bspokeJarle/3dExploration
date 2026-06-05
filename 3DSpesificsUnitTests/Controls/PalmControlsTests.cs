@@ -1,6 +1,7 @@
 using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
 using static Domain._3dSpecificsImplementations;
@@ -40,7 +41,7 @@ public class PalmControlsTests
 
         controls.MoveObject(palm, null, null);
 
-        Assert.AreEqual(70f, palm.Rotation!.x, 0.001f, "Palm control should keep the surface-facing object rotation.");
+        Assert.AreEqual(WorldViewSetup.SurfaceFacingObjectPitchDegrees, palm.Rotation!.x, 0.001f, "Palm control should keep the surface-facing object rotation.");
         Assert.AreEqual(0f, palm.Rotation.y, 0.001f, "Palm control should not yaw the whole object.");
         Assert.AreEqual(0f, palm.Rotation.z, 0.001f, "Palm control should not spin the whole object.");
 
@@ -109,7 +110,7 @@ public class PalmControlsTests
 
         controls.MoveObject(palm, null, null);
 
-        Assert.AreEqual(70f, palm.Rotation!.x, 0.001f, "Palm control should still keep the normal object rotation.");
+        Assert.AreEqual(WorldViewSetup.SurfaceFacingObjectPitchDegrees, palm.Rotation!.x, 0.001f, "Palm control should still keep the normal object rotation.");
         AssertTrianglesEqual(baseLeaves, GetPart(palm, "LargePalmLeaves").Triangles, "Offscreen palms should not spend work animating leaves.");
     }
 

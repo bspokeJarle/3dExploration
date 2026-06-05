@@ -2,6 +2,7 @@ using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Audio.Services;
 using GameAiAndControls.Helpers;
 using System;
 using System.Collections.Generic;
@@ -12,7 +13,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
     public class MotherShipSmallControls : IObjectMovement
     {
         // Visual rotation:
-        private const float BaseXRotation = 70f;
+        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 0f;
 
@@ -82,7 +83,8 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
         private SoundDefinition? _engineSound;
         private IAudioInstance? _engineInstance;
         private SoundDefinition? _attackSound;
-        private SoundDefinition? _warningSound;
+        private ISoundRegistry? _soundRegistry;
+        private readonly ShipAiVoiceService _shipAiVoiceService = ShipAiVoiceService.Shared;
         private bool _attackSoundPlayed = false;
         private bool _warningSoundPlayed = false;
         private DateTime _shipCollisionCooldown = DateTime.MinValue;
@@ -391,14 +393,13 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                 return;
 
             _audio = audioPlayer;
+            _soundRegistry = soundRegistry;
             _thudSound = soundRegistry.Get("lazer_thud");
             _explosionSound = soundRegistry.Get("explosion_main");
             if (soundRegistry.TryGet("mothership_engine", out var engineSound))
                 _engineSound = engineSound;
             if (soundRegistry.TryGet("mothership_attack", out var attackSound))
                 _attackSound = attackSound;
-            if (soundRegistry.TryGet("ship_collision_warning", out var warningSound))
-                _warningSound = warningSound;
             _audioConfigured = true;
         }
 
@@ -521,16 +522,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
         private void PlayWarningSound()
         {
-            if (_audio != null && _warningSound != null)
-            {
-                _audio.Play(
-                    _warningSound,
-                    AudioPlayMode.OneShot,
-                    new AudioPlayOptions
-                    {
-                        WorldPosition = System.Numerics.Vector3.Zero
-                    });
-            }
+            _shipAiVoiceService.TrySpeak(ShipAiVoiceCue.CollisionWarning, _audio, _soundRegistry);
         }
 
         private void StartFlash(I3dObject theObject, bool isWeakSpotHit = false)
@@ -679,6 +671,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
             _explosionWorldPosition = null;
             _explosionObjectOffsets = null;
             _audio = null;
+            _soundRegistry = null;
             _thudSound = null;
             _explosionSound = null;
             if (_engineInstance != null)
@@ -688,7 +681,6 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
             }
             _engineSound = null;
             _attackSound = null;
-            _warningSound = null;
             _attackSoundPlayed = false;
             _warningSoundPlayed = false;
             MotherShipSmallAi.ResetState(_ramState);

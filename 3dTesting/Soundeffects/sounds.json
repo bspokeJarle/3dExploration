@@ -992,6 +992,110 @@
       }
     },
     {
+      "id": "ship_ai_clean_loop",
+      "usage": "ShipAiVoiceCleanLoop",
+      "file": "OmegaStrain_clean_loop.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 155
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_great_flying",
+      "usage": "ShipAiVoiceGreatFlying",
+      "file": "OmegaStrain_great_flying.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 155
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_low_altitude_bonus",
+      "usage": "ShipAiVoiceLowAltitudeBonus",
+      "file": "OmegaStrain_low_altitude_bonus.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.7,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 155
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_planet_bonus_complete",
+      "usage": "ShipAiVoicePlanetBonusComplete",
+      "file": "OmegaStrain_planet_bonus_reached.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.7,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 155
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
       "id": "water_splash",
       "usage": "WaterSplash",
       "file": "OmegaStrain_water_Splash.wav",

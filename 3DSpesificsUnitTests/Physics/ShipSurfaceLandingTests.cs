@@ -78,7 +78,7 @@ public class ShipSurfaceLandingTests
         for (int i = 0; i < frames; i++)
         {
             // 1. Gravity (Physics.ApplyFallGravity — actual code)
-            float inertiaY = physics.ApplyFallGravity(70, dt);
+            float inertiaY = physics.ApplyFallGravity(WorldViewSetup.CameraPitchDegrees, dt);
 
             // 2. Apply inertia to position (ShipControls lines 887, 890)
             offsetY = MathF.Min(
@@ -132,6 +132,23 @@ public class ShipSurfaceLandingTests
             "MaxScreenDrop must change when screen size changes (not stale from construction).");
         Assert.AreEqual(1024 * 0.44f, small, 0.1f);
         Assert.AreEqual(1440 * 0.44f, big, 0.1f);
+    }
+
+    [TestMethod]
+    public void CeilingHeight_ReflectsCurrentScreenSize()
+    {
+        var physics = new GameAiAndControls.Physics.Physics();
+
+        ScreenSetup.Initialize(1500, 1024);
+        float small = physics.CeilingHeight;
+
+        ScreenSetup.Initialize(2250, 1440);
+        float big = physics.CeilingHeight;
+
+        Assert.AreNotEqual(small, big,
+            "CeilingHeight must scale with screen size so loop room is consistent across displays.");
+        Assert.AreEqual(1024 * 1.6f - 200f, small, 0.1f);
+        Assert.AreEqual(1440 * 1.6f - 200f, big, 0.1f);
     }
 
     [TestMethod]
@@ -492,7 +509,7 @@ public class ShipSurfaceLandingTests
         ship.ObjectName = "Ship";
         ship.WorldPosition = new Vector3 { x = 120f, y = 40f, z = -80f };
         ship.ObjectOffsets = new Vector3 { x = 25f, y = ShipRestingScreenY(ScreenSetup.screenSizeY), z = 400f };
-        ship.Rotation = new Vector3 { x = 70f, y = 0f, z = 15f };
+        ship.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 15f };
         ship.ImpactStatus = new ImpactStatus
         {
             ObjectHealth = 1,
@@ -575,6 +592,35 @@ public class ShipSurfaceLandingTests
         AssertVectorEqual(frozenCrashOffset, nextFrameShipCopy.CalculatedCrashOffset, "CalculatedCrashOffset");
     }
 
+    [TestMethod]
+    public void ShipControls_WhenShipExplosionReleasesParticles_KeepsParticlesScreenAnchored()
+    {
+        var map = CreateSurfaceMap(40, 40);
+        PlaceShipCenterOverTile(map, 0, 0);
+
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3();
+        ship.ImpactStatus = CreateSurfaceImpact(health: 1);
+
+        var controls = (ShipControls)ship.Movement!;
+        controls.SetParticleGuideCoordinates(
+            CreatePointTriangle(0f, 0f, 0f),
+            CreatePointTriangle(0f, -10f, 0f));
+
+        controls.MoveObject(ship, null, null);
+
+        Assert.IsNotNull(ship.Particles);
+        Assert.IsTrue(ship.Particles.Particles.Count > 0, "Ship explosion should release particles when guides are available.");
+
+        foreach (var particle in ship.Particles.Particles)
+        {
+            Assert.AreEqual(0f, particle.WorldPosition.x, 0.001f);
+            Assert.AreEqual(0f, particle.WorldPosition.y, 0.001f);
+            Assert.AreEqual(0f, particle.WorldPosition.z, 0.001f);
+        }
+    }
+
     private static _3dObject CreateCrashObject(int id, string name)
     {
         return new _3dObject
@@ -613,6 +659,18 @@ public class ShipSurfaceLandingTests
         Assert.AreEqual(expected.x, actual.x, 0.001f, $"{name}.x");
         Assert.AreEqual(expected.y, actual.y, 0.001f, $"{name}.y");
         Assert.AreEqual(expected.z, actual.z, 0.001f, $"{name}.z");
+    }
+
+    private static TriangleMeshWithColor CreatePointTriangle(float x, float y, float z)
+    {
+        return new TriangleMeshWithColor
+        {
+            Color = "ffffff",
+            noHidden = true,
+            vert1 = new Vector3 { x = x, y = y, z = z },
+            vert2 = new Vector3 { x = x, y = y, z = z },
+            vert3 = new Vector3 { x = x, y = y, z = z }
+        };
     }
 
     private static SurfaceData[,] CreateSurfaceMap(int width, int height)

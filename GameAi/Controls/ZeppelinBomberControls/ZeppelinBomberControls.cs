@@ -11,7 +11,7 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
 {
     public class ZeppelinBomberControls : IObjectMovement
     {
-        private const float BaseXRotation = 70f;
+        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 90f;
         private const float RotationDegreesPerSecond = 60f;

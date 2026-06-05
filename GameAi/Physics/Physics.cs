@@ -41,6 +41,10 @@ namespace GameAiAndControls.Physics
         public float VerticalLiftFactor { get; set; } = 0f;
 
         // ── Flight tuning constants ──────────────────────────────────
+        private const float DefaultCeilingHeightScreenFactor = 1.6f;
+        private const float DefaultCeilingHeightReduction = 200f;
+        private float? _ceilingHeightOverride;
+
         public float GravityAcceleration { get; set; } = 3.6f;
         public float TerminalFallSpeed { get; set; } = 35f;
         public float GravityPullMultiplier { get; set; } = 9.0f;
@@ -53,7 +57,12 @@ namespace GameAiAndControls.Physics
         public float VerticalLiftRate { get; set; } = 3.0f;
 
         // ── Height limits ────────────────────────────────────────────
-        public float CeilingHeight { get; set; } = 1000f;
+        public float CeilingHeight
+        {
+            get => _ceilingHeightOverride ?? (ScreenSetup.screenSizeY * DefaultCeilingHeightScreenFactor - DefaultCeilingHeightReduction);
+            set => _ceilingHeightOverride = value;
+        }
+
         public float FloorHeight { get; set; } = -100f;
         // Computed from current screen size so the value stays correct even
         // when Physics is constructed before ScreenSetup.Initialize().

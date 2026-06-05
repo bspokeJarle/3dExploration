@@ -116,7 +116,7 @@ public class WeaponsAimAssistTests
             ObjectName = "Ship",
             ObjectOffsets = new Vector3 { x = 0f, y = 0f, z = 0f },
             WorldPosition = new Vector3 { x = 0f, y = 0f, z = 0f },
-            Rotation = new Vector3 { x = 70f, y = 0f, z = 0f },
+            Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 0f },
             ImpactStatus = new ImpactStatus { ObjectName = "Ship", ObjectHealth = 100 },
             CrashBoxes = CreateCrashBoxes(),
             ObjectParts = CreateObjectParts()

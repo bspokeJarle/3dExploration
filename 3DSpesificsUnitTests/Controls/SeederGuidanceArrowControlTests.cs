@@ -1,5 +1,6 @@
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
 using System.Threading;
@@ -61,7 +62,7 @@ public class SeederGuidanceArrowControlTests
         {
             ObjectId = 1001,
             ObjectName = "SeederGuidanceArrow",
-            Rotation = new Vector3 { x = 70f, y = 0f, z = 90f },
+            Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0f, z = 90f },
             WorldPosition = new Vector3(),
             ObjectOffsets = new Vector3(),
             ImpactStatus = new ImpactStatus()

@@ -4,6 +4,7 @@ using CommonUtilities.CommonSetup;
 using CommonUtilities.GamePlayHelpers;
 using CommonUtilities.Persistence;
 using Domain;
+using GameAiAndControls.Audio.Services;
 using GameAiAndControls.Input;
 using System;
 using System.Collections.Generic;
@@ -51,6 +52,7 @@ namespace GameAiAndControls.Controls
 
         // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
+        private ISoundRegistry? _soundRegistry;
         private SoundDefinition? _rocketSound;
         private SoundDefinition? _explosionSound;
         private SoundDefinition? _releaseDecoySound;
@@ -70,12 +72,14 @@ namespace GameAiAndControls.Controls
         private bool _surfaceBounceWaitingForGravity = false;
         private bool _unsafeSurfaceHitArmed = false;
         private DateTime _unsafeSurfaceHitAt = DateTime.MinValue;
+        private readonly ShipLoopTracker _loopTracker = new();
+        private readonly ShipAiVoiceService _shipAiVoiceService = ShipAiVoiceService.Shared;
 
         private DateTime lastUpdateTime = DateTime.Now;
 
         public int FormerMouseX = 0;
         public int FormerMouseY = 0;
-        public int rotationX = 70;
+        public int rotationX = WorldViewSetup.CameraPitchDegreesInt;
         public int rotationY = 0;
         public int rotationZ = 0;
         public int tilt = 0;
@@ -94,6 +98,9 @@ namespace GameAiAndControls.Controls
         public float Thrust { get; set; } = 0;
         public bool ThrustOn { get; set; } = false;
         public IPhysics Physics { get; set; } = new Physics.Physics();
+        public ShipLoopStatus LastLoopStatus => _loopTracker.LastStatus;
+        public int CleanLoopCount => _loopTracker.CleanLoopCount;
+        public int CollisionLoopCount => _loopTracker.CollisionLoopCount;
         private bool hasInitialized = false;
         private bool isExploding = false;
         private DateTime _motherShipCollisionCooldown = DateTime.MinValue;
@@ -124,13 +131,14 @@ namespace GameAiAndControls.Controls
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             // Already configured, so nothing else is required.
-            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null && _powerupSound != null && _impactThudSound != null && _surfaceThudSound != null)
+            if (_audio != null && _soundRegistry != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null && _powerupSound != null && _impactThudSound != null && _surfaceThudSound != null)
                 return;
 
             if (audioPlayer == null || soundRegistry == null)
                 return;
 
             _audio = audioPlayer;
+            _soundRegistry = soundRegistry;
             _rocketSound = soundRegistry.Get("rocket_main");
             _explosionSound = soundRegistry.Get("explosion_main");
             _releaseDecoySound = soundRegistry.Get("release_decoy");
@@ -651,6 +659,9 @@ namespace GameAiAndControls.Controls
             GameState.GamePlayState.Update(deltaTime);
             ExpireUnsafeSurfaceHit(now);
 
+            if (IsLoopCollision(theObject.ImpactStatus))
+                _loopTracker.MarkCollision();
+
             if (isExploding)
                 return UpdateExplodingShip(theObject);
 
@@ -718,6 +729,8 @@ namespace GameAiAndControls.Controls
 
             if (Thrust == 0 && !isExploding)
                 ApplyGravity(deltaTime);
+
+            HandleCompletedLoopBonus(UpdateLoopTracking(deltaTime));
 
             if (!isExploding && IsBelowSurfaceFailsafeFloor())
             {
@@ -929,6 +942,39 @@ namespace GameAiAndControls.Controls
             return GameState.SurfaceState.GlobalMapPosition.y < Physics.FloorHeight;
         }
 
+        private ShipLoopStatus UpdateLoopTracking(float deltaTime)
+        {
+            return _loopTracker.Update(tilt, isAirborne: !landed, ThrustOn, deltaTime);
+        }
+
+        private void HandleCompletedLoopBonus(ShipLoopStatus loopStatus)
+        {
+            if (!loopStatus.Completed)
+                return;
+
+            int requestedScore = loopStatus.HadCollision
+                ? GameSetup.CollisionLoopStyleBonusScore
+                : GameSetup.CleanLoopStyleBonusScore;
+            int awardedScore = GameState.GamePlayState.AwardStyleBonus(requestedScore);
+            if (awardedScore <= 0)
+                return;
+
+            var cue = loopStatus.HadCollision
+                ? ShipAiVoiceCue.CollisionLoop
+                : ShipAiVoiceCue.CleanLoop;
+
+            if (GameState.GamePlayState.PlanetStyleBonusRemaining <= 0)
+                cue = ShipAiVoiceCue.PlanetBonusComplete;
+
+            _shipAiVoiceService.TrySpeak(cue, _audio, _soundRegistry);
+        }
+
+        private static bool IsLoopCollision(IImpactStatus? impactStatus)
+        {
+            return impactStatus?.HasCrashed == true &&
+                   !string.Equals(impactStatus.ObjectName, "PowerUp", StringComparison.OrdinalIgnoreCase);
+        }
+
         private void StartShipExplosion(I3dObject theObject)
         {
             if (isExploding)
@@ -971,7 +1017,7 @@ namespace GameAiAndControls.Controls
             ParentObject?.Particles?.ReleaseParticles(
                 GuideCoordinates,
                 StartCoordinates,
-                GameState.SurfaceState.GlobalMapPosition,
+                GetExplosionParticleWorldPosition(theObject),
                 this,
                 explosionParticleThrust,
                 true);
@@ -1080,6 +1126,15 @@ namespace GameAiAndControls.Controls
             theObject.CalculatedCrashOffset = ToVector3(_explosionCalculatedCrashOffset);
         }
 
+        private Vector3 GetExplosionParticleWorldPosition(I3dObject theObject)
+        {
+            var worldPosition = _explosionWorldPosition ?? ToVector3(theObject.WorldPosition);
+            if (worldPosition == null)
+                return new Vector3();
+
+            return new Vector3 { x = worldPosition.x, y = worldPosition.y, z = worldPosition.z };
+        }
+
         private static Vector3? ToVector3(IVector3? v)
         {
             if (v is null)
@@ -1092,6 +1147,7 @@ namespace GameAiAndControls.Controls
         {
             ResetSurfaceBounceState();
             ResetUnsafeSurfaceHit();
+            _loopTracker.CancelActiveLoop();
             ThrustOn = false;
             _fireKeyHeld = false;
             Thrust = 0f;

@@ -1,6 +1,7 @@
 ﻿using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using Domain;
+using CommonUtilities.CommonSetup;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -20,11 +21,11 @@ namespace GameAiAndControls.Controls
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
         // The arrow's default forward is +X. Base rotation aligns it with the camera view.
-        private float Xrotation = 70f;
+        private float Xrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private float Yrotation = 0f;
         private float Zrotation = 90f;
 
-        private float TargetXrotation = 70f;
+        private float TargetXrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private float TargetYrotation = 0f;
         private float TargetZrotation = 90f;
 

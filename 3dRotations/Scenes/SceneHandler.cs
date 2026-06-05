@@ -840,6 +840,8 @@ namespace _3DWorld.Scene
             gps.CheckpointInitialSeeders = 0;
             gps.CheckpointInitialDrones = 0;
             gps.CheckpointInitialMotherShips = 0;
+            gps.CheckpointPlanetStyleBonusScore = 0;
+            gps.CheckpointPlanetStyleBonusSceneIndex = gps.SceneIndex;
         }
 
         private static void ApplyCheckpointSnapshotToCurrentState(
@@ -861,6 +863,8 @@ namespace _3DWorld.Scene
             gps.InitialSeeders = snapshot.InitialSeeders;
             gps.InitialDrones = snapshot.InitialDrones;
             gps.InitialMotherShips = snapshot.InitialMotherShips;
+            gps.PlanetStyleBonusScore = snapshot.PlanetStyleBonusScore;
+            gps.PlanetStyleBonusSceneIndex = snapshot.PlanetStyleBonusSceneIndex;
         }
 
         // -----------------------------------------------------------------

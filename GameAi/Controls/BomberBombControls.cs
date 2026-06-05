@@ -1,5 +1,6 @@
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Helpers;
 using System;
@@ -10,7 +11,7 @@ namespace GameAiAndControls.Controls
 {
     public class BomberBombControls : IObjectMovement
     {
-        private const float BaseXRotation = 70f;
+        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 270f;
 

@@ -54,7 +54,7 @@ namespace _3dRotations.Scene.Scene7
 
             var guidanceArrow = SeederGuidanceArrow.CreateSeederGuidanceArrow(Surface);
             guidanceArrow.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 200 };
-            guidanceArrow.Rotation = new Vector3 { x = 70, y = 0, z = 90 };
+            guidanceArrow.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 90 };
             guidanceArrow.WorldPosition = new Vector3 { };
             guidanceArrow.ObjectName = "SeederGuidanceArrow";
             guidanceArrow.ImpactStatus = new ImpactStatus { };
@@ -150,7 +150,7 @@ namespace _3dRotations.Scene.Scene7
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 400 };
-            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            surfaceObject.Rotation = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             surfaceObject.Movement = new GroundControls();
             surfaceObject.ParentSurface = Surface;
@@ -282,7 +282,7 @@ namespace _3dRotations.Scene.Scene7
                 float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
 
                 var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
-                jumpingFish.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                jumpingFish.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 jumpingFish.WorldPosition = new Vector3 { };
                 jumpingFish.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
                 jumpingFish.ObjectOffsets = new Vector3
@@ -319,7 +319,7 @@ namespace _3dRotations.Scene.Scene7
                 float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
 
                 var seal = Seal.CreateSeal(Surface);
-                seal.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                seal.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 seal.WorldPosition = new Vector3 { };
                 seal.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
                 seal.ObjectOffsets = new Vector3
@@ -486,7 +486,7 @@ namespace _3dRotations.Scene.Scene7
                 polarBear.WorldPosition = new Vector3 { };
                 polarBear.SurfaceBasedId = fallbackMapId;
                 polarBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
-                polarBear.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                polarBear.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 polarBear.ObjectName = "PolarBear";
                 polarBear.Movement = new PolarBearControls(minPathOffsetX, maxPathOffsetX);
                 polarBear.ImpactStatus = new ImpactStatus { };
@@ -538,7 +538,7 @@ namespace _3dRotations.Scene.Scene7
             guaranteedBear.WorldPosition = new Vector3 { };
             guaranteedBear.SurfaceBasedId = mapId;
             guaranteedBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
-            guaranteedBear.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            guaranteedBear.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
             guaranteedBear.ObjectName = "PolarBear";
             guaranteedBear.Movement = new PolarBearControls(minPathOffsetX, maxPathOffsetX);
             guaranteedBear.ImpactStatus = new ImpactStatus { };

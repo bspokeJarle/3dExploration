@@ -108,7 +108,7 @@ public class PolarBearControlsTests
         MoveOneFrame(control, bear, null, null);
 
         Assert.IsTrue(
-            ((Vector3)bear.Rotation!).x < 60f,
+            ((Vector3)bear.Rotation!).x < WorldViewSetup.SurfaceFacingObjectPitchDegrees - 10f,
             "Bear should rear up into the roar pose during the turn pause.");
         Assert.AreEqual(
             ExpectedBaseOffsetYAfterFrames(5),
@@ -181,7 +181,7 @@ public class PolarBearControlsTests
         bear.SurfaceBasedId = bearTileId;
         bear.WorldPosition = new Vector3 { x = 920f, y = 20f, z = 1180f };
         bear.ObjectOffsets = new Vector3 { x = 0f, y = 280f, z = 400f };
-        bear.Rotation = new Vector3 { x = 70f, y = 0f, z = 0f };
+        bear.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0f, z = 0f };
         bear.ImpactStatus = new ImpactStatus();
         bear.IsOnScreen = true;
         bear.IsActive = true;

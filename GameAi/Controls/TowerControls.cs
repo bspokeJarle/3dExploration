@@ -15,7 +15,7 @@ namespace GameAiAndControls.Controls
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
         private float Yrotation = 0;
-        private float Xrotation = 70;
+        private float Xrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private float Zrotation = 0;
 
         private float TowerRotationSpeedZ = 1.5f;

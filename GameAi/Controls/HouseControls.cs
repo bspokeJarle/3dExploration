@@ -1,5 +1,6 @@
 ﻿using Domain;
 using Gma.System.MouseKeyHook;
+using CommonUtilities.CommonSetup;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +17,7 @@ namespace GameAiAndControls.Controls
         public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         private float Yrotation = 0;
-        private float Xrotation = 70;
+        private float Xrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private float Zrotation = 35;
         
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)

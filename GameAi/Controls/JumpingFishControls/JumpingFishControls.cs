@@ -11,7 +11,7 @@ namespace GameAiAndControls.Controls.JumpingFishControls
 {
     public class JumpingFishControls : IObjectMovement
     {
-        private const float BaseXRotation = 70f;
+        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const int InitialJumpDirection = -1;
         private const float StartZRotation = -90f;

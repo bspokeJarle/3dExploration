@@ -32,10 +32,10 @@ namespace GameAiAndControls.Controls
 
         //Initial rotation angles for the drone, pointing towards the camera. Adjust as needed based on the drone model's default orientation.
         private float Yrotation = 0;
-        private float Xrotation = 70;
+        private float Xrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private float Zrotation = 90;
         private float TargetYrotation = 0;
-        private float TargetXrotation = 70;
+        private float TargetXrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private float TargetZrotation = 90;
 
         const int DroneSpeedScreenPrSecond = 3; //How many seconds it should take for the drone to cross the entire screen at its current speed. Adjust as needed.
@@ -365,7 +365,7 @@ namespace GameAiAndControls.Controls
             float pitchDegrees = MathF.Atan2(-normalizedDirection.y, MathF.Sqrt(normalizedDirection.x * normalizedDirection.x + normalizedDirection.z * normalizedDirection.z)) * 180f / MathF.PI;
 
             TargetZrotation = 270f + headingDegrees;
-            TargetXrotation = 70f + pitchDegrees;
+            TargetXrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees + pitchDegrees;
             TargetYrotation = 0f;
         }
 
