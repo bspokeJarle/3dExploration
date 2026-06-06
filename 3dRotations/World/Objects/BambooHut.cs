@@ -69,6 +69,7 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.AddCustomShadowPart(hut, BambooHutShadow());
             _3dObjectHelpers.ApplyScaleToObject(hut, HutScale);
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(hut);
 
             return hut;
         }

@@ -285,6 +285,7 @@ namespace CommonUtilities._3DHelpers
                 CrashBoxesFollowRotation = original.CrashBoxesFollowRotation,
                 CalculatedCrashOffset = original.CalculatedCrashOffset,
                 HasShadow = original.HasShadow,
+                UseSurfaceFootprintPivot = original.UseSurfaceFootprintPivot,
                 HasPowerUp = original.HasPowerUp,
                 ZSortBias = original.ZSortBias
             };
@@ -318,6 +319,7 @@ namespace CommonUtilities._3DHelpers
                 CrashBoxesFollowRotation = original.CrashBoxesFollowRotation,
                 CalculatedCrashOffset = original.CalculatedCrashOffset,
                 HasShadow = original.HasShadow,
+                UseSurfaceFootprintPivot = original.UseSurfaceFootprintPivot,
                 HasPowerUp = original.HasPowerUp,
                 ZSortBias = original.ZSortBias
             };

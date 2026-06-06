@@ -62,6 +62,116 @@ namespace _3dTesting.Helpers
             }
         }
 
+        public static void NormalizeSurfaceFootprintPivot(I3dObject actualObject)
+        {
+            if (actualObject == null || actualObject.ObjectParts == null || actualObject.ObjectParts.Count == 0)
+                return;
+
+            var referenceVerts = new List<Vector3>(128);
+            float minZ = float.MaxValue;
+            float maxZ = float.MinValue;
+
+            foreach (var part in actualObject.ObjectParts)
+            {
+                if (!part.IsVisible || part.PartName == "Shadow" || part.Triangles == null)
+                    continue;
+
+                foreach (var tri in part.Triangles)
+                {
+                    AddPivotReferenceVertex(referenceVerts, tri.vert1, ref minZ, ref maxZ);
+                    AddPivotReferenceVertex(referenceVerts, tri.vert2, ref minZ, ref maxZ);
+                    AddPivotReferenceVertex(referenceVerts, tri.vert3, ref minZ, ref maxZ);
+                }
+            }
+
+            if (referenceVerts.Count == 0)
+                return;
+
+            float height = Math.Max(0f, maxZ - minZ);
+            float bottomBand = Math.Max(0.001f, height * 0.04f);
+            float sumX = 0f;
+            float sumY = 0f;
+            int count = 0;
+
+            foreach (var vertex in referenceVerts)
+            {
+                if (vertex.z > minZ + bottomBand)
+                    continue;
+
+                sumX += vertex.x;
+                sumY += vertex.y;
+                count++;
+            }
+
+            if (count == 0)
+                return;
+
+            var pivot = new Vector3
+            {
+                x = sumX / count,
+                y = sumY / count,
+                z = minZ
+            };
+
+            TranslateObject(actualObject, -pivot.x, -pivot.y, -pivot.z);
+            actualObject.UseSurfaceFootprintPivot = true;
+        }
+
+        private static void AddPivotReferenceVertex(List<Vector3> sink, IVector3 vertex, ref float minZ, ref float maxZ)
+        {
+            if (vertex == null)
+                return;
+
+            var v = new Vector3 { x = vertex.x, y = vertex.y, z = vertex.z };
+            sink.Add(v);
+            if (v.z < minZ) minZ = v.z;
+            if (v.z > maxZ) maxZ = v.z;
+        }
+
+        private static void TranslateObject(I3dObject actualObject, float shiftX, float shiftY, float shiftZ)
+        {
+            var translated = new HashSet<IVector3>(ReferenceEqualityComparer.Instance);
+
+            foreach (var part in actualObject.ObjectParts)
+            {
+                if (part.Triangles == null)
+                    continue;
+
+                foreach (var tri in part.Triangles)
+                {
+                    TranslateVertexOnce(translated, tri.vert1, shiftX, shiftY, shiftZ);
+                    TranslateVertexOnce(translated, tri.vert2, shiftX, shiftY, shiftZ);
+                    TranslateVertexOnce(translated, tri.vert3, shiftX, shiftY, shiftZ);
+                }
+            }
+
+            if (actualObject.CrashBoxes == null)
+                return;
+
+            foreach (var crashBox in actualObject.CrashBoxes)
+            {
+                for (int i = 0; i < crashBox.Count; i++)
+                {
+                    crashBox[i] = new Vector3
+                    {
+                        x = crashBox[i].x + shiftX,
+                        y = crashBox[i].y + shiftY,
+                        z = crashBox[i].z + shiftZ
+                    };
+                }
+            }
+        }
+
+        private static void TranslateVertexOnce(HashSet<IVector3> translated, IVector3 vertex, float shiftX, float shiftY, float shiftZ)
+        {
+            if (vertex == null || !translated.Add(vertex))
+                return;
+
+            vertex.x += shiftX;
+            vertex.y += shiftY;
+            vertex.z += shiftZ;
+        }
+
         // ----------------------------------------------------
         //  SIMPLIFIED SHADOW PART
         // ----------------------------------------------------

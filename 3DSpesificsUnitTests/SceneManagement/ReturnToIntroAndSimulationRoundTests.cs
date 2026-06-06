@@ -8,6 +8,9 @@ using Domain;
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading;
+using System.Windows.Input;
+using System.Windows.Interop;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3DSpesificsUnitTests.SceneManagement;
@@ -150,6 +153,50 @@ public class ReturnToIntroAndSimulationRoundTests
             "SceneIndex in GamePlayState must be 0 after returning to intro.");
     }
 
+    [TestMethod]
+    public void EscapeFromGame_ReturnsToIntro()
+    {
+        RunOnStaThread(() =>
+        {
+            var gps = GameState.GamePlayState;
+            gps.PlayerName = "Pilot";
+            gps.SceneIndex = 1;
+
+            var handler = new SceneHandler();
+            var world = CreateMinimalWorld(handler);
+            SetCurrentSceneIndex(handler, 1);
+            GameState.ScreenOverlayState.ShowOverlay = false;
+
+            HandleKeyPress(handler, world, Key.Escape);
+
+            Assert.AreEqual(SceneTypes.Intro, handler.GetActiveScene().SceneType,
+                "Escape from a game scene should return to the intro/menu, not exit immediately.");
+            Assert.AreEqual(0, GameState.GamePlayState.SceneIndex);
+        });
+    }
+
+    [TestMethod]
+    public void XFromGame_ReturnsToIntro()
+    {
+        RunOnStaThread(() =>
+        {
+            var gps = GameState.GamePlayState;
+            gps.PlayerName = "Pilot";
+            gps.SceneIndex = 1;
+
+            var handler = new SceneHandler();
+            var world = CreateMinimalWorld(handler);
+            SetCurrentSceneIndex(handler, 1);
+            GameState.ScreenOverlayState.ShowOverlay = false;
+
+            HandleKeyPress(handler, world, Key.X);
+
+            Assert.AreEqual(SceneTypes.Intro, handler.GetActiveScene().SceneType,
+                "X from a game scene should return to the intro/menu.");
+            Assert.AreEqual(0, GameState.GamePlayState.SceneIndex);
+        });
+    }
+
     // ------------------------------------------------------------------
     // SimulationRound: persisted and restored
     // ------------------------------------------------------------------
@@ -240,5 +287,46 @@ public class ReturnToIntroAndSimulationRoundTests
     {
         var method = typeof(SceneHandler).GetMethod("ReturnToIntro", BindingFlags.NonPublic | BindingFlags.Instance);
         method?.Invoke(handler, new object[] { world });
+    }
+
+    private static void HandleKeyPress(SceneHandler handler, _3dWorld world, Key key)
+    {
+        using var source = new HwndSource(new HwndSourceParameters("OmegaStrainKeyTest")
+        {
+            Width = 1,
+            Height = 1
+        });
+
+        handler.HandleKeyPress(CreateKeyArgs(key, source), world);
+    }
+
+    private static KeyEventArgs CreateKeyArgs(Key key, HwndSource source)
+    {
+        return new KeyEventArgs(Keyboard.PrimaryDevice, source, 0, key)
+        {
+            RoutedEvent = Keyboard.KeyDownEvent
+        };
+    }
+
+    private static void RunOnStaThread(Action action)
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                action();
+            }
+            catch (Exception ex)
+            {
+                failure = ex;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        if (failure != null)
+            throw failure;
     }
 }

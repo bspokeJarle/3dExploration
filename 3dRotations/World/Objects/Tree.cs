@@ -89,6 +89,7 @@ namespace _3dRotations.World.Objects
             });
 
             _3dObjectHelpers.AddCustomShadowPart(tree, shadowTris);
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(tree);
 
             return tree;
         }

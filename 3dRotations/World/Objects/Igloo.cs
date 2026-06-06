@@ -45,6 +45,7 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.AddCustomShadowPart(igloo, IglooShadow(15f, 12f));
             _3dObjectHelpers.ApplyScaleToObject(igloo, SmallIglooScale);
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(igloo);
             igloo.Movement = new IglooControls();
 
             return igloo;
@@ -74,6 +75,7 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.AddCustomShadowPart(igloo, IglooShadow(25f, 20f));
             _3dObjectHelpers.ApplyScaleToObject(igloo, LargeIglooScale);
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(igloo);
             igloo.Movement = new IglooControls();
 
             return igloo;

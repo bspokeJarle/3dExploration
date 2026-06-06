@@ -28,6 +28,7 @@ namespace Domain
         bool IsOnScreen { get; set; }
         bool HasShadow { get; set; }
         IVector3? ShadowOffset { get; set; }
+        bool UseSurfaceFootprintPivot { get; set; }
         bool HasPowerUp { get; set; }
         bool IsActive { get; set; }
         float ZSortBias { get; set; }

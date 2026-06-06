@@ -84,12 +84,12 @@ namespace _3dRotations.Scenes.Outro
 
         public static Vector3 CreateFinalTreeOffset()
         {
-            return new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 430 * ScreenSetup.ScreenScaleY, z = 400 };
+            return new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
         }
 
         public static Vector3 CreateFinalHouseOffset()
         {
-            return new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 400 };
+            return new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
         }
 
         public static Vector3 CreateFinalBannerOffset()

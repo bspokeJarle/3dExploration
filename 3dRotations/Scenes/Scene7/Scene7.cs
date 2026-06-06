@@ -178,7 +178,7 @@ namespace _3dRotations.Scene.Scene7
                 tower.WorldPosition = new Vector3 { };
                 tower.SurfaceBasedId = GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
-                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 315 * ScreenSetup.ScreenScaleY, z = 400 };
+                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled, z = 400 };
                 tower.ObjectName = "SnowTower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
@@ -210,8 +210,7 @@ namespace _3dRotations.Scene.Scene7
                 igloo.Rotation = new Vector3 { x = 0, y = 0, z = rotationZ };
                 igloo.SurfaceBasedId = GameState.SurfaceState.Global2DMap[iglooPlacement.y, iglooPlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[iglooPlacement.y, iglooPlacement.x].hasLandbasedObject = true;
-                float iglooOffsetY = useLargeIgloo ? 462f : 475f;
-                igloo.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = iglooOffsetY * ScreenSetup.ScreenScaleY, z = 400 };
+                igloo.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
                 igloo.ImpactStatus = new ImpactStatus { };
                 igloo.CrashBoxDebugMode = false;
                 if (igloo.SurfaceBasedId > 0) world.WorldInhabitants.Add(igloo);
@@ -485,7 +484,7 @@ namespace _3dRotations.Scene.Scene7
                 var polarBear = PolarBear.CreatePolarBear(Surface);
                 polarBear.WorldPosition = new Vector3 { };
                 polarBear.SurfaceBasedId = fallbackMapId;
-                polarBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
+                polarBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled, z = 400 };
                 polarBear.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 polarBear.ObjectName = "PolarBear";
                 polarBear.Movement = new PolarBearControls(minPathOffsetX, maxPathOffsetX);
@@ -537,7 +536,7 @@ namespace _3dRotations.Scene.Scene7
             var guaranteedBear = PolarBear.CreatePolarBear(Surface);
             guaranteedBear.WorldPosition = new Vector3 { };
             guaranteedBear.SurfaceBasedId = mapId;
-            guaranteedBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
+            guaranteedBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled, z = 400 };
             guaranteedBear.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
             guaranteedBear.ObjectName = "PolarBear";
             guaranteedBear.Movement = new PolarBearControls(minPathOffsetX, maxPathOffsetX);

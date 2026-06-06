@@ -64,6 +64,7 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.ApplyScaleToObject(bear, Scale);
             _3dObjectHelpers.AddCustomShadowPart(bear, PolarBearShadow());
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(bear);
 
             return bear;
         }

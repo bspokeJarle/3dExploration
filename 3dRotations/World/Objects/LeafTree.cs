@@ -52,6 +52,7 @@ namespace _3dRotations.World.Objects
             tree.CrashBoxes = LeafTreeCrashBoxes();
 
             _3dObjectHelpers.AddCustomShadowPart(tree, LeafTreeShadow());
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(tree);
 
             return tree;
         }

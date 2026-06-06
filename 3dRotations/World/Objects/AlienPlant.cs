@@ -61,6 +61,7 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.AddCustomShadowPart(plant, AlienPlantShadow(28f, 24f));
             _3dObjectHelpers.ApplyScaleToObject(plant, ZoomRatio);
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(plant);
 
             return plant;
         }
@@ -88,6 +89,7 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.AddCustomShadowPart(plant, AlienPlantShadow(17f, 15f));
             _3dObjectHelpers.ApplyScaleToObject(plant, ZoomRatio);
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(plant);
 
             return plant;
         }

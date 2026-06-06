@@ -174,7 +174,7 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
 
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tower.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
+                tower.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled, z = 400 };
                 tower.ObjectName = "Tower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
@@ -198,7 +198,7 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
 
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tree.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 430 * ScreenSetup.ScreenScaleY, z = 400 };
+                tree.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
@@ -220,7 +220,7 @@ namespace _3dRotations.Scene.Scene1
                 house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
 
-                house.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 400 };
+                house.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };
@@ -239,7 +239,7 @@ namespace _3dRotations.Scene.Scene1
                 NearPlatformLeafTreeTarget,
                 NearPlatformLeafTreeSearchRadius,
                 treeOffsetX: 40 * ScreenSetup.ScreenScaleX,
-                treeOffsetY: 430 * ScreenSetup.ScreenScaleY,
+                treeOffsetY: LandBasedObjectSetup.SurfaceFootprintOffsetYScaled,
                 towerPlacements,
                 treePlacements,
                 housePlacements);

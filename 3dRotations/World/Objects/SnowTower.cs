@@ -76,6 +76,7 @@ namespace _3dRotations.World.Objects
             tower.CrashBoxNames = new List<string?> { "IglooBase", "TowerShaft", "TowerHead" };
 
             _3dObjectHelpers.AddCustomShadowPart(tower, SnowTowerShadow());
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(tower);
 
             return tower;
         }

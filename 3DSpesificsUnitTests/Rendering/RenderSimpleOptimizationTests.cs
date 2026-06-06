@@ -52,6 +52,173 @@ public class RenderSimpleOptimizationTests
     }
 
     [TestMethod]
+    public void SurfaceBasedPlacement_UsesBottomFootprintAsObjectAnchor()
+    {
+        var obj = new _3dObject
+        {
+            ObjectId = 44,
+            ObjectName = "FootprintObject",
+            ObjectOffsets = new Vector3(),
+            Rotation = new Vector3(),
+            WorldPosition = new Vector3(),
+            ObjectParts = new List<I3dObjectPart>
+            {
+                new _3dObjectPart
+                {
+                    IsVisible = true,
+                    PartName = "Main",
+                    Triangles = new List<ITriangleMeshWithColor>
+                    {
+                        new TriangleMeshWithColor
+                        {
+                            vert1 = new Vector3 { x = 10f, y = -20f, z = 30f },
+                            vert2 = new Vector3 { x = 30f, y = -20f, z = 30f },
+                            vert3 = new Vector3 { x = 200f, y = 80f, z = 300f }
+                        }
+                    }
+                }
+            }
+        };
+
+        var anchor = ObjectPlacementHelpers.GetObjectGeometricCenter(obj, snapToBottomY: true);
+
+        Assert.AreEqual(20f, anchor.x, 0.001f);
+        Assert.AreEqual(-20f, anchor.y, 0.001f);
+        Assert.AreEqual(30f, anchor.z, 0.001f);
+    }
+
+    [TestMethod]
+    public void SurfaceBasedPlacement_UsesPrebakedSurfaceFootprintPivot()
+    {
+        var surface = new Surface
+        {
+            RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>()
+        };
+        var target = new Vector3 { x = 25f, y = 15f, z = 5f };
+        surface.RotatedSurfaceTriangleByLandId[42] = new TriangleMeshWithColor
+        {
+            landBasedPosition = 42,
+            vert1 = target,
+            vert2 = new Vector3 { x = 35f, y = 15f, z = 5f },
+            vert3 = new Vector3 { x = 25f, y = 25f, z = 5f }
+        };
+
+        var obj = new _3dObject
+        {
+            ObjectId = 45,
+            ObjectName = "PrebakedPivotObject",
+            ObjectOffsets = new Vector3(),
+            Rotation = new Vector3(),
+            WorldPosition = new Vector3(),
+            ParentSurface = surface,
+            SurfaceBasedId = 42,
+            UseSurfaceFootprintPivot = true,
+            ObjectParts = new List<I3dObjectPart>
+            {
+                new _3dObjectPart
+                {
+                    IsVisible = true,
+                    PartName = "Main",
+                    Triangles = new List<ITriangleMeshWithColor>
+                    {
+                        new TriangleMeshWithColor
+                        {
+                            vert1 = new Vector3 { x = 0f, y = 0f, z = 0f },
+                            vert2 = new Vector3 { x = 10f, y = 0f, z = 0f },
+                            vert3 = new Vector3 { x = 0f, y = -100f, z = 50f }
+                        }
+                    }
+                }
+            },
+            CrashBoxes = new List<List<IVector3>>
+            {
+                new()
+                {
+                    new Vector3 { x = -1f, y = -1f, z = -1f },
+                    new Vector3 { x = 1f, y = 1f, z = 1f }
+                }
+            }
+        };
+
+        bool positioned = ObjectPlacementHelpers.TryGetRenderPosition(obj, 100, 100, out _, out _, out _);
+
+        Assert.IsTrue(positioned);
+        var pivotVertex = obj.ObjectParts[0].Triangles[0].vert1;
+        Assert.AreEqual(target.x, pivotVertex.x, 0.001f);
+        Assert.AreEqual(target.y, pivotVertex.y, 0.001f);
+        Assert.AreEqual(target.z, pivotVertex.z, 0.001f);
+    }
+
+    [TestMethod]
+    public void NormalizeSurfaceFootprintPivot_PinsModelSpaceFootprintAndCrashBoxes()
+    {
+        var obj = new _3dObject
+        {
+            ObjectId = 46,
+            ObjectName = "RawSurfaceObject",
+            ObjectOffsets = new Vector3(),
+            Rotation = new Vector3(),
+            WorldPosition = new Vector3(),
+            ObjectParts = new List<I3dObjectPart>
+            {
+                new _3dObjectPart
+                {
+                    IsVisible = true,
+                    PartName = "Main",
+                    Triangles = new List<ITriangleMeshWithColor>
+                    {
+                        new TriangleMeshWithColor
+                        {
+                            vert1 = new Vector3 { x = 10f, y = 4f, z = 0f },
+                            vert2 = new Vector3 { x = 30f, y = 6f, z = 0f },
+                            vert3 = new Vector3 { x = 200f, y = 80f, z = 100f }
+                        }
+                    }
+                },
+                new _3dObjectPart
+                {
+                    IsVisible = false,
+                    PartName = "Shadow",
+                    Triangles = new List<ITriangleMeshWithColor>
+                    {
+                        new TriangleMeshWithColor
+                        {
+                            vert1 = new Vector3 { x = 10f, y = 4f, z = 0f },
+                            vert2 = new Vector3 { x = 30f, y = 6f, z = 0f },
+                            vert3 = new Vector3 { x = 20f, y = 5f, z = 20f }
+                        }
+                    }
+                }
+            },
+            CrashBoxes = new List<List<IVector3>>
+            {
+                new()
+                {
+                    new Vector3 { x = 10f, y = 4f, z = 0f },
+                    new Vector3 { x = 30f, y = 6f, z = 10f }
+                }
+            }
+        };
+
+        _3dObjectHelpers.NormalizeSurfaceFootprintPivot(obj);
+
+        Assert.IsTrue(obj.UseSurfaceFootprintPivot);
+        Assert.AreEqual(-10f, obj.ObjectParts[0].Triangles[0].vert1.x, 0.001f);
+        Assert.AreEqual(-1f, obj.ObjectParts[0].Triangles[0].vert1.y, 0.001f);
+        Assert.AreEqual(0f, obj.ObjectParts[0].Triangles[0].vert1.z, 0.001f);
+        Assert.AreEqual(10f, obj.ObjectParts[0].Triangles[0].vert2.x, 0.001f);
+        Assert.AreEqual(1f, obj.ObjectParts[0].Triangles[0].vert2.y, 0.001f);
+        Assert.AreEqual(0f, obj.ObjectParts[0].Triangles[0].vert2.z, 0.001f);
+
+        Assert.AreEqual(-10f, obj.CrashBoxes[0][0].x, 0.001f);
+        Assert.AreEqual(-1f, obj.CrashBoxes[0][0].y, 0.001f);
+        Assert.AreEqual(0f, obj.CrashBoxes[0][0].z, 0.001f);
+
+        Assert.AreEqual(-10f, obj.ObjectParts[1].Triangles[0].vert1.x, 0.001f);
+        Assert.AreEqual(-1f, obj.ObjectParts[1].Triangles[0].vert1.y, 0.001f);
+    }
+
+    [TestMethod]
     public void ConvertTo2dFromObjects_ReusesProvidedResultList()
     {
         var converter = new _3dTo2d();
