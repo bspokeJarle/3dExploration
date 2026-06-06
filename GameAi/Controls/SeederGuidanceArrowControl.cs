@@ -31,6 +31,7 @@ namespace GameAiAndControls.Controls
 
         private const float RotationDegreesPerSecond = 1800f;
 
+        private float? _preferredOffsetY;
         private DateTime _lastUpdate = DateTime.MinValue;
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -40,6 +41,7 @@ namespace GameAiAndControls.Controls
             // Arrow is a fixed on-screen object with no world position.
             // It only rotates to point toward the closest seeder.
             theObject.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+            AnchorBelowGameOverlay(theObject);
 
             var now = DateTime.Now;
             if (_lastUpdate == DateTime.MinValue)
@@ -73,6 +75,22 @@ namespace GameAiAndControls.Controls
             }
 
             return theObject;
+        }
+
+        private void AnchorBelowGameOverlay(I3dObject theObject)
+        {
+            var offsets = theObject.ObjectOffsets;
+            if (offsets == null)
+            {
+                offsets = new Vector3 { x = 0, y = 0, z = 0 };
+                theObject.ObjectOffsets = offsets;
+            }
+
+            _preferredOffsetY ??= offsets.y;
+
+            float preferredScreenY = ScreenSetup.screenSizeY / 2f + _preferredOffsetY.Value;
+            float anchoredScreenY = GameOverlaySetup.AnchorScreenYBelowHud(preferredScreenY);
+            offsets.y = anchoredScreenY - ScreenSetup.screenSizeY / 2f;
         }
 
         /// <summary>

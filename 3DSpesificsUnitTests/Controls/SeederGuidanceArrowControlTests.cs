@@ -14,6 +14,7 @@ public class SeederGuidanceArrowControlTests
     [TestInitialize]
     public void Setup()
     {
+        ScreenSetup.Initialize(1500, 1024);
         GameState.GamePlayState = new GamePlayState();
         GameState.SurfaceState = new SurfaceState();
         GameState.ShipState = new ShipState();
@@ -54,6 +55,35 @@ public class SeederGuidanceArrowControlTests
 
         Assert.AreEqual(90f, arrow.Rotation!.z, 0.1f,
             "Arrow should point to bomber when it is the remaining objective enemy.");
+    }
+
+    [TestMethod]
+    public void MoveObject_AnchorsArrowBelowGameOverlay_OnLowHeightScreen()
+    {
+        ScreenSetup.Initialize(1920, 1080);
+        var control = new SeederGuidanceArrowControl();
+        var arrow = CreateArrow();
+        arrow.ObjectOffsets!.y = -200f;
+
+        control.MoveObject(arrow, null, null);
+
+        float screenY = ScreenSetup.screenSizeY / 2f + arrow.ObjectOffsets.y;
+        Assert.IsTrue(screenY >= GameOverlaySetup.GuidanceArrowMinimumScreenY,
+            "Guidance arrow should stay below the top HUD overlay on lower-height screens.");
+    }
+
+    [TestMethod]
+    public void MoveObject_KeepsPreferredArrowY_WhenAlreadyBelowGameOverlay()
+    {
+        ScreenSetup.Initialize(2256, 1504);
+        var control = new SeederGuidanceArrowControl();
+        var arrow = CreateArrow();
+        arrow.ObjectOffsets!.y = -200f;
+
+        control.MoveObject(arrow, null, null);
+
+        Assert.AreEqual(-200f, arrow.ObjectOffsets.y, 0.1f,
+            "Guidance arrow should keep the scene's preferred placement when it is already below the HUD.");
     }
 
     private static _3dObject CreateArrow()

@@ -1,4 +1,5 @@
 ﻿using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -28,7 +29,7 @@ namespace _3dTesting.MainWindowClasses
         private const bool enableLogging = false;
 
         // You said 0.40 looked correct in-game.
-        private const double DesignHudHeightRatio = 0.25;
+        private const double DesignHudHeightRatio = GameOverlaySetup.HudHeightRatio;
 
         private static readonly double DesignHudHeight = DesignHeight * DesignHudHeightRatio;
 
