@@ -120,3 +120,15 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Installer created in: $outputDir"
+
+$outputBaseName = "TheOmegaStrainSetup-$Version"
+$installerFiles = Get-ChildItem -LiteralPath $outputDir -File |
+    Where-Object { $_.BaseName -eq $outputBaseName -or $_.BaseName -like "$outputBaseName-*" } |
+    Sort-Object Name
+
+if ($installerFiles) {
+    Write-Host "Installer files:"
+    foreach ($file in $installerFiles) {
+        Write-Host "  $($file.FullName)"
+    }
+}
