@@ -40,6 +40,7 @@ namespace _3dRotations.World.Objects
             tent.CrashBoxNames = new List<string?> { "BedouinTentBody" };
 
             _3dObjectHelpers.AddCustomShadowPart(tent, TentShadow());
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(tent);
 
             return tent;
         }

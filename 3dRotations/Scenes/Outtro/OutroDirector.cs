@@ -14,7 +14,6 @@ namespace _3dRotations.Scenes.Outro
         private const float GroundRevealFadeInSeconds = 1.5f;
         private const float GroundRevealSeconds = 2.4f;
         private const float CongratulationsOverlayDelaySeconds = 10f;
-        private const float CongratulationsOverlayPageSeconds = 15f;
 
         private readonly OutroLandingSceneBuilder _landingSceneBuilder = new();
         private I3dWorld? _world;
@@ -165,7 +164,7 @@ namespace _3dRotations.Scenes.Outro
 
             overlay.CurrentPage = 0;
             overlay.ApplyPageContent();
-            overlay.AutoPageSeconds = CongratulationsOverlayPageSeconds;
+            overlay.AutoPageSeconds = ScreenOverlayState.DefaultAutoPageSeconds;
             overlay.ShowOverlay = true;
         }
 

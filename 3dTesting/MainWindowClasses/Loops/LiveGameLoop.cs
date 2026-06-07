@@ -187,6 +187,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 SnowfallControls.GlobalSnowOpacity = weatherOpacity;
                 RainfallControls.GlobalRainOpacity = weatherOpacity;
                 SandDriftControls.GlobalSandOpacity = weatherOpacity;
+                LeafDriftControls.GlobalLeafOpacity = weatherOpacity;
             }
             starfieldMs = MarkPhase();
 
@@ -323,6 +324,8 @@ namespace _3dTesting.MainWindowClasses.Loops
                 StarFieldHandler = null;
                 SnowfallControls.GlobalSnowOpacity = 1f;
                 RainfallControls.GlobalRainOpacity = 1f;
+                SandDriftControls.GlobalSandOpacity = 1f;
+                LeafDriftControls.GlobalLeafOpacity = 1f;
 
                 if (_victorySequenceStarted && !_deathSequenceStarted)
                     world.SceneHandler.NextScene(world);

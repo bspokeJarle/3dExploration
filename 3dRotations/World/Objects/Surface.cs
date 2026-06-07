@@ -15,10 +15,9 @@ namespace _3dRotations.World.Objects
 {
     public class Surface : ISurface
     {
-        private const float DefaultSurfacePitchDegrees = 70f;
         private const float MainSurfaceLandingLeadY = 40f;
 
-        public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = DefaultSurfacePitchDegrees, y = 0, z = 0 };
+        public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 };
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
         public Dictionary<long, ITriangleMeshWithColor> RotatedSurfaceTriangleByLandId { get; set; } = new();
         public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();

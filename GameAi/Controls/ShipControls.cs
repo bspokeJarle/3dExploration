@@ -1,8 +1,10 @@
 ﻿using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.GamePlayHelpers;
 using CommonUtilities.Persistence;
 using Domain;
+using GameAiAndControls.Audio.Services;
 using GameAiAndControls.Input;
 using System;
 using System.Collections.Generic;
@@ -27,6 +29,12 @@ namespace GameAiAndControls.Controls
         private const float MaxRotationSpeed = 160f;
         private const float RotationDrag = 0.90f;
         private const float DEG2RAD = MathF.PI / 180f;
+        private const float SurfaceLandingDamageSpeedThreshold = 5f;
+        private const int MinSurfaceLandingDamage = 2;
+        private const float LowSpeedSurfaceLandingDamageMultiplier = 2f;
+        private const float HighSpeedSurfaceLandingDamageMultiplier = 12f;
+        private const float SurfaceBounceTopTolerance = 0.5f;
+        private const double UnsafeSurfaceHitResetSeconds = 2.0;
         private static float ShipRestingScreenY => ScreenSetup.screenSizeY * 0.195f;
 
         // Engine glow colors: idle (dark red) when no thrust, active (yellow) at full thrust.
@@ -44,6 +52,7 @@ namespace GameAiAndControls.Controls
 
         // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
+        private ISoundRegistry? _soundRegistry;
         private SoundDefinition? _rocketSound;
         private SoundDefinition? _explosionSound;
         private SoundDefinition? _releaseDecoySound;
@@ -60,12 +69,17 @@ namespace GameAiAndControls.Controls
         private float _yawAccumulator = 0f;
         private float _pitchAccumulator = 0f;
         private bool landed = false;
+        private bool _surfaceBounceWaitingForGravity = false;
+        private bool _unsafeSurfaceHitArmed = false;
+        private DateTime _unsafeSurfaceHitAt = DateTime.MinValue;
+        private readonly ShipLoopTracker _loopTracker = new();
+        private readonly ShipAiVoiceService _shipAiVoiceService = ShipAiVoiceService.Shared;
 
         private DateTime lastUpdateTime = DateTime.Now;
 
         public int FormerMouseX = 0;
         public int FormerMouseY = 0;
-        public int rotationX = 70;
+        public int rotationX = WorldViewSetup.CameraPitchDegreesInt;
         public int rotationY = 0;
         public int rotationZ = 0;
         public int tilt = 0;
@@ -84,6 +98,9 @@ namespace GameAiAndControls.Controls
         public float Thrust { get; set; } = 0;
         public bool ThrustOn { get; set; } = false;
         public IPhysics Physics { get; set; } = new Physics.Physics();
+        public ShipLoopStatus LastLoopStatus => _loopTracker.LastStatus;
+        public int CleanLoopCount => _loopTracker.CleanLoopCount;
+        public int CollisionLoopCount => _loopTracker.CollisionLoopCount;
         private bool hasInitialized = false;
         private bool isExploding = false;
         private DateTime _motherShipCollisionCooldown = DateTime.MinValue;
@@ -94,6 +111,11 @@ namespace GameAiAndControls.Controls
         private bool _upHeld = false;
         private bool _downHeld = false;
         private DateTime ExplosionDeltaTime = DateTime.Now;
+        private bool _hasExplosionTransformSnapshot = false;
+        private Vector3? _explosionWorldPosition;
+        private Vector3? _explosionObjectOffsets;
+        private Vector3? _explosionRotation;
+        private Vector3? _explosionCalculatedCrashOffset;
 
         public ShipControls()
         {
@@ -109,13 +131,14 @@ namespace GameAiAndControls.Controls
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             // Already configured, so nothing else is required.
-            if (_audio != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null && _powerupSound != null && _impactThudSound != null && _surfaceThudSound != null)
+            if (_audio != null && _soundRegistry != null && _rocketSound != null && _explosionSound != null && _releaseDecoySound != null && _changeWeaponSound != null && _bulletSound != null && _powerupSound != null && _impactThudSound != null && _surfaceThudSound != null)
                 return;
 
             if (audioPlayer == null || soundRegistry == null)
                 return;
 
             _audio = audioPlayer;
+            _soundRegistry = soundRegistry;
             _rocketSound = soundRegistry.Get("rocket_main");
             _explosionSound = soundRegistry.Get("explosion_main");
             _releaseDecoySound = soundRegistry.Get("release_decoy");
@@ -634,6 +657,13 @@ namespace GameAiAndControls.Controls
             lastUpdateTime = now;
 
             GameState.GamePlayState.Update(deltaTime);
+            ExpireUnsafeSurfaceHit(now);
+
+            if (IsLoopCollision(theObject.ImpactStatus))
+                _loopTracker.MarkCollision();
+
+            if (isExploding)
+                return UpdateExplodingShip(theObject);
 
             if (_leftHeld) _yawVelocity -= RotationAcceleration * deltaTime;
             if (_rightHeld) _yawVelocity += RotationAcceleration * deltaTime;
@@ -689,6 +719,8 @@ namespace GameAiAndControls.Controls
 
             if (ThrustOn)
             {
+                ResetSurfaceBounceState();
+                ResetUnsafeSurfaceHit();
                 landed = false;
                 Physics.ResetHover();
                 IncreaseThrustAndRelease();
@@ -697,6 +729,20 @@ namespace GameAiAndControls.Controls
 
             if (Thrust == 0 && !isExploding)
                 ApplyGravity(deltaTime);
+
+            HandleCompletedLoopBonus(UpdateLoopTracking(deltaTime));
+
+            if (!isExploding && IsBelowSurfaceFailsafeFloor())
+            {
+                if (theObject.ImpactStatus == null)
+                    theObject.ImpactStatus = new ImpactStatus();
+
+                theObject.ImpactStatus.ObjectName = "Surface";
+                theObject.ImpactStatus.ObjectHealth = 0;
+                theObject.ImpactStatus.HasCrashed = false;
+                StartShipExplosion(theObject);
+                return UpdateExplodingShip(theObject);
+            }
 
             if (ParentObject.Particles?.Particles.Count > 0)
                 ParentObject.Particles.MoveParticles();
@@ -723,20 +769,6 @@ namespace GameAiAndControls.Controls
                 GameState.SurfaceState.GlobalMapPosition.y,
                 Physics.FloorHeight,
                 Physics.CeilingHeight);
-
-            // Only update explosion if it has already started
-            if (isExploding)
-            {
-                Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
-
-                if (theObject.ImpactStatus?.HasExploded == true)
-                {
-                    theObject.ObjectParts = new List<I3dObjectPart>();
-                }
-
-                if (theObject.Particles?.Particles.Count > 0)
-                    theObject.Particles.MoveParticles();
-            }
 
             if (!isExploding)
             {
@@ -808,20 +840,32 @@ namespace GameAiAndControls.Controls
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Top ||
                          theObject.ImpactStatus.ImpactDirection == ImpactDirection.Center)
                 {
-                    // Surface/terrain landing — stop falling and let the settle
-                        // logic in ApplyGravity smoothly return both the screen
-                        // position and altitude to their resting values.
-                        landed = true;
-                        Physics.InertiaY = 0f;
-                        Physics.InertiaX *= 0.3f;
-                        Physics.InertiaZ *= 0.3f;
+                    bool overLandingPlatform = IsShipOverLandingPlatform();
 
-                    if (landingSpeed > 5f)
+                    if (overLandingPlatform)
                     {
-                        theObject.ImpactStatus.ObjectHealth -= (int)(landingSpeed * 10);
-                        if (theObject.ImpactStatus.ObjectHealth > 0)
-                            PlaySurfaceThud(theObject);
+                        ResetUnsafeSurfaceHit();
+                        BeginSurfaceBounceRecovery(reenableGravityAtTop: false);
                     }
+                    else
+                    {
+                        if (IsUnsafeSurfaceHitActive(now))
+                        {
+                            StartShipExplosion(theObject);
+                            theObject.ImpactStatus.HasCrashed = false;
+                            return UpdateExplodingShip(theObject);
+                        }
+
+                        ArmUnsafeSurfaceHit(now);
+                        BeginSurfaceBounceRecovery(reenableGravityAtTop: true);
+
+                        int landingDamage = CalculateSurfaceLandingDamage(landingSpeed);
+                        theObject.ImpactStatus.ObjectHealth -= landingDamage;
+                    }
+
+                    if (theObject.ImpactStatus.ObjectHealth > 0)
+                        PlaySurfaceThud(theObject);
+
                     if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] Landing. Speed={landingSpeed:F1}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else
@@ -838,41 +882,9 @@ namespace GameAiAndControls.Controls
 
                 if (theObject.ImpactStatus.ObjectHealth <= 0)
                 {
-                    // Stop the rocket loop before the explosion starts.
-                    if (_rocketInstance != null)
-                    {
-                        _rocketInstance.Stop(playEndSegment: true);
-                        _rocketInstance = null;
-                    }
-
-                    // Play the ship explosion if audio is configured.
-                    if (_audio != null && _explosionSound != null)
-                    {
-                        var audioPosition = ((_3dObject)theObject).GetAudioPosition();
-                        _audio.PlayOneShot(
-                            _explosionSound,
-                            new AudioPlayOptions
-                            {
-                                VolumeOverride = 1.0f,
-                                WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
-                            });
-                    }
-
-                    // Release some particles at the explosion, set fixed thrust level
-                    Thrust = 10;
-                    ParentObject?.Particles?.ReleaseParticles(
-                        GuideCoordinates,
-                        StartCoordinates,
-                        GameState.SurfaceState.GlobalMapPosition,
-                        this,
-                        (int)Thrust,
-                        true);
-
-                    isExploding = true;
-                    ExplosionDeltaTime = DateTime.Now;
-
-                    var explodedVersion = Physics.ExplodeObject(theObject, 200f);
-                    ParentObject = explodedVersion;
+                    StartShipExplosion(theObject);
+                    theObject.ImpactStatus.HasCrashed = false;
+                    return UpdateExplodingShip(theObject);
                 }
 
                 theObject.ImpactStatus.HasCrashed = false;
@@ -897,7 +909,272 @@ namespace GameAiAndControls.Controls
             return theObject;
         }
 
+        private I3dObject UpdateExplodingShip(I3dObject theObject)
+        {
+            StopShipMotionForExplosion();
+            GameState.GamePlayState.Thrust = Thrust;
+            GameState.GamePlayState.UpdateAltitude(
+                GameState.SurfaceState.GlobalMapPosition.y,
+                Physics.FloorHeight,
+                Physics.CeilingHeight);
+
+            RestoreExplosionTransform(theObject);
+            RestoreExplosionTransform(ParentObject);
+
+            Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
+            RestoreExplosionTransform(theObject);
+            RestoreExplosionTransform(ParentObject);
+
+            if (theObject.ImpactStatus?.HasExploded == true)
+            {
+                theObject.ObjectParts = new List<I3dObjectPart>();
+            }
+
+            if (theObject.Particles?.Particles.Count > 0)
+                theObject.Particles.MoveParticles();
+
+            UpdateShipWorldPosition(theObject);
+            return theObject;
+        }
+
+        private bool IsBelowSurfaceFailsafeFloor()
+        {
+            return GameState.SurfaceState.GlobalMapPosition.y < Physics.FloorHeight;
+        }
+
+        private ShipLoopStatus UpdateLoopTracking(float deltaTime)
+        {
+            return _loopTracker.Update(tilt, isAirborne: !landed, ThrustOn, deltaTime);
+        }
+
+        private void HandleCompletedLoopBonus(ShipLoopStatus loopStatus)
+        {
+            if (!loopStatus.Completed)
+                return;
+
+            int requestedScore = loopStatus.HadCollision
+                ? GameSetup.CollisionLoopStyleBonusScore
+                : GameSetup.CleanLoopStyleBonusScore;
+            int awardedScore = GameState.GamePlayState.AwardStyleBonus(requestedScore);
+            if (awardedScore <= 0)
+                return;
+
+            var cue = loopStatus.HadCollision
+                ? ShipAiVoiceCue.CollisionLoop
+                : ShipAiVoiceCue.CleanLoop;
+
+            if (GameState.GamePlayState.PlanetStyleBonusRemaining <= 0)
+                cue = ShipAiVoiceCue.PlanetBonusComplete;
+
+            _shipAiVoiceService.TrySpeak(cue, _audio, _soundRegistry);
+        }
+
+        private static bool IsLoopCollision(IImpactStatus? impactStatus)
+        {
+            return impactStatus?.HasCrashed == true &&
+                   !string.Equals(impactStatus.ObjectName, "PowerUp", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private void StartShipExplosion(I3dObject theObject)
+        {
+            if (isExploding)
+                return;
+
+            if (theObject.ImpactStatus == null)
+                theObject.ImpactStatus = new ImpactStatus();
+
+            theObject.ImpactStatus.ObjectHealth = 0;
+            CaptureExplosionTransform(theObject);
+
+            // Stop the rocket loop before the explosion starts.
+            if (_rocketInstance != null)
+            {
+                _rocketInstance.Stop(playEndSegment: true);
+                _rocketInstance = null;
+            }
+
+            if (_bulletInstance != null)
+            {
+                _bulletInstance.Stop(playEndSegment: false);
+                _bulletInstance = null;
+            }
+
+            // Play the ship explosion if audio is configured.
+            if (_audio != null && _explosionSound != null)
+            {
+                var audioPosition = ((_3dObject)theObject).GetAudioPosition();
+                _audio.PlayOneShot(
+                    _explosionSound,
+                    new AudioPlayOptions
+                    {
+                        VolumeOverride = 1.0f,
+                        WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                    });
+            }
+
+            // Release some particles at the explosion, set fixed thrust level.
+            const int explosionParticleThrust = (int)MaxThrust;
+            ParentObject?.Particles?.ReleaseParticles(
+                GuideCoordinates,
+                StartCoordinates,
+                GetExplosionParticleWorldPosition(theObject),
+                this,
+                explosionParticleThrust,
+                true);
+
+            StopShipMotionForExplosion();
+
+            isExploding = true;
+            ExplosionDeltaTime = DateTime.Now;
+
+            var explodedVersion = Physics.ExplodeObject(theObject, 200f);
+            ParentObject = explodedVersion;
+            RestoreExplosionTransform(theObject);
+            RestoreExplosionTransform(ParentObject);
+        }
+
         public float CurrentSpeed => Physics.CalculateCurrentSpeed(landed);
+
+        private void BeginSurfaceBounceRecovery(bool reenableGravityAtTop)
+        {
+            landed = true;
+            _surfaceBounceWaitingForGravity = reenableGravityAtTop;
+            Physics.InertiaY = 0f;
+            Physics.InertiaX *= 0.3f;
+            Physics.InertiaZ *= 0.3f;
+        }
+
+        private void EnableGravityAfterSurfaceBounce()
+        {
+            landed = false;
+            ResetSurfaceBounceState();
+            Physics.InertiaY = MathF.Min(Physics.InertiaY, 0f);
+            Physics.HoverElapsed = Physics.HoverFloatDuration + Physics.HoverRampDuration;
+        }
+
+        private bool HasReachedSurfaceBounceTop()
+        {
+            return MathF.Abs(ParentObject.ObjectOffsets.y - ShipRestingScreenY) <= SurfaceBounceTopTolerance &&
+                   MathF.Abs(GameState.SurfaceState.GlobalMapPosition.y) <= SurfaceBounceTopTolerance;
+        }
+
+        private void ArmUnsafeSurfaceHit(DateTime now)
+        {
+            _unsafeSurfaceHitArmed = true;
+            _unsafeSurfaceHitAt = now;
+        }
+
+        private bool IsUnsafeSurfaceHitActive(DateTime now)
+        {
+            ExpireUnsafeSurfaceHit(now);
+            return _unsafeSurfaceHitArmed;
+        }
+
+        private void ExpireUnsafeSurfaceHit(DateTime now)
+        {
+            if (!_unsafeSurfaceHitArmed)
+                return;
+
+            if ((now - _unsafeSurfaceHitAt).TotalSeconds >= UnsafeSurfaceHitResetSeconds)
+                ResetUnsafeSurfaceHit();
+        }
+
+        private void ResetUnsafeSurfaceHit()
+        {
+            _unsafeSurfaceHitArmed = false;
+            _unsafeSurfaceHitAt = DateTime.MinValue;
+        }
+
+        private static bool IsShipOverLandingPlatform()
+        {
+            var map = GameState.SurfaceState.Global2DMap;
+            if (map == null)
+                return false;
+
+            int tileSize = SurfaceSetup.tileSize;
+            int viewportCenterOffset = (SurfaceSetup.viewPortSize * tileSize) / 2;
+            var mapPosition = GameState.SurfaceState.GlobalMapPosition;
+            int shipTileX = MapCoordinateHelpers.WorldToTileIndex(
+                mapPosition.x + viewportCenterOffset,
+                tileSize,
+                map.GetLength(1));
+            int shipTileZ = MapCoordinateHelpers.WorldToTileIndex(
+                mapPosition.z + viewportCenterOffset,
+                tileSize,
+                map.GetLength(0));
+
+            return LandingPlatformHelpers.IsLandingPlatformTile(map, shipTileX, shipTileZ);
+        }
+
+        private void CaptureExplosionTransform(I3dObject theObject)
+        {
+            _hasExplosionTransformSnapshot = true;
+            _explosionWorldPosition = ToVector3(theObject.WorldPosition);
+            _explosionObjectOffsets = ToVector3(theObject.ObjectOffsets);
+            _explosionRotation = ToVector3(theObject.Rotation);
+            _explosionCalculatedCrashOffset = ToVector3(theObject.CalculatedCrashOffset);
+        }
+
+        private void RestoreExplosionTransform(I3dObject? theObject)
+        {
+            if (!_hasExplosionTransformSnapshot || theObject == null)
+                return;
+
+            theObject.WorldPosition = ToVector3(_explosionWorldPosition);
+            theObject.ObjectOffsets = ToVector3(_explosionObjectOffsets);
+            theObject.Rotation = ToVector3(_explosionRotation);
+            theObject.CalculatedCrashOffset = ToVector3(_explosionCalculatedCrashOffset);
+        }
+
+        private Vector3 GetExplosionParticleWorldPosition(I3dObject theObject)
+        {
+            var worldPosition = _explosionWorldPosition ?? ToVector3(theObject.WorldPosition);
+            if (worldPosition == null)
+                return new Vector3();
+
+            return new Vector3 { x = worldPosition.x, y = worldPosition.y, z = worldPosition.z };
+        }
+
+        private static Vector3? ToVector3(IVector3? v)
+        {
+            if (v is null)
+                return null;
+
+            return new Vector3 { x = v.x, y = v.y, z = v.z };
+        }
+
+        private void StopShipMotionForExplosion()
+        {
+            ResetSurfaceBounceState();
+            ResetUnsafeSurfaceHit();
+            _loopTracker.CancelActiveLoop();
+            ThrustOn = false;
+            _fireKeyHeld = false;
+            Thrust = 0f;
+            Physics.InertiaX = 0f;
+            Physics.InertiaY = 0f;
+            Physics.InertiaZ = 0f;
+            Physics.FallVelocity = 0f;
+            Physics.ThrustEffect = 0f;
+            Physics.VerticalLiftFactor = 0f;
+        }
+
+        private void ResetSurfaceBounceState()
+        {
+            _surfaceBounceWaitingForGravity = false;
+        }
+
+        private static int CalculateSurfaceLandingDamage(float landingSpeed)
+        {
+            float speed = MathF.Max(0f, landingSpeed);
+
+            if (speed <= SurfaceLandingDamageSpeedThreshold)
+                return Math.Max(
+                    MinSurfaceLandingDamage,
+                    (int)MathF.Ceiling(MinSurfaceLandingDamage + speed * LowSpeedSurfaceLandingDamageMultiplier));
+
+            return Math.Max(MinSurfaceLandingDamage, (int)(speed * HighSpeedSurfaceLandingDamageMultiplier));
+        }
 
         public void ApplyLocalTiltToMesh(int tilt, I3dObject inhabitant)
         {
@@ -1013,7 +1290,14 @@ namespace GameAiAndControls.Controls
                 else
                     GameState.SurfaceState.GlobalMapPosition.y = 0f;
 
-                return;
+                if (_surfaceBounceWaitingForGravity && HasReachedSurfaceBounceTop())
+                {
+                    EnableGravityAfterSurfaceBounce();
+                }
+                else
+                {
+                    return;
+                }
             }
 
             float verticalInertia = Physics.ApplyFallGravity(rotationX, deltaTime);

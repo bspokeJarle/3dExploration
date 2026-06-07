@@ -19,13 +19,16 @@ namespace CommonUtilities.Persistence
         };
 
         /// <summary>
-        /// Takes a snapshot of the current <see cref="GameState.GamePlayState"/>
-        /// and writes it as an encrypted per-player file.
+        /// Writes the player's durable progress as an encrypted per-player file.
+        /// When a checkpoint exists, the resumable state is the last checkpoint,
+        /// not the volatile in-flight state at shutdown.
         /// </summary>
         public static void SaveGameState()
         {
             var state = GameState.GamePlayState;
             if (string.IsNullOrWhiteSpace(state.PlayerName)) return;
+
+            bool useCheckpoint = state.HasCheckpoint;
 
             var saved = new SavedGameState
             {
@@ -33,23 +36,25 @@ namespace CommonUtilities.Persistence
                 SceneIndex = state.SceneIndex,
                 SimulationRound = state.SimulationRound,
                 SceneBiome = state.CurrentSceneBiome,
-                Score = state.Score,
-                Lives = state.Lives,
-                Health = state.Health,
+                Score = useCheckpoint ? state.CheckpointScore : state.Score,
+                PlanetStyleBonusScore = useCheckpoint ? state.CheckpointPlanetStyleBonusScore : state.PlanetStyleBonusScore,
+                PlanetStyleBonusSceneIndex = useCheckpoint ? state.CheckpointPlanetStyleBonusSceneIndex : state.PlanetStyleBonusSceneIndex,
+                Lives = useCheckpoint ? state.CheckpointLives : state.Lives,
+                Health = useCheckpoint ? state.CheckpointHealth : state.Health,
                 MaxHealth = state.MaxHealth,
-                WaveNumber = state.WaveNumber,
-                PowerUpsCollected = state.PowerUpsCollected,
-                InfectionLevel = state.InfectionLevel,
+                WaveNumber = useCheckpoint ? state.CheckpointWaveNumber : state.WaveNumber,
+                PowerUpsCollected = useCheckpoint ? state.CheckpointPowerUpsCollected : state.PowerUpsCollected,
+                InfectionLevel = useCheckpoint ? state.CheckpointInfectionLevel : state.InfectionLevel,
                 TotalBioTiles = state.TotalBioTiles,
-                SeedersRemaining = state.SeedersRemaining,
-                DronesRemaining = state.DronesRemaining,
-                MotherShipsRemaining = state.MotherShipsRemaining,
-                InitialSeeders = state.InitialSeeders,
-                InitialDrones = state.InitialDrones,
-                InitialMotherShips = state.InitialMotherShips,
-                TotalShotsFired = state.TotalShotsFired,
-                TotalKills = state.TotalKills,
-                TotalDeaths = state.TotalDeaths,
+                SeedersRemaining = useCheckpoint ? state.CheckpointSeedersRemaining : state.SeedersRemaining,
+                DronesRemaining = useCheckpoint ? state.CheckpointDronesRemaining : state.DronesRemaining,
+                MotherShipsRemaining = useCheckpoint ? state.CheckpointMotherShipsRemaining : state.MotherShipsRemaining,
+                InitialSeeders = useCheckpoint ? state.CheckpointInitialSeeders : state.InitialSeeders,
+                InitialDrones = useCheckpoint ? state.CheckpointInitialDrones : state.InitialDrones,
+                InitialMotherShips = useCheckpoint ? state.CheckpointInitialMotherShips : state.InitialMotherShips,
+                TotalShotsFired = useCheckpoint ? state.CheckpointTotalShotsFired : state.TotalShotsFired,
+                TotalKills = useCheckpoint ? state.CheckpointTotalKills : state.TotalKills,
+                TotalDeaths = useCheckpoint ? state.CheckpointTotalDeaths : state.TotalDeaths,
                 HasCheckpoint = state.HasCheckpoint,
                 CheckpointScore = state.CheckpointScore,
                 CheckpointLives = state.CheckpointLives,
@@ -66,6 +71,8 @@ namespace CommonUtilities.Persistence
                 CheckpointInitialSeeders = state.CheckpointInitialSeeders,
                 CheckpointInitialDrones = state.CheckpointInitialDrones,
                 CheckpointInitialMotherShips = state.CheckpointInitialMotherShips,
+                CheckpointPlanetStyleBonusScore = state.CheckpointPlanetStyleBonusScore,
+                CheckpointPlanetStyleBonusSceneIndex = state.CheckpointPlanetStyleBonusSceneIndex,
                 SavedAtUtc = DateTime.UtcNow.ToString("o")
             };
 
@@ -115,6 +122,8 @@ namespace CommonUtilities.Persistence
             var state = GameState.GamePlayState;
 
             state.Score = saved.Score;
+            state.PlanetStyleBonusScore = saved.PlanetStyleBonusScore;
+            state.PlanetStyleBonusSceneIndex = saved.PlanetStyleBonusSceneIndex;
             state.SceneIndex = saved.SceneIndex;
             state.SimulationRound = saved.SimulationRound;
             state.CurrentSceneBiome = saved.SceneBiome;
@@ -150,6 +159,8 @@ namespace CommonUtilities.Persistence
             state.CheckpointInitialSeeders = saved.CheckpointInitialSeeders;
             state.CheckpointInitialDrones = saved.CheckpointInitialDrones;
             state.CheckpointInitialMotherShips = saved.CheckpointInitialMotherShips;
+            state.CheckpointPlanetStyleBonusScore = saved.CheckpointPlanetStyleBonusScore;
+            state.CheckpointPlanetStyleBonusSceneIndex = saved.CheckpointPlanetStyleBonusSceneIndex;
         }
 
         /// <summary>
@@ -190,6 +201,8 @@ namespace CommonUtilities.Persistence
             saved.SceneIndex = 1;
             saved.SceneBiome = Domain.SceneBiomeTypes.HillsWoods;
             saved.Score = 0;
+            saved.PlanetStyleBonusScore = 0;
+            saved.PlanetStyleBonusSceneIndex = 1;
             saved.WaveNumber = 1;
             saved.PowerUpsCollected = 0;
             saved.InfectionLevel = 0f;
@@ -219,6 +232,8 @@ namespace CommonUtilities.Persistence
             saved.CheckpointInitialSeeders = 0;
             saved.CheckpointInitialDrones = 0;
             saved.CheckpointInitialMotherShips = 0;
+            saved.CheckpointPlanetStyleBonusScore = 0;
+            saved.CheckpointPlanetStyleBonusSceneIndex = 1;
             saved.SavedAtUtc = DateTime.UtcNow.ToString("o");
 
             var filePath = PersistenceSetup.GetPlayerGameStateFilePath(playerName);
@@ -235,6 +250,8 @@ namespace CommonUtilities.Persistence
                 state.SceneIndex = 1;
                 state.CurrentSceneBiome = Domain.SceneBiomeTypes.HillsWoods;
                 state.Score = 0;
+                state.PlanetStyleBonusScore = 0;
+                state.PlanetStyleBonusSceneIndex = 1;
                 state.WaveNumber = 1;
                 state.PowerUpsCollected = 0;
                 state.InfectionLevel = 0f;

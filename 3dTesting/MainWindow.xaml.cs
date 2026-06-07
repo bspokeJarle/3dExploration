@@ -301,16 +301,18 @@ namespace _3dTesting
 
         private void HandleKeys(object sender, KeyEventArgs e)
         {
-            if (e.Key == Key.Escape)
+            if (IsMenuExitKey(e.Key))
             {
-                // During name entry, Escape goes back to intro instead of quitting
-                if (GameState.ScreenOverlayState.Type == ScreenOverlayType.NameEntry
-                    && GameState.ScreenOverlayState.ShowOverlay)
+                if (ShouldShutdownFromMenuExitKey(e.Key))
                 {
-                    world.SceneHandler.HandleKeyPress(e, world);
+                    Application.Current.Shutdown();
+                    e.Handled = true;
                     return;
                 }
-                Application.Current.Shutdown();
+
+                world.SceneHandler.HandleKeyPress(e, world);
+                e.Handled = true;
+                return;
             }
 
             if (e.Key == Key.LeftCtrl)
@@ -322,6 +324,20 @@ namespace _3dTesting
             //Send keys to Scenehandler to handle scene switches and overlay switches
             world.SceneHandler.HandleKeyPress(e,world);
         }
+
+        private bool ShouldShutdownFromMenuExitKey(Key key)
+        {
+            var overlay = GameState.ScreenOverlayState;
+            if (overlay.Type == ScreenOverlayType.NameEntry && overlay.ShowOverlay)
+                return false;
+
+            if (world?.SceneHandler?.GetActiveScene().SceneType != SceneTypes.Intro)
+                return false;
+
+            return IsMenuExitKey(key);
+        }
+
+        private static bool IsMenuExitKey(Key key) => key == Key.Escape || key == Key.X;
 
         public async Task FadeOutAsync(float durationSeconds = 1.0f)
         {

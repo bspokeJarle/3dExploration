@@ -30,6 +30,7 @@ namespace Domain
             public bool IsOnScreen { get; set; } = false;
             public bool HasShadow { get; set; } = false;
             public IVector3? ShadowOffset { get; set; }
+            public bool UseSurfaceFootprintPivot { get; set; } = false;
             public bool HasPowerUp { get; set; } = false;
             public bool IsActive { get; set; } = true;
             public float ZSortBias { get; set; } = 0f;

@@ -114,7 +114,7 @@ public class SurfaceViewportPoolingTests
     {
         var surface = new Surface
         {
-            GlobalMapRotation = new Vector3 { x = 70, y = 0, z = 0 }
+            GlobalMapRotation = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 }
         };
         var map = GameState.SurfaceState.Global2DMap!;
         var sourceTile = map[1, 0];

@@ -115,6 +115,7 @@ namespace _3dRotations.World.Objects
             });
 
             _3dObjectHelpers.AddCustomShadowPart(house, shadowTris);
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(house);
 
             return house;
         }

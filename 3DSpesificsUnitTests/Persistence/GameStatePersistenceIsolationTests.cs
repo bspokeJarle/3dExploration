@@ -72,6 +72,92 @@ public class GameStatePersistenceIsolationTests
     }
 
     [TestMethod]
+    public void SaveGameState_WhenCheckpointExists_PersistsCheckpointAsResumableState()
+    {
+        var gps = GameState.GamePlayState;
+
+        gps.PlayerName = "CharlieB";
+        gps.SceneIndex = 6;
+        gps.SimulationRound = 2;
+        gps.CurrentSceneBiome = SceneBiomeTypes.Desert;
+        gps.MaxHealth = 100f;
+        gps.TotalBioTiles = 500;
+
+        gps.Score = 9000;
+        gps.PlanetStyleBonusScore = 1300;
+        gps.PlanetStyleBonusSceneIndex = 6;
+        gps.Lives = 1;
+        gps.Health = 12f;
+        gps.WaveNumber = 8;
+        gps.PowerUpsCollected = 2;
+        gps.InfectionLevel = 140f;
+        gps.SeedersRemaining = 1;
+        gps.DronesRemaining = 0;
+        gps.MotherShipsRemaining = 1;
+        gps.InitialSeeders = 20;
+        gps.InitialDrones = 4;
+        gps.InitialMotherShips = 1;
+        gps.TotalShotsFired = 200;
+        gps.TotalKills = 35;
+        gps.TotalDeaths = 4;
+
+        gps.HasCheckpoint = true;
+        gps.CheckpointScore = 4200;
+        gps.CheckpointPlanetStyleBonusScore = 500;
+        gps.CheckpointPlanetStyleBonusSceneIndex = 6;
+        gps.CheckpointLives = 3;
+        gps.CheckpointHealth = 88f;
+        gps.CheckpointWaveNumber = 4;
+        gps.CheckpointPowerUpsCollected = 1;
+        gps.CheckpointInfectionLevel = 40f;
+        gps.CheckpointSeedersRemaining = 8;
+        gps.CheckpointDronesRemaining = 2;
+        gps.CheckpointMotherShipsRemaining = 0;
+        gps.CheckpointInitialSeeders = 20;
+        gps.CheckpointInitialDrones = 4;
+        gps.CheckpointInitialMotherShips = 1;
+        gps.CheckpointTotalShotsFired = 80;
+        gps.CheckpointTotalKills = 12;
+        gps.CheckpointTotalDeaths = 1;
+
+        GameStatePersistence.SaveGameState();
+
+        var loaded = GameStatePersistence.LoadGameState("CharlieB");
+
+        Assert.IsNotNull(loaded);
+        Assert.AreEqual(6, loaded!.SceneIndex);
+        Assert.AreEqual(2, loaded.SimulationRound);
+        Assert.AreEqual(SceneBiomeTypes.Desert, loaded.SceneBiome);
+        Assert.AreEqual(100f, loaded.MaxHealth);
+        Assert.AreEqual(500, loaded.TotalBioTiles);
+
+        Assert.AreEqual(4200L, loaded.Score);
+        Assert.AreEqual(500, loaded.PlanetStyleBonusScore);
+        Assert.AreEqual(6, loaded.PlanetStyleBonusSceneIndex);
+        Assert.AreEqual(3, loaded.Lives);
+        Assert.AreEqual(88f, loaded.Health);
+        Assert.AreEqual(4, loaded.WaveNumber);
+        Assert.AreEqual(1, loaded.PowerUpsCollected);
+        Assert.AreEqual(40f, loaded.InfectionLevel);
+        Assert.AreEqual(8, loaded.SeedersRemaining);
+        Assert.AreEqual(2, loaded.DronesRemaining);
+        Assert.AreEqual(0, loaded.MotherShipsRemaining);
+        Assert.AreEqual(20, loaded.InitialSeeders);
+        Assert.AreEqual(4, loaded.InitialDrones);
+        Assert.AreEqual(1, loaded.InitialMotherShips);
+        Assert.AreEqual(80, loaded.TotalShotsFired);
+        Assert.AreEqual(12, loaded.TotalKills);
+        Assert.AreEqual(1, loaded.TotalDeaths);
+
+        Assert.IsTrue(loaded.HasCheckpoint);
+        Assert.AreEqual(4200L, loaded.CheckpointScore);
+        Assert.AreEqual(500, loaded.CheckpointPlanetStyleBonusScore);
+        Assert.AreEqual(6, loaded.CheckpointPlanetStyleBonusSceneIndex);
+        Assert.AreEqual(88f, loaded.CheckpointHealth);
+        Assert.AreEqual(8, loaded.CheckpointSeedersRemaining);
+    }
+
+    [TestMethod]
     public void ResetPlayerToScene1_AffectsOnlyTargetPlayer()
     {
         var gps = GameState.GamePlayState;

@@ -89,7 +89,9 @@ namespace _3dTesting.Helpers
             if (obj == null || targetPosition == null)
                 return;
 
-            IVector3 objectCenter = GetObjectGeometricCenter(obj, true);
+            IVector3 objectCenter = obj.UseSurfaceFootprintPivot
+                ? new Vector3()
+                : GetObjectGeometricCenter(obj, true);
 
             float shiftX = targetPosition.x - objectCenter.x;
             float shiftY = targetPosition.y - objectCenter.y;
@@ -123,12 +125,14 @@ namespace _3dTesting.Helpers
 
             if (allPoints.Count == 0) return;
 
-            var center = new Vector3
-            {
-                x = allPoints.Average(p => p.x),
-                y = allPoints.Min(p => p.y),
-                z = allPoints.Average(p => p.z)
-            };
+            var center = obj.UseSurfaceFootprintPivot
+                ? new Vector3()
+                : new Vector3
+                {
+                    x = allPoints.Average(p => p.x),
+                    y = allPoints.Min(p => p.y),
+                    z = allPoints.Average(p => p.z)
+                };
 
             float shiftX = targetPosition.x - center.x;
             float shiftY = targetPosition.y - center.y;
@@ -176,10 +180,46 @@ namespace _3dTesting.Helpers
 
             if (count == 0) return new Vector3();
 
+            if (snapToBottomY)
+            {
+                float bottomSumX = 0, bottomSumY = 0, bottomSumZ = 0;
+                int bottomCount = 0;
+                const float bottomTolerance = 0.001f;
+
+                foreach (var part in obj.ObjectParts)
+                {
+                    foreach (var triangle in part.Triangles)
+                    {
+                        var vertices = new[] { triangle.vert1, triangle.vert2, triangle.vert3 };
+
+                        foreach (var v in vertices)
+                        {
+                            if (Math.Abs(v.y - minY) > bottomTolerance)
+                                continue;
+
+                            bottomSumX += v.x;
+                            bottomSumY += v.y;
+                            bottomSumZ += v.z;
+                            bottomCount++;
+                        }
+                    }
+                }
+
+                if (bottomCount > 0)
+                {
+                    return new Vector3
+                    {
+                        x = bottomSumX / bottomCount,
+                        y = bottomSumY / bottomCount,
+                        z = bottomSumZ / bottomCount
+                    };
+                }
+            }
+
             return new Vector3
             {
                 x = sumX / count,
-                y = snapToBottomY ? minY : sumY / count,
+                y = sumY / count,
                 z = sumZ / count
             };
         }

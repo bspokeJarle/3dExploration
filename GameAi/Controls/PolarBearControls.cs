@@ -11,7 +11,7 @@ namespace GameAiAndControls.Controls
     public class PolarBearControls : IObjectMovement
     {
         private const float BaseYRotation = 0f;
-        private const float BaseXRotation = 70f;
+        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float WalkRadiansPerSecond = 4.8f;
         private const float BodyBobAmplitude = 3.2f;
         private const float BodySwayAmplitude = 3.6f;

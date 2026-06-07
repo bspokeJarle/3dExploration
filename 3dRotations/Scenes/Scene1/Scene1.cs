@@ -61,7 +61,7 @@ namespace _3dRotations.Scene.Scene1
             // Guidance arrow — on-screen indicator pointing toward closest seeder
             var guidanceArrow = SeederGuidanceArrow.CreateSeederGuidanceArrow(Surface);
             guidanceArrow.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 200 };
-            guidanceArrow.Rotation = new Vector3 { x = 70, y = 0, z = 90 };
+            guidanceArrow.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 90 };
             guidanceArrow.WorldPosition = new Vector3 { };
             guidanceArrow.ObjectName = "SeederGuidanceArrow";
             guidanceArrow.ImpactStatus = new ImpactStatus { };
@@ -139,7 +139,7 @@ namespace _3dRotations.Scene.Scene1
             surfaceObject.ObjectName = "Surface";
             //This position and rotation is for the onscreen object, not the map position
             surfaceObject.ObjectOffsets = new Vector3 { x = 70 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 400 };
-            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            surfaceObject.Rotation = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             //Crashboxes are added n the GetSurfaceViewPort method
             surfaceObject.Movement = new GroundControls();
@@ -174,7 +174,7 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
 
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tower.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
+                tower.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled, z = 400 };
                 tower.ObjectName = "Tower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
@@ -198,7 +198,7 @@ namespace _3dRotations.Scene.Scene1
                 GameState.SurfaceState.Global2DMap[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
 
                 //The offsets of landbased objects need to similar to that of the surface, apart from some fine tuning
-                tree.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 430 * ScreenSetup.ScreenScaleY, z = 400 };
+                tree.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
@@ -220,7 +220,7 @@ namespace _3dRotations.Scene.Scene1
                 house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
 
-                house.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 400 };
+                house.ObjectOffsets = new Vector3 { x = 40 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };
@@ -239,7 +239,7 @@ namespace _3dRotations.Scene.Scene1
                 NearPlatformLeafTreeTarget,
                 NearPlatformLeafTreeSearchRadius,
                 treeOffsetX: 40 * ScreenSetup.ScreenScaleX,
-                treeOffsetY: 430 * ScreenSetup.ScreenScaleY,
+                treeOffsetY: LandBasedObjectSetup.SurfaceFootprintOffsetYScaled,
                 towerPlacements,
                 treePlacements,
                 housePlacements);
@@ -314,7 +314,7 @@ namespace _3dRotations.Scene.Scene1
                 float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
 
                 var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
-                jumpingFish.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                jumpingFish.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 jumpingFish.WorldPosition = new Vector3 { };
                 jumpingFish.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
                 jumpingFish.ObjectOffsets = new Vector3

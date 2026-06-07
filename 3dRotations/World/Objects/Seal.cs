@@ -68,6 +68,7 @@ namespace _3dRotations.World.Objects
 
             AddShadow(seal);
             _3dObjectHelpers.ApplyScaleToObject(seal, Scale);
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(seal);
             seal.Movement = new SealControls();
 
             return seal;

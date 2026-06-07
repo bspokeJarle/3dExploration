@@ -1,6 +1,7 @@
 ﻿using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using Domain;
+using CommonUtilities.CommonSetup;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -20,16 +21,17 @@ namespace GameAiAndControls.Controls
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
         // The arrow's default forward is +X. Base rotation aligns it with the camera view.
-        private float Xrotation = 70f;
+        private float Xrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private float Yrotation = 0f;
         private float Zrotation = 90f;
 
-        private float TargetXrotation = 70f;
+        private float TargetXrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private float TargetYrotation = 0f;
         private float TargetZrotation = 90f;
 
         private const float RotationDegreesPerSecond = 1800f;
 
+        private float? _preferredOffsetY;
         private DateTime _lastUpdate = DateTime.MinValue;
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -39,6 +41,7 @@ namespace GameAiAndControls.Controls
             // Arrow is a fixed on-screen object with no world position.
             // It only rotates to point toward the closest seeder.
             theObject.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+            AnchorBelowGameOverlay(theObject);
 
             var now = DateTime.Now;
             if (_lastUpdate == DateTime.MinValue)
@@ -72,6 +75,22 @@ namespace GameAiAndControls.Controls
             }
 
             return theObject;
+        }
+
+        private void AnchorBelowGameOverlay(I3dObject theObject)
+        {
+            var offsets = theObject.ObjectOffsets;
+            if (offsets == null)
+            {
+                offsets = new Vector3 { x = 0, y = 0, z = 0 };
+                theObject.ObjectOffsets = offsets;
+            }
+
+            _preferredOffsetY ??= offsets.y;
+
+            float preferredScreenY = ScreenSetup.screenSizeY / 2f + _preferredOffsetY.Value;
+            float anchoredScreenY = GameOverlaySetup.AnchorScreenYBelowHud(preferredScreenY);
+            offsets.y = anchoredScreenY - ScreenSetup.screenSizeY / 2f;
         }
 
         /// <summary>

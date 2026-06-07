@@ -58,7 +58,7 @@ namespace _3dRotations.Scene.Scene6
 
             var guidanceArrow = SeederGuidanceArrow.CreateSeederGuidanceArrow(Surface);
             guidanceArrow.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 200 };
-            guidanceArrow.Rotation = new Vector3 { x = 70, y = 0, z = 90 };
+            guidanceArrow.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 90 };
             guidanceArrow.WorldPosition = new Vector3 { };
             guidanceArrow.ObjectName = "SeederGuidanceArrow";
             guidanceArrow.ImpactStatus = new ImpactStatus { };
@@ -154,7 +154,7 @@ namespace _3dRotations.Scene.Scene6
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 400 };
-            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            surfaceObject.Rotation = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             surfaceObject.Movement = new GroundControls();
             surfaceObject.ParentSurface = Surface;
@@ -185,7 +185,7 @@ namespace _3dRotations.Scene.Scene6
                 tower.WorldPosition = new Vector3 { };
                 tower.SurfaceBasedId = GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
-                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
+                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled, z = 400 };
                 tower.ObjectName = "Tower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
@@ -219,7 +219,7 @@ namespace _3dRotations.Scene.Scene6
                 plant.ObjectOffsets = new Vector3
                 {
                     x = 75 * ScreenSetup.ScreenScaleX,
-                    y = (useLargePlant ? 410f : 420f) * ScreenSetup.ScreenScaleY,
+                    y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled,
                     z = 400
                 };
                 plant.ObjectName = useLargePlant ? "LargeAlienPlant" : "SmallAlienPlant";
@@ -244,7 +244,7 @@ namespace _3dRotations.Scene.Scene6
                 rocks.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 rocks.SurfaceBasedId = GameState.SurfaceState.Global2DMap[rockPlacement.y, rockPlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[rockPlacement.y, rockPlacement.x].hasLandbasedObject = true;
-                rocks.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 455 * ScreenSetup.ScreenScaleY, z = 400 };
+                rocks.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
                 rocks.ObjectName = "DesertRockFormation";
                 rocks.Movement = new DesertRockControls();
                 rocks.ImpactStatus = new ImpactStatus { };
@@ -277,8 +277,8 @@ namespace _3dRotations.Scene.Scene6
                 tent.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tent.SurfaceBasedId = GameState.SurfaceState.Global2DMap[tentPlacement.y, tentPlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[tentPlacement.y, tentPlacement.x].hasLandbasedObject = true;
-                tent.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 445 * ScreenSetup.ScreenScaleY, z = 400 };
-                tent.Rotation = new Vector3 { x = 70, y = 0, z = GetBedouinTentRotationZ(tentIndex, tentPlacement.x, tentPlacement.y) };
+                tent.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
+                tent.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = GetBedouinTentRotationZ(tentIndex, tentPlacement.x, tentPlacement.y) };
                 tent.ObjectName = "BedouinTent";
                 tent.Movement = new BedouinTentControls();
                 tent.ImpactStatus = new ImpactStatus { };
@@ -305,7 +305,7 @@ namespace _3dRotations.Scene.Scene6
                 cactus.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 cactus.SurfaceBasedId = GameState.SurfaceState.Global2DMap[cactusPlacement.y, cactusPlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[cactusPlacement.y, cactusPlacement.x].hasLandbasedObject = true;
-                cactus.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
+                cactus.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
                 cactus.ObjectName = "Cactus";
                 cactus.Movement = new CactusControls();
                 cactus.ImpactStatus = new ImpactStatus { };
@@ -469,7 +469,7 @@ namespace _3dRotations.Scene.Scene6
                     int initialJumpDirection = (i % 2 == 0) ? -1 : 1;
 
                     var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
-                    jumpingFish.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                    jumpingFish.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                     jumpingFish.WorldPosition = new Vector3 { };
                     jumpingFish.SurfaceBasedId = map[placement.centerZ, placement.centerX].mapId;
                     jumpingFish.ObjectOffsets = new Vector3

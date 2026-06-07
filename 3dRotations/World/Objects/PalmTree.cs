@@ -88,6 +88,7 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.AddCustomShadowPart(palm, LargePalmShadow());
             ScalePalm(palm);
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(palm);
 
             return palm;
         }
@@ -147,6 +148,7 @@ namespace _3dRotations.World.Objects
 
             _3dObjectHelpers.AddCustomShadowPart(palm, SmallPalmShadow());
             ScalePalm(palm);
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(palm);
 
             return palm;
         }

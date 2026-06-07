@@ -19,10 +19,10 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
 
         //Initial rotation angles for the drone, pointing towards the camera. Adjust as needed based on the drone model's default orientation.
         private float Yrotation = 0;
-        private float Xrotation = 70;
+        private float Xrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private float Zrotation = 90;
         private float TargetYrotation = 0;
-        private float TargetXrotation = 70;
+        private float TargetXrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private float TargetZrotation = 90;
 
         const int DroneSpeedScreenPrSecond = 3; //How many seconds it should take for the drone to cross the entire screen at its current speed. Adjust as needed.

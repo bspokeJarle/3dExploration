@@ -1,6 +1,7 @@
 using _3dRotations.World.Objects;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls.MotherShipMediumControls;
 using static Domain._3dSpecificsImplementations;
@@ -21,7 +22,7 @@ namespace _3DSpesificsUnitTests.Controls;
 // In-game frame sequence (LiveGameLoop):
 //   1. MoveObject  → AnimateEngines calls ApplyPivotedRotation (Y-axis tilt) on start/guide parts
 //                  → ReleaseWingParticles reads _leftEngineStart/_leftEngineGuide (set previous frame)
-//   2. RotateMesh  → applies global ship rotation (x=70, z=90) to all parts
+//   2. RotateMesh  → applies global ship rotation (x=WorldViewSetup.CameraPitchDegrees, z=90) to all parts
 //   3. SetMovementGuides → stores the globally-rotated triangles into _leftEngineStart/_leftEngineGuide for next frame
 //
 // So the guide coords sent to ReleaseParticles have been through BOTH rotations.
@@ -65,9 +66,9 @@ public class MotherShipMediumWingEngineParticleTests
         return Translate(rotated, pivot);
     }
 
-    // Replicates LiveGameLoop.RotateMesh for a single axis sequence (z then x — ship default x=70, y=0, z=90).
+    // Replicates LiveGameLoop.RotateMesh for a single axis sequence (z then x — ship default x=WorldViewSetup.CameraPitchDegrees, y=0, z=90).
     private static List<ITriangleMeshWithColor> ApplyShipRotation(
-        List<ITriangleMeshWithColor> tris, float rotX = 70f, float rotY = 0f, float rotZ = 90f)
+        List<ITriangleMeshWithColor> tris, float rotX = WorldViewSetup.CameraPitchDegrees, float rotY = 0f, float rotZ = 90f)
     {
         var r = Rotate.RotateZMesh(tris, rotZ);
         r = Rotate.RotateYMesh(r, rotY);
@@ -293,7 +294,7 @@ public class MotherShipMediumWingEngineParticleTests
         startTris = ApplyPivotedRotation(startTris, pivot, tiltAngle);
         guideTris = ApplyPivotedRotation(guideTris, pivot, tiltAngle);
 
-        // Step 2: global ship rotation (x=70, y=0, z=90)
+        // Step 2: global ship rotation (x=WorldViewSetup.CameraPitchDegrees, y=0, z=90)
         startTris = ApplyShipRotation(startTris);
         guideTris = ApplyShipRotation(guideTris);
 

@@ -1,6 +1,7 @@
 using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
 using GameAiAndControls.Controls;
 using System.Linq;
 
@@ -77,7 +78,7 @@ public class CactusGeometryTests
 
         cactus.Movement!.MoveObject(cactus, null, null);
 
-        Assert.AreEqual(70f, cactus.Rotation.x);
+        Assert.AreEqual(WorldViewSetup.SurfaceFacingObjectPitchDegrees, cactus.Rotation.x);
         Assert.AreEqual(0f, cactus.Rotation.y);
         Assert.AreEqual(18f, cactus.Rotation.z);
     }

@@ -134,7 +134,7 @@ namespace _3dRotations.Scenes.SceneSimulation
 
             var guidanceArrow = SeederGuidanceArrow.CreateSeederGuidanceArrow(Surface);
             guidanceArrow.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 200 };
-            guidanceArrow.Rotation = new Vector3 { x = 70, y = 0, z = 90 };
+            guidanceArrow.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 90 };
             guidanceArrow.WorldPosition = new Vector3 { };
             guidanceArrow.ObjectName = "SeederGuidanceArrow";
             guidanceArrow.ImpactStatus = new ImpactStatus { };
@@ -261,7 +261,7 @@ namespace _3dRotations.Scenes.SceneSimulation
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 400 };
-            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            surfaceObject.Rotation = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             surfaceObject.Movement = new GroundControls();
             surfaceObject.ParentSurface = Surface;
@@ -344,7 +344,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 tower.ObjectOffsets = new Vector3
                 {
                     x = 75 * ScreenSetup.ScreenScaleX,
-                    y = (useSnowTower ? 315f : 280f) * ScreenSetup.ScreenScaleY,
+                    y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled,
                     z = 400
                 };
                 tower.ObjectName = useSnowTower ? "SnowTower" : "Tower";
@@ -369,7 +369,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tree.SurfaceBasedId = map[treePlacement.y, treePlacement.x].mapId;
                 map[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
-                tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
+                tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
@@ -385,7 +385,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 house.SurfaceBasedId = map[housePlacement.y, housePlacement.x].mapId;
                 map[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
-                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 450 * ScreenSetup.ScreenScaleY, z = 400 };
+                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
                 house.ObjectName = "House";
                 house.Movement = new HouseControls();
                 house.ImpactStatus = new ImpactStatus { };
@@ -404,7 +404,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 NearPlatformLeafTreeTarget,
                 NearPlatformLeafTreeSearchRadius,
                 treeOffsetX: 75 * ScreenSetup.ScreenScaleX,
-                treeOffsetY: 425 * ScreenSetup.ScreenScaleY,
+                treeOffsetY: LandBasedObjectSetup.SurfaceFootprintOffsetYScaled,
                 towerPlacements,
                 treePlacements,
                 housePlacements);
@@ -441,7 +441,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 plant.ObjectOffsets = new Vector3
                 {
                     x = 75 * ScreenSetup.ScreenScaleX,
-                    y = (useLargeAlienPlant || (!useLargePalm && !useSmallPalm && !useLargeAlienPlant) ? 410f : 425f) * ScreenSetup.ScreenScaleY,
+                    y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled,
                     z = 400
                 };
 
@@ -482,8 +482,8 @@ namespace _3dRotations.Scenes.SceneSimulation
                 hut.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 hut.SurfaceBasedId = map[hutPlacement.y, hutPlacement.x].mapId;
                 map[hutPlacement.y, hutPlacement.x].hasLandbasedObject = true;
-                hut.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 445 * ScreenSetup.ScreenScaleY, z = 400 };
-                hut.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                hut.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
+                hut.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 hut.ObjectName = "BambooHut";
                 hut.Movement = new BambooHutControls();
                 hut.ImpactStatus = new ImpactStatus { };
@@ -506,7 +506,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tree.SurfaceBasedId = map[treePlacement.y, treePlacement.x].mapId;
                 map[treePlacement.y, treePlacement.x].hasLandbasedObject = true;
-                tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 425 * ScreenSetup.ScreenScaleY, z = 400 };
+                tree.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
                 tree.ObjectName = "Tree";
                 tree.Movement = new TreeControls();
                 tree.ImpactStatus = new ImpactStatus { };
@@ -533,8 +533,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 igloo.Rotation = new Vector3 { x = 0, y = 0, z = rotationZ };
                 igloo.SurfaceBasedId = map[iglooPlacement.y, iglooPlacement.x].mapId;
                 map[iglooPlacement.y, iglooPlacement.x].hasLandbasedObject = true;
-                float iglooOffsetY = useLargeIgloo ? 462f : 475f;
-                igloo.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = iglooOffsetY * ScreenSetup.ScreenScaleY, z = 400 };
+                igloo.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
                 igloo.ImpactStatus = new ImpactStatus { };
                 igloo.CrashBoxDebugMode = false;
                 if (igloo.SurfaceBasedId > 0) world.WorldInhabitants.Add(igloo);
@@ -629,7 +628,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
 
                 var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
-                jumpingFish.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                jumpingFish.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 jumpingFish.WorldPosition = new Vector3 { };
                 jumpingFish.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
                 jumpingFish.ObjectOffsets = new Vector3
@@ -666,7 +665,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
 
                 var seal = Seal.CreateSeal(Surface);
-                seal.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                seal.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 seal.WorldPosition = new Vector3 { };
                 seal.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
                 seal.ObjectOffsets = new Vector3
@@ -765,8 +764,8 @@ namespace _3dRotations.Scenes.SceneSimulation
                 var polarBear = PolarBear.CreatePolarBear(Surface);
                 polarBear.WorldPosition = new Vector3 { };
                 polarBear.SurfaceBasedId = mapId;
-                polarBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
-                polarBear.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                polarBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled, z = 400 };
+                polarBear.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 polarBear.ObjectName = "PolarBear";
                 polarBear.Movement = new PolarBearControls(minPathOffsetX, maxPathOffsetX);
                 polarBear.ImpactStatus = new ImpactStatus { };

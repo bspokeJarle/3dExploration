@@ -24,7 +24,7 @@ namespace GameAiAndControls.Controls
         private const string RearEngineIdleColor = "551000";
         private const float StartTurnZDegrees = 0f;
         private const float LandingTurnZDegrees = 180f;
-        private const float BasePitchXDegrees = 70f;
+        private const float BasePitchXDegrees = WorldViewSetup.CameraPitchDegrees;
         private const float LandingPitchXDegrees = 84f;
         private const float FinalPoseStartProgress = 0.74f;
         private const string UpperHatchPartName = "UpperPart";

@@ -38,6 +38,7 @@ namespace _3dRotations.World.Objects
             rocks.CrashBoxNames = new List<string?> { "RockFormation" };
 
             _3dObjectHelpers.AddCustomShadowPart(rocks, DesertRockShadow(rotationZ));
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(rocks);
 
             return rocks;
         }

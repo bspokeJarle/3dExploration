@@ -14,6 +14,8 @@ namespace CommonUtilities.Persistence
         public int SimulationRound { get; set; }
         public SceneBiomeTypes SceneBiome { get; set; } = SceneBiomeTypes.HillsWoods;
         public long Score { get; set; }
+        public int PlanetStyleBonusScore { get; set; }
+        public int PlanetStyleBonusSceneIndex { get; set; }
         public int Lives { get; set; }
         public float Health { get; set; }
         public float MaxHealth { get; set; }
@@ -50,6 +52,8 @@ namespace CommonUtilities.Persistence
         public int CheckpointInitialSeeders { get; set; }
         public int CheckpointInitialDrones { get; set; }
         public int CheckpointInitialMotherShips { get; set; }
+        public int CheckpointPlanetStyleBonusScore { get; set; }
+        public int CheckpointPlanetStyleBonusSceneIndex { get; set; }
 
         public string SavedAtUtc { get; set; } = "";
     }

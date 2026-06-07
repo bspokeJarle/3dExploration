@@ -9,7 +9,7 @@ namespace GameAiAndControls.Controls
 {
     public abstract class PalmControlsBase : IObjectMovement
     {
-        private const float BaseXRotation = 70f;
+        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 0f;
         private const float SecondarySwayScale = 0.48f;

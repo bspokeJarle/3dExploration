@@ -45,6 +45,7 @@ namespace _3dRotations.World.Objects
             cactus.ShadowOffset = new Vector3 { x = -7, y = 0, z = -8 };
 
             _3dObjectHelpers.AddCustomShadowPart(cactus, CactusShadow(rotationZ, bodyHeight));
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(cactus);
 
             return cactus;
         }

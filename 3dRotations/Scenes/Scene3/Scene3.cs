@@ -61,7 +61,7 @@ namespace _3dRotations.Scene.Scene3
 
             var guidanceArrow = SeederGuidanceArrow.CreateSeederGuidanceArrow(Surface);
             guidanceArrow.ObjectOffsets = new Vector3 { x = 0, y = -200, z = 200 };
-            guidanceArrow.Rotation = new Vector3 { x = 70, y = 0, z = 90 };
+            guidanceArrow.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 90 };
             guidanceArrow.WorldPosition = new Vector3 { };
             guidanceArrow.ObjectName = "SeederGuidanceArrow";
             guidanceArrow.ImpactStatus = new ImpactStatus { };
@@ -152,7 +152,7 @@ namespace _3dRotations.Scene.Scene3
             var surfaceObject = (_3dObject)Surface.GetSurfaceViewPort();
             surfaceObject.ObjectName = "Surface";
             surfaceObject.ObjectOffsets = new Vector3 { x = 105 * ScreenSetup.ScreenScaleX, y = 500 * ScreenSetup.ScreenScaleY, z = 400 };
-            surfaceObject.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+            surfaceObject.Rotation = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 };
             surfaceObject.WorldPosition = new Vector3 { };
             surfaceObject.Movement = new GroundControls();
             surfaceObject.ParentSurface = Surface;
@@ -187,7 +187,7 @@ namespace _3dRotations.Scene.Scene3
                 tower.WorldPosition = new Vector3 { };
                 tower.SurfaceBasedId = GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
-                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 280 * ScreenSetup.ScreenScaleY, z = 400 };
+                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled, z = 400 };
                 tower.ObjectName = "Tower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
@@ -220,7 +220,7 @@ namespace _3dRotations.Scene.Scene3
                 plant.ObjectOffsets = new Vector3
                 {
                     x = 75 * ScreenSetup.ScreenScaleX,
-                    y = (useLargeAlienPlant || (!useLargePalm && !useSmallPalm && !useLargeAlienPlant) ? 410f : 425f) * ScreenSetup.ScreenScaleY,
+                    y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled,
                     z = 400
                 };
 
@@ -264,8 +264,8 @@ namespace _3dRotations.Scene.Scene3
                 house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 house.SurfaceBasedId = GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[housePlacement.y, housePlacement.x].hasLandbasedObject = true;
-                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = 445 * ScreenSetup.ScreenScaleY, z = 400 };
-                house.Rotation = new Vector3 { x = 70, y = 0, z = GetBambooHutRotationZ(bambooHutIndex, housePlacement.x, housePlacement.y) };
+                house.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
+                house.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = GetBambooHutRotationZ(bambooHutIndex, housePlacement.x, housePlacement.y) };
                 house.ObjectName = "BambooHut";
                 house.Movement = new BambooHutControls();
                 house.ImpactStatus = new ImpactStatus { };
@@ -472,7 +472,7 @@ namespace _3dRotations.Scene.Scene3
                 float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
 
                 var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
-                jumpingFish.Rotation = new Vector3 { x = 70, y = 0, z = 0 };
+                jumpingFish.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 jumpingFish.WorldPosition = new Vector3 { };
                 jumpingFish.SurfaceBasedId = GameState.SurfaceState.Global2DMap[area.CenterTileZ, area.CenterTileX].mapId;
                 jumpingFish.ObjectOffsets = new Vector3

@@ -1,3 +1,4 @@
+using CommonUtilities.CommonSetup;
 using Domain;
 using static Domain._3dSpecificsImplementations;
 
@@ -6,7 +7,7 @@ namespace GameAiAndControls.Controls
     public class IglooControls : IObjectMovement
     {
         private const float BaseYRotation = 0f;
-        private const float BaseXRotation = 70f;
+        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         public ITriangleMeshWithColor? StartCoordinates { get; set; }
         public ITriangleMeshWithColor? GuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();

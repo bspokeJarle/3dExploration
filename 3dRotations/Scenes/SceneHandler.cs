@@ -370,7 +370,7 @@ namespace _3DWorld.Scene
             {
                 if (scene.SceneType == SceneTypes.Intro)
                     SkipLogoCube(world, scene);
-                else if ((scene.SceneType == SceneTypes.Game || scene.SceneType == SceneTypes.Simulation) && k.Key == Key.X)
+                else if ((scene.SceneType == SceneTypes.Game || scene.SceneType == SceneTypes.Simulation) && IsMenuExitKey(k.Key))
                     ReturnToIntro(world);
                 return;
             }
@@ -383,6 +383,12 @@ namespace _3DWorld.Scene
 
             if (scene.SceneType == SceneTypes.Outro && overlay.Type == ScreenOverlayType.Outro)
             {
+                if (IsMenuExitKey(k.Key))
+                {
+                    ReturnToIntro(world);
+                    return;
+                }
+
                 // Page navigation with arrow keys; any other key deploys to the Simulation scene.
                 if (overlay.HasMultiplePages)
                 {
@@ -409,7 +415,7 @@ namespace _3DWorld.Scene
 
             if (scene.SceneType == SceneTypes.Game || scene.SceneType == SceneTypes.Simulation)
             {
-                if (k.Key == Key.X)
+                if (IsMenuExitKey(k.Key))
                 {
                     ReturnToIntro(world);
                     return;
@@ -537,6 +543,8 @@ namespace _3DWorld.Scene
         {
             HighscoreOverlayFormatter.RefreshCurrentPageIfHighscorePage(overlay);
         }
+
+        private static bool IsMenuExitKey(Key key) => key == Key.X || key == Key.Escape;
 
         // -----------------------------------------------------------------
         // Shared helpers
@@ -840,6 +848,8 @@ namespace _3DWorld.Scene
             gps.CheckpointInitialSeeders = 0;
             gps.CheckpointInitialDrones = 0;
             gps.CheckpointInitialMotherShips = 0;
+            gps.CheckpointPlanetStyleBonusScore = 0;
+            gps.CheckpointPlanetStyleBonusSceneIndex = gps.SceneIndex;
         }
 
         private static void ApplyCheckpointSnapshotToCurrentState(
@@ -861,6 +871,8 @@ namespace _3DWorld.Scene
             gps.InitialSeeders = snapshot.InitialSeeders;
             gps.InitialDrones = snapshot.InitialDrones;
             gps.InitialMotherShips = snapshot.InitialMotherShips;
+            gps.PlanetStyleBonusScore = snapshot.PlanetStyleBonusScore;
+            gps.PlanetStyleBonusSceneIndex = snapshot.PlanetStyleBonusSceneIndex;
         }
 
         // -----------------------------------------------------------------

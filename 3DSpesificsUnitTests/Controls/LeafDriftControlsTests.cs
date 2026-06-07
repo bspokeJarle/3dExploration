@@ -17,6 +17,7 @@ public class LeafDriftControlsTests
     {
         GameState.SurfaceState = new SurfaceState();
         GameState.ObjectIdCounter = 0;
+        LeafDriftControls.GlobalLeafOpacity = 1f;
     }
 
     [TestMethod]
@@ -47,6 +48,27 @@ public class LeafDriftControlsTests
         Assert.IsTrue(visibleLeaves.All(t => LeafTree.LeafColors.Contains(t.Color)));
         Assert.IsTrue(visibleLeaves.Any(t => Math.Abs(t.vert3.y - t.vert1.y) > Math.Abs(t.vert2.y - t.vert1.y)),
             "Leaves should read as longer leaf-like triangles, not tiny dust specks.");
+    }
+
+    [TestMethod]
+    public void MoveObject_HonorsGlobalLeafOpacityForStarFade()
+    {
+        var emitter = LeafEmitter.CreateLeafEmitter(null);
+
+        LeafDriftControls.GlobalLeafOpacity = 0f;
+        emitter.Movement!.MoveObject(emitter, null, null);
+
+        var leafPart = emitter.ObjectParts.Single(p => p.PartName == "Leaves");
+        Assert.IsTrue(
+            leafPart.Triangles.All(t => t.Color == "000000" && t.vert1.z == 0f),
+            "Leaves should fade out completely when the starfield opacity is fully faded in.");
+
+        LeafDriftControls.GlobalLeafOpacity = 1f;
+        emitter.Movement.MoveObject(emitter, null, null);
+
+        var visibleLeaves = leafPart.Triangles.Where(t => t.vert1.z != 0f).ToList();
+        Assert.IsTrue(visibleLeaves.Count > LeafDriftControls.VisibleLeafTarget / 2);
+        Assert.IsTrue(visibleLeaves.All(t => LeafTree.LeafColors.Contains(t.Color)));
     }
 
     [TestMethod]

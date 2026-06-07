@@ -346,7 +346,7 @@ public class OutroSceneTests
             $"Outro ship should start like the Intro object: right side but already renderable. X offset was {ship.ObjectOffsets.x:0.0}.");
         Assert.IsTrue(ship.ObjectOffsets.z < 520f,
             $"Outro ship should start in front of Earth (depth < Earth's 520). Z offset was {ship.ObjectOffsets.z:0.0}.");
-        Assert.AreEqual(70f, ship.Rotation!.x, "Outro ship should keep the same camera tilt as the rest of the scene.");
+        Assert.AreEqual(WorldViewSetup.CameraPitchDegrees, ship.Rotation!.x, "Outro ship should keep the same camera tilt as the rest of the scene.");
     }
 
     [TestMethod]
@@ -582,11 +582,11 @@ public class OutroSceneTests
         now = now.AddSeconds(2.1);
         controls.MoveObject(ship, null, null);
 
-        Assert.AreEqual(70f, startXRotation, 0.001f,
+        Assert.AreEqual(WorldViewSetup.CameraPitchDegrees, startXRotation, 0.001f,
             "Ship should enter with the normal scene pitch.");
         Assert.IsTrue(startZRotation < -80f && startZRotation > -120f,
             $"Ship should point across the screen from the right side toward Earth center. Start Z rotation was {startZRotation:0.0}.");
-        Assert.AreEqual(70f, approachXRotation, 0.001f,
+        Assert.AreEqual(WorldViewSetup.CameraPitchDegrees, approachXRotation, 0.001f,
             "Ship should keep the normal scene pitch while approaching Earth center.");
         Assert.AreEqual(startZRotation, approachZRotation, 0.001f,
             "Ship should not yaw away from its approach heading while flying from the right.");
@@ -879,7 +879,7 @@ public class OutroSceneTests
     {
         var world = CreateWorldAtOutro();
         var earth = world.WorldInhabitants.First(o => o.ObjectName == "Earth");
-        Assert.AreEqual(70f, earth.Rotation.x, "Earth X rotation should be 70 (camera tilt).");
+        Assert.AreEqual(WorldViewSetup.WorldPitchDegrees, earth.Rotation.x, "Earth X rotation should match the shared world pitch.");
     }
 
     [TestMethod]

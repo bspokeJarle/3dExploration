@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using static Domain._3dSpecificsImplementations;
 using MathF = System.MathF;
@@ -57,7 +58,7 @@ namespace _3dRotations.World.Objects.EarthObject
                 ObjectName = "Earth",
                 ObjectParts = parts,
                 CrashBoxes = BuildCrashBoxes(CrashboxRadius, CrashboxScale),
-                Rotation = new Vector3 { x = 70f, y = 0f, z = 90f },
+                Rotation = new Vector3 { x = WorldViewSetup.WorldPitchDegrees, y = 0f, z = 90f },
                 WorldPosition = new Vector3 { x = 0f, y = 0f, z = 0f },
                 ObjectOffsets = new Vector3
                 {

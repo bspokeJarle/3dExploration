@@ -1,4 +1,5 @@
 using _3dRotations.World.Objects;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
 using System.Reflection;
@@ -26,7 +27,7 @@ public class TreeControlsTests
         var foliage = GetPart(tree, "TreeFoliage");
         var shadow = GetPart(tree, "Shadow");
 
-        Assert.AreEqual(70f, tree.Rotation!.x, 0.001f, "Tree control should keep the normal tree rotation.");
+        Assert.AreEqual(WorldViewSetup.SurfaceFacingObjectPitchDegrees, tree.Rotation!.x, 0.001f, "Tree control should keep the normal tree rotation.");
         AssertSameVertex(baseTrunkBottom, trunk.Triangles[0].vert1, "The trunk base should stay pinned to the ground.");
         AssertSameVertex(baseShadowVertex, shadow.Triangles[0].vert2, "Wind animation should not touch the shadow part.");
 

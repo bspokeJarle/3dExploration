@@ -138,6 +138,7 @@ namespace _3dRotations.World.Objects
             tower.ParentSurface = parentSurface;
 
             _3dObjectHelpers.AddSimplifiedShadowPart(tower, useFlatQuad: false);
+            _3dObjectHelpers.NormalizeSurfaceFootprintPivot(tower);
 
             return tower;
         }

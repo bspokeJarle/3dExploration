@@ -1,5 +1,6 @@
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
 using System.Threading;
@@ -13,6 +14,7 @@ public class SeederGuidanceArrowControlTests
     [TestInitialize]
     public void Setup()
     {
+        ScreenSetup.Initialize(1500, 1024);
         GameState.GamePlayState = new GamePlayState();
         GameState.SurfaceState = new SurfaceState();
         GameState.ShipState = new ShipState();
@@ -55,13 +57,42 @@ public class SeederGuidanceArrowControlTests
             "Arrow should point to bomber when it is the remaining objective enemy.");
     }
 
+    [TestMethod]
+    public void MoveObject_AnchorsArrowBelowGameOverlay_OnLowHeightScreen()
+    {
+        ScreenSetup.Initialize(1920, 1080);
+        var control = new SeederGuidanceArrowControl();
+        var arrow = CreateArrow();
+        arrow.ObjectOffsets!.y = -200f;
+
+        control.MoveObject(arrow, null, null);
+
+        float screenY = ScreenSetup.screenSizeY / 2f + arrow.ObjectOffsets.y;
+        Assert.IsTrue(screenY >= GameOverlaySetup.GuidanceArrowMinimumScreenY,
+            "Guidance arrow should stay below the top HUD overlay on lower-height screens.");
+    }
+
+    [TestMethod]
+    public void MoveObject_KeepsPreferredArrowY_WhenAlreadyBelowGameOverlay()
+    {
+        ScreenSetup.Initialize(2256, 1504);
+        var control = new SeederGuidanceArrowControl();
+        var arrow = CreateArrow();
+        arrow.ObjectOffsets!.y = -200f;
+
+        control.MoveObject(arrow, null, null);
+
+        Assert.AreEqual(-200f, arrow.ObjectOffsets.y, 0.1f,
+            "Guidance arrow should keep the scene's preferred placement when it is already below the HUD.");
+    }
+
     private static _3dObject CreateArrow()
     {
         return new _3dObject
         {
             ObjectId = 1001,
             ObjectName = "SeederGuidanceArrow",
-            Rotation = new Vector3 { x = 70f, y = 0f, z = 90f },
+            Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0f, z = 90f },
             WorldPosition = new Vector3(),
             ObjectOffsets = new Vector3(),
             ImpactStatus = new ImpactStatus()

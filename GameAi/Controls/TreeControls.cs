@@ -1,4 +1,5 @@
 using Domain;
+using CommonUtilities.CommonSetup;
 using System;
 using System.Collections.Generic;
 using static Domain._3dSpecificsImplementations;
@@ -13,7 +14,7 @@ namespace GameAiAndControls.Controls
         public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         private const float Yrotation = 0f;
-        private const float Xrotation = 70f;
+        private const float Xrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float Zrotation = 0f;
         private const float WindRadiansPerSecond = 2.05f;
         private const float TrunkAmplitude = 1.1f;

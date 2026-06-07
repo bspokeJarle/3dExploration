@@ -150,7 +150,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
                     y = mothershipOffsetY + 40f,
                     z = 400
                 };
-                drone.Rotation          = new Vector3 { x = 70, y = 0, z = 90 };
+                drone.Rotation          = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 90 };
                 drone.ObjectName        = "KamikazeDrone";
                 drone.ImpactStatus      = new ImpactStatus { ObjectHealth = EnemySetup.KamikazeDroneHealth };
                 drone.CrashBoxDebugMode = false;

@@ -1,5 +1,6 @@
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls.JumpingFishControls;
 using _3dRotations.World.Objects;
@@ -39,7 +40,7 @@ public class JumpingFishControlsTests
         Assert.AreEqual(InitialX + 130f, fish.ObjectOffsets!.x, 0.001f);
         Assert.AreEqual(InitialY, fish.ObjectOffsets.y, 0.001f);
         Assert.AreEqual(InitialZ, fish.ObjectOffsets.z, 0.001f);
-        Assert.AreEqual(70f, fish.Rotation!.x, 0.001f);
+        Assert.AreEqual(WorldViewSetup.SurfaceFacingObjectPitchDegrees, fish.Rotation!.x, 0.001f);
         Assert.AreEqual(0f, fish.Rotation.y, 0.001f);
         Assert.AreEqual(-90f, fish.Rotation.z, 0.001f);
 
@@ -48,7 +49,7 @@ public class JumpingFishControlsTests
         Assert.AreEqual(InitialX, fish.ObjectOffsets.x, 1f);
         Assert.IsTrue(fish.ObjectOffsets.y < InitialY - 150f, "The fish should reach the top of the jump near mid-cycle.");
         Assert.IsTrue(fish.ObjectOffsets.z > InitialZ, "The jump should have a small depth pulse at the apex.");
-        Assert.AreEqual(78f, fish.Rotation.x, 0.5f);
+        Assert.AreEqual(WorldViewSetup.SurfaceFacingObjectPitchDegrees + 8f, fish.Rotation.x, 0.5f);
         Assert.AreEqual(24f, fish.Rotation.y, 0.5f);
         Assert.AreEqual(-180f, fish.Rotation.z, 1f);
 
