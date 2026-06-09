@@ -43,6 +43,7 @@ namespace GameAiAndControls.Audio.Services
                 double cooldownSeconds,
                 double interruptCooldownSeconds,
                 float? volumeOverride,
+                float? speedOverride,
                 double speechSeconds,
                 params string[] soundIds)
             {
@@ -50,6 +51,7 @@ namespace GameAiAndControls.Audio.Services
                 CooldownSeconds = cooldownSeconds;
                 InterruptCooldownSeconds = interruptCooldownSeconds;
                 VolumeOverride = volumeOverride;
+                SpeedOverride = speedOverride;
                 SpeechSeconds = speechSeconds;
                 SoundIds = soundIds;
             }
@@ -58,12 +60,13 @@ namespace GameAiAndControls.Audio.Services
             public double CooldownSeconds { get; }
             public double InterruptCooldownSeconds { get; }
             public float? VolumeOverride { get; }
+            public float? SpeedOverride { get; }
             public double SpeechSeconds { get; }
             public IReadOnlyList<string> SoundIds { get; }
         }
 
         private const float MusicDuckingFactor = 0.35f;
-        private const float VoicePlaybackSpeed = 1.2f;
+        private const float TutorialVoicePlaybackSpeed = 1.2f;
         private const double SpeechGapSeconds = 0.35;
         private const double DefaultSpeechSeconds = 3.0;
         private const float VolumeEpsilon = 0.0001f;
@@ -76,6 +79,7 @@ namespace GameAiAndControls.Audio.Services
                     cooldownSeconds: 1.5,
                     interruptCooldownSeconds: 0.25,
                     volumeOverride: 1.0f,
+                    speedOverride: null,
                     speechSeconds: 1.25,
                     "ship_collision_warning"),
 
@@ -84,6 +88,7 @@ namespace GameAiAndControls.Audio.Services
                     cooldownSeconds: 8.0,
                     interruptCooldownSeconds: 8.0,
                     volumeOverride: 0.75f,
+                    speedOverride: null,
                     speechSeconds: 1.6,
                     "ship_ai_clean_loop",
                     "ship_ai_great_flying"),
@@ -93,6 +98,7 @@ namespace GameAiAndControls.Audio.Services
                     cooldownSeconds: 8.0,
                     interruptCooldownSeconds: 8.0,
                     volumeOverride: 0.7f,
+                    speedOverride: null,
                     speechSeconds: 1.6,
                     "ship_ai_close_one",
                     "ship_ai_maneuver_unstable"),
@@ -102,6 +108,7 @@ namespace GameAiAndControls.Audio.Services
                     cooldownSeconds: 8.0,
                     interruptCooldownSeconds: 8.0,
                     volumeOverride: 0.7f,
+                    speedOverride: null,
                     speechSeconds: 1.8,
                     "ship_ai_low_altitude_bonus"),
 
@@ -110,6 +117,7 @@ namespace GameAiAndControls.Audio.Services
                     cooldownSeconds: 12.0,
                     interruptCooldownSeconds: 12.0,
                     volumeOverride: 0.7f,
+                    speedOverride: null,
                     speechSeconds: 2.0,
                     "ship_ai_planet_bonus_complete"),
 
@@ -198,8 +206,9 @@ namespace GameAiAndControls.Audio.Services
                 ? config.SpeechSeconds
                 : DefaultSpeechSeconds;
 
-            speechSeconds = VoicePlaybackSpeed > 0.1f
-                ? baseSeconds / VoicePlaybackSpeed
+            float speed = config.SpeedOverride.GetValueOrDefault(1f);
+            speechSeconds = speed > 0.1f
+                ? baseSeconds / speed
                 : baseSeconds;
             return true;
         }
@@ -320,13 +329,12 @@ namespace GameAiAndControls.Audio.Services
             var result = new AudioPlayOptions
             {
                 VolumeOverride = options?.VolumeOverride ?? config.VolumeOverride,
-                SpeedOverride = options?.SpeedOverride,
+                SpeedOverride = options?.SpeedOverride ?? config.SpeedOverride,
                 Pan = options?.Pan,
                 WorldPosition = options?.WorldPosition,
                 Tag = options?.Tag
             };
 
-            result.SpeedOverride ??= VoicePlaybackSpeed;
             return result;
         }
 
@@ -336,6 +344,7 @@ namespace GameAiAndControls.Audio.Services
                 cooldownSeconds: 0.25,
                 interruptCooldownSeconds: 0.0,
                 volumeOverride: 0.75f,
+                speedOverride: TutorialVoicePlaybackSpeed,
                 speechSeconds: speechSeconds,
                 soundId);
     }

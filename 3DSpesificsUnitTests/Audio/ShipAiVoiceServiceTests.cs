@@ -140,18 +140,24 @@ public class ShipAiVoiceServiceTests
     }
 
     [TestMethod]
-    public void TrySpeak_UsesFasterVoicePlaybackSpeed()
+    public void TrySpeak_UsesFasterPlaybackSpeedOnlyForTutorialCues()
     {
         DateTime now = new(2026, 1, 1, 12, 0, 0);
         var service = new ShipAiVoiceService(() => now, new Random(0));
         var audio = new CapturingAudioPlayer();
-        var registry = new FakeSoundRegistry("ship_ai_tutorial_intro");
+        var registry = new FakeSoundRegistry("ship_ai_tutorial_intro", "ship_ai_clean_loop");
 
         Assert.IsTrue(service.TrySpeak(ShipAiVoiceCue.TutorialIntro, audio, registry));
 
         float? speedOverride = audio.SpeedOverrides.Single();
         Assert.IsTrue(speedOverride.HasValue);
         Assert.AreEqual(1.2f, speedOverride.Value, 0.0001f);
+
+        service.StopCurrentSpeech();
+        now = now.AddSeconds(9);
+
+        Assert.IsTrue(service.TrySpeak(ShipAiVoiceCue.CleanLoop, audio, registry));
+        Assert.IsFalse(audio.SpeedOverrides[^1].HasValue);
     }
 
     [TestMethod]
