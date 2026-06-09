@@ -35,6 +35,8 @@ namespace GameAiAndControls.Controls
         private const float HighSpeedSurfaceLandingDamageMultiplier = 12f;
         private const float SurfaceBounceTopTolerance = 0.5f;
         private const double UnsafeSurfaceHitResetSeconds = 2.0;
+        private const double OverlayResumeCrashDetectionSuppressionSeconds = 2.0;
+        private const double OverlayResumeGravityPauseSeconds = 2.0;
         private static float ShipRestingScreenY => ScreenSetup.screenSizeY * 0.195f;
 
         // Engine glow colors: idle (dark red) when no thrust, active (yellow) at full thrust.
@@ -116,6 +118,20 @@ namespace GameAiAndControls.Controls
         private Vector3? _explosionObjectOffsets;
         private Vector3? _explosionRotation;
         private Vector3? _explosionCalculatedCrashOffset;
+        private OverlayPauseTransformSnapshot? _overlayPauseSnapshot;
+
+        private sealed class OverlayPauseTransformSnapshot
+        {
+            public Vector3? WorldPosition { get; init; }
+            public Vector3? ObjectOffsets { get; init; }
+            public Vector3? Rotation { get; init; }
+            public int RotationX { get; init; }
+            public int RotationY { get; init; }
+            public int RotationZ { get; init; }
+            public int Tilt { get; init; }
+            public int ShipY { get; init; }
+            public int Zoom { get; init; }
+        }
 
         public ShipControls()
         {
@@ -163,7 +179,8 @@ namespace GameAiAndControls.Controls
 
         private void GlobalHookKeyDown(object sender, KeyEventArgs e)
         {
-            if (GameState.ScreenOverlayState.Type == ScreenOverlayType.Intro) return;
+            if (IsGameplayInputBlocked()) return;
+
             if (e.KeyCode == Keys.Left) _leftHeld = true;
             if (e.KeyCode == Keys.Right) _rightHeld = true;
             if (e.KeyCode == Keys.Up) _upHeld = true;
@@ -266,22 +283,6 @@ namespace GameAiAndControls.Controls
             if (e.KeyCode == Keys.RShiftKey)
             {
                 _fireKeyHeld = true;
-
-                if (GameState.GamePlayState.SelectedWeapon == WeaponType.Bullet
-                    && !string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase)
-                    && _bulletInstance == null
-                    && _audio != null && _bulletSound != null)
-                {
-                    var audioPosition = ((_3dObject)ParentObject).GetAudioPosition();
-                    _bulletInstance = _audio.Play(
-                        _bulletSound,
-                        AudioPlayMode.SegmentedLoop,
-                        new AudioPlayOptions
-                        {
-                            WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
-                        });
-                }
-
                 FireWeapon();
             }
             //Prevent further processing of this key event
@@ -335,6 +336,14 @@ namespace GameAiAndControls.Controls
 
         public void GlobalHookMouseMovement(object sender, MouseEventArgs e)
         {
+            if (IsGameplayInputBlocked())
+            {
+                _mouseActive = false;
+                _mouseYawInput = 0f;
+                _mousePitchInput = 0f;
+                return;
+            }
+
             if (!_mouseActive)
             {
                 _lastMouseX = e.X;
@@ -360,6 +369,8 @@ namespace GameAiAndControls.Controls
 
         private void GlobalHookMouseDown(object sender, MouseEventArgs e)
         {
+            if (IsGameplayInputBlocked()) return;
+
             if (e.Button == MouseButtons.Left)
             {
                 if (!ThrustOn)
@@ -387,22 +398,6 @@ namespace GameAiAndControls.Controls
             else if (e.Button == MouseButtons.Right)
             {
                 _fireKeyHeld = true;
-
-                if (GameState.GamePlayState.SelectedWeapon == WeaponType.Bullet
-                    && !string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase)
-                    && _bulletInstance == null
-                    && _audio != null && _bulletSound != null)
-                {
-                    var audioPosition = ((_3dObject)ParentObject).GetAudioPosition();
-                    _bulletInstance = _audio.Play(
-                        _bulletSound,
-                        AudioPlayMode.SegmentedLoop,
-                        new AudioPlayOptions
-                        {
-                            WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
-                        });
-                }
-
                 FireWeapon();
             }
         }
@@ -434,22 +429,165 @@ namespace GameAiAndControls.Controls
             }
         }
 
-        private void FireWeapon()
+        private static bool IsGameplayInputBlocked()
+        {
+            var overlay = GameState.ScreenOverlayState;
+            return GameState.TutorialState.InstructionOverlayPauseActive ||
+                   (overlay.ShowOverlay && overlay.IsModal) ||
+                   overlay.Type == ScreenOverlayType.Intro ||
+                   GameState.GamePlayState.IsPaused;
+        }
+
+        public void CaptureOverlayPauseTransform(I3dObject? ship = null)
+        {
+            var target = ship ?? ParentObject;
+            if (target == null)
+                return;
+
+            var snapshotSource = ParentObject ?? target;
+            _overlayPauseSnapshot = new OverlayPauseTransformSnapshot
+            {
+                WorldPosition = CloneVector(snapshotSource.WorldPosition),
+                ObjectOffsets = CloneVector(snapshotSource.ObjectOffsets),
+                Rotation = CloneVector(snapshotSource.Rotation),
+                RotationX = rotationX,
+                RotationY = rotationY,
+                RotationZ = rotationZ,
+                Tilt = tilt,
+                ShipY = snapshotSource.ObjectOffsets != null ? (int)snapshotSource.ObjectOffsets.y : shipY,
+                Zoom = zoom
+            };
+        }
+
+        public void RestoreOverlayPauseTransformAndSuppressCrashDetection(I3dObject? ship = null)
+        {
+            var target = ship ?? ParentObject;
+            if (_overlayPauseSnapshot != null && target != null)
+            {
+                ApplyOverlayPauseSnapshot(target, _overlayPauseSnapshot);
+
+                if (ParentObject != null && !ReferenceEquals(ParentObject, target))
+                    ApplyOverlayPauseSnapshot(ParentObject, _overlayPauseSnapshot);
+
+                UpdateShipWorldPosition(target);
+            }
+
+            _overlayPauseSnapshot = null;
+            lastUpdateTime = DateTime.Now;
+            ClearTransientResumeInputState();
+            ClearPendingShipCrash(target);
+            var resumeUtc = DateTime.UtcNow;
+            GameState.ShipState.ShipCrashDetectionDisabledUntilUtc =
+                resumeUtc.AddSeconds(OverlayResumeCrashDetectionSuppressionSeconds);
+            GameState.ShipState.ShipGravityDisabledUntilUtc =
+                resumeUtc.AddSeconds(OverlayResumeGravityPauseSeconds);
+        }
+
+        private void ApplyOverlayPauseSnapshot(I3dObject target, OverlayPauseTransformSnapshot snapshot)
+        {
+            target.WorldPosition = CloneVector(snapshot.WorldPosition);
+            target.ObjectOffsets = CloneVector(snapshot.ObjectOffsets);
+            if (target.ObjectOffsets != null)
+                target.ObjectOffsets.z = snapshot.Zoom;
+            target.Rotation = CloneVector(snapshot.Rotation);
+
+            rotationX = snapshot.RotationX;
+            rotationY = snapshot.RotationY;
+            rotationZ = snapshot.RotationZ;
+            tilt = snapshot.Tilt;
+            shipY = snapshot.ShipY;
+            zoom = snapshot.Zoom;
+        }
+
+        private void ClearTransientResumeInputState()
+        {
+            _leftHeld = false;
+            _rightHeld = false;
+            _upHeld = false;
+            _downHeld = false;
+            _fireKeyHeld = false;
+            _mouseActive = false;
+            _mouseYawInput = 0f;
+            _mousePitchInput = 0f;
+            _yawVelocity = 0f;
+            _pitchVelocity = 0f;
+            _yawAccumulator = 0f;
+            _pitchAccumulator = 0f;
+        }
+
+        private static void ClearPendingShipCrash(I3dObject? ship)
+        {
+            if (ship?.ImpactStatus == null)
+                return;
+
+            if (!ship.ImpactStatus.HasCrashed)
+                return;
+
+            ship.ImpactStatus.HasCrashed = false;
+            ship.ImpactStatus.ImpactDirection = null;
+            ship.ImpactStatus.CrashBoxName = null;
+            ship.ImpactStatus.ObjectName = "";
+        }
+
+        private static Vector3? CloneVector(IVector3? vector)
+        {
+            if (vector == null)
+                return null;
+
+            return new Vector3 { x = vector.x, y = vector.y, z = vector.z };
+        }
+
+        public void ResetRotationForTutorialResume(I3dObject? ship = null)
+        {
+            _leftHeld = false;
+            _rightHeld = false;
+            _upHeld = false;
+            _downHeld = false;
+            _fireKeyHeld = false;
+            _mouseActive = false;
+            _mouseYawInput = 0f;
+            _mousePitchInput = 0f;
+            _yawVelocity = 0f;
+            _pitchVelocity = 0f;
+            _yawAccumulator = 0f;
+            _pitchAccumulator = 0f;
+            rotationX = WorldViewSetup.CameraPitchDegreesInt;
+            rotationY = 0;
+            rotationZ = 0;
+            tilt = 0;
+            _loopTracker.CancelActiveLoop();
+
+            ApplyRotationReset(ship);
+            if (ParentObject != null && !ReferenceEquals(ParentObject, ship))
+                ApplyRotationReset(ParentObject);
+        }
+
+        private void ApplyRotationReset(I3dObject? ship)
+        {
+            if (ship?.Rotation == null)
+                return;
+
+            ship.Rotation.x = rotationX;
+            ship.Rotation.y = rotationY;
+            ship.Rotation.z = rotationZ;
+        }
+
+        private bool FireWeapon()
         {
             if (string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase))
             {
-                if (_bulletInstance != null)
-                {
-                    _bulletInstance.Stop(playEndSegment: true);
-                    _bulletInstance = null;
-                }
+                StopBulletAudio(playEndSegment: true);
                 DeployDecoy();
                 _fireKeyHeld = false;
-                return;
+                return true;
             }
 
+            if (!CanDispatchWeapon())
+                return false;
+
+            var selectedWeapon = GameState.GamePlayState.SelectedWeapon;
             if (!GameState.GamePlayState.TryFireSelectedWeapon())
-                return;
+                return false;
 
             // Fire weapon from ship
             var rot = new Vector3
@@ -459,24 +597,67 @@ namespace GameAiAndControls.Controls
                 z = rotationZ
             };
             ParentObject.Rotation = rot;
-            ParentObject.WeaponSystems?.FireWeapon(
+            int activeWeaponsBefore = ParentObject.WeaponSystems.ActiveWeapons.Count;
+            ParentObject.WeaponSystems.FireWeapon(
                 WeaponGuideCoordinates?.vert1,
                 WeaponStartCoordinates?.vert1,
                 GameState.SurfaceState.GlobalMapPosition,
-                GameState.GamePlayState.SelectedWeapon,
+                selectedWeapon,
                 ParentObject,
                 tilt);
 
+            bool weaponWasActivated = ParentObject.WeaponSystems.ActiveWeapons.Count > activeWeaponsBefore;
+            if (!weaponWasActivated)
+                return false;
+
+            if (selectedWeapon == WeaponType.Bullet)
+                StartBulletAudioIfNeeded();
+            else
+                StopBulletAudio(playEndSegment: true);
+
             // Trigger cannon recoil for lazer and bullet
-            if (GameState.GamePlayState.SelectedWeapon == WeaponType.Lazer ||
-                GameState.GamePlayState.SelectedWeapon == WeaponType.Bullet)
+            if (selectedWeapon == WeaponType.Lazer ||
+                selectedWeapon == WeaponType.Bullet)
             {
                 _cannonRecoilOffset = CannonRecoilDistance;
-                float cooldown = GameState.GamePlayState.SelectedWeapon == WeaponType.Bullet
+                float cooldown = selectedWeapon == WeaponType.Bullet
                     ? GameState.GamePlayState.BulletCooldownSeconds
                     : GameState.GamePlayState.LaserCooldownSeconds;
                 _cannonRecoilReturnSpeed = CannonRecoilDistance / (cooldown * CannonRecoilReturnFraction);
             }
+
+            return true;
+        }
+
+        private bool CanDispatchWeapon()
+        {
+            return ParentObject?.WeaponSystems != null &&
+                   WeaponGuideCoordinates?.vert1 != null &&
+                   WeaponStartCoordinates?.vert1 != null;
+        }
+
+        private void StartBulletAudioIfNeeded()
+        {
+            if (_bulletInstance != null || _audio == null || _bulletSound == null || ParentObject is not _3dObject ship)
+                return;
+
+            var audioPosition = ship.GetAudioPosition();
+            _bulletInstance = _audio.Play(
+                _bulletSound,
+                AudioPlayMode.SegmentedLoop,
+                new AudioPlayOptions
+                {
+                    WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                });
+        }
+
+        private void StopBulletAudio(bool playEndSegment)
+        {
+            if (_bulletInstance == null)
+                return;
+
+            _bulletInstance.Stop(playEndSegment: playEndSegment);
+            _bulletInstance = null;
         }
 
         private void DeployDecoy()
@@ -638,6 +819,7 @@ namespace GameAiAndControls.Controls
 
             // Lazily initialize audio the first time MoveObject runs.
             ConfigureAudio(audioPlayer, soundRegistry);
+            _shipAiVoiceService.Update(_audio);
 
             ParentObject ??= theObject;
 
@@ -658,6 +840,10 @@ namespace GameAiAndControls.Controls
 
             GameState.GamePlayState.Update(deltaTime);
             ExpireUnsafeSurfaceHit(now);
+
+            bool shipCrashDetectionSuppressed = IsShipCrashDetectionSuppressed();
+            if (shipCrashDetectionSuppressed)
+                ClearPendingShipCrash(theObject);
 
             if (IsLoopCollision(theObject.ImpactStatus))
                 _loopTracker.MarkCollision();
@@ -727,12 +913,12 @@ namespace GameAiAndControls.Controls
                 HandleThrust(deltaTime);
             }
 
-            if (Thrust == 0 && !isExploding)
+            if (Thrust == 0 && !isExploding && !IsShipGravitySuppressed())
                 ApplyGravity(deltaTime);
 
             HandleCompletedLoopBonus(UpdateLoopTracking(deltaTime));
 
-            if (!isExploding && IsBelowSurfaceFailsafeFloor())
+            if (!isExploding && !shipCrashDetectionSuppressed && IsBelowSurfaceFailsafeFloor())
             {
                 if (theObject.ImpactStatus == null)
                     theObject.ImpactStatus = new ImpactStatus();
@@ -940,6 +1126,16 @@ namespace GameAiAndControls.Controls
         private bool IsBelowSurfaceFailsafeFloor()
         {
             return GameState.SurfaceState.GlobalMapPosition.y < Physics.FloorHeight;
+        }
+
+        private static bool IsShipCrashDetectionSuppressed()
+        {
+            return GameState.ShipState.ShipCrashDetectionDisabledUntilUtc > DateTime.UtcNow;
+        }
+
+        private static bool IsShipGravitySuppressed()
+        {
+            return GameState.ShipState.ShipGravityDisabledUntilUtc > DateTime.UtcNow;
         }
 
         private ShipLoopStatus UpdateLoopTracking(float deltaTime)
@@ -1454,34 +1650,39 @@ namespace GameAiAndControls.Controls
                 var obj = aiObjects[i];
                 if (obj.ObjectName == "PowerUp" && obj.ImpactStatus?.HasCrashed == true)
                 {
+                    bool isTutorialScene = GameState.GamePlayState.CurrentSceneType == SceneTypes.Tutorial;
                     GameState.GamePlayState.PowerUpsCollected++;
-                    GameState.GamePlayState.Score += GameSetup.PowerUpCollectScore;
 
-                    // Snapshot current remaining objective enemies before saving checkpoint
-                    // so reset/load does not restore an already-cleared wave state by mistake.
-                    int seedersLeft = 0;
-                    int dronesLeft = 0;
-                    int motherShipsLeft = 0;
-                    for (int j = 0; j < aiObjects.Count; j++)
+                    if (!isTutorialScene)
                     {
-                        var enemy = aiObjects[j];
-                        if (enemy.ImpactStatus?.HasExploded == true)
-                            continue;
+                        GameState.GamePlayState.Score += GameSetup.PowerUpCollectScore;
 
-                        if (enemy.ObjectName == "Seeder")
-                            seedersLeft++;
-                        else if (enemy.ObjectName == "KamikazeDrone" && enemy.IsActive)
-                            dronesLeft++;
-                        else if ((enemy.ObjectName == "MotherShipSmall" || enemy.ObjectName == "MotherShipMedium" || enemy.ObjectName == "MotherShipLarge") && enemy.IsActive)
-                            motherShipsLeft++;
+                        // Snapshot current remaining objective enemies before saving checkpoint
+                        // so reset/load does not restore an already-cleared wave state by mistake.
+                        int seedersLeft = 0;
+                        int dronesLeft = 0;
+                        int motherShipsLeft = 0;
+                        for (int j = 0; j < aiObjects.Count; j++)
+                        {
+                            var enemy = aiObjects[j];
+                            if (enemy.ImpactStatus?.HasExploded == true)
+                                continue;
+
+                            if (enemy.ObjectName == "Seeder")
+                                seedersLeft++;
+                            else if (enemy.ObjectName == "KamikazeDrone" && enemy.IsActive)
+                                dronesLeft++;
+                            else if ((enemy.ObjectName == "MotherShipSmall" || enemy.ObjectName == "MotherShipMedium" || enemy.ObjectName == "MotherShipLarge") && enemy.IsActive)
+                                motherShipsLeft++;
+                        }
+
+                        GameState.GamePlayState.SeedersRemaining = seedersLeft;
+                        GameState.GamePlayState.DronesRemaining = dronesLeft;
+                        GameState.GamePlayState.MotherShipsRemaining = motherShipsLeft;
+                        GameState.GamePlayState.SaveCheckpoint();
+
+                        try { GameStatePersistence.SaveGameState(); } catch { }
                     }
-
-                    GameState.GamePlayState.SeedersRemaining = seedersLeft;
-                    GameState.GamePlayState.DronesRemaining = dronesLeft;
-                    GameState.GamePlayState.MotherShipsRemaining = motherShipsLeft;
-                    GameState.GamePlayState.SaveCheckpoint();
-
-                    try { GameStatePersistence.SaveGameState(); } catch { }
 
                     if (_audio != null && _powerupSound != null)
                         _audio.Play(_powerupSound, AudioPlayMode.OneShot, new AudioPlayOptions());

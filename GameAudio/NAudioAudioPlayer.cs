@@ -24,6 +24,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
 
     private NAudioAudioInstance? _musicInstance;
     private float _musicVolume = 0.6f;
+    public float MusicVolume => _musicVolume;
 
     public NAudioAudioPlayer(string audioBasePath)
     {
@@ -84,6 +85,16 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
                 source = new TruncatingSampleProvider(source, TimeSpan.FromSeconds(segDuration));
         }
 
+        // Playback speed is stored for future pitch/varispeed support.
+        float speed;
+        if (options?.SpeedOverride is { } speedOverride)
+            speed = speedOverride;
+        else
+            speed = definition.Speed.GetRandomizedSpeed(_rng);
+
+        if (MathF.Abs(speed - 1f) > 0.001f)
+            source = new PlaybackRateSampleProvider(source, speed);
+
         // Normalize the source into the shared mixer format.
         ISampleProvider sample = NormalizeToMixerFormat(source);
 
@@ -96,13 +107,6 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
         {
             Volume = baseVolume
         };
-
-        // Playback speed is stored for future pitch/varispeed support.
-        float speed;
-        if (options?.SpeedOverride is { } speedOverride)
-            speed = speedOverride;
-        else
-            speed = definition.Speed.GetRandomizedSpeed(_rng);
 
         var panProvider = new SpatialPanSampleProvider(volumeProvider);
         ISampleProvider pipeline = panProvider;

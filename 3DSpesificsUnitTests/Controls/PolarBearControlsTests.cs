@@ -248,6 +248,7 @@ public class PolarBearControlsTests
     {
         public int PlayCount { get; private set; }
         public System.Numerics.Vector3? LastWorldPosition { get; private set; }
+        public float MusicVolume { get; private set; } = 0.15f;
 
         public IAudioInstance Play(SoundDefinition definition, AudioPlayMode mode, AudioPlayOptions? options = null)
         {
@@ -272,6 +273,11 @@ public class PolarBearControlsTests
 
         public void PlayMusic(SoundDefinition definition, float? volumeOverride = null)
         {
+        }
+
+        public void SetMusicVolume(float volume)
+        {
+            MusicVolume = volume;
         }
 
         public void StopMusic()

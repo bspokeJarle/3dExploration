@@ -14,6 +14,8 @@ namespace _3dRotations.Scenes.Intro
 {
     public class Intro : IScene
     {
+        private const string StartFooter = "PRESS ANY KEY TO INITIATE PROTOCOL  //  [T] TRAINING";
+
         public bool SkipLogoCube { get; set; } = false;
 
         public GameModes GameMode { get; } = GameModes.Live;
@@ -64,7 +66,7 @@ namespace _3dRotations.Scenes.Intro
                 "Designated: OMEGA STRAIN.\n\n" +
                 "Autonomous Seeder units detected.\n" +
                 "Containment probability: 12%.",
-                "PRESS ANY KEY TO INITIATE PROTOCOL");
+                StartFooter);
 
             // Page 2: Controls
             o.AddPage(
@@ -82,11 +84,12 @@ namespace _3dRotations.Scenes.Intro
                 "NAVIGATION:\n" +
                 "  - Arrow keys or WASD to move\n" +
                 "  - Follow the guidance arrow to find Seeders\n" +
-                "  - Press [X] at any time during a mission to return to this screen\n\n" +
+                "  - Press [X] at any time during a mission to return to this screen\n" +
+                "  - [T] START TUTORIAL from this screen\n\n" +
                 "NOTE:\n" +
                 "  Controller support is coming.\n" +
                 "  Custom key mapping will be supported.",
-                "PRESS ANY KEY TO INITIATE PROTOCOL");
+                StartFooter);
 
             // Page 3: Gameplay tips
             o.AddPage(
@@ -99,14 +102,14 @@ namespace _3dRotations.Scenes.Intro
                 "  - Decoys unlock after collecting your first PowerUp\n" +
                 "  - PowerUps drop from glowing Seeders\n" +
                 "  - Eliminate all enemies to face the MotherShip",
-                "PRESS ANY KEY TO INITIATE PROTOCOL");
+                StartFooter);
 
             // Page 4: Highscores
             o.AddPage(
                 "RETROMESH // HALL OF FAME",
                 "TOP PILOTS",
                 HighscoreOverlayFormatter.BuildBody(),
-                "PRESS ANY KEY TO INITIATE PROTOCOL");
+                StartFooter);
 
             o.CurrentPage = 0;
             o.ApplyPageContent();

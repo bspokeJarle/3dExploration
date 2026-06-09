@@ -14,7 +14,21 @@ public class ShipAiVoiceSoundRegistrationTests
         ("ship_ai_clean_loop", "OmegaStrain_clean_loop.mp3", "ShipAiVoiceCleanLoop"),
         ("ship_ai_great_flying", "OmegaStrain_great_flying.mp3", "ShipAiVoiceGreatFlying"),
         ("ship_ai_low_altitude_bonus", "OmegaStrain_low_altitude_bonus.mp3", "ShipAiVoiceLowAltitudeBonus"),
-        ("ship_ai_planet_bonus_complete", "OmegaStrain_planet_bonus_reached.mp3", "ShipAiVoicePlanetBonusComplete")
+        ("ship_ai_planet_bonus_complete", "OmegaStrain_planet_bonus_reached.mp3", "ShipAiVoicePlanetBonusComplete"),
+        ("ship_ai_tutorial_intro", "OmegaStrain_tutorial_intro.mp3", "ShipAiVoiceTutorialIntro"),
+        ("ship_ai_tutorial_thrust", "OmegaStrain_tutorial_thrust.mp3", "ShipAiVoiceTutorialThrust"),
+        ("ship_ai_tutorial_weapons", "OmegaStrain_tutorial_weapons.mp3", "ShipAiVoiceTutorialWeapons"),
+        ("ship_ai_tutorial_seeder_one_down", "OmegaStrain_tutorial_seeder_one_down.mp3", "ShipAiVoiceTutorialSeederOneDown"),
+        ("ship_ai_tutorial_powerup", "OmegaStrain_tutorial_powerup1.mp3", "ShipAiVoiceTutorialPowerup"),
+        ("ship_ai_tutorial_decoy_select", "OmegaStrain_tutorial_decoy_select.mp3", "ShipAiVoiceTutorialDecoySelect"),
+        ("ship_ai_tutorial_drone_inbound", "OmegaStrain_tutorial_drone_inbound.mp3", "ShipAiVoiceTutorialDroneInbound"),
+        ("ship_ai_tutorial_drone_destroyed", "OmegaStrain_tutorial_drone_destroyed.mp3", "ShipAiVoiceTutorialDroneDestroyed"),
+        ("ship_ai_tutorial_complete", "OmegaStrain_tutorial_complete.mp3", "ShipAiVoiceTutorialComplete"),
+        ("ship_ai_tutorial_skip", "OmegaStrain_tutorial_skip.mp3", "ShipAiVoiceTutorialSkip"),
+        ("ship_ai_tutorial_warning_low_altitude", "OmegaStrain_tutorial_warning_low_altitude.mp3", "ShipAiVoiceTutorialWarningLowAltitude"),
+        ("ship_ai_tutorial_checkpoint", "OmegaStrain_tutorial_checkpoint.mp3", "ShipAiVoiceTutorialCheckpoint"),
+        ("ship_ai_tutorial_laser_hint", "OmegaStrain_tutorial_laser_hint.mp3", "ShipAiVoiceTutorialLaserHint"),
+        ("ship_ai_tutorial_decoy_hint", "OmegaStrain_tutorial_decoy_hint.mp3", "ShipAiVoiceTutorialDecoyHint")
     ];
 
     [TestMethod]

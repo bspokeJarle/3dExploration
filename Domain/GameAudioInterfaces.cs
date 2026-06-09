@@ -134,6 +134,18 @@ namespace Domain
         /// Start playing music
         /// </summary>
         void PlayMusic(SoundDefinition definition, float? volumeOverride = null);
+
+        /// <summary>
+        /// Current background music volume. Used by voice ducking to restore
+        /// the exact volume that was active before speech started.
+        /// </summary>
+        float MusicVolume { get; }
+
+        /// <summary>
+        /// Adjust currently playing background music volume.
+        /// </summary>
+        void SetMusicVolume(float volume);
+
         /// <summary>
         /// Stop playing music
         /// </summary>

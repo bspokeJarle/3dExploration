@@ -55,6 +55,7 @@ namespace GameAiAndControls.Controls.SeederControls
         private DateTime ExplosionDeltaTime;
         private Vector3? explosionWorldPosition;
         private Vector3? explosionObjectOffsets;
+        private Vector3? explosionRotation;
         private Vector3? _trackedWorldPosition;
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -110,9 +111,16 @@ namespace GameAiAndControls.Controls.SeederControls
       
             //Set parent object
             ParentObject = theObject;
-            if (theObject.Rotation != null) theObject.Rotation.y = Yrotation;
-            if (theObject.Rotation != null) theObject.Rotation.x = Xrotation;
-            if (theObject.Rotation != null) theObject.Rotation.z = Zrotation;
+            if (isExploding && explosionRotation != null)
+            {
+                theObject.Rotation = CopyVector(explosionRotation);
+            }
+            else
+            {
+                if (theObject.Rotation != null) theObject.Rotation.y = Yrotation;
+                if (theObject.Rotation != null) theObject.Rotation.x = Xrotation;
+                if (theObject.Rotation != null) theObject.Rotation.z = Zrotation;
+            }
 
             //Handle impact status, trigger explosion if health is 0
             if (theObject.ImpactStatus.HasCrashed == true && isExploding == false)
@@ -242,8 +250,18 @@ namespace GameAiAndControls.Controls.SeederControls
                     };
                 }
 
+                if (explosionRotation != null)
+                {
+                    theObject.Rotation = CopyVector(explosionRotation);
+                }
+
                 //Update explosion
                 Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
+                if (explosionRotation != null)
+                {
+                    theObject.Rotation = CopyVector(explosionRotation);
+                }
+
                 if (theObject.ImpactStatus.HasExploded == true)
                 {
                     theObject.ObjectParts = new List<I3dObjectPart>();
@@ -257,7 +275,8 @@ namespace GameAiAndControls.Controls.SeederControls
             }
 
             // Visual spin
-            Zrotation += BaseZRotationIncrementPerFrame;
+            if (!isExploding)
+                Zrotation += BaseZRotationIncrementPerFrame;
 
             // Keep seeder offsets visually in sync with surface scrolling.
             // Must run even during explosion so the explosion stays anchored
@@ -334,6 +353,9 @@ namespace GameAiAndControls.Controls.SeederControls
                 explosionWorldPosition = new Vector3 { x = wp.x, y = wp.y, z = wp.z };
                 var oo = theObject.ObjectOffsets;
                 explosionObjectOffsets = new Vector3 { x = oo.x, y = oo.y, z = oo.z };
+                EnsureExplosionSyncAnchor(explosionObjectOffsets);
+                var rotation = theObject.Rotation ?? new Vector3();
+                explosionRotation = new Vector3 { x = rotation.x, y = rotation.y, z = rotation.z };
                 ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
                 // Handle object destruction or other logic here
                 var explodedVersion = Physics.ExplodeObject(theObject, ExplosionForce);
@@ -360,6 +382,15 @@ namespace GameAiAndControls.Controls.SeederControls
             }
 
             theObject.ObjectOffsets = CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY, SyncFactorY);
+        }
+
+        private void EnsureExplosionSyncAnchor(IVector3 syncedObjectOffsets)
+        {
+            if (_syncInitialized)
+                return;
+
+            _syncInitialized = true;
+            _syncY = syncedObjectOffsets.y - GameState.SurfaceState.GlobalMapPosition.y * SyncFactorY;
         }
 
         public void ReleaseParticles(I3dObject theObject)
@@ -413,6 +444,7 @@ namespace GameAiAndControls.Controls.SeederControls
             _audioConfigured = false;
             explosionWorldPosition = null;
             explosionObjectOffsets = null;
+            explosionRotation = null;
             StartCoordinates = null;
             GuideCoordinates = null;
             _audio = null;
@@ -461,6 +493,16 @@ namespace GameAiAndControls.Controls.SeederControls
                     return;
                 }
             }
+        }
+
+        private static Vector3 CopyVector(IVector3 source)
+        {
+            return new Vector3
+            {
+                x = source.x,
+                y = source.y,
+                z = source.z
+            };
         }
     }
 }

@@ -8,6 +8,7 @@ using CommonUtilities.CommonSetup;
 using CommonUtilities.Events;
 using CommonUtilities.Persistence;
 using Domain;
+using GameAiAndControls.Audio.Services;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.SeederControls;
 using GameAudioInstances;
@@ -58,6 +59,7 @@ namespace _3dTesting.MainWindowClasses.Loops
         private IGameEventBus? explosionCleanupEventBus;
         private StarFieldHandler StarFieldHandler { get; set; }
 
+        private const float DefaultMusicVolume = 0.15f;
         private readonly IAudioPlayer audioPlayer = new NAudioAudioPlayer(AudioSetup.AudioBasePath);
         private readonly ISoundRegistry soundRegistry = new JsonSoundRegistry(AudioSetup.SoundRegistryPath);
         private SoundDefinition MusicDef { get; set; } = null;
@@ -441,6 +443,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             if (activeScene != null)
             {
                 HandleMusic(renderedList, activeScene.SceneMusic);
+                ShipAiVoiceService.Shared.Update(audioPlayer);
             }
             musicMs = MarkPhase();
 
@@ -583,6 +586,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 // Spawn PowerUp objects at the location of exploded objects that have the flag
                 // and award score for enemy kills / trigger checkpoints
                 var gps = GameState.GamePlayState;
+                bool isTutorialScene = gps.CurrentSceneType == SceneTypes.Tutorial;
                 bool checkpointTriggered = false;
                 bool powerUpAlreadyExists = false;
                 for (int i = 0; i < inhabitants.Count; i++)
@@ -600,7 +604,8 @@ namespace _3dTesting.MainWindowClasses.Loops
                 {
                     if (EnemySetup.IsEnemyTypeValid(obj.ObjectName))
                     {
-                        gps.RecordKill(obj.ObjectName);
+                        if (!isTutorialScene)
+                            gps.RecordKill(obj.ObjectName);
 
                         if (Logger.ShouldLog(enableProgressionLogging))
                         {
@@ -611,7 +616,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                                 "Progression");
                         }
 
-                        if (GameSetup.IsCheckpointEnemy(obj.ObjectName, obj.HasPowerUp))
+                        if (!isTutorialScene && GameSetup.IsCheckpointEnemy(obj.ObjectName, obj.HasPowerUp))
                             checkpointTriggered = true;
                     }
 
@@ -974,7 +979,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             if (!MusicIsPlaying && MusicDef != null)
             {
-                audioPlayer.PlayMusic(MusicDef, 0.2f);
+                audioPlayer.PlayMusic(MusicDef, DefaultMusicVolume);
                 MusicIsPlaying = true;
             }
         }

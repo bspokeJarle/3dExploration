@@ -98,6 +98,52 @@ public class PowerUpCheckpointPersistenceTests
     }
 
     [TestMethod]
+    public void CollectingPowerUp_InTutorialDoesNotSaveCheckpointOrPersistPowerup()
+    {
+        var gps = GameState.GamePlayState;
+        gps.CurrentSceneType = SceneTypes.Tutorial;
+        gps.PowerUpsCollected = 0;
+        gps.Score = 0;
+        gps.HasCheckpoint = false;
+
+        var ship = new _3dObject
+        {
+            ObjectId = 21,
+            ObjectName = "Ship",
+            ImpactStatus = new ImpactStatus { HasCrashed = true, ObjectName = "PowerUp", ObjectHealth = 100 },
+            ObjectParts = new List<I3dObjectPart> { new _3dObjectPart { PartName = "Ship", Triangles = new List<ITriangleMeshWithColor>() } },
+            CrashBoxes = new List<List<IVector3>>(),
+            Rotation = new Vector3(),
+            WorldPosition = new Vector3(),
+            ObjectOffsets = new Vector3(),
+            Movement = new ShipControls()
+        };
+
+        GameState.SurfaceState.AiObjects.Add(new _3dObject
+        {
+            ObjectId = 22,
+            ObjectName = "PowerUp",
+            IsActive = true,
+            ImpactStatus = new ImpactStatus { HasCrashed = true, HasExploded = false },
+            WorldPosition = new Vector3(),
+            ObjectOffsets = new Vector3(),
+            Rotation = new Vector3(),
+            ObjectParts = new List<I3dObjectPart>()
+        });
+
+        ((ShipControls)ship.Movement!).MoveObject(ship, null, null);
+
+        Assert.AreEqual(1, gps.PowerUpsCollected,
+            "Tutorial still needs a temporary powerup count to unlock decoy during training.");
+        Assert.AreEqual(0, gps.Score,
+            "Tutorial powerups should not award campaign/highscore points.");
+        Assert.IsFalse(gps.HasCheckpoint,
+            "Tutorial powerups should not create campaign checkpoints.");
+        Assert.IsNull(GameStatePersistence.LoadGameState("Jarle"),
+            "Tutorial powerups should not persist a campaign save.");
+    }
+
+    [TestMethod]
     public void CollectingPowerUp_CheckpointCapturesCurrentEnemyCounts_AndDoesNotForceMothershipPhase()
     {
         var gps = GameState.GamePlayState;

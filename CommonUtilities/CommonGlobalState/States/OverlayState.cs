@@ -10,7 +10,8 @@ namespace Domain
         Intro = 1,
         Outro = 2,
         Game = 3,
-        NameEntry = 4
+        NameEntry = 4,
+        Tutorial = 5
     }
 
     public enum ScreenOverlayAnchor

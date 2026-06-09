@@ -61,6 +61,21 @@ public class LazerCrashDetectionTests
         Assert.AreEqual("EnemyLazerMedium", ship.ImpactStatus.ObjectName);
     }
 
+    [TestMethod]
+    public void ShipCrashDetectionSuppressed_SkipsShipCollisionsTemporarily()
+    {
+        GameState.ShipState.ShipCrashDetectionDisabledUntilUtc = DateTime.UtcNow.AddSeconds(2);
+        var lazer = CreateCrashObject("EnemyLazerMedium", 9401);
+        var ship = CreateCrashObject("Ship", 9402);
+
+        CrashDetection.HandleCrashboxes(new List<_3dObject> { lazer, ship }, isPaused: false);
+
+        Assert.IsFalse(lazer.ImpactStatus!.HasCrashed,
+            "Suppression after overlay resume should skip collision pairs involving Ship.");
+        Assert.IsFalse(ship.ImpactStatus!.HasCrashed,
+            "Ship should not receive crash state during the short overlay resume grace window.");
+    }
+
     private static _3dObject CreateCrashObject(string objectName, int objectId)
     {
         return new _3dObject

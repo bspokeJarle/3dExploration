@@ -54,6 +54,15 @@ namespace CommonUtilities.Persistence
         }
 
         /// <summary>
+        /// Returns the per-player tutorial progress file path for the given player name.
+        /// </summary>
+        public static string GetPlayerTutorialProgressFilePath(string playerName)
+        {
+            var safe = SanitiseFileName(playerName);
+            return Path.Combine(LocalFolder, $"tutorial_{safe}.json");
+        }
+
+        /// <summary>
         /// Returns true if a per-player save file exists for the given name.
         /// </summary>
         public static bool HasPlayerSaveFile(string playerName)
