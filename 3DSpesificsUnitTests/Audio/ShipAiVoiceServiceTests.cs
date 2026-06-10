@@ -82,6 +82,126 @@ public class ShipAiVoiceServiceTests
         Assert.AreNotEqual(firstLine, audio.PlayedSoundIds[1]);
     }
 
+    [TestMethod]
+    public void TrySpeak_TutorialCue_PlaysTutorialVoiceSound()
+    {
+        DateTime now = new(2026, 1, 1, 12, 0, 0);
+        var service = new ShipAiVoiceService(() => now, new Random(0));
+        var audio = new CapturingAudioPlayer();
+        var registry = new FakeSoundRegistry("ship_ai_tutorial_intro");
+
+        bool played = service.TrySpeak(ShipAiVoiceCue.TutorialIntro, audio, registry);
+
+        Assert.IsTrue(played);
+        Assert.AreEqual("ship_ai_tutorial_intro", audio.PlayedSoundIds.Single());
+    }
+
+    [TestMethod]
+    public void TrySpeak_DucksMusicWhileVoiceIsPlayingAndRestoresAfterward()
+    {
+        DateTime now = new(2026, 1, 1, 12, 0, 0);
+        var service = new ShipAiVoiceService(() => now, new Random(0));
+        var audio = new CapturingAudioPlayer();
+        var registry = new FakeSoundRegistry("ship_ai_tutorial_intro");
+
+        Assert.IsTrue(service.TrySpeak(ShipAiVoiceCue.TutorialIntro, audio, registry));
+
+        Assert.AreEqual(0.0525f, audio.MusicVolume, 0.0001f);
+
+        now = now.AddSeconds(3);
+        service.Update(audio);
+        Assert.AreEqual(0.0525f, audio.MusicVolume, 0.0001f);
+
+        now = now.AddSeconds(3);
+        service.Update(audio);
+        Assert.AreEqual(0.15f, audio.MusicVolume, 0.0001f);
+    }
+
+    [TestMethod]
+    public void TrySpeak_ReappliesMusicDuckingWhenMusicStartsAfterVoice()
+    {
+        DateTime now = new(2026, 1, 1, 12, 0, 0);
+        var service = new ShipAiVoiceService(() => now, new Random(0));
+        var audio = new CapturingAudioPlayer(initialMusicVolume: 0.6f);
+        var registry = new FakeSoundRegistry("ship_ai_tutorial_intro");
+
+        Assert.IsTrue(service.TrySpeak(ShipAiVoiceCue.TutorialIntro, audio, registry));
+        Assert.AreEqual(0.21f, audio.MusicVolume, 0.0001f);
+
+        audio.PlayMusic(new SoundDefinition { Id = "music_kanpai", Settings = new SoundSettings { Volume = 0.15f } }, 0.15f);
+        service.Update(audio);
+
+        Assert.AreEqual(0.0525f, audio.MusicVolume, 0.0001f);
+
+        now = now.AddSeconds(5);
+        service.Update(audio);
+
+        Assert.AreEqual(0.15f, audio.MusicVolume, 0.0001f);
+    }
+
+    [TestMethod]
+    public void TrySpeak_UsesFasterPlaybackSpeedOnlyForTutorialCues()
+    {
+        DateTime now = new(2026, 1, 1, 12, 0, 0);
+        var service = new ShipAiVoiceService(() => now, new Random(0));
+        var audio = new CapturingAudioPlayer();
+        var registry = new FakeSoundRegistry("ship_ai_tutorial_intro", "ship_ai_clean_loop");
+
+        Assert.IsTrue(service.TrySpeak(ShipAiVoiceCue.TutorialIntro, audio, registry));
+
+        float? speedOverride = audio.SpeedOverrides.Single();
+        Assert.IsTrue(speedOverride.HasValue);
+        Assert.AreEqual(1.2f, speedOverride.Value, 0.0001f);
+
+        service.StopCurrentSpeech();
+        now = now.AddSeconds(9);
+
+        Assert.IsTrue(service.TrySpeak(ShipAiVoiceCue.CleanLoop, audio, registry));
+        Assert.IsFalse(audio.SpeedOverrides[^1].HasValue);
+    }
+
+    [TestMethod]
+    public void TrySpeak_DoesNotStartNextTutorialCueWhilePreviousSpeechIsActive()
+    {
+        DateTime now = new(2026, 1, 1, 12, 0, 0);
+        var service = new ShipAiVoiceService(() => now, new Random(0));
+        var audio = new CapturingAudioPlayer();
+        var registry = new FakeSoundRegistry("ship_ai_tutorial_intro", "ship_ai_tutorial_thrust");
+
+        Assert.IsTrue(service.TrySpeak(ShipAiVoiceCue.TutorialIntro, audio, registry));
+
+        now = now.AddSeconds(2);
+        Assert.IsFalse(service.TrySpeak(ShipAiVoiceCue.TutorialThrust, audio, registry));
+        Assert.AreEqual(1, audio.PlayedSoundIds.Count);
+
+        now = now.AddSeconds(5);
+        Assert.IsTrue(service.TrySpeak(ShipAiVoiceCue.TutorialThrust, audio, registry));
+        Assert.AreEqual("ship_ai_tutorial_thrust", audio.PlayedSoundIds[^1]);
+    }
+
+    [TestMethod]
+    public void StopCurrentSpeech_StopsActiveVoiceAndRestoresMusic()
+    {
+        DateTime now = new(2026, 1, 1, 12, 0, 0);
+        var service = new ShipAiVoiceService(() => now, new Random(0));
+        var audio = new CapturingAudioPlayer();
+        var registry = new FakeSoundRegistry("ship_ai_tutorial_intro", "ship_ai_tutorial_thrust");
+
+        Assert.IsTrue(service.TrySpeak(ShipAiVoiceCue.TutorialIntro, audio, registry));
+        var activeVoice = audio.Instances.Single();
+        Assert.IsTrue(activeVoice.IsPlaying);
+        Assert.AreEqual(0.0525f, audio.MusicVolume, 0.0001f);
+
+        service.StopCurrentSpeech();
+
+        Assert.IsFalse(activeVoice.IsPlaying);
+        Assert.AreEqual(0.15f, audio.MusicVolume, 0.0001f);
+
+        now = now.AddSeconds(0.3);
+        Assert.IsTrue(service.TrySpeak(ShipAiVoiceCue.TutorialThrust, audio, registry),
+            "Skipping a speech line should not block the next tutorial cue for the full original voice duration.");
+    }
+
     private sealed class FakeSoundRegistry : ISoundRegistry
     {
         private readonly HashSet<string> _soundIds;
@@ -120,12 +240,24 @@ public class ShipAiVoiceServiceTests
 
     private sealed class CapturingAudioPlayer : IAudioPlayer
     {
+        public CapturingAudioPlayer(float initialMusicVolume = 0.15f)
+        {
+            MusicVolume = initialMusicVolume;
+        }
+
         public List<string> PlayedSoundIds { get; } = new();
+        public List<float?> SpeedOverrides { get; } = new();
+        public List<CapturingAudioInstance> Instances { get; } = new();
+        public float MusicVolume { get; private set; }
+        public List<float> MusicVolumeChanges { get; } = new();
 
         public IAudioInstance Play(SoundDefinition definition, AudioPlayMode mode, AudioPlayOptions? options = null)
         {
             PlayedSoundIds.Add(definition.Id);
-            return new CapturingAudioInstance(definition.Id, mode == AudioPlayMode.SegmentedLoop);
+            SpeedOverrides.Add(options?.SpeedOverride);
+            var instance = new CapturingAudioInstance(definition.Id, mode == AudioPlayMode.SegmentedLoop);
+            Instances.Add(instance);
+            return instance;
         }
 
         public void PlayOneShot(SoundDefinition definition, AudioPlayOptions? options = null) =>
@@ -133,7 +265,13 @@ public class ShipAiVoiceServiceTests
 
         public void Stop(IAudioInstance instance, bool playEndSegment) => instance.Stop(playEndSegment);
         public void StopAll() { }
-        public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) { }
+        public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) =>
+            MusicVolume = volumeOverride ?? definition.Settings.Volume;
+        public void SetMusicVolume(float volume)
+        {
+            MusicVolume = volume;
+            MusicVolumeChanges.Add(volume);
+        }
         public void StopMusic() { }
         public void Update(double deltaTimeSeconds) { }
     }

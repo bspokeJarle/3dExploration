@@ -17,6 +17,8 @@ namespace CommonUtilities.CommonGlobalState.States
         public IVector3? ShipVelocity { get; set; } = null;
         public bool ShipHasShadow { get; set; } = false;
         public IImpactStatus? ShipImpactStatus { get; set; } = null;
+        public DateTime ShipCrashDetectionDisabledUntilUtc { get; set; } = DateTime.MinValue;
+        public DateTime ShipGravityDisabledUntilUtc { get; set; } = DateTime.MinValue;
         public List<BestCandidateState> BestCandidateStates { get; set; } = [];
     }
     public class BestCandidateState

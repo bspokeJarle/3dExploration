@@ -26,10 +26,16 @@ public class DeepCopy3dObjectTests
         Assert.AreNotSame(source.CrashBoxes[0], copy.CrashBoxes[0]);
         Assert.AreNotSame(source.CrashBoxes[0][0], copy.CrashBoxes[0][0]);
         Assert.AreEqual(source.UseSurfaceFootprintPivot, copy.UseSurfaceFootprintPivot);
+        Assert.AreNotSame(source.CalculatedCrashOffset, copy.CalculatedCrashOffset);
+        Assert.AreNotSame(source.ShadowOffset, copy.ShadowOffset);
 
         copy.CrashBoxes[0][0].x = 999f;
+        copy.CalculatedCrashOffset!.x = 999f;
+        copy.ShadowOffset!.x = 999f;
 
         Assert.AreEqual(1f, source.CrashBoxes[0][0].x);
+        Assert.AreEqual(7f, source.CalculatedCrashOffset!.x);
+        Assert.AreEqual(10f, source.ShadowOffset!.x);
     }
 
     [TestMethod]
@@ -59,6 +65,8 @@ public class DeepCopy3dObjectTests
             ObjectOffsets = new Vector3(10f, 20f, 30f),
             Rotation = new Vector3(1f, 2f, 3f),
             WorldPosition = new Vector3(4f, 5f, 6f),
+            CalculatedCrashOffset = new Vector3(7f, 8f, 9f),
+            ShadowOffset = new Vector3(10f, 11f, 12f),
             CrashBoxes = new List<List<IVector3>>
             {
                 new()

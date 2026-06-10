@@ -76,7 +76,7 @@ internal sealed class NAudioAudioInstance : IAudioInstance
 
     public void SetSpeed(float speed)
     {
-        // TODO: Hook into a real varispeed provider if you want speed to affect playback rate.
+        // Playback speed is applied when the instance is created.
         _currentSpeed = speed;
     }
 

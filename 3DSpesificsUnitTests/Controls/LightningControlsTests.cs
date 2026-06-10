@@ -204,6 +204,7 @@ public class LightningControlsTests
         public List<AudioPlayMode> PlayModes { get; } = new();
         public List<float?> VolumeOverrides { get; } = new();
         public int PlayOneShotCount { get; private set; }
+        public float MusicVolume { get; private set; } = 0.15f;
 
         public IAudioInstance Play(SoundDefinition definition, AudioPlayMode mode, AudioPlayOptions? options = null)
         {
@@ -223,6 +224,7 @@ public class LightningControlsTests
         public void Stop(IAudioInstance instance, bool playEndSegment) => instance.Stop(playEndSegment);
         public void StopAll() { }
         public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) { }
+        public void SetMusicVolume(float volume) => MusicVolume = volume;
         public void StopMusic() { }
         public void Update(double deltaTimeSeconds) { }
     }

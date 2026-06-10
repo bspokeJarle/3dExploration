@@ -39,9 +39,13 @@ public class ShipSurfaceLandingTests
     [TestInitialize]
     public void Setup()
     {
-        GameState.GamePlayState = new GamePlayState();
+        GameState.GamePlayState = new GamePlayState
+        {
+            CurrentSceneType = SceneTypes.Game
+        };
         GameState.SurfaceState = new SurfaceState();
         GameState.ScreenOverlayState = new ScreenOverlayState();
+        GameState.ShipState = new ShipState();
         GameState.ObjectIdCounter = 0;
     }
 
@@ -323,6 +327,140 @@ public class ShipSurfaceLandingTests
     }
 
     [TestMethod]
+    public void ShipControls_AfterOverlayResume_DoesNotUsePausedDeltaOrFailsafeExplode()
+    {
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3 { x = 10f, y = 20f, z = 30f };
+        ship.ObjectOffsets = new Vector3 { x = 1f, y = ShipRestingScreenY(ScreenSetup.screenSizeY), z = 400f };
+        ship.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 15f };
+        ship.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+
+        var controls = (ShipControls)ship.Movement!;
+        controls.MoveObject(ship, null, null);
+        controls.CaptureOverlayPauseTransform(ship);
+
+        SetLastUpdateTime(controls, DateTime.Now.AddSeconds(-45));
+        GameState.SurfaceState.GlobalMapPosition = new Vector3
+        {
+            x = SurfaceSetup.DefaultMapPosition.x,
+            y = controls.Physics.FloorHeight - 500f,
+            z = SurfaceSetup.DefaultMapPosition.z
+        };
+
+        controls.RestoreOverlayPauseTransformAndSuppressCrashDetection(ship);
+        var resumedAt = GetLastUpdateTime(controls);
+
+        controls.MoveObject(ship, null, null);
+
+        Assert.IsFalse(IsExploding(ship),
+            "Overlay resume suppression should prevent the first frame from exploding via stale delta/failsafe.");
+        Assert.AreEqual(ShipSetup.DefaultShipHealth, ship.ImpactStatus!.ObjectHealth);
+        Assert.IsTrue((DateTime.Now - resumedAt).TotalSeconds < 1.0,
+            "Resume should reset ShipControls timing so the paused duration is not applied as one physics frame.");
+    }
+
+    [TestMethod]
+    public void ShipControls_AfterOverlayResume_KeepsControllerZoomWhenSnapshotOffsetZIsUnexpected()
+    {
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3 { x = 10f, y = 20f, z = 30f };
+        ship.ObjectOffsets = new Vector3 { x = 1f, y = ShipRestingScreenY(ScreenSetup.screenSizeY), z = 400f };
+        ship.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 15f };
+        ship.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+
+        var controls = (ShipControls)ship.Movement!;
+        controls.MoveObject(ship, null, null);
+
+        ship.ObjectOffsets.z = 25f;
+        controls.CaptureOverlayPauseTransform(ship);
+
+        ship.ObjectOffsets.z = 10f;
+        controls.RestoreOverlayPauseTransformAndSuppressCrashDetection(ship);
+
+        Assert.AreEqual(400, controls.zoom);
+        Assert.AreEqual(400f, ship.ObjectOffsets!.z, 0.001f,
+            "Overlay resume should not let a transient object-offset depth make the ship render huge.");
+
+        controls.MoveObject(ship, null, null);
+
+        Assert.AreEqual(400f, ship.ObjectOffsets!.z, 0.001f);
+    }
+
+    [TestMethod]
+    public void ShipControls_AfterOverlayResume_PausesGravityForFirstResumeWindow()
+    {
+        var ship = Ship.CreateShip(parentSurface: null);
+        ship.ObjectName = "Ship";
+        ship.WorldPosition = new Vector3 { x = 10f, y = 20f, z = 30f };
+        ship.ObjectOffsets = new Vector3 { x = 1f, y = ShipRestingScreenY(ScreenSetup.screenSizeY), z = 400f };
+        ship.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 15f };
+        ship.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+
+        var controls = (ShipControls)ship.Movement!;
+        controls.MoveObject(ship, null, null);
+
+        float resumeOffsetY = ShipRestingScreenY(ScreenSetup.screenSizeY) + 40f;
+        float resumeMapY = -40f;
+        ship.ObjectOffsets = new Vector3 { x = 1f, y = resumeOffsetY, z = 400f };
+        GameState.SurfaceState.GlobalMapPosition = new Vector3
+        {
+            x = SurfaceSetup.DefaultMapPosition.x,
+            y = resumeMapY,
+            z = SurfaceSetup.DefaultMapPosition.z
+        };
+
+        controls.CaptureOverlayPauseTransform(ship);
+        SetLastUpdateTime(controls, DateTime.Now.AddSeconds(-1));
+        controls.RestoreOverlayPauseTransformAndSuppressCrashDetection(ship);
+
+        Assert.IsTrue(GameState.ShipState.ShipGravityDisabledUntilUtc > DateTime.UtcNow);
+
+        controls.MoveObject(ship, null, null);
+
+        Assert.AreEqual(resumeOffsetY, ship.ObjectOffsets!.y, 0.001f,
+            "Gravity should not settle the ship immediately after an overlay pause.");
+        Assert.AreEqual(resumeMapY, GameState.SurfaceState.GlobalMapPosition.y, 0.001f,
+            "Gravity should not settle altitude immediately after an overlay pause.");
+    }
+
+    [TestMethod]
+    public void ShipControls_CaptureOverlayPauseTransform_UsesLiveParentObjectWhenWorldObjectIsStale()
+    {
+        var worldShip = Ship.CreateShip(parentSurface: null);
+        worldShip.ObjectName = "Ship";
+        worldShip.WorldPosition = new Vector3 { x = 0f, y = 0f, z = 0f };
+        worldShip.ObjectOffsets = new Vector3 { x = 0f, y = 0f, z = 400f };
+        worldShip.Rotation = new Vector3 { x = 0f, y = 0f, z = 0f };
+        worldShip.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+
+        var controls = (ShipControls)worldShip.Movement!;
+        var liveShip = Ship.CreateShip(parentSurface: null);
+        liveShip.ObjectName = "Ship";
+        liveShip.WorldPosition = new Vector3 { x = 100f, y = 20f, z = 300f };
+        liveShip.ObjectOffsets = new Vector3 { x = 11f, y = ShipRestingScreenY(ScreenSetup.screenSizeY) + 42f, z = 400f };
+        liveShip.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 18f };
+        liveShip.ImpactStatus = worldShip.ImpactStatus;
+        liveShip.Movement = controls;
+        controls.ParentObject = liveShip;
+
+        controls.CaptureOverlayPauseTransform(worldShip);
+
+        worldShip.ObjectOffsets = new Vector3 { x = -1f, y = -2f, z = 400f };
+        liveShip.ObjectOffsets = new Vector3 { x = -3f, y = -4f, z = 400f };
+
+        controls.RestoreOverlayPauseTransformAndSuppressCrashDetection(worldShip);
+
+        Assert.AreEqual(11f, worldShip.ObjectOffsets!.x, 0.001f);
+        Assert.AreEqual(ShipRestingScreenY(ScreenSetup.screenSizeY) + 42f, worldShip.ObjectOffsets.y, 0.001f);
+        Assert.AreEqual(400f, worldShip.ObjectOffsets.z, 0.001f);
+        Assert.AreEqual(worldShip.ObjectOffsets.x, liveShip.ObjectOffsets!.x, 0.001f);
+        Assert.AreEqual(worldShip.ObjectOffsets.y, liveShip.ObjectOffsets.y, 0.001f);
+        Assert.AreEqual(worldShip.ObjectOffsets.z, liveShip.ObjectOffsets.z, 0.001f);
+    }
+
+    [TestMethod]
     public void ShipControls_WhenLowSpeedSurfaceCrash_AppliesMinimumDamageAndPlaysThud()
     {
         var ship = Ship.CreateShip(parentSurface: null);
@@ -593,6 +731,53 @@ public class ShipSurfaceLandingTests
     }
 
     [TestMethod]
+    public void ShipControls_WhenFailsafeExplosionStartsFromStaleFrameCopy_AnchorsToLiveParentObject()
+    {
+        var initialShip = Ship.CreateShip(parentSurface: null);
+        initialShip.ObjectName = "Ship";
+        initialShip.WorldPosition = new Vector3();
+        initialShip.ObjectOffsets = new Vector3 { x = 0f, y = ShipRestingScreenY(ScreenSetup.screenSizeY), z = 400f };
+        initialShip.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 0f };
+        initialShip.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+
+        var controls = (ShipControls)initialShip.Movement!;
+        controls.MoveObject(initialShip, null, null);
+
+        var liveShip = Ship.CreateShip(parentSurface: null, movement: controls);
+        liveShip.ObjectName = "Ship";
+        liveShip.WorldPosition = new Vector3 { x = 700f, y = 20f, z = 900f };
+        liveShip.ObjectOffsets = new Vector3 { x = 17f, y = ShipRestingScreenY(ScreenSetup.screenSizeY) + 61f, z = 400f };
+        liveShip.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 31f };
+        liveShip.CalculatedCrashOffset = new Vector3 { x = 12f, y = 34f, z = 56f };
+        liveShip.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+        controls.ParentObject = liveShip;
+
+        var staleFrameShip = Ship.CreateShip(parentSurface: null, movement: controls);
+        staleFrameShip.ObjectName = "Ship";
+        staleFrameShip.WorldPosition = new Vector3 { x = -100f, y = -200f, z = -300f };
+        staleFrameShip.ObjectOffsets = new Vector3 { x = -11f, y = -22f, z = 400f };
+        staleFrameShip.Rotation = new Vector3 { x = 1f, y = 2f, z = 3f };
+        staleFrameShip.CalculatedCrashOffset = new Vector3 { x = -4f, y = -5f, z = -6f };
+        staleFrameShip.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+
+        GameState.ShipState.ShipGravityDisabledUntilUtc = DateTime.UtcNow.AddSeconds(2);
+        GameState.SurfaceState.GlobalMapPosition = new Vector3
+        {
+            x = SurfaceSetup.DefaultMapPosition.x,
+            y = controls.Physics.FloorHeight - 500f,
+            z = SurfaceSetup.DefaultMapPosition.z
+        };
+
+        controls.MoveObject(staleFrameShip, null, null);
+
+        Assert.IsTrue(IsExploding(staleFrameShip));
+        AssertVectorEqual(CopyVector(liveShip.WorldPosition), staleFrameShip.WorldPosition, "WorldPosition");
+        AssertVectorEqual(CopyVector(liveShip.ObjectOffsets), staleFrameShip.ObjectOffsets, "ObjectOffsets");
+        AssertVectorEqual(CopyVector(liveShip.Rotation), staleFrameShip.Rotation, "Rotation");
+        AssertVectorEqual(CopyVector(liveShip.CalculatedCrashOffset), staleFrameShip.CalculatedCrashOffset, "CalculatedCrashOffset");
+    }
+
+    [TestMethod]
     public void ShipControls_WhenShipExplosionReleasesParticles_KeepsParticlesScreenAnchored()
     {
         var map = CreateSurfaceMap(40, 40);
@@ -733,6 +918,24 @@ public class ShipSurfaceLandingTests
         field.SetValue(controls, hitTime);
     }
 
+    private static void SetLastUpdateTime(ShipControls controls, DateTime updateTime)
+    {
+        var field = typeof(ShipControls).GetField(
+            "lastUpdateTime",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(field);
+        field.SetValue(controls, updateTime);
+    }
+
+    private static DateTime GetLastUpdateTime(ShipControls controls)
+    {
+        var field = typeof(ShipControls).GetField(
+            "lastUpdateTime",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(field);
+        return (DateTime)field.GetValue(controls)!;
+    }
+
     private sealed class FakeSoundRegistry : ISoundRegistry
     {
         public SoundDefinition Get(string id)
@@ -757,6 +960,7 @@ public class ShipSurfaceLandingTests
     {
         public int PlayCount { get; private set; }
         public string? LastDefinitionId { get; private set; }
+        public float MusicVolume { get; private set; } = 0.15f;
 
         public IAudioInstance Play(SoundDefinition definition, AudioPlayMode mode, AudioPlayOptions? options = null)
         {
@@ -777,6 +981,7 @@ public class ShipSurfaceLandingTests
         public void Stop(IAudioInstance instance, bool playEndSegment) => instance.Stop(playEndSegment);
         public void StopAll() { }
         public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) { }
+        public void SetMusicVolume(float volume) => MusicVolume = volume;
         public void StopMusic() { }
         public void Update(double deltaTimeSeconds) { }
     }

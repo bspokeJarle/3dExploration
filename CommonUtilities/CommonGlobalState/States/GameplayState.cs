@@ -32,6 +32,7 @@ namespace Domain
         // -----------------------------
         public string PlayerName { get; set; } = "";
         public int SceneIndex { get; set; } = 0;
+        public SceneTypes CurrentSceneType { get; set; } = SceneTypes.Intro;
         public int Lives { get; set; } = 3;
 
         // Simulation round counter — increments each time the player enters the simulation after the outro
@@ -402,6 +403,7 @@ namespace Domain
         public void ResetForNewGame()
         {
             Phase = GamePhase.Intro;
+            CurrentSceneType = SceneTypes.Intro;
             CurrentSceneBiome = SceneBiomeTypes.HillsWoods;
 
             Lives = 3;

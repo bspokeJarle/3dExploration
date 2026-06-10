@@ -5,6 +5,7 @@ namespace Domain
         Intro,
         Game,
         Outro,
-        Simulation
+        Simulation,
+        Tutorial
     }
 }

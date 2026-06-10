@@ -219,6 +219,7 @@ public class RainfallControlsTests
         public string? LastDefinitionId { get; private set; }
         public AudioPlayMode? LastMode { get; private set; }
         public CapturingAudioInstance LastInstance { get; } = new();
+        public float MusicVolume { get; private set; } = 0.15f;
 
         public IAudioInstance Play(SoundDefinition definition, AudioPlayMode mode, AudioPlayOptions? options = null)
         {
@@ -236,6 +237,7 @@ public class RainfallControlsTests
         public void Stop(IAudioInstance instance, bool playEndSegment) => instance.Stop(playEndSegment);
         public void StopAll() => LastInstance.Stop(false);
         public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) { }
+        public void SetMusicVolume(float volume) => MusicVolume = volume;
         public void StopMusic() { }
         public void Update(double deltaTimeSeconds) { }
     }

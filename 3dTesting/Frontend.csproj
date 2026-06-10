@@ -142,6 +142,48 @@
     <None Update="Soundeffects\OmegaStrain_planet_bonus_reached.mp3">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_checkpoint.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_complete.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_decoy_hint.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_decoy_select.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_drone_destroyed.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_drone_inbound.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_intro.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_laser_hint.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_powerup1.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_seeder_one_down.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_skip.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_thrust.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_warning_low_altitude.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Soundeffects\OmegaStrain_tutorial_weapons.mp3">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Soundeffects\OmegaStrain_Rain_Loop.wav">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

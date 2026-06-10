@@ -41,6 +41,12 @@ namespace _3dTesting.Helpers
                     var flagsA = GetTypeFlagsCached(inhabitant);
                     var flagsB = GetTypeFlagsCached(otherInhabitant);
 
+                    if ((flagsA.IsShip || flagsB.IsShip) &&
+                        GameState.ShipState.ShipCrashDetectionDisabledUntilUtc > DateTime.UtcNow)
+                    {
+                        continue;
+                    }
+
                     bool isInhabitantStatic = flagsA.IsStatic;
                     bool isOtherStatic = flagsB.IsStatic;
                     bool isInhabitantParticle = flagsA.IsParticle;

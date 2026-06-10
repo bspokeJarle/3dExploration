@@ -1900,6 +1900,7 @@ public class OutroSceneTests
         public string? LastSoundId { get; private set; }
         public AudioPlayMode? LastMode { get; private set; }
         public List<string> PlayedSoundIds { get; } = new();
+        public float MusicVolume { get; private set; } = 0.15f;
 
         public IAudioInstance Play(SoundDefinition definition, AudioPlayMode mode, AudioPlayOptions? options = null)
         {
@@ -1913,6 +1914,7 @@ public class OutroSceneTests
         public void Stop(IAudioInstance instance, bool playEndSegment) => instance.Stop(playEndSegment);
         public void StopAll() { }
         public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) { }
+        public void SetMusicVolume(float volume) => MusicVolume = volume;
         public void StopMusic() { }
         public void Update(double deltaTimeSeconds) { }
     }

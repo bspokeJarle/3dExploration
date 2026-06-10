@@ -76,18 +76,6 @@ namespace GameAiAndControls.Controls
             int tilt
         )
         {
-            if (weaponType == WeaponType.Lazer && _audio != null && _lazerSound != null)
-            {
-                var audioPosition = ((_3dObject)parentShip).GetAudioPosition();
-                _lazerInstance = _audio.Play(
-                    _lazerSound,
-                    AudioPlayMode.OneShot,
-                    new AudioPlayOptions
-                    {
-                        WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
-                    });
-            }
-
             ParentShipObject = (_3dObject)parentShip;
             var shipOffsets = ParentShipObject.ObjectOffsets ?? new Vector3(0, 0, 0);
 
@@ -147,6 +135,18 @@ namespace GameAiAndControls.Controls
                 };
 
                 ActiveWeapons.Add(weapon);
+
+                if (_audio != null && _lazerSound != null)
+                {
+                    var audioPosition = ((_3dObject)parentShip).GetAudioPosition();
+                    _lazerInstance = _audio.Play(
+                        _lazerSound,
+                        AudioPlayMode.OneShot,
+                        new AudioPlayOptions
+                        {
+                            WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
+                        });
+                }
 
                 if (Logger.ShouldLog(enableLogging)) Logger.Log(
                     $"[WeaponSystem] Fired {weaponType} name={instance.ObjectName} parent={parentShip.ObjectName} " +

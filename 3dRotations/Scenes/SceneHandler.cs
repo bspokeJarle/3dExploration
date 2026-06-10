@@ -8,11 +8,14 @@ using _3dRotations.Scene.Scene8;
 using _3dRotations.Scenes.Intro;
 using _3dRotations.Scenes.Outro;
 using _3dRotations.Scenes.SceneSimulation;
+using _3dRotations.Scenes.Tutorial;
 using _3dTesting._3dWorld;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.Persistence;
 using Domain;
+using GameAiAndControls.Audio.Services;
+using GameAiAndControls.Controls;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -24,7 +27,7 @@ namespace _3DWorld.Scene
 {
     public class SceneHandler : ISceneHandler
     {
-        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Scene3(), new Scene4(), new Scene5(), new Scene6(), new Scene7(), new Scene8(), new Outro(), new SceneSimulation() };
+        private List<IScene> scenes = new List<IScene> { new Intro(), new Scene1(), new Scene2(), new Scene3(), new Scene4(), new Scene5(), new Scene6(), new Scene7(), new Scene8(), new Outro(), new SceneSimulation(), new TutorialScene() };
         private int currentSceneIndex = 0;
         private const bool enableLogging = false;
         private const int SceneAdvanceDelayFrames = 5;
@@ -32,6 +35,7 @@ namespace _3DWorld.Scene
         private int _pendingSceneAdvanceFramesLeft = 0;
         private int? _targetSceneIndex = null;
         private bool _pendingNextScene = false;
+        private bool _pendingTutorialStart = false;
         private SavedGameState? _pendingSavedState = null;
 
         public SceneHandler()
@@ -154,6 +158,10 @@ namespace _3DWorld.Scene
 
             DisposeDirector();
             var gps = GameState.GamePlayState;
+            var currentScene = GetActiveScene();
+            bool isOutro = currentScene.SceneType == SceneTypes.Outro;
+            bool isSimulation = currentScene.SceneType == SceneTypes.Simulation;
+            bool isTutorial = currentScene.SceneType == SceneTypes.Tutorial;
 
             // Capture cumulative stats before reset
             long prevScore = gps.Score;
@@ -163,15 +171,14 @@ namespace _3DWorld.Scene
             int prevPowerUps = gps.PowerUpsCollected;
 
             // Submit highscore before the state is reset
-            try
+            if (!isTutorial)
             {
-                HighscoreService.SubmitFromGamePlay(gps);
+                try
+                {
+                    HighscoreService.SubmitFromGamePlay(gps);
+                }
+                catch { }
             }
-            catch { }
-
-            var currentScene = GetActiveScene();
-            bool isOutro = currentScene.SceneType == SceneTypes.Outro;
-            bool isSimulation = currentScene.SceneType == SceneTypes.Simulation;
 
             if (isOutro || isSimulation)
             {
@@ -209,7 +216,11 @@ namespace _3DWorld.Scene
                 return;
             }
 
-            currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
+            currentSceneIndex = isTutorial
+                ? GetFirstGameSceneIndex()
+                : (currentSceneIndex + 1) % scenes.Count;
+
+            currentSceneIndex = ApplyTutorialGate(currentSceneIndex);
 
             // Game completed normally (wrapped to 0 or Outro index) — delete save
             if (currentSceneIndex == 0)
@@ -225,7 +236,8 @@ namespace _3DWorld.Scene
 
             // Carry forward score, stats, and powerups into game and simulation scenes
             var nextScene = GetActiveScene();
-            if (nextScene.SceneType == SceneTypes.Game || nextScene.SceneType == SceneTypes.Simulation)
+            if (!isTutorial &&
+                (nextScene.SceneType == SceneTypes.Game || nextScene.SceneType == SceneTypes.Simulation))
             {
                 gps.Score = prevScore;
                 gps.TotalKills = prevKills;
@@ -272,6 +284,7 @@ namespace _3DWorld.Scene
                 currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
             }
 
+            currentSceneIndex = ApplyTutorialGate(currentSceneIndex);
             GameState.GamePlayState.SceneIndex = currentSceneIndex;
             ResetSurfaceState();
             SetupActiveScene(world);
@@ -363,6 +376,43 @@ namespace _3DWorld.Scene
             if (overlay.Type == ScreenOverlayType.NameEntry && overlay.ShowOverlay)
             {
                 HandleNameEntryKey(k, scene, overlay);
+                return;
+            }
+
+            if (scene.SceneType == SceneTypes.Tutorial &&
+                overlay.ShowOverlay &&
+                GameState.TutorialState.InstructionOverlayPauseActive)
+            {
+                if (k.Key == Key.Escape)
+                {
+                    CloseTutorialOverlayAndResume(scene, world);
+                    return;
+                }
+
+                if (!GameState.TutorialState.CanCloseInstructionOverlay(DateTime.UtcNow))
+                    return;
+
+                CloseTutorialOverlayAndResume(scene, world);
+                return;
+            }
+
+            if (scene.SceneType == SceneTypes.Tutorial &&
+                overlay.ShowOverlay &&
+                k.Key == Key.Escape)
+            {
+                CloseTutorialOverlayAndResume(scene, world);
+                return;
+            }
+
+            if (scene.SceneType == SceneTypes.Tutorial && IsMenuExitKey(k.Key))
+            {
+                ReturnToIntro(world, persistCurrentRun: false);
+                return;
+            }
+
+            if (scene.SceneType == SceneTypes.Tutorial && overlay.ShowOverlay)
+            {
+                CloseTutorialOverlayAndResume(scene, world);
                 return;
             }
 
@@ -464,7 +514,16 @@ namespace _3DWorld.Scene
 
                 // Check for saved scene progress for this player
                 var saved = GameStatePersistence.LoadGameState(name);
-                if (saved != null)
+                bool shouldStartTutorial = _pendingTutorialStart ||
+                                           !TutorialProgressService.HasCompletedTutorial(name);
+
+                if (shouldStartTutorial)
+                {
+                    _pendingTutorialStart = false;
+                    _pendingSavedState = null;
+                    _targetSceneIndex = GetTutorialSceneIndex();
+                }
+                else if (saved != null)
                 {
                     // Always restore score and stats so the player builds upon them
                     _pendingSavedState = saved;
@@ -489,6 +548,13 @@ namespace _3DWorld.Scene
         {
             if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {overlay.ShowOverlay} ", "General");
 
+            if (IsTutorialStartKey(k.Key))
+            {
+                _pendingTutorialStart = true;
+                ShowNameEntryOverlay(overlay);
+                return;
+            }
+
             // Page navigation with arrow keys
             if (overlay.HasMultiplePages)
             {
@@ -506,11 +572,7 @@ namespace _3DWorld.Scene
                 }
             }
 
-            overlay.HardHide();
-            ClearVideoOverlay();
-
-            var lastPlayer = PersistenceSetup.LoadLastPlayerName();
-            overlay.SetNameEntryPreset(lastPlayer);
+            ShowNameEntryOverlay(overlay);
         }
 
         private static void HandleGameKey(KeyEventArgs k, IScene scene, ScreenOverlayState overlay)
@@ -545,10 +607,42 @@ namespace _3DWorld.Scene
         }
 
         private static bool IsMenuExitKey(Key key) => key == Key.X || key == Key.Escape;
+        private static bool IsTutorialStartKey(Key key) => key == Key.T;
 
         // -----------------------------------------------------------------
         // Shared helpers
         // -----------------------------------------------------------------
+
+        private void ShowNameEntryOverlay(ScreenOverlayState overlay)
+        {
+            overlay.HardHide();
+            ClearVideoOverlay();
+
+            var lastPlayer = PersistenceSetup.LoadLastPlayerName();
+            overlay.SetNameEntryPreset(lastPlayer);
+        }
+
+        private static void CloseTutorialOverlayAndResume(IScene scene, I3dWorld world)
+        {
+            ShipAiVoiceService.Shared.StopCurrentSpeech();
+            GameState.TutorialState.ClearInstructionOverlay();
+            scene.SetupGameOverlay();
+            RestoreTutorialShipAfterOverlayPause(world);
+            world.IsPaused = false;
+        }
+
+        private static void RestoreTutorialShipAfterOverlayPause(I3dWorld world)
+        {
+            for (int i = 0; i < world.WorldInhabitants.Count; i++)
+            {
+                var obj = world.WorldInhabitants[i];
+                if (obj.ObjectName == "Ship" && obj.Movement is ShipControls shipControls)
+                {
+                    shipControls.RestoreOverlayPauseTransformAndSuppressCrashDetection(obj);
+                    return;
+                }
+            }
+        }
 
         private static void SkipLogoCube(I3dWorld world, IScene scene)
         {
@@ -575,15 +669,60 @@ namespace _3DWorld.Scene
             return sceneType == SceneTypes.Game || sceneType == SceneTypes.Simulation;
         }
 
+        private int GetTutorialSceneIndex()
+        {
+            int tutorialIndex = scenes.FindIndex(s => s.SceneType == SceneTypes.Tutorial);
+            return tutorialIndex >= 0 ? tutorialIndex : 1;
+        }
+
+        private int GetFirstGameSceneIndex()
+        {
+            int gameIndex = scenes.FindIndex(s => s.SceneType == SceneTypes.Game);
+            return gameIndex >= 0 ? gameIndex : 1;
+        }
+
+        private int ApplyTutorialGate(int candidateSceneIndex)
+        {
+            if (candidateSceneIndex < 0 || candidateSceneIndex >= scenes.Count)
+                return candidateSceneIndex;
+
+            var candidate = scenes[candidateSceneIndex];
+            if (candidate.SceneType != SceneTypes.Game && candidate.SceneType != SceneTypes.Simulation)
+                return candidateSceneIndex;
+
+            var playerName = GameState.GamePlayState.PlayerName;
+            if (string.IsNullOrWhiteSpace(playerName))
+                return candidateSceneIndex;
+
+            return TutorialProgressService.HasCompletedTutorial(playerName)
+                ? candidateSceneIndex
+                : GetTutorialSceneIndex();
+        }
+
         private IScene? CreateFreshScene() =>
             (IScene?)Activator.CreateInstance(GetActiveScene().GetType());
 
         private void ReturnToIntro(I3dWorld world)
         {
+            ReturnToIntro(world, persistCurrentRun: true);
+        }
+
+        private void ReturnToIntro(I3dWorld world, bool persistCurrentRun)
+        {
             DisposeDirector();
+            var returningFromTutorial = GetActiveScene().SceneType == SceneTypes.Tutorial;
             var gps = GameState.GamePlayState;
-            try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
-            try { GameStatePersistence.SaveGameState(); } catch { }
+            ShipAiVoiceService.Shared.StopCurrentSpeech();
+            if (returningFromTutorial)
+            {
+                TutorialProgressService.MarkTutorialCompleted(gps.PlayerName);
+            }
+
+            if (persistCurrentRun)
+            {
+                try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
+                try { GameStatePersistence.SaveGameState(); } catch { }
+            }
 
             // Clear all game objects so nothing from the current scene bleeds through
             world.WorldInhabitants.Clear();
@@ -637,6 +776,7 @@ namespace _3DWorld.Scene
             gps.MotherShipSmallAggression = scene.MotherShipSmallAggression;
             gps.MotherShipMediumAggression = scene.MotherShipMediumAggression;
             gps.MotherShipLargeAggression = scene.MotherShipLargeAggression;
+            gps.CurrentSceneType = scene.SceneType;
             gps.CurrentSceneBiome = scene.SceneBiome;
             GameState.SurfaceState.SceneBiome = scene.SceneBiome;
         }

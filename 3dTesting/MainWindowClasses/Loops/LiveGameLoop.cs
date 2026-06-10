@@ -8,6 +8,7 @@ using CommonUtilities.CommonSetup;
 using CommonUtilities.Events;
 using CommonUtilities.Persistence;
 using Domain;
+using GameAiAndControls.Audio.Services;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.SeederControls;
 using GameAudioInstances;
@@ -58,6 +59,7 @@ namespace _3dTesting.MainWindowClasses.Loops
         private IGameEventBus? explosionCleanupEventBus;
         private StarFieldHandler StarFieldHandler { get; set; }
 
+        private const float DefaultMusicVolume = 0.15f;
         private readonly IAudioPlayer audioPlayer = new NAudioAudioPlayer(AudioSetup.AudioBasePath);
         private readonly ISoundRegistry soundRegistry = new JsonSoundRegistry(AudioSetup.SoundRegistryPath);
         private SoundDefinition MusicDef { get; set; } = null;
@@ -441,6 +443,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             if (activeScene != null)
             {
                 HandleMusic(renderedList, activeScene.SceneMusic);
+                ShipAiVoiceService.Shared.Update(audioPlayer);
             }
             musicMs = MarkPhase();
 
@@ -583,6 +586,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 // Spawn PowerUp objects at the location of exploded objects that have the flag
                 // and award score for enemy kills / trigger checkpoints
                 var gps = GameState.GamePlayState;
+                bool isTutorialScene = gps.CurrentSceneType == SceneTypes.Tutorial;
                 bool checkpointTriggered = false;
                 bool powerUpAlreadyExists = false;
                 for (int i = 0; i < inhabitants.Count; i++)
@@ -600,7 +604,8 @@ namespace _3dTesting.MainWindowClasses.Loops
                 {
                     if (EnemySetup.IsEnemyTypeValid(obj.ObjectName))
                     {
-                        gps.RecordKill(obj.ObjectName);
+                        if (!isTutorialScene)
+                            gps.RecordKill(obj.ObjectName);
 
                         if (Logger.ShouldLog(enableProgressionLogging))
                         {
@@ -611,7 +616,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                                 "Progression");
                         }
 
-                        if (GameSetup.IsCheckpointEnemy(obj.ObjectName, obj.HasPowerUp))
+                        if (!isTutorialScene && GameSetup.IsCheckpointEnemy(obj.ObjectName, obj.HasPowerUp))
                             checkpointTriggered = true;
                     }
 
@@ -620,25 +625,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                         // Only one PowerUp at a time — skip if one already exists.
                         if (powerUpAlreadyExists) continue;
 
-                        var powerup = PowerUp.CreatePowerup(obj.ParentSurface);
-                        powerup.WorldPosition = new Vector3
-                        {
-                            x = obj.WorldPosition.x,
-                            y = 0,
-                            z = obj.WorldPosition.z
-                        };
-                        // Un-sync the parent's ObjectOffsets.y to recover the raw initial value.
-                        // SyncMovement formula: synced_y = globalMapY * 2.5 + rawY
-                        // PowerUpControls.SyncMovement will re-apply its own sync from this raw value.
-                        var globalMapY = GameState.SurfaceState?.GlobalMapPosition?.y ?? 0;
-                        var parentRawY = (obj.ObjectOffsets?.y ?? 0) - globalMapY * 2.5f;
-                        powerup.ObjectOffsets = new Vector3
-                        {
-                            x = 0,
-                            y = parentRawY - 50,
-                            z = 400
-                        };
-                        powerup.Movement = new PowerUpControls();
+                        var powerup = CreatePowerUpDrop(obj);
                         inhabitants.Add(powerup);
                         GameState.SurfaceState.AiObjects.Add(powerup);
                         powerUpAlreadyExists = true;
@@ -696,6 +683,33 @@ namespace _3dTesting.MainWindowClasses.Loops
                 CleanupWorldObjects(explodedObjects);
                 ClearExplosionCleanupIds(explodedIds);
             }
+        }
+
+        private static _3dObject CreatePowerUpDrop(_3dObject source)
+        {
+            var powerup = PowerUp.CreatePowerup(source.ParentSurface);
+            var sourceWorld = source.WorldPosition ?? new Vector3();
+            var sourceOffsets = source.ObjectOffsets ?? new Vector3();
+
+            // PowerUpControls will apply surface Y sync on its first frame.
+            // Store raw Y here, but preserve X/Z so the drop keeps the source's render position.
+            var globalMapY = GameState.SurfaceState?.GlobalMapPosition?.y ?? 0f;
+            var rawSourceY = sourceOffsets.y - globalMapY * SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY;
+
+            powerup.WorldPosition = new Vector3
+            {
+                x = sourceWorld.x,
+                y = sourceWorld.y,
+                z = sourceWorld.z
+            };
+            powerup.ObjectOffsets = new Vector3
+            {
+                x = sourceOffsets.x,
+                y = rawSourceY - 50f,
+                z = sourceOffsets.z
+            };
+            powerup.Movement = new PowerUpControls();
+            return powerup;
         }
 
         private void ClearMissingExplosionCleanupIds(HashSet<int>? observedPendingIds)
@@ -974,7 +988,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             if (!MusicIsPlaying && MusicDef != null)
             {
-                audioPlayer.PlayMusic(MusicDef, 0.2f);
+                audioPlayer.PlayMusic(MusicDef, DefaultMusicVolume);
                 MusicIsPlaying = true;
             }
         }

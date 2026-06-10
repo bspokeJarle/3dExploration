@@ -1096,6 +1096,370 @@
       }
     },
     {
+      "id": "ship_ai_tutorial_intro",
+      "usage": "ShipAiVoiceTutorialIntro",
+      "file": "OmegaStrain_tutorial_intro.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_thrust",
+      "usage": "ShipAiVoiceTutorialThrust",
+      "file": "OmegaStrain_tutorial_thrust.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_weapons",
+      "usage": "ShipAiVoiceTutorialWeapons",
+      "file": "OmegaStrain_tutorial_weapons.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_seeder_one_down",
+      "usage": "ShipAiVoiceTutorialSeederOneDown",
+      "file": "OmegaStrain_tutorial_seeder_one_down.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_powerup",
+      "usage": "ShipAiVoiceTutorialPowerup",
+      "file": "OmegaStrain_tutorial_powerup1.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_decoy_select",
+      "usage": "ShipAiVoiceTutorialDecoySelect",
+      "file": "OmegaStrain_tutorial_decoy_select.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_drone_inbound",
+      "usage": "ShipAiVoiceTutorialDroneInbound",
+      "file": "OmegaStrain_tutorial_drone_inbound.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_drone_destroyed",
+      "usage": "ShipAiVoiceTutorialDroneDestroyed",
+      "file": "OmegaStrain_tutorial_drone_destroyed.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_complete",
+      "usage": "ShipAiVoiceTutorialComplete",
+      "file": "OmegaStrain_tutorial_complete.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_skip",
+      "usage": "ShipAiVoiceTutorialSkip",
+      "file": "OmegaStrain_tutorial_skip.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_warning_low_altitude",
+      "usage": "ShipAiVoiceTutorialWarningLowAltitude",
+      "file": "OmegaStrain_tutorial_warning_low_altitude.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_checkpoint",
+      "usage": "ShipAiVoiceTutorialCheckpoint",
+      "file": "OmegaStrain_tutorial_checkpoint.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_laser_hint",
+      "usage": "ShipAiVoiceTutorialLaserHint",
+      "file": "OmegaStrain_tutorial_laser_hint.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
+      "id": "ship_ai_tutorial_decoy_hint",
+      "usage": "ShipAiVoiceTutorialDecoyHint",
+      "file": "OmegaStrain_tutorial_decoy_hint.mp3",
+
+      "segments": {
+        "start": 0.0,
+        "loopStart": 0.0,
+        "loopEnd": 0.0,
+        "end": 0.0
+      },
+
+      "settings": {
+        "volume": 0.75,
+        "maxVoices": 1,
+        "is3D": false,
+        "priority": 165
+      },
+
+      "speed": {
+        "base": 1.0,
+        "random": [ 0.0, 0.0 ],
+        "min": 1.0,
+        "max": 1.0
+      }
+    },
+    {
       "id": "water_splash",
       "usage": "WaterSplash",
       "file": "OmegaStrain_water_Splash.wav",

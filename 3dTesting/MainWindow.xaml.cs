@@ -7,6 +7,7 @@ using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.Persistence;
 using Domain;
+using GameAiAndControls.Controls;
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -301,6 +302,8 @@ namespace _3dTesting
 
         private void HandleKeys(object sender, KeyEventArgs e)
         {
+            bool overlayWasShowing = GameState.ScreenOverlayState.ShowOverlay;
+
             if (IsMenuExitKey(e.Key))
             {
                 if (ShouldShutdownFromMenuExitKey(e.Key))
@@ -311,6 +314,7 @@ namespace _3dTesting
                 }
 
                 world.SceneHandler.HandleKeyPress(e, world);
+                SyncLocalPauseFromWorld();
                 e.Handled = true;
                 return;
             }
@@ -323,6 +327,10 @@ namespace _3dTesting
             }
             //Send keys to Scenehandler to handle scene switches and overlay switches
             world.SceneHandler.HandleKeyPress(e,world);
+            SyncLocalPauseFromWorld();
+
+            if (overlayWasShowing)
+                e.Handled = true;
         }
 
         private bool ShouldShutdownFromMenuExitKey(Key key)
@@ -338,6 +346,22 @@ namespace _3dTesting
         }
 
         private static bool IsMenuExitKey(Key key) => key == Key.Escape || key == Key.X;
+
+        private void SyncLocalPauseFromWorld()
+        {
+            isPaused = world.IsPaused;
+            if (!isPaused)
+                pauseFrameCount = 0;
+        }
+
+        private static bool HasActiveSurfaceMapForMinimap()
+        {
+            var surfaceState = GameState.SurfaceState;
+            return GameState.ScreenOverlayState.Type == ScreenOverlayType.Game &&
+                   surfaceState?.GlobalMapBitmap != null &&
+                   surfaceState.GlobalMapPosition != null &&
+                   surfaceState.SurfaceViewportObject != null;
+        }
 
         public async Task FadeOutAsync(float durationSeconds = 1.0f)
         {
@@ -531,6 +555,7 @@ namespace _3dTesting
 
             float dt = (float)dtSeconds;
             GameState.DeltaTime = dt;
+            SynchronizeTutorialOverlayPause();
 
             if (GameState.ScreenOverlayState.ShowDebugOverlay == false)
                 FpsText.Visibility = Visibility.Collapsed;
@@ -608,7 +633,7 @@ namespace _3dTesting
             }
 
             // Minimap -> HUD slot only
-            if (!isFading && world.WorldInhabitants.Count > 50 && ++_minimapFrameSkip >= 3)
+            if (!isFading && HasActiveSurfaceMapForMinimap() && ++_minimapFrameSkip >= 3)
             {
                 _minimapFrameSkip = 0;
                 if (GameState.SurfaceState.GlobalMapPosition != null)
@@ -682,6 +707,75 @@ namespace _3dTesting
                     System.Threading.Interlocked.Exchange(ref _updateInProgress, 0);
                 }
             });
+        }
+
+        private void SynchronizeTutorialOverlayPause()
+        {
+            if (GameState.TutorialState?.InstructionOverlayPauseActive != true)
+                return;
+
+            if (world?.SceneHandler?.GetActiveScene().SceneType != SceneTypes.Tutorial)
+                return;
+
+            var now = DateTime.UtcNow;
+            var overlay = GameState.ScreenOverlayState;
+            if (GameState.TutorialState.ShouldAutoCloseInstructionOverlay(now))
+            {
+                RestoreTutorialShipAfterOverlayPause();
+                world.SceneHandler.GetActiveScene().SetupGameOverlay();
+                world.IsPaused = false;
+                isPaused = false;
+                pauseFrameCount = 0;
+                return;
+            }
+
+            if (overlay.ShowOverlay && overlay.Type == ScreenOverlayType.Tutorial)
+            {
+                overlay.Footer = GameState.TutorialState.CanCloseInstructionOverlay(now)
+                    ? "PRESS ANY KEY OR ESC TO CONTINUE"
+                    : "HAL-E SPEAKING - ESC TO SKIP";
+            }
+
+            if (!world.IsPaused)
+            {
+                CaptureTutorialShipPauseSnapshot();
+                pauseFrameCount = 0;
+            }
+
+            world.IsPaused = true;
+            isPaused = true;
+        }
+
+        private void CaptureTutorialShipPauseSnapshot()
+        {
+            if (world?.WorldInhabitants == null)
+                return;
+
+            for (int i = 0; i < world.WorldInhabitants.Count; i++)
+            {
+                var obj = world.WorldInhabitants[i];
+                if (obj.ObjectName == "Ship" && obj.Movement is ShipControls shipControls)
+                {
+                    shipControls.CaptureOverlayPauseTransform(obj);
+                    return;
+                }
+            }
+        }
+
+        private void RestoreTutorialShipAfterOverlayPause()
+        {
+            if (world?.WorldInhabitants == null)
+                return;
+
+            for (int i = 0; i < world.WorldInhabitants.Count; i++)
+            {
+                var obj = world.WorldInhabitants[i];
+                if (obj.ObjectName == "Ship" && obj.Movement is ShipControls shipControls)
+                {
+                    shipControls.RestoreOverlayPauseTransformAndSuppressCrashDetection(obj);
+                    return;
+                }
+            }
         }
 
         private List<_Coordinates._2dTriangleMesh> RentTriangleList()

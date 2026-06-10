@@ -84,22 +84,21 @@ namespace GameAiAndControls.Controls
                 SafeLog($"[PowerUp] HasCrashed=true, ObjectName='{theObject.ImpactStatus.ObjectName}', starting explosion. Id={theObject.ObjectId}");
                 _isExploding = true;
                 _explosionDeltaTime = DateTime.Now;
-                _explosionWorldPosition = theObject.WorldPosition as Vector3 ?? new Vector3 { x = theObject.WorldPosition.x, y = theObject.WorldPosition.y, z = theObject.WorldPosition.z };
-                _explosionObjectOffsets = theObject.ObjectOffsets as Vector3 ?? new Vector3 { x = theObject.ObjectOffsets.x, y = theObject.ObjectOffsets.y, z = theObject.ObjectOffsets.z };
+                _explosionWorldPosition = CopyVector(theObject.WorldPosition);
+                _explosionObjectOffsets = CopyVector(theObject.ObjectOffsets);
                 Physics.ExplosionColorOverride = "4488FF";
                 ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
                 Physics.ExplodeObject(theObject, ExplosionForce);
+                RestoreExplosionTransform(theObject);
                 theObject.CrashBoxes = new List<List<IVector3>>();
             }
 
             if (_isExploding)
             {
-                if (_explosionWorldPosition != null)
-                    theObject.WorldPosition = _explosionWorldPosition;
-                if (_explosionObjectOffsets != null)
-                    theObject.ObjectOffsets = _explosionObjectOffsets;
+                RestoreExplosionTransform(theObject);
 
                 Physics.UpdateExplosion(theObject, _explosionDeltaTime);
+                RestoreExplosionTransform(theObject);
                 ExplosionParticleHelpers.MoveParticles(theObject);
                 if (theObject.ImpactStatus?.HasExploded == true)
                     theObject.ObjectParts = new List<I3dObjectPart>();
@@ -198,6 +197,25 @@ namespace GameAiAndControls.Controls
                     return;
                 }
             }
+        }
+
+        private void RestoreExplosionTransform(I3dObject theObject)
+        {
+            if (_explosionWorldPosition != null)
+                theObject.WorldPosition = CopyVector(_explosionWorldPosition);
+
+            if (_explosionObjectOffsets != null)
+                theObject.ObjectOffsets = CopyVector(_explosionObjectOffsets);
+        }
+
+        private static Vector3 CopyVector(IVector3 source)
+        {
+            return new Vector3
+            {
+                x = source.x,
+                y = source.y,
+                z = source.z
+            };
         }
 
         public void ReleaseParticles()
