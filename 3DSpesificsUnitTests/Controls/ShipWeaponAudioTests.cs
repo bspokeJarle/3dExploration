@@ -16,7 +16,10 @@ public class ShipWeaponAudioTests
     [TestInitialize]
     public void Setup()
     {
-        GameState.GamePlayState = new GamePlayState();
+        GameState.GamePlayState = new GamePlayState
+        {
+            CurrentSceneType = SceneTypes.Game
+        };
         GameState.ScreenOverlayState = new ScreenOverlayState();
         GameState.TutorialState = new TutorialRuntimeState();
         GameState.SurfaceState = new SurfaceState
@@ -101,6 +104,70 @@ public class ShipWeaponAudioTests
         Assert.AreEqual(1, GameState.GamePlayState.TotalShotsFired);
     }
 
+    [TestMethod]
+    public void KeyDown_WhenCurrentSceneIsIntro_DoesNotFireWeapon()
+    {
+        using var fixture = CreateReadyShip(withWeaponGuides: true);
+        GameState.GamePlayState.CurrentSceneType = SceneTypes.Intro;
+
+        InvokeKeyDown(fixture.Controls, Keys.RShiftKey);
+
+        Assert.AreEqual(0, fixture.Audio.PlayCount);
+        Assert.AreEqual(0, fixture.Weapons.ActiveWeapons.Count);
+        Assert.AreEqual(0, GameState.GamePlayState.TotalShotsFired);
+    }
+
+    [TestMethod]
+    public void KeyDown_WhenGameIntroOverlayIsVisible_DoesNotChangeWeapon()
+    {
+        using var fixture = CreateReadyShip(withWeaponGuides: true);
+        GameState.GamePlayState.PowerUpsCollected = 2;
+        GameState.GamePlayState.SelectedWeapon = WeaponType.Bullet;
+        GameState.GamePlayState.ActivePowerup = "BULLET";
+        GameState.ScreenOverlayState.Type = ScreenOverlayType.Intro;
+        GameState.ScreenOverlayState.ShowOverlay = true;
+
+        InvokeKeyDown(fixture.Controls, Keys.D3);
+
+        Assert.AreEqual(WeaponType.Bullet, GameState.GamePlayState.SelectedWeapon);
+        Assert.AreEqual("BULLET", GameState.GamePlayState.ActivePowerup);
+        Assert.AreEqual(0, fixture.Audio.PlayCount);
+    }
+
+    [TestMethod]
+    public void KeyDown_WhenGameOverlayIsVisible_DoesNotAffectGameplayInput()
+    {
+        using var fixture = CreateReadyShip(withWeaponGuides: true);
+        GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
+        GameState.ScreenOverlayState.ShowOverlay = true;
+
+        InvokeKeyDown(fixture.Controls, Keys.RShiftKey);
+        InvokeKeyDown(fixture.Controls, Keys.Space);
+
+        Assert.AreEqual(0, fixture.Audio.PlayCount);
+        Assert.AreEqual(0, fixture.Weapons.ActiveWeapons.Count);
+        Assert.AreEqual(0, GameState.GamePlayState.TotalShotsFired);
+        Assert.IsFalse(fixture.Controls.ThrustOn);
+        Assert.AreEqual(0f, fixture.Controls.Thrust, 0.001f);
+    }
+
+    [TestMethod]
+    public void MoveObject_WhenOverlayAppears_ClearsHeldGameplayInput()
+    {
+        using var fixture = CreateReadyShip(withWeaponGuides: true);
+        InvokeKeyDown(fixture.Controls, Keys.Space);
+        Assert.IsTrue(fixture.Controls.ThrustOn);
+
+        GameState.ScreenOverlayState.Type = ScreenOverlayType.Intro;
+        GameState.ScreenOverlayState.ShowOverlay = true;
+
+        fixture.Controls.MoveObject(fixture.Ship, audioPlayer: null, soundRegistry: null);
+
+        Assert.IsFalse(fixture.Controls.ThrustOn);
+        Assert.AreEqual(0f, fixture.Controls.Thrust, 0.001f);
+        Assert.AreEqual(0f, GameState.GamePlayState.Thrust, 0.001f);
+    }
+
     private static ShipFixture CreateReadyShip(bool withWeaponGuides)
     {
         var controls = new ShipControls();
@@ -137,7 +204,7 @@ public class ShipWeaponAudioTests
                 CreateGuideVertex(0f, -1000f, 0f));
         }
 
-        return new ShipFixture(controls, weapons, audio);
+        return new ShipFixture(ship, controls, weapons, audio);
     }
 
     private static TriangleMeshWithColor CreateGuideVertex(float x, float y, float z)
@@ -163,13 +230,15 @@ public class ShipWeaponAudioTests
 
     private sealed class ShipFixture : IDisposable
     {
-        public ShipFixture(ShipControls controls, Weapons weapons, CapturingAudioPlayer audio)
+        public ShipFixture(_3dObject ship, ShipControls controls, Weapons weapons, CapturingAudioPlayer audio)
         {
+            Ship = ship;
             Controls = controls;
             Weapons = weapons;
             Audio = audio;
         }
 
+        public _3dObject Ship { get; }
         public ShipControls Controls { get; }
         public Weapons Weapons { get; }
         public CapturingAudioPlayer Audio { get; }

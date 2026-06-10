@@ -39,7 +39,10 @@ public class ShipSurfaceLandingTests
     [TestInitialize]
     public void Setup()
     {
-        GameState.GamePlayState = new GamePlayState();
+        GameState.GamePlayState = new GamePlayState
+        {
+            CurrentSceneType = SceneTypes.Game
+        };
         GameState.SurfaceState = new SurfaceState();
         GameState.ScreenOverlayState = new ScreenOverlayState();
         GameState.ShipState = new ShipState();

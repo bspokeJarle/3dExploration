@@ -179,7 +179,11 @@ namespace GameAiAndControls.Controls
 
         private void GlobalHookKeyDown(object sender, KeyEventArgs e)
         {
-            if (IsGameplayInputBlocked()) return;
+            if (IsGameplayInputBlocked())
+            {
+                ClearBlockedGameplayInputState();
+                return;
+            }
 
             if (e.KeyCode == Keys.Left) _leftHeld = true;
             if (e.KeyCode == Keys.Right) _rightHeld = true;
@@ -338,9 +342,7 @@ namespace GameAiAndControls.Controls
         {
             if (IsGameplayInputBlocked())
             {
-                _mouseActive = false;
-                _mouseYawInput = 0f;
-                _mousePitchInput = 0f;
+                ClearBlockedGameplayInputState();
                 return;
             }
 
@@ -369,7 +371,11 @@ namespace GameAiAndControls.Controls
 
         private void GlobalHookMouseDown(object sender, MouseEventArgs e)
         {
-            if (IsGameplayInputBlocked()) return;
+            if (IsGameplayInputBlocked())
+            {
+                ClearBlockedGameplayInputState();
+                return;
+            }
 
             if (e.Button == MouseButtons.Left)
             {
@@ -432,10 +438,16 @@ namespace GameAiAndControls.Controls
         private static bool IsGameplayInputBlocked()
         {
             var overlay = GameState.ScreenOverlayState;
-            return GameState.TutorialState.InstructionOverlayPauseActive ||
-                   (overlay.ShowOverlay && overlay.IsModal) ||
-                   overlay.Type == ScreenOverlayType.Intro ||
-                   GameState.GamePlayState.IsPaused;
+            var gameplay = GameState.GamePlayState;
+            bool isGameplayScene =
+                gameplay.CurrentSceneType == SceneTypes.Game ||
+                gameplay.CurrentSceneType == SceneTypes.Simulation ||
+                gameplay.CurrentSceneType == SceneTypes.Tutorial;
+
+            return !isGameplayScene ||
+                   GameState.TutorialState.InstructionOverlayPauseActive ||
+                   overlay.ShowOverlay ||
+                   gameplay.IsPaused;
         }
 
         public void CaptureOverlayPauseTransform(I3dObject? ship = null)
@@ -513,6 +525,29 @@ namespace GameAiAndControls.Controls
             _pitchVelocity = 0f;
             _yawAccumulator = 0f;
             _pitchAccumulator = 0f;
+        }
+
+        private void ClearBlockedGameplayInputState()
+        {
+            _leftHeld = false;
+            _rightHeld = false;
+            _upHeld = false;
+            _downHeld = false;
+            _fireKeyHeld = false;
+            _mouseActive = false;
+            _mouseYawInput = 0f;
+            _mousePitchInput = 0f;
+            ThrustOn = false;
+            Thrust = 0f;
+            Physics.ThrustEffect = 0f;
+            Physics.VerticalLiftFactor = 0f;
+            StopBulletAudio(playEndSegment: true);
+
+            if (_rocketInstance != null)
+            {
+                _rocketInstance.Stop(playEndSegment: true);
+                _rocketInstance = null;
+            }
         }
 
         private static void ClearPendingShipCrash(I3dObject? ship)
@@ -814,6 +849,11 @@ namespace GameAiAndControls.Controls
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            if (IsGameplayInputBlocked())
+            {
+                ClearBlockedGameplayInputState();
+            }
+
             //Update gamestate with thrust
             GameState.GamePlayState.Thrust = Thrust;
 
