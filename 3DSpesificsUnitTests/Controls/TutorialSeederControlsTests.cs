@@ -1,3 +1,4 @@
+using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using Domain;
@@ -78,15 +79,45 @@ public class TutorialSeederControlsTests
         GameState.SurfaceState.GlobalMapPosition = new Vector3 { x = 1000f, y = 80f, z = 1000f };
         var controls = new TutorialSeederControls();
         var seeder = CreateSeeder();
-        float explosionStartY = seeder.ObjectOffsets!.y;
+        float unsyncedY = seeder.ObjectOffsets!.y;
+        float expectedHitFrameY = GameState.SurfaceState.GlobalMapPosition.y
+            * SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY
+            + unsyncedY;
 
         seeder.ImpactStatus!.HasCrashed = true;
         seeder.ImpactStatus.ObjectName = "Lazer";
 
         controls.MoveObject(seeder, audioPlayer: null, soundRegistry: null);
 
-        Assert.AreEqual(explosionStartY, seeder.ObjectOffsets!.y, 0.001f,
+        Assert.AreEqual(expectedHitFrameY, seeder.ObjectOffsets!.y, 0.001f,
             "Explosion Y should stay at the hit-frame offset. A late SeederControls sync init must not add GlobalMapPosition.y again.");
+    }
+
+    [TestMethod]
+    public void MoveObject_VisibleFrameSyncsTutorialOffsetsBackToAiObjectBeforeDeepCopy()
+    {
+        GameState.SurfaceState.GlobalMapPosition = new Vector3 { x = 1000f, y = 80f, z = 1000f };
+        var controls = new TutorialSeederControls();
+        var original = CreateSeeder();
+        original.Movement = controls;
+        GameState.SurfaceState.AiObjects.Add(original);
+
+        var visibleFrameCopy = (_3dObject)Common3dObjectHelpers.DeepCopySingleObject(original);
+        controls.MoveObject(visibleFrameCopy, audioPlayer: null, soundRegistry: null);
+
+        Assert.AreEqual(visibleFrameCopy.ObjectOffsets!.y, original.ObjectOffsets!.y, 0.001f,
+            "Tutorial seeders are rendered from deep copies, so their synced offsets must be pushed back to the AiObjects original before the next frame.");
+
+        visibleFrameCopy.ImpactStatus!.HasCrashed = true;
+        visibleFrameCopy.ImpactStatus.ObjectName = "Lazer";
+
+        var nextFrameCopy = (_3dObject)Common3dObjectHelpers.DeepCopySingleObject(original);
+        controls.MoveObject(nextFrameCopy, audioPlayer: null, soundRegistry: null);
+
+        Assert.IsTrue(IsUsingCombatControls(controls));
+        Assert.AreEqual(visibleFrameCopy.ObjectOffsets.y, nextFrameCopy.ObjectOffsets!.y, 0.001f,
+            "The explosion should anchor to the synced tutorial offset from the previous visible frame, not the stale construction offset.");
+        Assert.AreEqual(nextFrameCopy.ObjectOffsets.y, original.ObjectOffsets!.y, 0.001f);
     }
 
     private static bool IsUsingCombatControls(TutorialSeederControls controls)

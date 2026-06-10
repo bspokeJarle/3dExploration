@@ -283,8 +283,9 @@ namespace CommonUtilities._3DHelpers
                 CrashBoxes = copyCrashboxes ? CopyCrashboxes(original.CrashBoxes) : original.CrashBoxes,
                 CrashBoxNames = original.CrashBoxNames,
                 CrashBoxesFollowRotation = original.CrashBoxesFollowRotation,
-                CalculatedCrashOffset = original.CalculatedCrashOffset,
+                CalculatedCrashOffset = CopyVector(original.CalculatedCrashOffset),
                 HasShadow = original.HasShadow,
+                ShadowOffset = CopyVector(original.ShadowOffset),
                 UseSurfaceFootprintPivot = original.UseSurfaceFootprintPivot,
                 HasPowerUp = original.HasPowerUp,
                 ZSortBias = original.ZSortBias
@@ -317,8 +318,9 @@ namespace CommonUtilities._3DHelpers
                 CrashBoxes = copyCrashboxes ? CopyCrashboxes(original.CrashBoxes) : original.CrashBoxes,
                 CrashBoxNames = original.CrashBoxNames,
                 CrashBoxesFollowRotation = original.CrashBoxesFollowRotation,
-                CalculatedCrashOffset = original.CalculatedCrashOffset,
+                CalculatedCrashOffset = CopyVector(original.CalculatedCrashOffset),
                 HasShadow = original.HasShadow,
+                ShadowOffset = CopyVector(original.ShadowOffset),
                 UseSurfaceFootprintPivot = original.UseSurfaceFootprintPivot,
                 HasPowerUp = original.HasPowerUp,
                 ZSortBias = original.ZSortBias

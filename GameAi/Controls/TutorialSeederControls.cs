@@ -30,6 +30,9 @@ namespace GameAiAndControls.Controls
 
             if (theObject.ImpactStatus?.HasCrashed == true)
             {
+                SyncMovement(theObject);
+                SyncToOriginal(theObject);
+
                 _combatControls.ConfigureAudio(audioPlayer, soundRegistry);
                 _combatControls.HandleCrash(theObject);
 
@@ -38,10 +41,13 @@ namespace GameAiAndControls.Controls
                     _useCombatControls = true;
                     return _combatControls.MoveObject(theObject, audioPlayer, soundRegistry);
                 }
+
+                return theObject;
             }
 
             ApplyIdlePose(theObject);
             SyncMovement(theObject);
+            SyncToOriginal(theObject);
             return theObject;
         }
 
@@ -101,6 +107,35 @@ namespace GameAiAndControls.Controls
             }
 
             theObject.ObjectOffsets = SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY, SyncFactorY);
+        }
+
+        private static void SyncToOriginal(I3dObject deepCopy)
+        {
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null) return;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                if (aiObjects[i].ObjectId == deepCopy.ObjectId)
+                {
+                    var original = aiObjects[i];
+                    if (ReferenceEquals(original, deepCopy)) return;
+
+                    original.WorldPosition = new _3dSpecificsImplementations.Vector3
+                    {
+                        x = deepCopy.WorldPosition.x,
+                        y = deepCopy.WorldPosition.y,
+                        z = deepCopy.WorldPosition.z
+                    };
+                    original.ObjectOffsets = new _3dSpecificsImplementations.Vector3
+                    {
+                        x = deepCopy.ObjectOffsets.x,
+                        y = deepCopy.ObjectOffsets.y,
+                        z = deepCopy.ObjectOffsets.z
+                    };
+                    return;
+                }
+            }
         }
     }
 }
