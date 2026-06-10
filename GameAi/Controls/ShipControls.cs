@@ -1304,11 +1304,12 @@ namespace GameAiAndControls.Controls
 
         private void CaptureExplosionTransform(I3dObject theObject)
         {
+            var snapshotSource = ParentObject ?? theObject;
             _hasExplosionTransformSnapshot = true;
-            _explosionWorldPosition = ToVector3(theObject.WorldPosition);
-            _explosionObjectOffsets = ToVector3(theObject.ObjectOffsets);
-            _explosionRotation = ToVector3(theObject.Rotation);
-            _explosionCalculatedCrashOffset = ToVector3(theObject.CalculatedCrashOffset);
+            _explosionWorldPosition = ToVector3(snapshotSource.WorldPosition);
+            _explosionObjectOffsets = ToVector3(snapshotSource.ObjectOffsets);
+            _explosionRotation = ToVector3(snapshotSource.Rotation);
+            _explosionCalculatedCrashOffset = ToVector3(snapshotSource.CalculatedCrashOffset);
         }
 
         private void RestoreExplosionTransform(I3dObject? theObject)

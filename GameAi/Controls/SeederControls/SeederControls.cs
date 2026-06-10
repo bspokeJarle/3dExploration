@@ -83,7 +83,10 @@ namespace GameAiAndControls.Controls.SeederControls
         {
             // Lazily initialize audio the first time MoveObject runs.
             ConfigureAudio(audioPlayer, soundRegistry);
-            TerrainAvoidanceHelpers.TryStartTerrainRecovery(theObject);
+            if (!isExploding)
+            {
+                TerrainAvoidanceHelpers.TryStartTerrainRecovery(theObject);
+            }
 
             // Skip AI movement when a crash is pending or already exploding,
             // so the explosion stays anchored at the position where the hit occurred.
@@ -228,39 +231,11 @@ namespace GameAiAndControls.Controls.SeederControls
 
             if (isExploding)
             {
-                // Anchor position with fresh copies each frame so UpdateExplosion
-                // cannot drift the saved coordinates via in-place field mutation.
-                if (explosionWorldPosition != null)
-                {
-                    theObject.WorldPosition = new Vector3
-                    {
-                        x = explosionWorldPosition.x,
-                        y = explosionWorldPosition.y,
-                        z = explosionWorldPosition.z
-                    };
-                }
-
-                if (explosionObjectOffsets != null)
-                {
-                    theObject.ObjectOffsets = new Vector3
-                    {
-                        x = explosionObjectOffsets.x,
-                        y = explosionObjectOffsets.y,
-                        z = explosionObjectOffsets.z
-                    };
-                }
-
-                if (explosionRotation != null)
-                {
-                    theObject.Rotation = CopyVector(explosionRotation);
-                }
+                RestoreExplosionTransform(theObject);
 
                 //Update explosion
                 Physics.UpdateExplosion(theObject, ExplosionDeltaTime);
-                if (explosionRotation != null)
-                {
-                    theObject.Rotation = CopyVector(explosionRotation);
-                }
+                RestoreExplosionTransform(theObject);
 
                 if (theObject.ImpactStatus.HasExploded == true)
                 {
@@ -278,19 +253,18 @@ namespace GameAiAndControls.Controls.SeederControls
             if (!isExploding)
                 Zrotation += BaseZRotationIncrementPerFrame;
 
-            // Keep seeder offsets visually in sync with surface scrolling.
-            // Must run even during explosion so the explosion stays anchored
-            // to the terrain position as the surface scrolls (SyncMovement
-            // only adjusts ObjectOffsets.y; x/z stay frozen from the explosion anchor).
-            SyncMovement(theObject);
-            if (TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, 1f / ScreenSetup.targetFps) && theObject.WorldPosition != null)
+            if (!isExploding)
             {
-                _trackedWorldPosition = new Vector3
+                SyncMovement(theObject);
+                if (TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, 1f / ScreenSetup.targetFps) && theObject.WorldPosition != null)
                 {
-                    x = theObject.WorldPosition.x,
-                    y = theObject.WorldPosition.y,
-                    z = theObject.WorldPosition.z
-                };
+                    _trackedWorldPosition = new Vector3
+                    {
+                        x = theObject.WorldPosition.x,
+                        y = theObject.WorldPosition.y,
+                        z = theObject.WorldPosition.z
+                    };
+                }
             }
 
             // Push the deep copy's authoritative positions back to the original
@@ -359,6 +333,7 @@ namespace GameAiAndControls.Controls.SeederControls
                 ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
                 // Handle object destruction or other logic here
                 var explodedVersion = Physics.ExplodeObject(theObject, ExplosionForce);
+                RestoreExplosionTransform(theObject);
                 //Remove Crash boxes to avoid further collisions
                 theObject.CrashBoxes = new List<List<IVector3>>();
                 //Remove AI state to stop movement and other logic
@@ -503,6 +478,24 @@ namespace GameAiAndControls.Controls.SeederControls
                 y = source.y,
                 z = source.z
             };
+        }
+
+        private void RestoreExplosionTransform(I3dObject theObject)
+        {
+            if (explosionWorldPosition != null)
+            {
+                theObject.WorldPosition = CopyVector(explosionWorldPosition);
+            }
+
+            if (explosionObjectOffsets != null)
+            {
+                theObject.ObjectOffsets = CopyVector(explosionObjectOffsets);
+            }
+
+            if (explosionRotation != null)
+            {
+                theObject.Rotation = CopyVector(explosionRotation);
+            }
         }
     }
 }

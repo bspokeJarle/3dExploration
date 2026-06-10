@@ -88,6 +88,37 @@ public class SeederControlsParticleGuideTests
         Assert.AreEqual(0, seeder.CrashBoxes.Count, "One lazer hit should destroy the seeder.");
     }
 
+    [TestMethod]
+    public void MoveObject_ExplodingSeederKeepsHitFrameTransformAfterSurfaceScroll()
+    {
+        GameState.SurfaceState.GlobalMapPosition = new Vector3 { x = 0f, y = 40f, z = 0f };
+        var seeder = CreateSeederCollisionObject();
+        seeder.WorldPosition = new Vector3 { x = 1200f, y = 4f, z = 2400f };
+        seeder.ObjectOffsets = new Vector3 { x = 25f, y = -180f, z = 640f };
+        seeder.Rotation = new Vector3 { x = 90f, y = 0f, z = 42f };
+        var controls = new SeederControls();
+
+        seeder.ImpactStatus!.HasCrashed = true;
+        seeder.ImpactStatus.ObjectName = "Lazer";
+        controls.MoveObject(seeder, audioPlayer: null, soundRegistry: null);
+
+        var anchoredWorld = Copy(seeder.WorldPosition!);
+        var anchoredOffsets = Copy(seeder.ObjectOffsets!);
+        var anchoredRotation = Copy(seeder.Rotation!);
+
+        GameState.SurfaceState.GlobalMapPosition = new Vector3 { x = 0f, y = 180f, z = 0f };
+        controls.MoveObject(seeder, audioPlayer: null, soundRegistry: null);
+
+        Assert.AreEqual(anchoredWorld.x, seeder.WorldPosition!.x, 0.001f);
+        Assert.AreEqual(anchoredWorld.y, seeder.WorldPosition.y, 0.001f);
+        Assert.AreEqual(anchoredWorld.z, seeder.WorldPosition.z, 0.001f);
+        Assert.AreEqual(anchoredOffsets.x, seeder.ObjectOffsets!.x, 0.001f);
+        Assert.AreEqual(anchoredOffsets.y, seeder.ObjectOffsets.y, 0.001f,
+            "Seeder explosion must not keep surface-syncing after the hit frame.");
+        Assert.AreEqual(anchoredOffsets.z, seeder.ObjectOffsets.z, 0.001f);
+        Assert.AreEqual(anchoredRotation.z, seeder.Rotation!.z, 0.001f);
+    }
+
     private static void HitSeeder(SeederControls controls, _3dObject seeder, string weaponName)
     {
         seeder.ImpactStatus!.HasCrashed = true;
@@ -131,10 +162,21 @@ public class SeederControlsParticleGuideTests
     {
         return new TriangleMeshWithColor
         {
+            Color = "FFFFFF",
             vert1 = new Vector3 { x = x, y = y, z = z },
             vert2 = new Vector3 { x = x, y = y, z = z },
             vert3 = new Vector3 { x = x, y = y, z = z },
             noHidden = true
+        };
+    }
+
+    private static Vector3 Copy(IVector3 source)
+    {
+        return new Vector3
+        {
+            x = source.x,
+            y = source.y,
+            z = source.z
         };
     }
 

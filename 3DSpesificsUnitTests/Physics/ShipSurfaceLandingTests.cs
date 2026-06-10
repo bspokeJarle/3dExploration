@@ -728,6 +728,53 @@ public class ShipSurfaceLandingTests
     }
 
     [TestMethod]
+    public void ShipControls_WhenFailsafeExplosionStartsFromStaleFrameCopy_AnchorsToLiveParentObject()
+    {
+        var initialShip = Ship.CreateShip(parentSurface: null);
+        initialShip.ObjectName = "Ship";
+        initialShip.WorldPosition = new Vector3();
+        initialShip.ObjectOffsets = new Vector3 { x = 0f, y = ShipRestingScreenY(ScreenSetup.screenSizeY), z = 400f };
+        initialShip.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 0f };
+        initialShip.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+
+        var controls = (ShipControls)initialShip.Movement!;
+        controls.MoveObject(initialShip, null, null);
+
+        var liveShip = Ship.CreateShip(parentSurface: null, movement: controls);
+        liveShip.ObjectName = "Ship";
+        liveShip.WorldPosition = new Vector3 { x = 700f, y = 20f, z = 900f };
+        liveShip.ObjectOffsets = new Vector3 { x = 17f, y = ShipRestingScreenY(ScreenSetup.screenSizeY) + 61f, z = 400f };
+        liveShip.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 31f };
+        liveShip.CalculatedCrashOffset = new Vector3 { x = 12f, y = 34f, z = 56f };
+        liveShip.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+        controls.ParentObject = liveShip;
+
+        var staleFrameShip = Ship.CreateShip(parentSurface: null, movement: controls);
+        staleFrameShip.ObjectName = "Ship";
+        staleFrameShip.WorldPosition = new Vector3 { x = -100f, y = -200f, z = -300f };
+        staleFrameShip.ObjectOffsets = new Vector3 { x = -11f, y = -22f, z = 400f };
+        staleFrameShip.Rotation = new Vector3 { x = 1f, y = 2f, z = 3f };
+        staleFrameShip.CalculatedCrashOffset = new Vector3 { x = -4f, y = -5f, z = -6f };
+        staleFrameShip.ImpactStatus = new ImpactStatus { ObjectHealth = ShipSetup.DefaultShipHealth };
+
+        GameState.ShipState.ShipGravityDisabledUntilUtc = DateTime.UtcNow.AddSeconds(2);
+        GameState.SurfaceState.GlobalMapPosition = new Vector3
+        {
+            x = SurfaceSetup.DefaultMapPosition.x,
+            y = controls.Physics.FloorHeight - 500f,
+            z = SurfaceSetup.DefaultMapPosition.z
+        };
+
+        controls.MoveObject(staleFrameShip, null, null);
+
+        Assert.IsTrue(IsExploding(staleFrameShip));
+        AssertVectorEqual(CopyVector(liveShip.WorldPosition), staleFrameShip.WorldPosition, "WorldPosition");
+        AssertVectorEqual(CopyVector(liveShip.ObjectOffsets), staleFrameShip.ObjectOffsets, "ObjectOffsets");
+        AssertVectorEqual(CopyVector(liveShip.Rotation), staleFrameShip.Rotation, "Rotation");
+        AssertVectorEqual(CopyVector(liveShip.CalculatedCrashOffset), staleFrameShip.CalculatedCrashOffset, "CalculatedCrashOffset");
+    }
+
+    [TestMethod]
     public void ShipControls_WhenShipExplosionReleasesParticles_KeepsParticlesScreenAnchored()
     {
         var map = CreateSurfaceMap(40, 40);

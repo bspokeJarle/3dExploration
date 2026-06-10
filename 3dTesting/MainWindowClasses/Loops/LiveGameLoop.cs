@@ -625,25 +625,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                         // Only one PowerUp at a time — skip if one already exists.
                         if (powerUpAlreadyExists) continue;
 
-                        var powerup = PowerUp.CreatePowerup(obj.ParentSurface);
-                        powerup.WorldPosition = new Vector3
-                        {
-                            x = obj.WorldPosition.x,
-                            y = 0,
-                            z = obj.WorldPosition.z
-                        };
-                        // Un-sync the parent's ObjectOffsets.y to recover the raw initial value.
-                        // SyncMovement formula: synced_y = globalMapY * 2.5 + rawY
-                        // PowerUpControls.SyncMovement will re-apply its own sync from this raw value.
-                        var globalMapY = GameState.SurfaceState?.GlobalMapPosition?.y ?? 0;
-                        var parentRawY = (obj.ObjectOffsets?.y ?? 0) - globalMapY * 2.5f;
-                        powerup.ObjectOffsets = new Vector3
-                        {
-                            x = 0,
-                            y = parentRawY - 50,
-                            z = 400
-                        };
-                        powerup.Movement = new PowerUpControls();
+                        var powerup = CreatePowerUpDrop(obj);
                         inhabitants.Add(powerup);
                         GameState.SurfaceState.AiObjects.Add(powerup);
                         powerUpAlreadyExists = true;
@@ -701,6 +683,33 @@ namespace _3dTesting.MainWindowClasses.Loops
                 CleanupWorldObjects(explodedObjects);
                 ClearExplosionCleanupIds(explodedIds);
             }
+        }
+
+        private static _3dObject CreatePowerUpDrop(_3dObject source)
+        {
+            var powerup = PowerUp.CreatePowerup(source.ParentSurface);
+            var sourceWorld = source.WorldPosition ?? new Vector3();
+            var sourceOffsets = source.ObjectOffsets ?? new Vector3();
+
+            // PowerUpControls will apply surface Y sync on its first frame.
+            // Store raw Y here, but preserve X/Z so the drop keeps the source's render position.
+            var globalMapY = GameState.SurfaceState?.GlobalMapPosition?.y ?? 0f;
+            var rawSourceY = sourceOffsets.y - globalMapY * SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY;
+
+            powerup.WorldPosition = new Vector3
+            {
+                x = sourceWorld.x,
+                y = sourceWorld.y,
+                z = sourceWorld.z
+            };
+            powerup.ObjectOffsets = new Vector3
+            {
+                x = sourceOffsets.x,
+                y = rawSourceY - 50f,
+                z = sourceOffsets.z
+            };
+            powerup.Movement = new PowerUpControls();
+            return powerup;
         }
 
         private void ClearMissingExplosionCleanupIds(HashSet<int>? observedPendingIds)

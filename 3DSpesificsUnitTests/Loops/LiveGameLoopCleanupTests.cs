@@ -1,4 +1,5 @@
 using _3dTesting.MainWindowClasses.Loops;
+using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.Events;
@@ -48,6 +49,53 @@ public class LiveGameLoopCleanupTests
 
         Assert.IsFalse(world.WorldInhabitants.Any(x => x.ObjectId == 10));
         Assert.IsTrue(world.WorldInhabitants.Any(x => x.ObjectId == 11));
+    }
+
+    [TestMethod]
+    public void CleanupExplodedObjects_PowerUpDropPreservesSourceLocalRenderOffsets()
+    {
+        GameState.SurfaceState.GlobalMapPosition = new Vector3 { x = 500f, y = 80f, z = 900f };
+        GameState.SurfaceState.AiObjects = new List<_3dObject>();
+        var explodedSeeder = CreateExplodedObject(20);
+        explodedSeeder.ObjectName = "Seeder";
+        explodedSeeder.HasPowerUp = true;
+        explodedSeeder.WorldPosition = new Vector3 { x = 1200f, y = 3f, z = 1800f };
+        explodedSeeder.ObjectOffsets = new Vector3 { x = 35f, y = 260f, z = 125f };
+        var sourceWorld = Copy(explodedSeeder.WorldPosition);
+        var sourceOffsets = Copy(explodedSeeder.ObjectOffsets);
+        GameState.SurfaceState.AiObjects.Add(explodedSeeder);
+        var world = new TestWorld
+        {
+            WorldInhabitants = new List<I3dObject> { explodedSeeder }
+        };
+
+        var loop = new LiveGameLoop();
+
+        InvokePrivate(loop, "CleanupExplodedObjects", world);
+
+        var powerup = world.WorldInhabitants.OfType<_3dObject>().Single(x => x.ObjectName == "PowerUp");
+        Assert.AreEqual(sourceWorld.x, powerup.WorldPosition!.x, 0.001f);
+        Assert.AreEqual(sourceWorld.y, powerup.WorldPosition.y, 0.001f);
+        Assert.AreEqual(sourceWorld.z, powerup.WorldPosition.z, 0.001f);
+        Assert.AreEqual(sourceOffsets.x, powerup.ObjectOffsets!.x, 0.001f,
+            "PowerUp drops must keep the source object's local X offset so they do not jump sideways.");
+        Assert.AreEqual(sourceOffsets.z, powerup.ObjectOffsets.z, 0.001f,
+            "PowerUp drops must keep the source object's local Z offset so they do not jump in depth.");
+        Assert.AreEqual(sourceOffsets.y - GameState.SurfaceState.GlobalMapPosition.y * SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY - 50f,
+            powerup.ObjectOffsets.y,
+            0.001f,
+            "PowerUp Y is stored as raw surface-sync input; PowerUpControls reapplies surface sync on the next frame.");
+        Assert.IsTrue(GameState.SurfaceState.AiObjects.Any(x => x.ObjectId == powerup.ObjectId));
+    }
+
+    private static Vector3 Copy(IVector3 source)
+    {
+        return new Vector3
+        {
+            x = source.x,
+            y = source.y,
+            z = source.z
+        };
     }
 
     private static _3dObject CreateExplodedObject(int objectId)
