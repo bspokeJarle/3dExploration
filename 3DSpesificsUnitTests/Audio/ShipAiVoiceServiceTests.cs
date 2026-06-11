@@ -161,6 +161,53 @@ public class ShipAiVoiceServiceTests
     }
 
     [TestMethod]
+    public void TrySpeak_GameStateSaved_UsesCheckpointVoiceAtNormalSpeed()
+    {
+        DateTime now = new(2026, 1, 1, 12, 0, 0);
+        var service = new ShipAiVoiceService(() => now, new Random(0));
+        var audio = new CapturingAudioPlayer();
+        var registry = new FakeSoundRegistry("ship_ai_tutorial_checkpoint");
+
+        bool played = service.TrySpeak(ShipAiVoiceCue.GameStateSaved, audio, registry);
+
+        Assert.IsTrue(played);
+        Assert.AreEqual("ship_ai_tutorial_checkpoint", audio.PlayedSoundIds.Single());
+        Assert.IsFalse(audio.SpeedOverrides.Single().HasValue,
+            "Gameplay save confirmation should reuse the training line, but not the tutorial playback speed.");
+    }
+
+    [TestMethod]
+    public void PendingGameplayCue_PlaysOnlyForGameplayScene()
+    {
+        DateTime now = new(2026, 1, 1, 12, 0, 0);
+        var service = new ShipAiVoiceService(() => now, new Random(0));
+        var audio = new CapturingAudioPlayer();
+        var registry = new FakeSoundRegistry("ship_ai_tutorial_checkpoint");
+
+        service.RequestGameplaySaveConfirmation();
+
+        Assert.IsFalse(service.TrySpeakPendingGameplayCue(isGameplayScene: false, audio, registry));
+        Assert.AreEqual(0, audio.PlayedSoundIds.Count);
+
+        Assert.IsFalse(service.TrySpeakPendingGameplayCue(isGameplayScene: true, audio, registry),
+            "A pending gameplay cue observed outside gameplay should be cleared instead of leaking into the next scene.");
+    }
+
+    [TestMethod]
+    public void PendingGameplayCue_PlaysSaveConfirmationInGameplay()
+    {
+        DateTime now = new(2026, 1, 1, 12, 0, 0);
+        var service = new ShipAiVoiceService(() => now, new Random(0));
+        var audio = new CapturingAudioPlayer();
+        var registry = new FakeSoundRegistry("ship_ai_tutorial_checkpoint");
+
+        service.RequestGameplaySaveConfirmation();
+
+        Assert.IsTrue(service.TrySpeakPendingGameplayCue(isGameplayScene: true, audio, registry));
+        Assert.AreEqual("ship_ai_tutorial_checkpoint", audio.PlayedSoundIds.Single());
+    }
+
+    [TestMethod]
     public void TrySpeak_DoesNotStartNextTutorialCueWhilePreviousSpeechIsActive()
     {
         DateTime now = new(2026, 1, 1, 12, 0, 0);

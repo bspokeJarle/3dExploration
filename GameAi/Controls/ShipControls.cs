@@ -444,9 +444,13 @@ namespace GameAiAndControls.Controls
                 gameplay.CurrentSceneType == SceneTypes.Simulation ||
                 gameplay.CurrentSceneType == SceneTypes.Tutorial;
 
+            // Only modal overlays should silence gameplay input. Non-modal in-game
+            // overlays (e.g. the "PLANET SECURED" victory status shown while the
+            // world fades out after killing the mothership) must keep the ship
+            // controllable until the fade-out actually completes.
             return !isGameplayScene ||
                    GameState.TutorialState.InstructionOverlayPauseActive ||
-                   overlay.ShowOverlay ||
+                   (overlay.ShowOverlay && overlay.IsModal) ||
                    gameplay.IsPaused;
         }
 
@@ -1692,6 +1696,9 @@ namespace GameAiAndControls.Controls
                 if (obj.ObjectName == "PowerUp" && obj.ImpactStatus?.HasCrashed == true)
                 {
                     bool isTutorialScene = GameState.GamePlayState.CurrentSceneType == SceneTypes.Tutorial;
+                    // Every powerup pickup advances the unlock tier (1 -> Decoy, 2 -> Lazer,
+                    // 3 -> future weapon), including the tutorial pickup. Tutorial pickups still
+                    // do not award campaign score and do not write a campaign checkpoint/save.
                     GameState.GamePlayState.PowerUpsCollected++;
 
                     if (!isTutorialScene)
@@ -1722,7 +1729,12 @@ namespace GameAiAndControls.Controls
                         GameState.GamePlayState.MotherShipsRemaining = motherShipsLeft;
                         GameState.GamePlayState.SaveCheckpoint();
 
-                        try { GameStatePersistence.SaveGameState(); } catch { }
+                        try
+                        {
+                            GameStatePersistence.SaveGameState();
+                            _shipAiVoiceService.RequestGameplaySaveConfirmation();
+                        }
+                        catch { }
                     }
 
                     if (_audio != null && _powerupSound != null)

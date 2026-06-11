@@ -41,7 +41,6 @@ namespace _3dRotations.Scenes.SceneSimulation
         private readonly int _seeders;
         private readonly int _drones;
         private readonly int _bombers;
-        private readonly int _powerUpSeeders;
         private readonly float _infectionThreshold;
         private readonly int _infectionSpreadRate;
         private readonly int _offscreenSpeedFactor;
@@ -78,8 +77,9 @@ namespace _3dRotations.Scenes.SceneSimulation
 
             // Scale enemies with round: base values + round increment, capped at sane maxima
             int round = _simulationRound;
-            _seeders = Math.Min(8 + round * 3, 40);
-            _powerUpSeeders = Math.Max(2, Math.Min(2 + round, 8));
+            int simulationSeederBase = Math.Min(8 + round * 3, 40);
+            int simulationPowerUpBase = Math.Max(2, Math.Min(2 + round, 8));
+            _seeders = simulationSeederBase + simulationPowerUpBase;
             _drones = Math.Min(12 + round * 2, 40);
             _bombers = Math.Min(5 + round, 15);
 
@@ -185,10 +185,8 @@ namespace _3dRotations.Scenes.SceneSimulation
                 world,
                 Surface,
                 GameState.SurfaceState.GlobalMapPosition,
-                regularCount: _seeders,
-                powerUpCount: _powerUpSeeders,
+                totalSeederCount: _seeders,
                 regularSeed: 9001 + (_simulationRound * 17),
-                powerUpSeed: 9101 + (_simulationRound * 17),
                 nearSeederCount: Math.Max(1, _seeders / 2));
 
             // MotherShip — Large from round 2+, Medium for rounds 0-1
@@ -552,7 +550,8 @@ namespace _3dRotations.Scenes.SceneSimulation
 
             int round = _simulationRound;
             string roundLabel = round == 0 ? "INITIAL" : $"ROUND {round + 1}";
-            int totalEnemies = _seeders + _powerUpSeeders + _drones + _bombers + 1;
+            int simulationPowerUps = SeederPlacementHelpers.GetPowerUpCountForSeeders(_seeders);
+            int totalEnemies = _seeders + _drones + _bombers + 1;
             string motherShipClass = _useLargeMotherShip ? "LARGE-CLASS WAR CARRIER" : "MEDIUM-CLASS CARRIER";
             string infectionThresholdText = _infectionThreshold.ToString("0.0", CultureInfo.InvariantCulture);
             string spreadDelayText = _spreadDelaySec.ToString("0.0", CultureInfo.InvariantCulture);
@@ -572,7 +571,7 @@ namespace _3dRotations.Scenes.SceneSimulation
                 $"A new infection wave is imminent. Train now.\n" +
                 $"Simulation type: {biomeName}\n\n" +
                 $"ENEMY COUNT: {totalEnemies} units total\n" +
-                $"  Seeders:          {_seeders + _powerUpSeeders} (incl. {_powerUpSeeders} power-up carriers)\n" +
+                $"  Seeders:          {_seeders} (incl. {simulationPowerUps} power-up carriers)\n" +
                 $"  Kamikaze Drones:  {_drones}\n" +
                 $"  Zeppelin Bombers: {_bombers}\n" +
                 $"  MotherShip:       1 x {motherShipClass}\n\n" +

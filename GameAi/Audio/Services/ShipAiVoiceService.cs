@@ -11,6 +11,7 @@ namespace GameAiAndControls.Audio.Services
         CollisionLoop,
         LowAltitudeRisk,
         PlanetBonusComplete,
+        GameStateSaved,
         TutorialIntro,
         TutorialThrust,
         TutorialWeapons,
@@ -121,6 +122,15 @@ namespace GameAiAndControls.Audio.Services
                     speechSeconds: 2.0,
                     "ship_ai_planet_bonus_complete"),
 
+                [ShipAiVoiceCue.GameStateSaved] = new(
+                    ShipAiVoicePriority.Warning,
+                    cooldownSeconds: 0.25,
+                    interruptCooldownSeconds: 0.25,
+                    volumeOverride: 0.75f,
+                    speedOverride: null,
+                    speechSeconds: 4.4,
+                    "ship_ai_tutorial_checkpoint"),
+
                 [ShipAiVoiceCue.TutorialIntro] = Tutorial("ship_ai_tutorial_intro", 5.8),
                 [ShipAiVoiceCue.TutorialThrust] = Tutorial("ship_ai_tutorial_thrust", 9.5),
                 [ShipAiVoiceCue.TutorialWeapons] = Tutorial("ship_ai_tutorial_weapons", 14.2),
@@ -151,6 +161,7 @@ namespace GameAiAndControls.Audio.Services
         private float _duckedMusicVolume = 1f;
         private IAudioInstance? _activeSpeechInstance;
         private IAudioPlayer? _activeAudioPlayer;
+        private ShipAiVoiceCue? _pendingGameplayCue;
 
         public ShipAiVoiceService(Func<DateTime>? now = null, Random? random = null)
         {
@@ -213,6 +224,35 @@ namespace GameAiAndControls.Audio.Services
             return true;
         }
 
+        public void RequestGameplaySaveConfirmation()
+        {
+            _pendingGameplayCue = ShipAiVoiceCue.GameStateSaved;
+        }
+
+        public bool TrySpeakPendingGameplayCue(
+            bool isGameplayScene,
+            IAudioPlayer? audioPlayer,
+            ISoundRegistry? soundRegistry)
+        {
+            Update(audioPlayer);
+
+            if (!isGameplayScene)
+            {
+                _pendingGameplayCue = null;
+                return false;
+            }
+
+            if (!_pendingGameplayCue.HasValue)
+                return false;
+
+            var cue = _pendingGameplayCue.Value;
+            if (!TrySpeak(cue, audioPlayer, soundRegistry))
+                return false;
+
+            _pendingGameplayCue = null;
+            return true;
+        }
+
         public void Update(IAudioPlayer? audioPlayer)
         {
             if (audioPlayer == null || !_musicDucked)
@@ -249,6 +289,7 @@ namespace GameAiAndControls.Audio.Services
 
             _activeSpeechInstance = null;
             _activeAudioPlayer = null;
+            _pendingGameplayCue = null;
             _musicDucked = false;
             _musicRestoreAt = DateTime.MinValue;
             _speechAvailableAt = now;

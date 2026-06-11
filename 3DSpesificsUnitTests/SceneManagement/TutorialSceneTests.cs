@@ -7,6 +7,7 @@ using CommonUtilities.CommonSetup;
 using CommonUtilities.Events;
 using CommonUtilities.Persistence;
 using Domain;
+using GameAiAndControls.Audio.Services;
 using GameAiAndControls.Controls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using System.Windows.Input;
@@ -237,7 +238,93 @@ public class TutorialSceneTests
         Assert.AreEqual(0, GameState.GamePlayState.TotalKills);
         Assert.AreEqual(0, GameState.GamePlayState.TotalShotsFired);
         Assert.AreEqual(0, GameState.GamePlayState.PowerUpsCollected,
-            "Temporary tutorial powerups should not unlock weapons or decoy for the real game.");
+            "Training is teaching only: no powerups, score, kills, shots, or deaths carry into the campaign.");
+    }
+
+    [TestMethod]
+    public void SceneHandler_LeavingTutorialRestoresPreTutorialCampaignProgress()
+    {
+        // Realistic flow: player has campaign progress, replays the tutorial, picks up the
+        // training powerup, then leaves. Pre-tutorial progress must be intact and any
+        // training-only score/kills/shots/deaths/powerups must be gone.
+        var handler = new SceneHandler();
+        var world = CreateRealWorld(handler);
+        GameState.GamePlayState.PlayerName = "Pilot";
+
+        // Pre-tutorial campaign progress (player had collected powerups, score, kills, etc.).
+        GameState.GamePlayState.Score = 1250;
+        GameState.GamePlayState.TotalKills = 7;
+        GameState.GamePlayState.TotalShotsFired = 33;
+        GameState.GamePlayState.TotalDeaths = 1;
+        GameState.GamePlayState.PowerUpsCollected = 2; // Decoy + Lazer already earned.
+
+        // Position SceneHandler at the tutorial slot.
+        var sceneIndexField = typeof(SceneHandler).GetField("currentSceneIndex", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        sceneIndexField?.SetValue(handler, 11);
+
+        // Realistic entry into the tutorial — this captures the pre-tutorial snapshot.
+        handler.SetupActiveScene(world);
+        Assert.AreEqual(SceneTypes.Tutorial, handler.GetActiveScene().SceneType,
+            "Test precondition: SetupActiveScene must put us into the tutorial slot.");
+
+        // Simulate training: collect the training powerup and rack up some training stats.
+        GameState.GamePlayState.PowerUpsCollected = 3;
+        GameState.GamePlayState.Score = 9999;
+        GameState.GamePlayState.TotalKills = 99;
+        GameState.GamePlayState.TotalShotsFired = 999;
+        GameState.GamePlayState.TotalDeaths = 9;
+        TutorialProgressService.MarkTutorialCompleted("Pilot");
+
+        handler.NextScene(world);
+
+        Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
+        Assert.AreEqual("Scene1", handler.GetActiveScene().GetType().Name);
+        Assert.AreEqual(1250, GameState.GamePlayState.Score,
+            "Pre-tutorial Score must be restored when leaving training.");
+        Assert.AreEqual(7, GameState.GamePlayState.TotalKills,
+            "Pre-tutorial TotalKills must be restored when leaving training.");
+        Assert.AreEqual(33, GameState.GamePlayState.TotalShotsFired,
+            "Pre-tutorial TotalShotsFired must be restored when leaving training.");
+        Assert.AreEqual(1, GameState.GamePlayState.TotalDeaths,
+            "Pre-tutorial TotalDeaths must be restored when leaving training.");
+        Assert.AreEqual(2, GameState.GamePlayState.PowerUpsCollected,
+            "Pre-tutorial PowerUpsCollected must be restored; training powerups must not leak.");
+        Assert.IsTrue(TutorialProgressService.HasCompletedTutorial("Pilot"),
+            "Training completion flag must persist independently of campaign progression.");
+    }
+
+    [TestMethod]
+    public void SceneHandler_PersistSceneBoundaryProgress_DoesNotQueueSaveConfirmationVoice()
+    {
+        // The save-confirmation voice belongs to in-scene player actions (powerup pickup,
+        // mothership kill). Scene boundaries are not player-driven save events, so the
+        // voice must NOT be requested when the boundary save runs between scenes.
+        ShipAiVoiceService.Shared.StopCurrentSpeech(); // clear any leftover state
+
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Pilot";
+        gps.SceneIndex = 1;
+        gps.CurrentSceneType = SceneTypes.Game;
+        gps.HasCheckpoint = true;
+        gps.CheckpointSeedersRemaining = 3;
+
+        var method = typeof(SceneHandler).GetMethod(
+            "PersistSceneBoundaryProgress",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+        Assert.IsNotNull(method, "PersistSceneBoundaryProgress must exist on SceneHandler.");
+
+        method!.Invoke(null, new object[] { gps });
+
+        Assert.IsFalse(gps.HasCheckpoint,
+            "Boundary save must still clear the in-scene checkpoint so it does not leak into the next scene.");
+
+        var pendingCueField = typeof(ShipAiVoiceService).GetField(
+            "_pendingGameplayCue",
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        Assert.IsNotNull(pendingCueField, "ShipAiVoiceService should expose _pendingGameplayCue via reflection.");
+        var pendingCue = pendingCueField!.GetValue(ShipAiVoiceService.Shared);
+        Assert.IsNull(pendingCue,
+            "Scene boundary save must NOT queue a gameplay save-confirmation voice cue.");
     }
 
     [TestMethod]

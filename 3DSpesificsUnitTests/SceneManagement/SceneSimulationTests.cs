@@ -7,6 +7,7 @@ using CommonUtilities.Events;
 using CommonUtilities.Persistence;
 using Domain;
 using System.Reflection;
+using static Domain._3dSpecificsImplementations;
 
 namespace _3DSpesificsUnitTests.SceneManagement;
 
@@ -191,6 +192,51 @@ public class SceneSimulationTests
         Assert.AreEqual(SceneBiomeTypes.Rainforrest, GameState.GamePlayState.CurrentSceneBiome);
         Assert.AreEqual(2, GameState.GamePlayState.SimulationRound);
         Assert.AreEqual(9, GameState.GamePlayState.SeedersRemaining);
+    }
+
+    [TestMethod]
+    public void SceneSimulationDirector_ActivatingMotherShip_SavesCheckpointAndHighscore()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Pilot";
+        gps.SceneIndex = 10;
+        gps.SimulationRound = 2;
+        gps.Score = 12345;
+        gps.TotalKills = 7;
+        gps.TotalShotsFired = 21;
+        gps.Lives = 2;
+        gps.Health = 64f;
+        gps.InitialSeeders = 3;
+        gps.InitialDrones = 2;
+        gps.InitialMotherShips = 1;
+
+        var motherShip = new _3dObject
+        {
+            ObjectId = 42,
+            ObjectName = "MotherShipLarge",
+            IsActive = false
+        };
+        GameState.SurfaceState.AiObjects.Add(motherShip);
+
+        var director = new SceneSimulationDirector();
+        director.Initialize(new GameEventBus(), new TestWorld());
+
+        director.Update();
+
+        Assert.IsTrue(motherShip.IsActive, "MotherShip should be activated after all seeders/drones are gone.");
+        Assert.IsTrue(gps.HasCheckpoint, "MotherShip activation should capture a checkpoint.");
+        Assert.AreEqual(12345, gps.CheckpointScore);
+        Assert.AreEqual(1, gps.CheckpointMotherShipsRemaining);
+
+        var saved = GameStatePersistence.LoadGameState("Pilot");
+        Assert.IsNotNull(saved);
+        Assert.IsTrue(saved!.HasCheckpoint);
+        Assert.AreEqual(12345, saved.Score);
+        Assert.AreEqual(1, saved.MotherShipsRemaining);
+
+        var highscores = HighscoreService.LoadLocalHighscores();
+        Assert.AreEqual(1, highscores.Entries.Count);
+        Assert.AreEqual(12345, highscores.Entries[0].Score);
     }
 
     [TestMethod]

@@ -110,10 +110,8 @@ namespace _3dRotations.Scene.Scene3
                 world,
                 Surface,
                 GameState.SurfaceState.GlobalMapPosition,
-                regularCount: 10,
-                powerUpCount: 2,
+                totalSeederCount: 12,
                 regularSeed: 3031,
-                powerUpSeed: 3032,
                 nearSeederCount: 6);
 
             // Mothership — spawns inactive, enters when all seeders and drones are destroyed

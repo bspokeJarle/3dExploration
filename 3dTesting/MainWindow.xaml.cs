@@ -276,18 +276,8 @@ namespace _3dTesting
 
         private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
-            try
-            {
-                var sceneType = world.SceneHandler.GetActiveScene().SceneType;
-                if (sceneType == SceneTypes.Game || sceneType == SceneTypes.Simulation)
-                {
-                    HighscoreService.SubmitFromGamePlay(GameState.GamePlayState);
-                    GameStatePersistence.SaveGameState();
-                }
-            }
-            catch
-            {
-            }
+            // Closing the window is not a checkpoint. Progress and highscores
+            // are persisted by checkpoint flows: powerups and motherships.
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)

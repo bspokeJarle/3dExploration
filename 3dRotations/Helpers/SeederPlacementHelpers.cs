@@ -126,51 +126,46 @@ namespace _3dRotations.Helpers
             I3dWorld world,
             ISurface surface,
             Vector3 center,
-            int regularCount,
-            int powerUpCount,
+            int totalSeederCount,
             int regularSeed,
-            int powerUpSeed,
             int nearSeederCount,
             float firstRingRadius = 7500f,
-            float ringRadiusStep = 11500f,
-            float powerUpMinRadius = 0f,
-            float powerUpMaxRadius = 0f)
+            float ringRadiusStep = 11500f)
         {
-            var regularPositions = CreateRingSeederPositions(
-                regularCount,
+            int safeTotal = Math.Max(0, totalSeederCount);
+            var positions = CreateRingSeederPositions(
+                safeTotal,
                 center,
                 regularSeed,
                 nearSeederCount,
                 firstRingRadius,
                 ringRadiusStep);
 
-            foreach (var seederPosition in regularPositions)
+            foreach (var seederPosition in positions)
             {
                 AddSeeder(world, surface, seederPosition, hasPowerUp: false);
             }
 
-            var powerUpPositions = powerUpMinRadius > 0f && powerUpMaxRadius > powerUpMinRadius
-                ? CreateRandomSeederPositions(
-                    powerUpCount,
-                    center,
-                    powerUpSeed,
-                    powerUpMinRadius,
-                    powerUpMaxRadius,
-                    avoidPositions: regularPositions,
-                    minDistance: 4500f)
-                : CreateCheckpointSeederPositions(
-                    powerUpCount,
-                    center,
-                    powerUpSeed,
-                    firstRingRadius,
-                    ringRadiusStep,
-                    avoidPositions: regularPositions,
-                    minDistance: 4500f);
+            // Powerups are no longer baked into specific seeders at spawn. Instead,
+            // the kill-time policy decides which kill index should mark a seeder as
+            // a powerup drop. This keeps drops well-spaced through the wave rather
+            // than randomly bunching at the end when the last surviving seeders
+            // happened to be the powerup-flagged ones.
+            int powerUpCount = GetPowerUpCountForSeeders(safeTotal);
+            PowerUpDropPolicy.ConfigureForWave(safeTotal, powerUpCount);
+        }
 
-            foreach (var seederPosition in powerUpPositions)
-            {
-                AddSeeder(world, surface, seederPosition, hasPowerUp: true);
-            }
+        /// <summary>
+        /// Returns the number of powerups a wave of <paramref name="totalSeederCount"/>
+        /// seeders should award. Brackets are calibrated against Scene4 (15 seeders -> 1),
+        /// with one extra powerup per ~8 additional seeders.
+        /// </summary>
+        public static int GetPowerUpCountForSeeders(int totalSeederCount)
+        {
+            if (totalSeederCount <= 0) return 0;
+            if (totalSeederCount <= 15) return 1;
+            if (totalSeederCount <= 22) return 2;
+            return 3;
         }
 
         private static void AddRing(
@@ -238,6 +233,109 @@ namespace _3dRotations.Helpers
             seeder.HasPowerUp = hasPowerUp;
             world.WorldInhabitants.Add(seeder);
             GameState.SurfaceState.AiObjects.Add(seeder);
+        }
+    }
+
+    /// <summary>
+    /// Scene-scoped policy that decides which seeder kill (by 1-based kill index)
+    /// should drop a powerup. Thresholds are spread evenly across the wave so
+    /// drops arrive predictably instead of bunching up at the last surviving
+    /// seeders.
+    /// </summary>
+    public static class PowerUpDropPolicy
+    {
+        private static readonly object _gate = new();
+        private static int _totalSeeders;
+        private static int _powerUpCount;
+        private static List<int> _thresholds = new();
+        private static int _seederKillsObserved;
+        private static int _powerUpsAwarded;
+
+        public static IReadOnlyList<int> CurrentThresholds
+        {
+            get { lock (_gate) return _thresholds.ToArray(); }
+        }
+
+        public static int SeederKillsObserved
+        {
+            get { lock (_gate) return _seederKillsObserved; }
+        }
+
+        /// <summary>
+        /// Resets the policy for a new wave. Called by SeederPlacementHelpers.AddSeederGroup
+        /// every time the scene is built (initial setup or after ResetActiveScene).
+        /// </summary>
+        public static void ConfigureForWave(int totalSeeders, int powerUpCount)
+        {
+            lock (_gate)
+            {
+                _totalSeeders = Math.Max(0, totalSeeders);
+                _powerUpCount = Math.Max(0, Math.Min(powerUpCount, _totalSeeders));
+                _thresholds = ComputeThresholds(_totalSeeders, _powerUpCount);
+                _seederKillsObserved = 0;
+                _powerUpsAwarded = 0;
+            }
+        }
+
+        /// <summary>
+        /// Records a seeder kill and returns true when the new kill index matches a
+        /// drop threshold. Callers should mark that seeder's HasPowerUp = true so the
+        /// existing drop pipeline in LiveGameLoop creates the PowerUp.
+        /// </summary>
+        public static bool TryConsumeDrop()
+        {
+            lock (_gate)
+            {
+                _seederKillsObserved++;
+                if (_powerUpsAwarded >= _thresholds.Count)
+                    return false;
+
+                int nextThreshold = _thresholds[_powerUpsAwarded];
+                if (_seederKillsObserved < nextThreshold)
+                    return false;
+
+                _powerUpsAwarded++;
+                return true;
+            }
+        }
+
+        internal static List<int> ComputeThresholds(int totalSeeders, int powerUpCount)
+        {
+            // Exposed via the public CurrentThresholds for game code; the pure helper
+            // is also reachable from tests in the same assembly.
+            return ComputeThresholdsCore(totalSeeders, powerUpCount);
+        }
+
+        /// <summary>
+        /// Pure helper that returns the kill-index thresholds for a given wave size and
+        /// powerup count. Exposed for unit tests in other assemblies.
+        /// </summary>
+        public static List<int> CalculateThresholds(int totalSeeders, int powerUpCount)
+        {
+            return ComputeThresholdsCore(totalSeeders, powerUpCount);
+        }
+
+        private static List<int> ComputeThresholdsCore(int totalSeeders, int powerUpCount)
+        {
+            var thresholds = new List<int>(Math.Max(0, powerUpCount));
+            if (totalSeeders <= 0 || powerUpCount <= 0)
+                return thresholds;
+
+            // Spread drops evenly across the wave. For K drops in N seeders, place the
+            // i-th drop (1-based) at ceil(N * i / (K + 1)). That guarantees the last
+            // drop happens before the very last seeder is killed and that drops are
+            // evenly distributed in between.
+            int previous = 0;
+            for (int i = 1; i <= powerUpCount; i++)
+            {
+                int threshold = (int)Math.Ceiling(totalSeeders * (double)i / (powerUpCount + 1));
+                if (threshold <= previous) threshold = previous + 1;
+                if (threshold > totalSeeders) threshold = totalSeeders;
+                thresholds.Add(threshold);
+                previous = threshold;
+            }
+
+            return thresholds;
         }
     }
 }

@@ -94,10 +94,8 @@ namespace _3dRotations.Scene.Scene1
                 world,
                 Surface,
                 GameState.SurfaceState.GlobalMapPosition,
-                regularCount: 6,
-                powerUpCount: 1,
+                totalSeederCount: 7,
                 regularSeed: 1011,
-                powerUpSeed: 1012,
                 nearSeederCount: 4);
 
             //Mothership for this Scene — spawns inactive, enters when all seeders are destroyed
