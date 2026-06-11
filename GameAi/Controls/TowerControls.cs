@@ -26,6 +26,31 @@ namespace GameAiAndControls.Controls
         private readonly _3dRotationCommon _rotate = new(); // Rotation fra CommonHelpers
         private readonly Dictionary<string, List<ITriangleMeshWithColor>> _originalTopPartMeshes = new();
 
+        // Shared XY pivots for the rotating head clusters. The whole tower is shifted by
+        // NormalizeSurfaceFootprintPivot during construction (the bottom-band centroid is
+        // pulled off (0,0) by asymmetric parts like the door decals), so the head ring is
+        // no longer centered on the world Z axis. Rotating around world origin would make
+        // the head orbit instead of spinning in place. All head parts of a given variant
+        // must share one pivot so they stay rigidly attached to each other.
+        private static readonly string[] TowerHeadPartNames =
+        {
+            "TowerHeadFrame",
+            "TowerHeadGlass",
+            "TowerRoof",
+            "TowerRadar"
+        };
+
+        private static readonly string[] SnowTowerHeadPartNames =
+        {
+            "SnowTowerHeadFrame",
+            "SnowTowerGlass",
+            "SnowTowerSnowLid",
+            "SnowTowerAntenna"
+        };
+
+        private Vector3? _towerHeadPivot;
+        private Vector3? _snowTowerHeadPivot;
+
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             //TODO: In time I want the trees to have animations on the branches, now nothing
@@ -83,18 +108,20 @@ namespace GameAiAndControls.Controls
 
             if (towerHeadFrame != null && towerHeadGlass != null && towerRoof != null && towerRadar != null)
             {
-                ApplyRotatedTriangles(towerHeadFrame);
-                ApplyRotatedTriangles(towerHeadGlass);
-                ApplyRotatedTriangles(towerRoof);
-                ApplyRotatedTriangles(towerRadar);
+                var pivot = ResolveTowerHeadPivot();
+                ApplyRotatedTriangles(towerHeadFrame, pivot);
+                ApplyRotatedTriangles(towerHeadGlass, pivot);
+                ApplyRotatedTriangles(towerRoof, pivot);
+                ApplyRotatedTriangles(towerRadar, pivot);
             }
 
             if (snowTowerHeadFrame != null && snowTowerGlass != null && snowTowerSnowLid != null && snowTowerAntenna != null)
             {
-                ApplyRotatedTriangles(snowTowerHeadFrame);
-                ApplyRotatedTriangles(snowTowerGlass);
-                ApplyRotatedTriangles(snowTowerSnowLid);
-                ApplyRotatedTriangles(snowTowerAntenna);
+                var pivot = ResolveSnowTowerHeadPivot();
+                ApplyRotatedTriangles(snowTowerHeadFrame, pivot);
+                ApplyRotatedTriangles(snowTowerGlass, pivot);
+                ApplyRotatedTriangles(snowTowerSnowLid, pivot);
+                ApplyRotatedTriangles(snowTowerAntenna, pivot);
             }
         }
 
@@ -126,7 +153,7 @@ namespace GameAiAndControls.Controls
             _originalTopPartMeshes[partName] = CloneTriangles(part.Triangles);
         }
 
-        private void ApplyRotatedTriangles(I3dObjectPart part)
+        private void ApplyRotatedTriangles(I3dObjectPart part, Vector3 pivot)
         {
             if (part.PartName == null)
                 return;
@@ -134,7 +161,94 @@ namespace GameAiAndControls.Controls
                 return;
 
             var source = CloneTriangles(baseMesh);
-            part.Triangles = _rotate.RotateZMesh(source, TowerZRotation);
+            TranslateMeshInPlace(source, -pivot.x, -pivot.y, 0f);
+            var rotated = _rotate.RotateZMesh(source, TowerZRotation);
+            TranslateMeshInPlace(rotated, pivot.x, pivot.y, 0f);
+            part.Triangles = rotated;
+        }
+
+        private Vector3 ResolveTowerHeadPivot()
+        {
+            if (_towerHeadPivot != null)
+                return _towerHeadPivot;
+
+            _towerHeadPivot = ComputeSharedXyCenter(TowerHeadPartNames);
+            return _towerHeadPivot;
+        }
+
+        private Vector3 ResolveSnowTowerHeadPivot()
+        {
+            if (_snowTowerHeadPivot != null)
+                return _snowTowerHeadPivot;
+
+            _snowTowerHeadPivot = ComputeSharedXyCenter(SnowTowerHeadPartNames);
+            return _snowTowerHeadPivot;
+        }
+
+        // Computes the XY bounding-box center across the cached original meshes of all
+        // named parts so a cluster of head parts can share a single pivot. Z is left at 0
+        // because we rotate around an axis parallel to world Z.
+        private Vector3 ComputeSharedXyCenter(string[] partNames)
+        {
+            float minX = float.MaxValue, minY = float.MaxValue;
+            float maxX = float.MinValue, maxY = float.MinValue;
+            bool any = false;
+
+            foreach (var name in partNames)
+            {
+                if (!_originalTopPartMeshes.TryGetValue(name, out var triangles) || triangles == null)
+                    continue;
+
+                foreach (var triangle in triangles)
+                {
+                    AccumulateXyBounds(triangle.vert1, ref minX, ref minY, ref maxX, ref maxY, ref any);
+                    AccumulateXyBounds(triangle.vert2, ref minX, ref minY, ref maxX, ref maxY, ref any);
+                    AccumulateXyBounds(triangle.vert3, ref minX, ref minY, ref maxX, ref maxY, ref any);
+                }
+            }
+
+            if (!any)
+                return new Vector3();
+
+            return new Vector3
+            {
+                x = (minX + maxX) * 0.5f,
+                y = (minY + maxY) * 0.5f,
+                z = 0f
+            };
+        }
+
+        private static void AccumulateXyBounds(IVector3 vertex, ref float minX, ref float minY, ref float maxX, ref float maxY, ref bool any)
+        {
+            if (vertex == null)
+                return;
+
+            if (vertex.x < minX) minX = vertex.x;
+            if (vertex.y < minY) minY = vertex.y;
+            if (vertex.x > maxX) maxX = vertex.x;
+            if (vertex.y > maxY) maxY = vertex.y;
+            any = true;
+        }
+
+        private static void TranslateMeshInPlace(List<ITriangleMeshWithColor> mesh, float shiftX, float shiftY, float shiftZ)
+        {
+            for (int i = 0; i < mesh.Count; i++)
+            {
+                var triangle = mesh[i];
+                TranslateVertexInPlace(triangle.vert1, shiftX, shiftY, shiftZ);
+                TranslateVertexInPlace(triangle.vert2, shiftX, shiftY, shiftZ);
+                TranslateVertexInPlace(triangle.vert3, shiftX, shiftY, shiftZ);
+            }
+        }
+
+        private static void TranslateVertexInPlace(IVector3 vertex, float shiftX, float shiftY, float shiftZ)
+        {
+            if (vertex == null)
+                return;
+
+            vertex.x += shiftX;
+            vertex.y += shiftY;
+            vertex.z += shiftZ;
         }
 
         private static List<ITriangleMeshWithColor> CloneTriangles(List<ITriangleMeshWithColor> source)
@@ -184,6 +298,8 @@ namespace GameAiAndControls.Controls
             TowerZRotation = 0f;
             _baseOffsetInitialized = false;
             _baseOffsetY = 0f;
+            _towerHeadPivot = null;
+            _snowTowerHeadPivot = null;
         }
 
         public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)

@@ -139,13 +139,11 @@ namespace _3dTesting.MainWindowClasses
         {
             if (state == null) return;
 
-            if (state.Type == ScreenOverlayType.Game)
-            {
-                _overlayRoot.Visibility = Visibility.Collapsed;
-                _overlayRoot.Opacity = 0;
-                return;
-            }
-
+            // Note: Game-type overlays were previously always collapsed here, which made the
+            // victory panel ("PLANET SECURED / ALL THREATS ELIMINATED") invisible even though
+            // LiveGameLoop built it. The HUD-only state is naturally hidden by ShouldRender
+            // returning false (Opacity fades to 0 when ShowOverlay is false), so we let Game
+            // overlays through and rely on the same gate as every other overlay type.
             if (!state.ShouldRender)
             {
                 _overlayRoot.Visibility = Visibility.Collapsed;

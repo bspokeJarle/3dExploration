@@ -55,12 +55,14 @@ namespace CommonUtilities.CommonSetup
 
         /// <summary>
         /// Returns true if the killed enemy should trigger a checkpoint auto-save.
-        /// Checkpoints are tied to enemies with powerups and all MotherShip types.
+        /// Checkpoints are tied to MotherShip kills only. Powerups produce a checkpoint
+        /// when the player actually picks them up (handled in ShipControls.CollectPowerUp),
+        /// not the moment a seeder drops one.
         /// </summary>
         public static bool IsCheckpointEnemy(string objectName, bool hasPowerUp)
         {
             if (objectName.StartsWith("MotherShip")) return true;
-            return hasPowerUp;
+            return false;
         }
     }
 }

@@ -64,7 +64,6 @@ namespace GameAiAndControls.Controls
                 private SoundDefinition? _impactThudSound;
                 private SoundDefinition? _surfaceThudSound;
         private IAudioInstance? _rocketInstance;
-        private IAudioInstance? _bulletInstance;
 
         private float _yawVelocity = 0f;
         private float _pitchVelocity = 0f;
@@ -300,12 +299,6 @@ namespace GameAiAndControls.Controls
             if (e.KeyCode == Keys.RShiftKey)
             {
                 _fireKeyHeld = false;
-
-                if (_bulletInstance != null)
-                {
-                    _bulletInstance.Stop(playEndSegment: true);
-                    _bulletInstance = null;
-                }
             }
 
             if (e.KeyCode == Keys.Left) _leftHeld = false;
@@ -426,12 +419,6 @@ namespace GameAiAndControls.Controls
             else if (e.Button == MouseButtons.Right)
             {
                 _fireKeyHeld = false;
-
-                if (_bulletInstance != null)
-                {
-                    _bulletInstance.Stop(playEndSegment: true);
-                    _bulletInstance = null;
-                }
             }
         }
 
@@ -444,9 +431,13 @@ namespace GameAiAndControls.Controls
                 gameplay.CurrentSceneType == SceneTypes.Simulation ||
                 gameplay.CurrentSceneType == SceneTypes.Tutorial;
 
+            // Only modal overlays should silence gameplay input. Non-modal in-game
+            // overlays (e.g. the "PLANET SECURED" victory status shown while the
+            // world fades out after killing the mothership) must keep the ship
+            // controllable until the fade-out actually completes.
             return !isGameplayScene ||
                    GameState.TutorialState.InstructionOverlayPauseActive ||
-                   overlay.ShowOverlay ||
+                   (overlay.ShowOverlay && overlay.IsModal) ||
                    gameplay.IsPaused;
         }
 
@@ -541,7 +532,6 @@ namespace GameAiAndControls.Controls
             Thrust = 0f;
             Physics.ThrustEffect = 0f;
             Physics.VerticalLiftFactor = 0f;
-            StopBulletAudio(playEndSegment: true);
 
             if (_rocketInstance != null)
             {
@@ -611,7 +601,6 @@ namespace GameAiAndControls.Controls
         {
             if (string.Equals(GameState.GamePlayState.ActivePowerup, "DECOY", StringComparison.OrdinalIgnoreCase))
             {
-                StopBulletAudio(playEndSegment: true);
                 DeployDecoy();
                 _fireKeyHeld = false;
                 return true;
@@ -646,9 +635,7 @@ namespace GameAiAndControls.Controls
                 return false;
 
             if (selectedWeapon == WeaponType.Bullet)
-                StartBulletAudioIfNeeded();
-            else
-                StopBulletAudio(playEndSegment: true);
+                PlayBulletOneShot();
 
             // Trigger cannon recoil for lazer and bullet
             if (selectedWeapon == WeaponType.Lazer ||
@@ -671,28 +658,18 @@ namespace GameAiAndControls.Controls
                    WeaponStartCoordinates?.vert1 != null;
         }
 
-        private void StartBulletAudioIfNeeded()
+        private void PlayBulletOneShot()
         {
-            if (_bulletInstance != null || _audio == null || _bulletSound == null || ParentObject is not _3dObject ship)
+            if (_audio == null || _bulletSound == null || ParentObject is not _3dObject ship)
                 return;
 
             var audioPosition = ship.GetAudioPosition();
-            _bulletInstance = _audio.Play(
+            _audio.PlayOneShot(
                 _bulletSound,
-                AudioPlayMode.SegmentedLoop,
                 new AudioPlayOptions
                 {
                     WorldPosition = new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z)
                 });
-        }
-
-        private void StopBulletAudio(bool playEndSegment)
-        {
-            if (_bulletInstance == null)
-                return;
-
-            _bulletInstance.Stop(playEndSegment: playEndSegment);
-            _bulletInstance = null;
         }
 
         private void DeployDecoy()
@@ -985,12 +962,6 @@ namespace GameAiAndControls.Controls
                 _rocketInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
             }
 
-            if (_bulletInstance != null)
-            {
-                var audioPosition = ((_3dObject)theObject).GetAudioPosition();
-                _bulletInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
-            }
-
             GameState.GamePlayState.UpdateAltitude(
                 GameState.SurfaceState.GlobalMapPosition.y,
                 Physics.FloorHeight,
@@ -1227,12 +1198,6 @@ namespace GameAiAndControls.Controls
             {
                 _rocketInstance.Stop(playEndSegment: true);
                 _rocketInstance = null;
-            }
-
-            if (_bulletInstance != null)
-            {
-                _bulletInstance.Stop(playEndSegment: false);
-                _bulletInstance = null;
             }
 
             // Play the ship explosion if audio is configured.
@@ -1692,6 +1657,9 @@ namespace GameAiAndControls.Controls
                 if (obj.ObjectName == "PowerUp" && obj.ImpactStatus?.HasCrashed == true)
                 {
                     bool isTutorialScene = GameState.GamePlayState.CurrentSceneType == SceneTypes.Tutorial;
+                    // Every powerup pickup advances the unlock tier (1 -> Decoy, 2 -> Lazer,
+                    // 3 -> future weapon), including the tutorial pickup. Tutorial pickups still
+                    // do not award campaign score and do not write a campaign checkpoint/save.
                     GameState.GamePlayState.PowerUpsCollected++;
 
                     if (!isTutorialScene)
@@ -1722,7 +1690,12 @@ namespace GameAiAndControls.Controls
                         GameState.GamePlayState.MotherShipsRemaining = motherShipsLeft;
                         GameState.GamePlayState.SaveCheckpoint();
 
-                        try { GameStatePersistence.SaveGameState(); } catch { }
+                        try
+                        {
+                            GameStatePersistence.SaveGameState();
+                            _shipAiVoiceService.RequestGameplaySaveConfirmation();
+                        }
+                        catch { }
                     }
 
                     if (_audio != null && _powerupSound != null)

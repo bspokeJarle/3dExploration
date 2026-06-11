@@ -638,15 +638,23 @@ public class SceneHandlerTests
     }
 
     [TestMethod]
-    public void Scene1_HasExactlyOnePowerUpSeeder()
+    public void Scene1_PowerUpDropPolicyConfiguredForWave()
     {
         var handler = new SceneHandler();
         var world = CreateWorld(handler);
 
         AdvanceScene(handler, world); // -> Scene1
 
-        int powerUpSeeders = world.WorldInhabitants.Count(o => o.ObjectName == "Seeder" && o.HasPowerUp);
-        Assert.AreEqual(1, powerUpSeeders, "Scene1 should have exactly 1 powerup seeder.");
+        // Powerups are no longer baked into specific seeders at spawn; the kill-time
+        // policy decides which kill index promotes a seeder to a powerup drop.
+        int powerUpSeedersAtSpawn = world.WorldInhabitants.Count(o => o.ObjectName == "Seeder" && o.HasPowerUp);
+        Assert.AreEqual(0, powerUpSeedersAtSpawn, "Scene1 must not flag any seeder as a powerup at spawn.");
+
+        int seederCount = world.WorldInhabitants.Count(o => o.ObjectName == "Seeder");
+        Assert.AreEqual(1, _3dRotations.Helpers.SeederPlacementHelpers.GetPowerUpCountForSeeders(seederCount),
+            "Scene1's seeder wave should award exactly 1 powerup via PowerUpDropPolicy.");
+        Assert.AreEqual(1, _3dRotations.Helpers.PowerUpDropPolicy.CurrentThresholds.Count,
+            "PowerUpDropPolicy should expose exactly 1 drop threshold for Scene1.");
     }
 
     [TestMethod]
@@ -703,7 +711,7 @@ public class SceneHandlerTests
         int s2Drones = totalDrones - s1Drones;
         int s2MotherShips = totalMotherShips - s1MotherShips;
 
-        Assert.AreEqual(10, s2Seeders, "Scene2 should add 10 seeders (5 + 3 + 2 powerup).");
+        Assert.AreEqual(10, s2Seeders, "Scene2 should add 10 seeders.");
         Assert.AreEqual(6, s2Drones, "Scene2 should add 6 kamikaze drones.");
         Assert.AreEqual(1, s2MotherShips, "Scene2 should add 1 mothership.");
     }
@@ -780,14 +788,16 @@ public class SceneHandlerTests
     }
 
     [TestMethod]
-    public void ResetActiveScene_TrimPrioritizesNonPowerUpEnemies()
+    public void ResetActiveScene_TrimsSeedersToCheckpointRemainingCount()
     {
         var handler = new SceneHandler();
         var world = CreateWorld(handler);
 
         AdvanceScene(handler, world); // -> Scene1
 
-        // Checkpoint with 1 seeder remaining — the powerup seeder should survive
+        // With kill-time powerup assignment, no seeder is flagged at spawn; trim should
+        // simply honor the remaining count regardless of the (currently empty) powerup
+        // priority branch.
         var gps = GameState.GamePlayState;
         gps.SeedersRemaining = 1;
         gps.DronesRemaining = 0;
@@ -801,8 +811,6 @@ public class SceneHandlerTests
 
         var remainingSeeders = world.WorldInhabitants.Where(o => o.ObjectName == "Seeder").ToList();
         Assert.AreEqual(1, remainingSeeders.Count);
-        Assert.IsTrue(remainingSeeders[0].HasPowerUp,
-            "The powerup seeder should be the last one remaining after trimming.");
     }
 
     // -----------------------------------------------------------------

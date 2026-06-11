@@ -38,6 +38,29 @@ namespace _3DWorld.Scene
         private bool _pendingTutorialStart = false;
         private SavedGameState? _pendingSavedState = null;
 
+        // Snapshot of campaign progression captured the moment we enter the tutorial scene,
+        // so leaving the tutorial restores exactly what the player had before training (and
+        // training-only pickups / score / kills disappear). Null means "no active snapshot".
+        private TutorialEntrySnapshot? _tutorialEntrySnapshot = null;
+
+        private readonly struct TutorialEntrySnapshot
+        {
+            public TutorialEntrySnapshot(long score, int kills, int shots, int deaths, int powerUps)
+            {
+                Score = score;
+                TotalKills = kills;
+                TotalShotsFired = shots;
+                TotalDeaths = deaths;
+                PowerUpsCollected = powerUps;
+            }
+
+            public long Score { get; }
+            public int TotalKills { get; }
+            public int TotalShotsFired { get; }
+            public int TotalDeaths { get; }
+            public int PowerUpsCollected { get; }
+        }
+
         public SceneHandler()
         {
             ApplySceneIndexOverrideFromGameState();
@@ -55,12 +78,30 @@ namespace _3DWorld.Scene
             ApplySceneIndexOverrideFromGameState();
             ResetSurfaceState();
             var scene = GetActiveScene();
+            CaptureTutorialEntrySnapshotIfNeeded(scene);
             scene.SetupSceneOverlay();
             ClearVideoOverlay();
             ApplySceneSettings(scene);
             scene.SetupScene((_3dWorld)world);
             InitializeDirector(scene, world);
             ValidateGameSceneSetup(scene, world);
+        }
+
+        private void CaptureTutorialEntrySnapshotIfNeeded(IScene scene)
+        {
+            // Snapshot pre-tutorial campaign progression so it can be restored when the
+            // player leaves training. Only capture on entry; if we are already inside the
+            // tutorial (e.g. ResetActiveScene during training) keep the original snapshot.
+            if (scene.SceneType != SceneTypes.Tutorial || _tutorialEntrySnapshot != null)
+                return;
+
+            var gps = GameState.GamePlayState;
+            _tutorialEntrySnapshot = new TutorialEntrySnapshot(
+                gps.Score,
+                gps.TotalKills,
+                gps.TotalShotsFired,
+                gps.TotalDeaths,
+                gps.PowerUpsCollected);
         }
 
         public void ResetActiveScene(I3dWorld world)
@@ -73,10 +114,6 @@ namespace _3DWorld.Scene
                 throw new InvalidOperationException($"Failed to create a new instance of scene type {GetActiveScene().GetType()}.");
 
             var gps = GameState.GamePlayState;
-
-            // Submit highscore and save progress before the state is reset
-            try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
-            try { GameStatePersistence.SaveGameState(); } catch { }
 
             bool hadCheckpoint = gps.HasCheckpoint;
             var snapshot = hadCheckpoint ? gps.CaptureCheckpointSnapshot() : default;
@@ -170,16 +207,6 @@ namespace _3DWorld.Scene
             int prevDeaths = gps.TotalDeaths;
             int prevPowerUps = gps.PowerUpsCollected;
 
-            // Submit highscore before the state is reset
-            if (!isTutorial)
-            {
-                try
-                {
-                    HighscoreService.SubmitFromGamePlay(gps);
-                }
-                catch { }
-            }
-
             if (isOutro || isSimulation)
             {
                 // After Outro or completing a Simulation round, always go to Simulation
@@ -212,7 +239,8 @@ namespace _3DWorld.Scene
                 gps.TotalDeaths = prevDeaths;
                 gps.PowerUpsCollected = prevPowerUps;
 
-                try { GameStatePersistence.SaveGameState(); } catch { }
+                PersistSceneBoundaryProgress(gps);
+
                 return;
             }
 
@@ -245,13 +273,42 @@ namespace _3DWorld.Scene
                 gps.TotalDeaths = prevDeaths;
                 gps.PowerUpsCollected = prevPowerUps;
             }
-
-            // Persist the freshly-entered scene after ResetForNewGame so an old
-            // scene checkpoint is not saved under the new scene index.
-            if (currentSceneIndex != 0)
+            else if (isTutorial &&
+                (nextScene.SceneType == SceneTypes.Game || nextScene.SceneType == SceneTypes.Simulation))
             {
-                try { GameStatePersistence.SaveGameState(); } catch { }
+                // Training is teaching only. The "training completed" flag is persisted via
+                // TutorialProgressService; nothing else from the tutorial should leak into
+                // the campaign. Restore the campaign progression snapshot we captured the
+                // moment the tutorial started — so pre-tutorial progress is preserved exactly
+                // and tutorial-only pickups / kills / shots / score disappear.
+                var snapshot = _tutorialEntrySnapshot;
+                if (snapshot.HasValue)
+                {
+                    gps.Score = snapshot.Value.Score;
+                    gps.TotalKills = snapshot.Value.TotalKills;
+                    gps.TotalShotsFired = snapshot.Value.TotalShotsFired;
+                    gps.TotalDeaths = snapshot.Value.TotalDeaths;
+                    gps.PowerUpsCollected = snapshot.Value.PowerUpsCollected;
+                }
+                else
+                {
+                    // Defensive fallback: no snapshot means we entered the tutorial through a
+                    // path that bypassed SetupActiveScene. Treat it as a fresh campaign start.
+                    gps.Score = 0;
+                    gps.TotalKills = 0;
+                    gps.TotalShotsFired = 0;
+                    gps.TotalDeaths = 0;
+                    gps.PowerUpsCollected = 0;
+                }
+
+                _tutorialEntrySnapshot = null;
             }
+
+            if (currentScene.SceneType == SceneTypes.Game && IsSceneBoundarySaveTarget(nextScene))
+            {
+                PersistSceneBoundaryProgress(gps);
+            }
+
         }
 
         public void UpdateFrame(I3dWorld world)
@@ -528,7 +585,7 @@ namespace _3DWorld.Scene
                     // Always restore score and stats so the player builds upon them
                     _pendingSavedState = saved;
 
-                    // Skip to saved scene only if it's a playable scene ahead of current
+                    // Skip to saved scene only if it is ahead of the current intro flow
                     if (CanTargetSavedScene(saved))
                     {
                         _targetSceneIndex = saved.SceneIndex;
@@ -666,7 +723,9 @@ namespace _3DWorld.Scene
                 return false;
 
             var sceneType = scenes[saved.SceneIndex].SceneType;
-            return sceneType == SceneTypes.Game || sceneType == SceneTypes.Simulation;
+            return sceneType == SceneTypes.Game ||
+                   sceneType == SceneTypes.Outro ||
+                   sceneType == SceneTypes.Simulation;
         }
 
         private int GetTutorialSceneIndex()
@@ -718,11 +777,8 @@ namespace _3DWorld.Scene
                 TutorialProgressService.MarkTutorialCompleted(gps.PlayerName);
             }
 
-            if (persistCurrentRun)
-            {
-                try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
-                try { GameStatePersistence.SaveGameState(); } catch { }
-            }
+            // Returning to intro is a menu transition only. Durable progress and
+            // highscores are written by checkpoint flows: powerups and motherships.
 
             // Clear all game objects so nothing from the current scene bleeds through
             world.WorldInhabitants.Clear();
@@ -895,6 +951,32 @@ namespace _3DWorld.Scene
         private static bool CheckpointInitialMatchesScene(int checkpointInitial, int sceneInitial)
         {
             return checkpointInitial <= 0 || sceneInitial <= 0 || checkpointInitial == sceneInitial;
+        }
+
+        private static bool IsSceneBoundarySaveTarget(IScene scene)
+        {
+            return scene.SceneType == SceneTypes.Game ||
+                   scene.SceneType == SceneTypes.Outro ||
+                   scene.SceneType == SceneTypes.Simulation;
+        }
+
+        private static void PersistSceneBoundaryProgress(GamePlayState gps)
+        {
+            // Scene completion starts the player on the next playable scene, but it
+            // must not carry an old in-scene checkpoint into the new scene. The AI
+            // save-confirmation voice is intentionally NOT requested here: scene
+            // boundaries are not player-driven save events, so the voice would feel
+            // disconnected from any in-game action. The voice still plays for the
+            // in-scene saves triggered by powerup pickup (ShipControls.CollectPowerUp)
+            // and mothership kills (LiveGameLoop.CleanupExplodedObjects).
+            ClearCheckpointState(gps);
+
+            try
+            {
+                GameStatePersistence.SaveGameState();
+            }
+            catch { }
+            try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
         }
 
         private static int CountSceneAi(string objectName)

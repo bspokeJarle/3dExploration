@@ -17,11 +17,11 @@ namespace _3DSpesificsUnitTests.SceneManagement;
 
 /// <summary>
 /// Tests covering:
-///   - Pressing X saves progress, does NOT delete the save file.
+///   - Pressing X returns to intro without overwriting checkpoint progress.
 ///   - After returning to intro the world is cleared (no bleed-through from the game scene).
 ///   - After returning to intro the scene resets to index 0 (Intro).
 ///   - SimulationRound is persisted across save/load cycles.
-///   - SimulationRound survives ReturnToIntro (X press) and is restored on next login.
+///   - SimulationRound is not saved by ReturnToIntro (X press).
 ///   - SimulationRound is NOT reset by ResetForNewGame.
 /// </summary>
 [TestClass]
@@ -57,7 +57,7 @@ public class ReturnToIntroAndSimulationRoundTests
     }
 
     // ------------------------------------------------------------------
-    // X key: save file must survive
+    // X key: existing checkpoint save must survive unchanged
     // ------------------------------------------------------------------
 
     [TestMethod]
@@ -82,7 +82,7 @@ public class ReturnToIntroAndSimulationRoundTests
     }
 
     [TestMethod]
-    public void ReturnToIntro_SaveFileContainsUpdatedState()
+    public void ReturnToIntro_DoesNotOverwriteExistingCheckpointSave()
     {
         var gps = GameState.GamePlayState;
         gps.PlayerName = "Pilot";
@@ -102,8 +102,46 @@ public class ReturnToIntroAndSimulationRoundTests
 
         var saved = GameStatePersistence.LoadGameState("Pilot");
         Assert.IsNotNull(saved);
-        Assert.AreEqual(7500, saved.Score, "Save should reflect the score at the time X was pressed.");
-        Assert.AreEqual(60, saved.TotalKills, "Kill count at X time should be saved.");
+        Assert.AreEqual(5000, saved.Score, "ReturnToIntro must not overwrite the last checkpoint score.");
+        Assert.AreEqual(42, saved.TotalKills, "ReturnToIntro must not overwrite checkpoint kill count.");
+    }
+
+    [TestMethod]
+    public void ReturnToIntro_DoesNotCreateSaveForUnsavedRun()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Pilot";
+        gps.SceneIndex = 3;
+        gps.Score = 5000;
+
+        Assert.IsFalse(PersistenceSetup.HasPlayerSaveFile("Pilot"), "Pre-condition: no save file should exist.");
+
+        var handler = new SceneHandler();
+        var world = CreateMinimalWorld(handler);
+        SetCurrentSceneIndex(handler, 3);
+        InvokeReturnToIntro(handler, world);
+
+        Assert.IsFalse(PersistenceSetup.HasPlayerSaveFile("Pilot"),
+            "ReturnToIntro must not create a save file; only checkpoints should persist progress.");
+    }
+
+    [TestMethod]
+    public void ReturnToIntro_DoesNotSubmitHighscore()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Pilot";
+        gps.SceneIndex = 3;
+        gps.Score = 99999;
+        gps.TotalKills = 99;
+
+        var handler = new SceneHandler();
+        var world = CreateMinimalWorld(handler);
+        SetCurrentSceneIndex(handler, 3);
+        InvokeReturnToIntro(handler, world);
+
+        var highscores = HighscoreService.LoadLocalHighscores();
+        Assert.AreEqual(0, highscores.Entries.Count,
+            "ReturnToIntro must not submit highscores; checkpoint flows submit them.");
     }
 
     // ------------------------------------------------------------------
@@ -224,7 +262,7 @@ public class ReturnToIntroAndSimulationRoundTests
     }
 
     [TestMethod]
-    public void SimulationRound_SurvivesReturnToIntro()
+    public void SimulationRound_IsNotSavedByReturnToIntro()
     {
         var gps = GameState.GamePlayState;
         gps.PlayerName = "Pilot";
@@ -237,11 +275,8 @@ public class ReturnToIntroAndSimulationRoundTests
         SetCurrentSceneIndex(handler, 10);
         InvokeReturnToIntro(handler, world);
 
-        // Load the save that X wrote
-        var saved = GameStatePersistence.LoadGameState("Pilot");
-        Assert.IsNotNull(saved);
-        Assert.AreEqual(3, saved.SimulationRound,
-            "SimulationRound must be included in the save written by X.");
+        Assert.IsFalse(PersistenceSetup.HasPlayerSaveFile("Pilot"),
+            "ReturnToIntro must not create a save file for simulation state; checkpoints own persistence.");
     }
 
     [TestMethod]
@@ -285,7 +320,12 @@ public class ReturnToIntroAndSimulationRoundTests
 
     private static void InvokeReturnToIntro(SceneHandler handler, _3dWorld world)
     {
-        var method = typeof(SceneHandler).GetMethod("ReturnToIntro", BindingFlags.NonPublic | BindingFlags.Instance);
+        var method = typeof(SceneHandler).GetMethod(
+            "ReturnToIntro",
+            BindingFlags.NonPublic | BindingFlags.Instance,
+            binder: null,
+            types: new[] { typeof(I3dWorld) },
+            modifiers: null);
         method?.Invoke(handler, new object[] { world });
     }
 

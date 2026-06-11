@@ -29,6 +29,11 @@ public class SceneHandlerSavedStateIsolationTests
         GameState.SurfaceState = new SurfaceState();
         GameState.ScreenOverlayState = new ScreenOverlayState();
         GameState.ObjectIdCounter = 0;
+
+        TutorialProgressService.MarkTutorialCompleted("Jarle");
+        TutorialProgressService.MarkTutorialCompleted("Anna");
+        TutorialProgressService.MarkTutorialCompleted("CharlieB");
+        TutorialProgressService.MarkTutorialCompleted("Pilot");
     }
 
     [TestCleanup]
@@ -96,10 +101,11 @@ public class SceneHandlerSavedStateIsolationTests
     {
         var handler = new SceneHandler();
         var world = CreateWorld(handler);
+        handler.NextScene(world); // Scene1
 
         var gps = GameState.GamePlayState;
         gps.PlayerName = "Jarle";
-        gps.SceneIndex = 0;
+        gps.SceneIndex = 1;
         gps.Score = 1234;
         gps.PowerUpsCollected = 2;
         gps.SeedersRemaining = 0;
@@ -115,11 +121,68 @@ public class SceneHandlerSavedStateIsolationTests
         var saved = GameStatePersistence.LoadGameState("Jarle");
 
         Assert.IsNotNull(saved);
-        Assert.AreEqual(1, saved!.SceneIndex);
+        Assert.AreEqual(2, saved!.SceneIndex);
         Assert.IsFalse(saved.HasCheckpoint,
             "Entering a new scene should save fresh scene progress, not the previous scene's checkpoint.");
         Assert.AreEqual(1234, saved.Score);
         Assert.AreEqual(2, saved.PowerUpsCollected);
+    }
+
+    [TestMethod]
+    public void NextScene_FromIntro_DoesNotCreateSave()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        GameState.GamePlayState.PlayerName = "Jarle";
+
+        handler.NextScene(world);
+
+        Assert.IsFalse(PersistenceSetup.HasPlayerSaveFile("Jarle"),
+            "Starting from Intro should not create durable progress; scene completion owns this save.");
+        Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
+    }
+
+    [TestMethod]
+    public void NextScene_FromFinalGameScene_SavesOutroAsNextScene()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        SetPrivateField(handler, "currentSceneIndex", 8);
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Jarle";
+        gps.SceneIndex = 8;
+        gps.Score = 8000;
+        gps.TotalKills = 44;
+
+        handler.NextScene(world);
+
+        var saved = GameStatePersistence.LoadGameState("Jarle");
+        Assert.IsNotNull(saved);
+        Assert.AreEqual(SceneTypes.Outro, handler.GetActiveScene().SceneType);
+        Assert.AreEqual(9, saved!.SceneIndex,
+            "Completing the final game scene should resume at the Outro instead of replaying Scene8.");
+        Assert.IsFalse(saved.HasCheckpoint);
+        Assert.AreEqual(0, saved.Score,
+            "Outro keeps the existing non-game stat reset behavior; this test only locks the resume scene.");
+    }
+
+    [TestMethod]
+    public void CanTargetSavedScene_AllowsOutroProgress()
+    {
+        var handler = new SceneHandler();
+        var saved = new SavedGameState
+        {
+            PlayerName = "Jarle",
+            SceneIndex = 9
+        };
+
+        var method = typeof(SceneHandler).GetMethod("CanTargetSavedScene", BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(method);
+
+        var result = (bool)method!.Invoke(handler, new object[] { saved })!;
+        Assert.IsTrue(result, "Saved Outro progress should be restorable after completing the final game scene.");
     }
 
     [TestMethod]

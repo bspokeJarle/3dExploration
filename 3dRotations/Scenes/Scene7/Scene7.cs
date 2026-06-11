@@ -100,10 +100,8 @@ namespace _3dRotations.Scene.Scene7
                 world,
                 Surface,
                 GameState.SurfaceState.GlobalMapPosition,
-                regularCount: 19,
-                powerUpCount: 4,
+                totalSeederCount: 23,
                 regularSeed: 7071,
-                powerUpSeed: 7072,
                 nearSeederCount: 10);
 
             var motherShipLarge = MotherShipLarge.CreateMotherShipLarge(Surface);

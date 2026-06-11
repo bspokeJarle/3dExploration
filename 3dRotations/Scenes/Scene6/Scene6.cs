@@ -104,10 +104,8 @@ namespace _3dRotations.Scene.Scene6
                 world,
                 Surface,
                 GameState.SurfaceState.GlobalMapPosition,
-                regularCount: 17,
-                powerUpCount: 4,
+                totalSeederCount: 21,
                 regularSeed: 6061,
-                powerUpSeed: 6062,
                 nearSeederCount: 5,
                 firstRingRadius: 7500f,
                 ringRadiusStep: 11500f);

@@ -1,3 +1,4 @@
+using _3dRotations.Helpers;
 using _3dRotations.World.Objects;
 using _3dTesting._3dRotation;
 using _3dTesting._Coordinates;
@@ -443,7 +444,10 @@ namespace _3dTesting.MainWindowClasses.Loops
             if (activeScene != null)
             {
                 HandleMusic(renderedList, activeScene.SceneMusic);
-                ShipAiVoiceService.Shared.Update(audioPlayer);
+                ShipAiVoiceService.Shared.TrySpeakPendingGameplayCue(
+                    activeScene.SceneType == SceneTypes.Game || activeScene.SceneType == SceneTypes.Simulation,
+                    audioPlayer,
+                    soundRegistry);
             }
             musicMs = MarkPhase();
 
@@ -616,6 +620,16 @@ namespace _3dTesting.MainWindowClasses.Loops
                                 "Progression");
                         }
 
+                        // Kill-time powerup assignment: seeders are spawned with HasPowerUp=false
+                        // and only get promoted to a powerup drop when their kill index matches
+                        // a threshold from the wave-wide PowerUpDropPolicy. This spreads drops
+                        // evenly through the wave instead of bunching them at the end.
+                        if (!isTutorialScene && obj.ObjectName == "Seeder")
+                        {
+                            if (PowerUpDropPolicy.TryConsumeDrop())
+                                obj.HasPowerUp = true;
+                        }
+
                         if (!isTutorialScene && GameSetup.IsCheckpointEnemy(obj.ObjectName, obj.HasPowerUp))
                             checkpointTriggered = true;
                     }
@@ -666,7 +680,12 @@ namespace _3dTesting.MainWindowClasses.Loops
                     gps.MotherShipsRemaining = motherShipsLeft;
 
                     gps.SaveCheckpoint();
-                    try { GameStatePersistence.SaveGameState(); } catch { }
+                    try
+                    {
+                        GameStatePersistence.SaveGameState();
+                        ShipAiVoiceService.Shared.RequestGameplaySaveConfirmation();
+                    }
+                    catch { }
                     try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
                 }
 

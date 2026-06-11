@@ -67,7 +67,9 @@ public class ShipWeaponAudioTests
 
         Assert.AreEqual(1, fixture.Audio.PlayCount);
         Assert.AreEqual("bullet_main", fixture.Audio.LastDefinitionId);
-        Assert.AreEqual(AudioPlayMode.SegmentedLoop, fixture.Audio.LastMode);
+        // Regression: bullet must play as a single-shot "pow" per trigger press.
+        // It was previously a SegmentedLoop, which could get stuck looping endlessly.
+        Assert.AreEqual(AudioPlayMode.OneShot, fixture.Audio.LastMode);
         Assert.AreEqual(1, fixture.Weapons.ActiveWeapons.Count);
         Assert.AreEqual(1, GameState.GamePlayState.TotalShotsFired);
     }
@@ -124,7 +126,10 @@ public class ShipWeaponAudioTests
         GameState.GamePlayState.PowerUpsCollected = 2;
         GameState.GamePlayState.SelectedWeapon = WeaponType.Bullet;
         GameState.GamePlayState.ActivePowerup = "BULLET";
+        // The production intro overlay is modal (SetIntroPreset sets IsModal=true),
+        // so the input gate must continue to silence input while it is visible.
         GameState.ScreenOverlayState.Type = ScreenOverlayType.Intro;
+        GameState.ScreenOverlayState.IsModal = true;
         GameState.ScreenOverlayState.ShowOverlay = true;
 
         InvokeKeyDown(fixture.Controls, Keys.D3);
@@ -135,10 +140,11 @@ public class ShipWeaponAudioTests
     }
 
     [TestMethod]
-    public void KeyDown_WhenGameOverlayIsVisible_DoesNotAffectGameplayInput()
+    public void KeyDown_WhenModalOverlayIsVisible_DoesNotAffectGameplayInput()
     {
         using var fixture = CreateReadyShip(withWeaponGuides: true);
         GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
+        GameState.ScreenOverlayState.IsModal = true;
         GameState.ScreenOverlayState.ShowOverlay = true;
 
         InvokeKeyDown(fixture.Controls, Keys.RShiftKey);
@@ -152,13 +158,38 @@ public class ShipWeaponAudioTests
     }
 
     [TestMethod]
-    public void MoveObject_WhenOverlayAppears_ClearsHeldGameplayInput()
+    public void KeyDown_WhenNonModalGameOverlayIsVisible_StillAcceptsGameplayInput()
+    {
+        // Regression: after killing the mothership the victory flow shows a
+        // non-modal Game overlay ("PLANET SECURED") and then triggers a world
+        // fade-out. The ship must remain controllable during that window so the
+        // pilot can finish the planet instead of crashing.
+        using var fixture = CreateReadyShip(withWeaponGuides: true);
+        GameState.ScreenOverlayState.Type = ScreenOverlayType.Game;
+        GameState.ScreenOverlayState.IsModal = false;
+        GameState.ScreenOverlayState.ShowOverlay = true;
+
+        InvokeKeyDown(fixture.Controls, Keys.Space);
+        InvokeKeyDown(fixture.Controls, Keys.RShiftKey);
+
+        Assert.IsTrue(fixture.Controls.ThrustOn,
+            "Thrust must remain available while a non-modal in-game overlay is visible.");
+        Assert.AreEqual(1, fixture.Weapons.ActiveWeapons.Count,
+            "Weapons must still fire while a non-modal in-game overlay is visible.");
+        Assert.AreEqual(1, GameState.GamePlayState.TotalShotsFired);
+    }
+
+    [TestMethod]
+    public void MoveObject_WhenModalOverlayAppears_ClearsHeldGameplayInput()
     {
         using var fixture = CreateReadyShip(withWeaponGuides: true);
         InvokeKeyDown(fixture.Controls, Keys.Space);
         Assert.IsTrue(fixture.Controls.ThrustOn);
 
+        // SetIntroPreset/SetOutroPreset/SetNameEntryPreset all set IsModal=true,
+        // which is the contract the input gate relies on.
         GameState.ScreenOverlayState.Type = ScreenOverlayType.Intro;
+        GameState.ScreenOverlayState.IsModal = true;
         GameState.ScreenOverlayState.ShowOverlay = true;
 
         fixture.Controls.MoveObject(fixture.Ship, audioPlayer: null, soundRegistry: null);

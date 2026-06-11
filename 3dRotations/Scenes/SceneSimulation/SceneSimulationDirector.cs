@@ -1,6 +1,7 @@
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.Persistence;
 using Domain;
+using GameAiAndControls.Audio.Services;
 
 namespace _3dRotations.Scenes.SceneSimulation
 {
@@ -76,11 +77,28 @@ namespace _3dRotations.Scenes.SceneSimulation
                     msCount++;
             }
 
+            if (activated)
+            {
+                var gps = GameState.GamePlayState;
+                gps.SeedersRemaining = liveSeeders;
+                gps.DronesRemaining = liveDrones;
+                gps.MotherShipsRemaining = msCount;
+                gps.ShowMotherShipHealthBar = true;
+                gps.SaveCheckpoint();
+
+                try
+                {
+                    GameStatePersistence.SaveGameState();
+                    ShipAiVoiceService.Shared.RequestGameplaySaveConfirmation();
+                }
+                catch { }
+                try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
+            }
+
             if (activated || msCount > 0)
             {
                 _motherShipActivated = true;
                 GameState.GamePlayState.ShowMotherShipHealthBar = true;
-                try { GameStatePersistence.SaveGameState(); } catch { }
             }
         }
 

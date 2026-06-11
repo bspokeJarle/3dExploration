@@ -1,6 +1,7 @@
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.Persistence;
 using Domain;
+using GameAiAndControls.Audio.Services;
 
 namespace _3dRotations.Scene.Scene5
 {
@@ -87,7 +88,12 @@ namespace _3dRotations.Scene.Scene5
                 gps.DronesRemaining = liveDrones;
                 gps.MotherShipsRemaining = msCount;
                 gps.SaveCheckpoint();
-                try { GameStatePersistence.SaveGameState(); } catch { }
+                try
+                {
+                    GameStatePersistence.SaveGameState();
+                    ShipAiVoiceService.Shared.RequestGameplaySaveConfirmation();
+                }
+                catch { }
                 try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
             }
 
