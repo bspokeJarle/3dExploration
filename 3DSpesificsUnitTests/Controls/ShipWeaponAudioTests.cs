@@ -67,7 +67,9 @@ public class ShipWeaponAudioTests
 
         Assert.AreEqual(1, fixture.Audio.PlayCount);
         Assert.AreEqual("bullet_main", fixture.Audio.LastDefinitionId);
-        Assert.AreEqual(AudioPlayMode.SegmentedLoop, fixture.Audio.LastMode);
+        // Regression: bullet must play as a single-shot "pow" per trigger press.
+        // It was previously a SegmentedLoop, which could get stuck looping endlessly.
+        Assert.AreEqual(AudioPlayMode.OneShot, fixture.Audio.LastMode);
         Assert.AreEqual(1, fixture.Weapons.ActiveWeapons.Count);
         Assert.AreEqual(1, GameState.GamePlayState.TotalShotsFired);
     }
