@@ -16,6 +16,7 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
         private const float BaseZRotation = 90f;
         private const float RotationDegreesPerSecond = 60f;
         private const float ExplosionForce = 200f;
+        private const float SurfaceAltitudeLift = 30f;
 
         // Propeller animation
         private const float PropellerDegreesPerSecond = 720f;
@@ -452,7 +453,7 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
             if (!_syncInitialized)
             {
                 _syncInitialized = true;
-                _syncY = theObject.ObjectOffsets?.y ?? 0f;
+                _syncY = (theObject.ObjectOffsets?.y ?? 0f) - SurfaceAltitudeLift;
             }
 
             theObject.ObjectOffsets = SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY);

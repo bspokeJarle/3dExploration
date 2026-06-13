@@ -1,5 +1,6 @@
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
 using _3dRotations.World.Objects;
@@ -158,6 +159,68 @@ public class ShipWeaponAudioTests
     }
 
     [TestMethod]
+    public void KeyDown_WhenGameplayIsPaused_DoesNotAffectGameplayInput()
+    {
+        using var fixture = CreateReadyShip(withWeaponGuides: true);
+        GameState.GamePlayState.Phase = GamePhase.Paused;
+
+        InvokeKeyDown(fixture.Controls, Keys.RShiftKey);
+        InvokeKeyDown(fixture.Controls, Keys.Space);
+
+        Assert.AreEqual(0, fixture.Audio.PlayCount);
+        Assert.AreEqual(0, fixture.Weapons.ActiveWeapons.Count);
+        Assert.AreEqual(0, GameState.GamePlayState.TotalShotsFired);
+        Assert.IsFalse(fixture.Controls.ThrustOn);
+        Assert.AreEqual(0f, fixture.Controls.Thrust, 0.001f);
+    }
+
+    [TestMethod]
+    public void MouseDown_WhenGameplayIsPaused_DoesNotAffectGameplayInput()
+    {
+        using var fixture = CreateReadyShip(withWeaponGuides: true);
+        GameState.GamePlayState.Phase = GamePhase.Paused;
+
+        InvokeMouseDown(fixture.Controls, MouseButtons.Left);
+        InvokeMouseDown(fixture.Controls, MouseButtons.Right);
+
+        Assert.AreEqual(0, fixture.Audio.PlayCount);
+        Assert.AreEqual(0, fixture.Weapons.ActiveWeapons.Count);
+        Assert.AreEqual(0, GameState.GamePlayState.TotalShotsFired);
+        Assert.IsFalse(fixture.Controls.ThrustOn);
+        Assert.AreEqual(0f, fixture.Controls.Thrust, 0.001f);
+    }
+
+    [TestMethod]
+    public void ClearGameplayInputForPause_WhenThrustIsHeld_StopsThrustImmediately()
+    {
+        using var fixture = CreateReadyShip(withWeaponGuides: true);
+
+        InvokeKeyDown(fixture.Controls, Keys.Space);
+        Assert.IsTrue(fixture.Controls.ThrustOn);
+
+        fixture.Controls.ClearGameplayInputForPause();
+
+        Assert.IsFalse(fixture.Controls.ThrustOn);
+        Assert.AreEqual(0f, fixture.Controls.Thrust, 0.001f);
+        Assert.AreEqual(0f, fixture.Controls.Physics.ThrustEffect, 0.001f);
+        Assert.AreEqual(0f, fixture.Controls.Physics.VerticalLiftFactor, 0.001f);
+    }
+
+    [TestMethod]
+    public void ResumeFromGameplayPause_PausesGravityForResumeWindow()
+    {
+        using var fixture = CreateReadyShip(withWeaponGuides: true);
+        InvokeKeyDown(fixture.Controls, Keys.Space);
+        Assert.IsTrue(fixture.Controls.ThrustOn);
+
+        fixture.Controls.ResumeFromGameplayPause(fixture.Ship);
+
+        Assert.IsFalse(fixture.Controls.ThrustOn);
+        Assert.AreEqual(0f, fixture.Controls.Thrust, 0.001f);
+        Assert.IsTrue(GameState.ShipState.ShipGravityDisabledUntilUtc > DateTime.UtcNow);
+    }
+
+    [TestMethod]
     public void KeyDown_WhenNonModalGameOverlayIsVisible_StillAcceptsGameplayInput()
     {
         // Regression: after killing the mothership the victory flow shows a
@@ -197,6 +260,23 @@ public class ShipWeaponAudioTests
         Assert.IsFalse(fixture.Controls.ThrustOn);
         Assert.AreEqual(0f, fixture.Controls.Thrust, 0.001f);
         Assert.AreEqual(0f, GameState.GamePlayState.Thrust, 0.001f);
+    }
+
+    [TestMethod]
+    public void MoveObject_WhenBomberBombHitsShip_UsesBomberBombDamage()
+    {
+        using var fixture = CreateReadyShip(withWeaponGuides: true);
+        fixture.Ship.ImpactStatus = new ImpactStatus
+        {
+            HasCrashed = true,
+            ObjectName = "BomberBomb",
+            ObjectHealth = 100
+        };
+
+        fixture.Controls.MoveObject(fixture.Ship, audioPlayer: null, soundRegistry: null);
+
+        Assert.AreEqual(100 - EnemySetup.BomberBombCollisionDamage, fixture.Ship.ImpactStatus.ObjectHealth);
+        Assert.IsFalse(fixture.Ship.ImpactStatus.HasCrashed);
     }
 
     private static ShipFixture CreateReadyShip(bool withWeaponGuides)
@@ -257,6 +337,16 @@ public class ShipWeaponAudioTests
 
         Assert.IsNotNull(method);
         method!.Invoke(controls, new object[] { controls, new KeyEventArgs(key) });
+    }
+
+    private static void InvokeMouseDown(ShipControls controls, MouseButtons button)
+    {
+        var method = typeof(ShipControls).GetMethod(
+            "GlobalHookMouseDown",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.IsNotNull(method);
+        method!.Invoke(controls, new object[] { controls, new MouseEventArgs(button, clicks: 1, x: 100, y: 100, delta: 0) });
     }
 
     private sealed class ShipFixture : IDisposable

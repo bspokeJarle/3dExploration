@@ -42,7 +42,8 @@ namespace _3dRotations.World.Objects
                 ParentSurface = parentSurface,
                 ObjectName = "PowerUp",
                 CrashBoxDebugMode = false,
-                ImpactStatus = new ImpactStatus { ObjectName = "PowerUp" }
+                ImpactStatus = new ImpactStatus { ObjectName = "PowerUp" },
+                HasShadow = true
             };
 
             if (body != null)
@@ -59,6 +60,7 @@ namespace _3dRotations.World.Objects
                 powerup.CrashBoxes = crash;
 
             _3dObjectHelpers.ApplyScaleToObject(powerup, ZoomRatio);
+            _3dObjectHelpers.AddSimplifiedShadowPart(powerup, useFlatQuad: true);
 
             return powerup;
         }

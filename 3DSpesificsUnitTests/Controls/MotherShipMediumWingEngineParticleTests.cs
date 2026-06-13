@@ -1,6 +1,7 @@
 using _3dRotations.World.Objects;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls.MotherShipMediumControls;
@@ -403,6 +404,36 @@ public class MotherShipMediumWingEngineParticleTests
             $"Left engine start is not on left-side screen half after runtime pipeline. left.x={left.x:F3}");
         Assert.IsTrue(right.x < 0f,
             $"Right engine start is not on right-side screen half after runtime pipeline. right.x={right.x:F3}");
+    }
+
+    [TestMethod]
+    public void RuntimePipeline_medium_mothership_syncs_thirty_units_higher_above_surface()
+    {
+        GameState.GamePlayState = new GamePlayState();
+        GameState.SurfaceState = new SurfaceState
+        {
+            GlobalMapPosition = new Vector3 { x = 0f, y = 40f, z = 0f },
+            AiObjects = new List<_3dObject>()
+        };
+
+        var ship = MotherShipMedium.CreateMotherShipMedium(parentSurface: null!);
+        ship.WorldPosition = new Vector3 { x = 0f, y = 0f, z = 0f };
+        ship.ObjectOffsets = new Vector3 { x = 12f, y = -1500f, z = 400f };
+        ship.Rotation = new Vector3();
+        ship.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.MotherShipMediumHealth };
+
+        var ctrl = new MotherShipMediumControls();
+        var t = typeof(MotherShipMediumControls);
+        t.GetField("_descentInitialized", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .SetValue(ctrl, true);
+        t.GetField("_isDescending", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .SetValue(ctrl, false);
+
+        ctrl.MoveObject(ship, null, null);
+
+        float expectedY = GameState.SurfaceState.GlobalMapPosition.y *
+            SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY - 105f;
+        Assert.AreEqual(expectedY, ship.ObjectOffsets!.y, 0.001f);
     }
 
     [TestMethod]

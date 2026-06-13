@@ -110,6 +110,30 @@ public class GroundControlsCraterTests
         AssertDryCratered(1, 1, GamePlayHelpers.TerrainType.Grassland);
     }
 
+    [TestMethod]
+    public void MoveObject_WhenBombCratersSurface_UsesLargerBlastRadius()
+    {
+        GameState.SurfaceState.AiObjects.Add(CreateSurfaceBombAtTile(2, 2));
+
+        var ground = new _3dObject
+        {
+            ObjectId = 100,
+            ObjectName = "Surface",
+            ImpactStatus = new ImpactStatus(),
+            WorldPosition = new Vector3(),
+            ObjectOffsets = new Vector3()
+        };
+
+        new GroundControls().MoveObject(ground, null, null);
+
+        AssertDryCratered(0, 2, GamePlayHelpers.TerrainType.Grassland);
+        AssertDryCratered(4, 2, GamePlayHelpers.TerrainType.Grassland);
+        AssertDryCratered(2, 0, GamePlayHelpers.TerrainType.Grassland);
+        AssertDryCratered(2, 4, GamePlayHelpers.TerrainType.Grassland);
+        Assert.IsFalse(GameState.SurfaceState.Global2DMap![0, 0].isCratered,
+            "Blast radius should be wider than before without turning into a full square.");
+    }
+
     private static void SetTile(int x, int z, int depth)
     {
         GameState.SurfaceState.Global2DMap![z, x] = new SurfaceData

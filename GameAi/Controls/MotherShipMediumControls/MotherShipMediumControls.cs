@@ -132,7 +132,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
         //  Sync
         // -------------------------------------------------------
         private const float SyncFactorY = 2.5f;
-        private const float SyncAnchorY = -75f;
+        private const float SyncAnchorY = -105f;
         private bool _syncInitialized = false;
         private float _syncY = SyncAnchorY;
 

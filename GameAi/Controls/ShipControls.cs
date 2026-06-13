@@ -111,6 +111,7 @@ namespace GameAiAndControls.Controls
         private bool _rightHeld = false;
         private bool _upHeld = false;
         private bool _downHeld = false;
+        private readonly HashSet<int> _collectedPowerUpIds = new();
         private DateTime ExplosionDeltaTime = DateTime.Now;
         private bool _hasExplosionTransformSnapshot = false;
         private Vector3? _explosionWorldPosition;
@@ -516,6 +517,21 @@ namespace GameAiAndControls.Controls
             _pitchVelocity = 0f;
             _yawAccumulator = 0f;
             _pitchAccumulator = 0f;
+        }
+
+        public void ClearGameplayInputForPause()
+        {
+            ClearBlockedGameplayInputState();
+            ClearTransientResumeInputState();
+        }
+
+        public void ResumeFromGameplayPause(I3dObject? ship = null)
+        {
+            lastUpdateTime = DateTime.Now;
+            ClearGameplayInputForPause();
+            ClearPendingShipCrash(ship ?? ParentObject);
+            GameState.ShipState.ShipGravityDisabledUntilUtc =
+                DateTime.UtcNow.AddSeconds(OverlayResumeGravityPauseSeconds);
         }
 
         private void ClearBlockedGameplayInputState()
@@ -1009,6 +1025,11 @@ namespace GameAiAndControls.Controls
                     int ramDamage = ShipSetup.DefaultShipHealth / 2;
                     theObject.ImpactStatus.ObjectHealth -= ramDamage;
                     if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] MotherShip ram! Damage={ramDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                }
+                else if (crashedWith == "BomberBomb")
+                {
+                    theObject.ImpactStatus.ObjectHealth -= EnemySetup.BomberBombCollisionDamage;
+                    if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] BomberBomb hit! Damage={EnemySetup.BomberBombCollisionDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else if (EnemySetup.IsEnemyTypeValid(crashedWith))
                 {
@@ -1656,6 +1677,11 @@ namespace GameAiAndControls.Controls
                 var obj = aiObjects[i];
                 if (obj.ObjectName == "PowerUp" && obj.ImpactStatus?.HasCrashed == true)
                 {
+                    if (!_collectedPowerUpIds.Add(obj.ObjectId))
+                        continue;
+
+                    obj.CrashBoxes = new List<List<IVector3>>();
+
                     bool isTutorialScene = GameState.GamePlayState.CurrentSceneType == SceneTypes.Tutorial;
                     // Every powerup pickup advances the unlock tier (1 -> Decoy, 2 -> Lazer,
                     // 3 -> future weapon), including the tutorial pickup. Tutorial pickups still

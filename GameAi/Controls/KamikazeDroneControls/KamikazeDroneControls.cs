@@ -29,6 +29,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
         private const float RotationDegreesPerSecond = 180f;
         private const float DirectionUpdateIntervalSeconds = 1f;
         private const int OvershootFrameCount = 5;
+        private const float DroneFlyingVolumeBoost = 1.15f;
         private DateTime LastDirectionUpdateDateTime = DateTime.MinValue;
         private DateTime LastMovementDateTime = DateTime.MinValue;
         private IVector3 DirectionVelocity = new Vector3 { x = 0, y = 0, z = 0 }; // Initially standing still until the first direction is calculated
@@ -214,7 +215,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                             });
                     }
 
-                    _droneFlyingInstance.SetVolume(_droneFlyingSound.Settings.Volume);
+                    _droneFlyingInstance.SetVolume(GetDroneFlyingVolume());
                     _droneFlyingInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
                 }
                 else
@@ -232,7 +233,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                         {
                             float distance = MathF.Sqrt(distSq);
                             float normalized = distance / maxDist;
-                            float volume = _droneFlyingSound.Settings.Volume *
+                            float volume = GetDroneFlyingVolume() *
                                 MathF.Pow(1f - normalized, AudioSetup.OffscreenAiAudioCurveExponent);
 
                             if (_droneFlyingInstance == null || !_droneFlyingInstance.IsPlaying)
@@ -587,6 +588,11 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 _droneFlyingSound = droneComingSound;
             }
             _audioConfigured = true;
+        }
+
+        private float GetDroneFlyingVolume()
+        {
+            return (_droneFlyingSound?.Settings.Volume ?? 1f) * DroneFlyingVolumeBoost;
         }
 
         public void ReleaseParticles(I3dObject theObject)

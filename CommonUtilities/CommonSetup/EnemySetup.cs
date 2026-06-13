@@ -12,9 +12,10 @@ namespace CommonUtilities.CommonSetup
         public const int SeederHealth = 55;
         public const int KamikazeDroneHealth = 55;
         public const int KamikazeDroneCollisionDamage = 50;
+        public const int BomberBombCollisionDamage = 75;
         public const int MotherShipSmallHealth = 1430;
         public const int MotherShipSmallCollisionDamage = 80;
-        public const int MotherShipMediumHealth = 2200;
+        public const int MotherShipMediumHealth = 1926;
         public const int MotherShipMediumCollisionDamage = 150;
         public const int MotherShipLargeHealth = 3300;
         public const int MotherShipLargeCollisionDamage = 250;

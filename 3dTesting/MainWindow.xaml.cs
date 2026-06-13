@@ -309,11 +309,11 @@ namespace _3dTesting
                 return;
             }
 
-            if (e.Key == Key.LeftCtrl)
+            if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
             {
-                isPaused = !isPaused;
-                world.IsPaused = isPaused;
-                pauseFrameCount = 0;
+                ToggleGameplayPause();
+                e.Handled = true;
+                return;
             }
             //Send keys to Scenehandler to handle scene switches and overlay switches
             world.SceneHandler.HandleKeyPress(e,world);
@@ -342,6 +342,62 @@ namespace _3dTesting
             isPaused = world.IsPaused;
             if (!isPaused)
                 pauseFrameCount = 0;
+        }
+
+        private void ToggleGameplayPause()
+        {
+            bool shouldPause = !world.IsPaused;
+            world.IsPaused = shouldPause;
+            isPaused = shouldPause;
+            pauseFrameCount = shouldPause ? limitFrameCount : 0;
+
+            if (IsGameplaySceneForPause())
+                GameState.GamePlayState.Phase = shouldPause ? GamePhase.Paused : GamePhase.Playing;
+
+            if (shouldPause)
+                ClearShipGameplayInputForPause();
+            else
+                ResumeShipAfterGameplayPause();
+        }
+
+        private static bool IsGameplaySceneForPause()
+        {
+            var sceneType = GameState.GamePlayState.CurrentSceneType;
+            return sceneType == SceneTypes.Game ||
+                   sceneType == SceneTypes.Simulation ||
+                   sceneType == SceneTypes.Tutorial;
+        }
+
+        private void ClearShipGameplayInputForPause()
+        {
+            if (world?.WorldInhabitants == null)
+                return;
+
+            for (int i = 0; i < world.WorldInhabitants.Count; i++)
+            {
+                var obj = world.WorldInhabitants[i];
+                if (obj.ObjectName == "Ship" && obj.Movement is ShipControls shipControls)
+                {
+                    shipControls.ClearGameplayInputForPause();
+                    return;
+                }
+            }
+        }
+
+        private void ResumeShipAfterGameplayPause()
+        {
+            if (world?.WorldInhabitants == null)
+                return;
+
+            for (int i = 0; i < world.WorldInhabitants.Count; i++)
+            {
+                var obj = world.WorldInhabitants[i];
+                if (obj.ObjectName == "Ship" && obj.Movement is ShipControls shipControls)
+                {
+                    shipControls.ResumeFromGameplayPause(obj);
+                    return;
+                }
+            }
         }
 
         private static bool HasActiveSurfaceMapForMinimap()

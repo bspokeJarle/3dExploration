@@ -87,12 +87,13 @@ namespace _3dRotations.World.Objects
             bomb.Particles = new ParticlesAI();
             bomb.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             bomb.ParentSurface = parentSurface;
-            bomb.HasShadow = false;
+            bomb.HasShadow = true;
 
             if (crashBoxes != null)
                 bomb.CrashBoxes = crashBoxes;
 
             _3dObjectHelpers.ApplyScaleToObject(bomb, ZoomRatio);
+            _3dObjectHelpers.AddSimplifiedShadowPart(bomb, useFlatQuad: true);
 
             return bomb;
         }

@@ -98,6 +98,43 @@ public class PowerUpCheckpointPersistenceTests
     }
 
     [TestMethod]
+    public void CollectingSamePowerUpTwice_CountsOnlyOnce()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PowerUpsCollected = 0;
+        gps.Score = 0;
+
+        var controls = new ShipControls();
+        try
+        {
+            var ship = CreatePowerUpHitShip(31, controls);
+            var powerUp = CreateCrashedPowerUp(32);
+            powerUp.CrashBoxes = new List<List<IVector3>>
+            {
+                new() { new Vector3(), new Vector3 { x = 1f, y = 1f, z = 1f } }
+            };
+            GameState.SurfaceState.AiObjects.Add(powerUp);
+
+            controls.MoveObject(ship, null, null);
+
+            ship.ImpactStatus!.HasCrashed = true;
+            ship.ImpactStatus.ObjectName = "PowerUp";
+            controls.MoveObject(ship, null, null);
+
+            Assert.AreEqual(1, gps.PowerUpsCollected,
+                "The same PowerUp object must not advance unlock progression more than once.");
+            Assert.IsFalse(gps.IsLazerUnlocked,
+                "A single collected PowerUp must unlock Decoy only; Lazer requires a second distinct pickup.");
+            Assert.AreEqual(0, powerUp.CrashBoxes.Count,
+                "Collected PowerUps should drop their crashboxes immediately to avoid repeat collision frames.");
+        }
+        finally
+        {
+            controls.Dispose();
+        }
+    }
+
+    [TestMethod]
     public void CollectingPowerUp_InTutorialDoesNotSaveCheckpointOrPersistPowerup()
     {
         var gps = GameState.GamePlayState;
@@ -223,5 +260,36 @@ public class PowerUpCheckpointPersistenceTests
             "Checkpoint should keep current active drone count on powerup pickup.");
         Assert.AreEqual(0, gps.CheckpointMotherShipsRemaining,
             "Checkpoint should not force mothership phase while other enemies remain.");
+    }
+
+    private static _3dObject CreatePowerUpHitShip(int objectId, ShipControls controls)
+    {
+        return new _3dObject
+        {
+            ObjectId = objectId,
+            ObjectName = "Ship",
+            ImpactStatus = new ImpactStatus { HasCrashed = true, ObjectName = "PowerUp", ObjectHealth = 100 },
+            ObjectParts = new List<I3dObjectPart> { new _3dObjectPart { PartName = "Ship", Triangles = new List<ITriangleMeshWithColor>() } },
+            CrashBoxes = new List<List<IVector3>>(),
+            Rotation = new Vector3(),
+            WorldPosition = new Vector3(),
+            ObjectOffsets = new Vector3(),
+            Movement = controls
+        };
+    }
+
+    private static _3dObject CreateCrashedPowerUp(int objectId)
+    {
+        return new _3dObject
+        {
+            ObjectId = objectId,
+            ObjectName = "PowerUp",
+            IsActive = true,
+            ImpactStatus = new ImpactStatus { HasCrashed = true, HasExploded = false },
+            WorldPosition = new Vector3(),
+            ObjectOffsets = new Vector3(),
+            Rotation = new Vector3(),
+            ObjectParts = new List<I3dObjectPart>()
+        };
     }
 }

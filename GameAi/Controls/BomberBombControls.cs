@@ -18,6 +18,7 @@ namespace GameAiAndControls.Controls
         private const float InitialFallSpeed = 50f;
         private const float GravityAcceleration = 300f;
         private const float MaxFallTimeSeconds = 4f;
+        private const float ExplosionForce = 225f;
 
         private float _currentFallSpeed;
         private DateTime _lastFrameTime = DateTime.MinValue;
@@ -197,7 +198,7 @@ namespace GameAiAndControls.Controls
             theObject.ImpactStatus.ObjectName = "Surface";
 
             ExplosionParticleHelpers.ReleaseExplosionParticles(theObject, this);
-            Physics.ExplodeObject(theObject, 150f);
+            Physics.ExplodeObject(theObject, ExplosionForce);
             theObject.CrashBoxes = new List<List<IVector3>>();
         }
 

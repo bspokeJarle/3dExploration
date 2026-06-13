@@ -160,6 +160,28 @@ public class KamikazeDroneControlsHuntTimingTests
             "Drone should start hunting immediately even if non-essential enemies like zeppelins exist.");
     }
 
+    [TestMethod]
+    public void MoveObject_OnScreenDrone_BoostsFlyingLoopVolume()
+    {
+        var control = new KamikazeDroneControls
+        {
+            StartHuntDateTime = DateTime.Now.AddMinutes(-1)
+        };
+        var drone = CreateDrone(600, 1000, 1000);
+        drone.IsOnScreen = true;
+        drone.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };
+        GameState.SurfaceState.AiObjects.Add(drone);
+
+        var audio = new CapturingAudioPlayer();
+        var registry = new FakeSoundRegistry();
+
+        control.MoveObject(drone, audio, registry);
+
+        Assert.IsNotNull(audio.LastInstance);
+        Assert.AreEqual(1.15f, audio.LastInstance!.LastVolume, 0.001f,
+            "Drone flying loop should be a little louder than the base sound definition.");
+    }
+
     private static _3dObject CreateDrone(int id, float x, float z)
     {
         return new _3dObject
@@ -172,5 +194,76 @@ public class KamikazeDroneControlsHuntTimingTests
             Rotation = new Vector3(),
             CrashBoxes = new List<List<IVector3>> { new() { new Vector3(), new Vector3 { x = 1, y = 1, z = 1 } } }
         };
+    }
+
+    private sealed class FakeSoundRegistry : ISoundRegistry
+    {
+        private readonly Dictionary<string, SoundDefinition> _sounds = new()
+        {
+            ["explosion_main"] = new SoundDefinition
+            {
+                Id = "explosion_main",
+                Usage = "Explosion",
+                File = "OmegaStrain_Explosion_Main.wav",
+                Settings = new SoundSettings { Volume = 1f, Is3D = true }
+            },
+            ["drone_flying"] = new SoundDefinition
+            {
+                Id = "drone_flying",
+                Usage = "DroneComing",
+                File = "OmegaStrain_Drone_Coming.wav",
+                Settings = new SoundSettings { Volume = 1f, Is3D = true }
+            }
+        };
+
+        public SoundDefinition Get(string id) => _sounds[id];
+
+        public bool TryGet(string id, out SoundDefinition definition) => _sounds.TryGetValue(id, out definition!);
+    }
+
+    private sealed class CapturingAudioPlayer : IAudioPlayer
+    {
+        public CapturingAudioInstance? LastInstance { get; private set; }
+        public float MusicVolume { get; private set; } = 0.15f;
+
+        public IAudioInstance Play(SoundDefinition definition, AudioPlayMode mode, AudioPlayOptions? options = null)
+        {
+            LastInstance = new CapturingAudioInstance(definition.Id, mode == AudioPlayMode.SegmentedLoop);
+            return LastInstance;
+        }
+
+        public void PlayOneShot(SoundDefinition definition, AudioPlayOptions? options = null)
+        {
+            LastInstance = new CapturingAudioInstance(definition.Id, isLooping: false);
+        }
+
+        public void Stop(IAudioInstance instance, bool playEndSegment) => instance.Stop(playEndSegment);
+        public void StopAll() { }
+        public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) { }
+        public void SetMusicVolume(float volume) => MusicVolume = volume;
+        public void StopMusic() { }
+        public void Update(double deltaTimeSeconds) { }
+    }
+
+    private sealed class CapturingAudioInstance : IAudioInstance
+    {
+        public CapturingAudioInstance(string soundId, bool isLooping)
+        {
+            SoundId = soundId;
+            IsLooping = isLooping;
+            IsPlaying = true;
+        }
+
+        public Guid Id { get; } = Guid.NewGuid();
+        public string SoundId { get; }
+        public bool IsPlaying { get; private set; }
+        public bool IsLooping { get; }
+        public float LastVolume { get; private set; }
+        public System.Numerics.Vector3 LastWorldPosition { get; private set; }
+
+        public void SetVolume(float volume) => LastVolume = volume;
+        public void SetSpeed(float speed) { }
+        public void SetWorldPosition(System.Numerics.Vector3 position) => LastWorldPosition = position;
+        public void Stop(bool playEndSegment) => IsPlaying = false;
     }
 }

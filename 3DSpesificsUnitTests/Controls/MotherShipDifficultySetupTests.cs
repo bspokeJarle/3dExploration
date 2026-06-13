@@ -24,7 +24,7 @@ public class MotherShipDifficultySetupTests
         int lazerDamage = WeaponSetup.GetWeaponDamage("Lazer");
 
         Assert.AreEqual(26, HitsToDestroy(EnemySetup.MotherShipSmallHealth, lazerDamage));
-        Assert.AreEqual(40, HitsToDestroy(EnemySetup.MotherShipMediumHealth, lazerDamage));
+        Assert.AreEqual(36, HitsToDestroy(EnemySetup.MotherShipMediumHealth, lazerDamage));
         Assert.AreEqual(60, HitsToDestroy(EnemySetup.MotherShipLargeHealth, lazerDamage));
     }
 
@@ -40,7 +40,7 @@ public class MotherShipDifficultySetupTests
             EnemySetup.GetMotherShipHealth("MotherShipSmall", 1.10f));
 
         Assert.AreEqual(
-            2970,
+            2600,
             EnemySetup.GetMotherShipHealth("MotherShipMedium", 1.35f));
     }
 
