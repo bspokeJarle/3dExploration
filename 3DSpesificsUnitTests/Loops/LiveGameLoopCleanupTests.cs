@@ -291,6 +291,7 @@ public class LiveGameLoopCleanupTests
     {
         public void SetupActiveScene(I3dWorld world) { }
         public void ResetActiveScene(I3dWorld world) { }
+        public void ResetActiveSceneToPlanetStart(I3dWorld world) { }
         public void NextScene(I3dWorld world) { }
         public IScene GetActiveScene() => null!;
         public void HandleKeyPress(KeyEventArgs k, I3dWorld world) { }

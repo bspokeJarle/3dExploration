@@ -296,6 +296,7 @@ namespace _3dTesting
 
             if (IsMenuExitKey(e.Key))
             {
+                var sceneTypeBeforeMenuExit = world?.SceneHandler?.GetActiveScene().SceneType;
                 if (ShouldShutdownFromMenuExitKey(e.Key))
                 {
                     Application.Current.Shutdown();
@@ -304,6 +305,7 @@ namespace _3dTesting
                 }
 
                 world.SceneHandler.HandleKeyPress(e, world);
+                StopNonMusicAudioIfReturnedToIntro(sceneTypeBeforeMenuExit);
                 SyncLocalPauseFromWorld();
                 e.Handled = true;
                 return;
@@ -321,6 +323,15 @@ namespace _3dTesting
 
             if (overlayWasShowing)
                 e.Handled = true;
+        }
+
+        private void StopNonMusicAudioIfReturnedToIntro(SceneTypes? previousSceneType)
+        {
+            if (previousSceneType == null || previousSceneType == SceneTypes.Intro)
+                return;
+
+            if (world?.SceneHandler?.GetActiveScene().SceneType == SceneTypes.Intro)
+                gameWorldManager.StopNonMusicAudio();
         }
 
         private bool ShouldShutdownFromMenuExitKey(Key key)

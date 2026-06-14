@@ -312,6 +312,7 @@ public class ShipAiVoiceServiceTests
 
         public void Stop(IAudioInstance instance, bool playEndSegment) => instance.Stop(playEndSegment);
         public void StopAll() { }
+        public void StopNonMusic() { }
         public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) =>
             MusicVolume = volumeOverride ?? definition.Settings.Volume;
         public void SetMusicVolume(float volume)

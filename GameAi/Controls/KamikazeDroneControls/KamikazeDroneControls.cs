@@ -43,6 +43,11 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
         private DateTime _explosionDeltaTime = DateTime.Now;
         private Vector3? _explosionWorldPosition;
         private Vector3? _explosionObjectOffsets;
+        private int _surpriseDroneObjectId = -1;
+        private bool _surpriseDroneInitialized = false;
+        private bool _isSurpriseDrone = false;
+        private bool _surpriseDelayInitialized = false;
+        private DateTime? _surpriseStartHuntDateTime;
         private IAudioPlayer? _audio;
         private SoundDefinition? _explosionSound;
         private SoundDefinition? _droneFlyingSound;
@@ -153,22 +158,22 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            var now = DateTime.Now;
+
             // Skip hunt until the delay expires, unless the ship is already close
-            if (DateTime.Now < StartHuntDateTime && HasLiveNonDroneEnemies())
+            if (StartHuntDateTime != null &&
+                now < StartHuntDateTime &&
+                HasLiveNonDroneEnemies() &&
+                IsShipOutsideImmediateHuntRange(theObject))
             {
-                var shipPos = GameState.ShipState?.ShipCrashCenterWorldPosition;
-                if (shipPos != null && theObject.WorldPosition != null)
-                {
-                    float distToShip = (float)Common3dObjectHelpers.GetDistance(
-                        KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition), KamikazeDroneMovementHelpers.ToVector3(shipPos));
-                    if (distToShip > 10_000f)
-                        return theObject;
-                }
-                else
-                {
-                    return theObject;
-                }
+                return theObject;
             }
+
+            if (ShouldWaitForSurpriseHuntDelay(theObject, now))
+            {
+                return theObject;
+            }
+
             ConfigureAudio(audioPlayer, soundRegistry);
 
             if (_trackedObjectId != theObject.ObjectId)
@@ -290,8 +295,6 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 LastMovementDateTime = DateTime.Now;
                 return theObject;
             }
-
-            var now = DateTime.Now;
 
             if (LastMovementDateTime == DateTime.MinValue)
             {
@@ -526,6 +529,119 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 || objectName == "Endboss2";
         }
 
+        private bool ShouldWaitForSurpriseHuntDelay(I3dObject theObject, DateTime now)
+        {
+            if (!GameState.GamePlayState.IsDecoyUnlocked)
+            {
+                return false;
+            }
+
+            if (!IsSurpriseDelayScene())
+            {
+                return false;
+            }
+
+            if (!IsSurpriseDrone(theObject))
+            {
+                return false;
+            }
+
+            if (!_surpriseDelayInitialized)
+            {
+                _surpriseDelayInitialized = true;
+                _surpriseStartHuntDateTime = now.AddSeconds(GameSetup.KamikazeDroneSurpriseHuntDelaySeconds);
+            }
+
+            return now < _surpriseStartHuntDateTime && IsShipOutsideImmediateHuntRange(theObject);
+        }
+
+        private bool IsSurpriseDrone(I3dObject theObject)
+        {
+            if (_surpriseDroneObjectId != theObject.ObjectId)
+            {
+                _surpriseDroneObjectId = theObject.ObjectId;
+                _surpriseDroneInitialized = false;
+                _isSurpriseDrone = false;
+                _surpriseDelayInitialized = false;
+                _surpriseStartHuntDateTime = null;
+            }
+
+            if (!_surpriseDroneInitialized)
+            {
+                _isSurpriseDrone = ShouldUseSurpriseDelay(theObject);
+                _surpriseDroneInitialized = true;
+            }
+
+            return _isSurpriseDrone;
+        }
+
+        private static bool ShouldUseSurpriseDelay(I3dObject theObject)
+        {
+            if (theObject.ObjectName != "KamikazeDrone")
+            {
+                return false;
+            }
+
+            int percent = Math.Clamp(GameSetup.KamikazeDroneSurpriseDelayPercent, 0, 100);
+            if (percent <= 0)
+            {
+                return false;
+            }
+
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null || aiObjects.Count == 0)
+            {
+                return false;
+            }
+
+            int droneCount = 0;
+            int droneIndex = -1;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                if (aiObjects[i].ObjectName != "KamikazeDrone")
+                {
+                    continue;
+                }
+
+                if (aiObjects[i].ObjectId == theObject.ObjectId)
+                {
+                    droneIndex = droneCount;
+                }
+
+                droneCount++;
+            }
+
+            if (droneIndex < 0 || droneCount <= 0)
+            {
+                return false;
+            }
+
+            int surpriseCount = Math.Max(1, (droneCount * percent + 99) / 100);
+            return droneIndex >= droneCount - surpriseCount;
+        }
+
+        private static bool IsSurpriseDelayScene()
+        {
+            var sceneType = GameState.GamePlayState.CurrentSceneType;
+            return sceneType == SceneTypes.Game || sceneType == SceneTypes.Simulation;
+        }
+
+        private static bool IsShipOutsideImmediateHuntRange(I3dObject theObject)
+        {
+            var shipPos = GameState.ShipState?.ShipCrashCenterWorldPosition;
+            if (shipPos == null || theObject.WorldPosition == null)
+            {
+                return true;
+            }
+
+            float distToShip = (float)Common3dObjectHelpers.GetDistance(
+                KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition),
+                KamikazeDroneMovementHelpers.ToVector3(shipPos));
+
+            return distToShip > GameSetup.KamikazeDroneProximityHuntDistance;
+        }
+
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
         }
@@ -546,6 +662,11 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             _trackedObjectId = -1;
             _storedWorldPositionInitialized = false;
             _storedWorldPosition = new Vector3();
+            _surpriseDroneObjectId = -1;
+            _surpriseDroneInitialized = false;
+            _isSurpriseDrone = false;
+            _surpriseDelayInitialized = false;
+            _surpriseStartHuntDateTime = null;
             _overshootFramesRemaining = 0;
             _overshootDirection = new Vector3();
             _explosionWorldPosition = null;

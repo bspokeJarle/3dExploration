@@ -6,6 +6,7 @@ namespace Domain
     {
         void SetupActiveScene(I3dWorld world);
         void ResetActiveScene(I3dWorld world);
+        void ResetActiveSceneToPlanetStart(I3dWorld world);
         void NextScene(I3dWorld world);
         IScene GetActiveScene();
         void HandleKeyPress(KeyEventArgs k, I3dWorld world);

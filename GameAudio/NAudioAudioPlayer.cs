@@ -153,6 +153,18 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
         _instances.Clear();
     }
 
+    public void StopNonMusic()
+    {
+        foreach (var kvp in _instances)
+        {
+            var instance = kvp.Value;
+            if (_musicInstance != null && ReferenceEquals(instance, _musicInstance))
+                continue;
+
+            instance.Stop(playEndSegment: false);
+        }
+    }
+
     /// <summary>
     /// Plays background music using segmented loop.
     /// The SoundDefinition's segments (start, loopStart, loopEnd, end)

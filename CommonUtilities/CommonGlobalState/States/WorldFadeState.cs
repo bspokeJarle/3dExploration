@@ -12,6 +12,12 @@ namespace CommonUtilities.CommonGlobalState.States
 
     public sealed class WorldFadeState
     {
+        public const string ShipDestroyedReason = "ShipDestroyed";
+        public const string InfectionCriticalReason = "InfectionCritical";
+        public const string InfectionCriticalContinueReason = "InfectionCriticalContinue";
+        public const string InfectionCriticalPlanetResetReason = "InfectionCriticalPlanetReset";
+        public const string VictoryCompleteReason = "VictoryComplete";
+
         public WorldFadePhase Phase { get; private set; } = WorldFadePhase.Idle;
         public float DurationSeconds { get; private set; } = 1f;
         public string Reason { get; private set; } = string.Empty;

@@ -182,6 +182,56 @@ public class KamikazeDroneControlsHuntTimingTests
             "Drone flying loop should be a little louder than the base sound definition.");
     }
 
+    [TestMethod]
+    public void MoveObject_GameplaySurpriseDrone_WaitsAfterDecoyUnlock()
+    {
+        GameState.GamePlayState.CurrentSceneType = SceneTypes.Game;
+        GameState.ShipState!.ShipCrashCenterWorldPosition = new Vector3 { x = 50000, y = 0, z = 50000 };
+
+        var drones = AddDroneGroup(700, 10);
+        var surpriseDrone = drones[^1];
+        var control = new KamikazeDroneControls
+        {
+            StartHuntDateTime = DateTime.Now.AddMinutes(-1)
+        };
+
+        control.MoveObject(surpriseDrone, null, null);
+        var before = (Vector3)surpriseDrone.WorldPosition;
+
+        Thread.Sleep(20);
+
+        control.MoveObject(surpriseDrone, null, null);
+        var after = (Vector3)surpriseDrone.WorldPosition;
+
+        Assert.AreEqual(before.x, after.x, 0.0001, "Surprise drone should wait a little longer before hunting.");
+        Assert.AreEqual(before.y, after.y, 0.0001, "Surprise drone should wait a little longer before hunting.");
+        Assert.AreEqual(before.z, after.z, 0.0001, "Surprise drone should wait a little longer before hunting.");
+    }
+
+    [TestMethod]
+    public void MoveObject_GameplayRegularDrone_DoesNotWaitForSurpriseDelay()
+    {
+        GameState.GamePlayState.CurrentSceneType = SceneTypes.Game;
+
+        var drones = AddDroneGroup(800, 10);
+        var regularDrone = drones[0];
+        var control = new KamikazeDroneControls
+        {
+            StartHuntDateTime = DateTime.Now.AddMinutes(-1)
+        };
+
+        control.MoveObject(regularDrone, null, null);
+        var before = (Vector3)regularDrone.WorldPosition;
+
+        Thread.Sleep(20);
+
+        control.MoveObject(regularDrone, null, null);
+        var after = (Vector3)regularDrone.WorldPosition;
+
+        Assert.IsTrue(after.x != before.x || after.y != before.y || after.z != before.z,
+            "Regular drones should keep hunting normally while only the selected surprise group waits.");
+    }
+
     private static _3dObject CreateDrone(int id, float x, float z)
     {
         return new _3dObject
@@ -194,6 +244,19 @@ public class KamikazeDroneControlsHuntTimingTests
             Rotation = new Vector3(),
             CrashBoxes = new List<List<IVector3>> { new() { new Vector3(), new Vector3 { x = 1, y = 1, z = 1 } } }
         };
+    }
+
+    private static List<_3dObject> AddDroneGroup(int firstId, int count)
+    {
+        var drones = new List<_3dObject>(count);
+        for (int i = 0; i < count; i++)
+        {
+            var drone = CreateDrone(firstId + i, i * 1000f, i * 1000f);
+            drones.Add(drone);
+            GameState.SurfaceState.AiObjects.Add(drone);
+        }
+
+        return drones;
     }
 
     private sealed class FakeSoundRegistry : ISoundRegistry
@@ -239,6 +302,7 @@ public class KamikazeDroneControlsHuntTimingTests
 
         public void Stop(IAudioInstance instance, bool playEndSegment) => instance.Stop(playEndSegment);
         public void StopAll() { }
+        public void StopNonMusic() { }
         public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) { }
         public void SetMusicVolume(float volume) => MusicVolume = volume;
         public void StopMusic() { }

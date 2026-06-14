@@ -169,6 +169,30 @@ public class ReturnToIntroAndSimulationRoundTests
             "All world inhabitants must be cleared when returning to intro via X.");
     }
 
+    [TestMethod]
+    public void ReturnToIntro_DisposesWorldMovementsBeforeClearing()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "Pilot";
+        gps.SceneIndex = 2;
+
+        var handler = new SceneHandler();
+        var world = CreateMinimalWorld(handler);
+        var movement = new CapturingMovement();
+        world.WorldInhabitants.Add(new _3dObject
+        {
+            ObjectId = 1,
+            ObjectName = "Ship",
+            Movement = movement
+        });
+
+        SetCurrentSceneIndex(handler, 2);
+        InvokeReturnToIntro(handler, world);
+
+        Assert.IsTrue(movement.WasDisposed,
+            "Returning to intro must dispose movements before clearing objects so looped object audio can stop.");
+    }
+
     // ------------------------------------------------------------------
     // X key: scene index resets to 0
     // ------------------------------------------------------------------
@@ -368,5 +392,21 @@ public class ReturnToIntroAndSimulationRoundTests
 
         if (failure != null)
             throw failure;
+    }
+
+    private sealed class CapturingMovement : IObjectMovement
+    {
+        public bool WasDisposed { get; private set; }
+        public ITriangleMeshWithColor? StartCoordinates { get; set; }
+        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public IPhysics Physics { get; set; } = null!;
+
+        public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry) => theObject;
+        public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry) { }
+        public void ReleaseParticles(I3dObject theObject) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void Dispose() => WasDisposed = true;
     }
 }

@@ -5,6 +5,7 @@ using _3dTesting._Coordinates;
 using _3dTesting.Helpers;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.Events;
 using CommonUtilities.Persistence;
@@ -303,18 +304,24 @@ namespace _3dTesting.MainWindowClasses.Loops
             {
                 _deathSequenceStarted = true;
                 _victorySequenceStarted = false;
-                GameState.WorldFade.RequestFadeOut(1.0f, "ShipDestroyed");
+                GameState.WorldFade.RequestFadeOut(1.0f, WorldFadeState.ShipDestroyedReason);
             }
 
-            if (!_deathSequenceStarted && GameState.GamePlayState.IsInfectionCritical)
+            if (!_deathSequenceStarted &&
+                GameState.GamePlayState.IsInfectionCritical &&
+                !GameState.WorldFade.IsFadeOutPendingOrActive)
             {
-                _deathSequenceStarted = true;
-                _victorySequenceStarted = false;
-                GameState.WorldFade.RequestFadeOut(1.0f, "InfectionCritical");
+                ShowPlanetLostChoiceOverlay(world);
             }
 
-            if ((_deathSequenceStarted || _victorySequenceStarted) && GameState.WorldFade.IsBlack)
+            bool isChoiceDrivenInfectionReset =
+                GameState.WorldFade.IsBlack &&
+                (GameState.WorldFade.Reason == WorldFadeState.InfectionCriticalContinueReason ||
+                 GameState.WorldFade.Reason == WorldFadeState.InfectionCriticalPlanetResetReason);
+
+            if ((_deathSequenceStarted || _victorySequenceStarted || isChoiceDrivenInfectionReset) && GameState.WorldFade.IsBlack)
             {
+                StopNonMusicAudio();
                 CleanupWorldObjects(world.WorldInhabitants.OfType<_3dObject>().ToList());
                 world.WorldInhabitants.Clear();
                 GameState.SurfaceState.AiObjects.Clear();
@@ -332,6 +339,8 @@ namespace _3dTesting.MainWindowClasses.Loops
 
                 if (_victorySequenceStarted && !_deathSequenceStarted)
                     world.SceneHandler.NextScene(world);
+                else if (GameState.WorldFade.Reason == WorldFadeState.InfectionCriticalPlanetResetReason)
+                    world.SceneHandler.ResetActiveSceneToPlanetStart(world);
                 else
                     world.SceneHandler.ResetActiveScene(world);
 
@@ -436,7 +445,7 @@ namespace _3dTesting.MainWindowClasses.Loops
                 float elapsed = (Stopwatch.GetTimestamp() - _victoryStartTicks) / (float)Stopwatch.Frequency;
                 if (elapsed >= VictoryDisplaySeconds)
                 {
-                    GameState.WorldFade.RequestFadeOut(1.0f, "VictoryComplete");
+                    GameState.WorldFade.RequestFadeOut(1.0f, WorldFadeState.VictoryCompleteReason);
                 }
             }
             directorHudMs = MarkPhase();
@@ -788,6 +797,12 @@ namespace _3dTesting.MainWindowClasses.Loops
             }
         }
 
+        public void StopNonMusicAudio()
+        {
+            ShipAiVoiceService.Shared.StopCurrentSpeech();
+            audioPlayer.StopNonMusic();
+        }
+
         private static string GetEnemyStatusSnapshot(List<_3dObject> aiObjects, HashSet<int> pendingRemovalIds)
         {
             int liveSeeders = 0;
@@ -1048,6 +1063,37 @@ namespace _3dTesting.MainWindowClasses.Loops
                     audioPlayer.PlayOneShot(criticalDefinition);
                 }
             }
+        }
+
+        private static void ShowPlanetLostChoiceOverlay(I3dWorld world)
+        {
+            var overlay = GameState.ScreenOverlayState;
+            if (overlay.ShowOverlay && overlay.ChoiceAction == ScreenOverlayChoiceAction.PlanetLostRecovery)
+                return;
+
+            overlay.ResetToDefaults();
+            overlay.Type = ScreenOverlayType.Game;
+            overlay.Anchor = ScreenOverlayAnchor.Center;
+            overlay.IsModal = true;
+            overlay.Header = "BIOMASS CRITICAL";
+            overlay.Title = "PLANET LOST";
+            overlay.SetChoiceOptions(
+                ScreenOverlayChoiceAction.PlanetLostRecovery,
+                "The infection has overrun the planet.\nChoose how to continue:",
+                "CONTINUE FROM CHECKPOINT",
+                "RESET PLANET TO ARRIVAL");
+            overlay.Footer = "UP/DOWN TO SELECT  //  ENTER TO CONFIRM";
+            overlay.DimStrength = 0.65f;
+            overlay.PanelWidthRatio = 0.68f;
+            overlay.PanelHeightRatio = 0.32f;
+            overlay.PanelYOffsetRatio = 0.00f;
+            overlay.CenterText = false;
+            overlay.ShowOverlay = true;
+            overlay.AutoHide = false;
+            overlay.ShowDebugOverlay = false;
+
+            world.IsPaused = true;
+            GameState.GamePlayState.Phase = GamePhase.Paused;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

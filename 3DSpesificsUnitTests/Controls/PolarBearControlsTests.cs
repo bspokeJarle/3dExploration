@@ -279,6 +279,10 @@ public class PolarBearControlsTests
         {
         }
 
+        public void StopNonMusic()
+        {
+        }
+
         public void PlayMusic(SoundDefinition definition, float? volumeOverride = null)
         {
         }

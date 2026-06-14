@@ -21,6 +21,12 @@ namespace Domain
         Bottom = 2
     }
 
+    public enum ScreenOverlayChoiceAction
+    {
+        None = 0,
+        PlanetLostRecovery = 1
+    }
+
         /// <summary>
         /// ScreenOverlayState is a lightweight, global UI state for modal/cinematic overlays.
     /// - Objects are allowed to toggle ShowOverlay and set the text fields.
@@ -63,6 +69,19 @@ namespace Domain
         public string Title { get; set; } = "";    // main heading (big)
         public string Body { get; set; } = "";     // multi-line
         public string Footer { get; set; } = "";   // CTA (press any key)
+
+        // -----------------------------
+        // Choice overlays
+        // -----------------------------
+        public ScreenOverlayChoiceAction ChoiceAction { get; set; } = ScreenOverlayChoiceAction.None;
+        public List<string> ChoiceOptions { get; } = new();
+        public int SelectedChoiceIndex { get; private set; } = 0;
+        public string ChoiceBodyPrefix { get; private set; } = "";
+        public bool HasChoiceOptions => ChoiceOptions.Count > 0;
+        public string SelectedChoice =>
+            HasChoiceOptions && SelectedChoiceIndex >= 0 && SelectedChoiceIndex < ChoiceOptions.Count
+                ? ChoiceOptions[SelectedChoiceIndex]
+                : "";
 
         // -----------------------------
         // Paging
@@ -261,6 +280,7 @@ namespace Domain
             Title = "";
             Body = "";
             Footer = "";
+            ClearChoiceOptions();
 
             ShowVideoOverlay = false;
             VideoClipPath = "";
@@ -294,6 +314,77 @@ namespace Domain
             CurrentPage = 0;
 
             HardHide();
+        }
+
+        public void SetChoiceOptions(
+            ScreenOverlayChoiceAction action,
+            string bodyPrefix,
+            params string[] options)
+        {
+            ChoiceAction = action;
+            ChoiceBodyPrefix = bodyPrefix ?? "";
+            ChoiceOptions.Clear();
+            if (options != null)
+            {
+                foreach (var option in options)
+                {
+                    if (!string.IsNullOrWhiteSpace(option))
+                        ChoiceOptions.Add(option);
+                }
+            }
+
+            SelectedChoiceIndex = 0;
+            ApplyChoiceBody();
+        }
+
+        public bool MoveChoiceSelection(int delta)
+        {
+            if (!HasChoiceOptions || delta == 0)
+                return false;
+
+            int next = SelectedChoiceIndex + delta;
+            if (next < 0)
+                next = ChoiceOptions.Count - 1;
+            else if (next >= ChoiceOptions.Count)
+                next = 0;
+
+            if (next == SelectedChoiceIndex)
+                return false;
+
+            SelectedChoiceIndex = next;
+            ApplyChoiceBody();
+            return true;
+        }
+
+        public void ClearChoiceOptions()
+        {
+            ChoiceAction = ScreenOverlayChoiceAction.None;
+            ChoiceBodyPrefix = "";
+            ChoiceOptions.Clear();
+            SelectedChoiceIndex = 0;
+        }
+
+        private void ApplyChoiceBody()
+        {
+            if (!HasChoiceOptions)
+            {
+                Body = ChoiceBodyPrefix;
+                return;
+            }
+
+            var lines = new List<string>();
+            if (!string.IsNullOrWhiteSpace(ChoiceBodyPrefix))
+            {
+                lines.Add(ChoiceBodyPrefix);
+                lines.Add("");
+            }
+
+            for (int i = 0; i < ChoiceOptions.Count; i++)
+            {
+                lines.Add($"{(i == SelectedChoiceIndex ? ">" : " ")} {ChoiceOptions[i]}");
+            }
+
+            Body = string.Join("\n", lines);
         }
 
         /// <summary>

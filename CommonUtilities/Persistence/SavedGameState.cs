@@ -55,6 +55,27 @@ namespace CommonUtilities.Persistence
         public int CheckpointPlanetStyleBonusScore { get; set; }
         public int CheckpointPlanetStyleBonusSceneIndex { get; set; }
 
+        // Scene-start rollback state. Used when a restored checkpoint is mathematically unrecoverable.
+        public bool HasPlanetStartSnapshot { get; set; }
+        public int PlanetStartSceneIndex { get; set; }
+        public long PlanetStartScore { get; set; }
+        public int PlanetStartLives { get; set; }
+        public float PlanetStartHealth { get; set; }
+        public int PlanetStartPowerUpsCollected { get; set; }
+        public int PlanetStartSeedersRemaining { get; set; }
+        public int PlanetStartDronesRemaining { get; set; }
+        public int PlanetStartMotherShipsRemaining { get; set; }
+        public int PlanetStartTotalShotsFired { get; set; }
+        public int PlanetStartTotalKills { get; set; }
+        public int PlanetStartTotalDeaths { get; set; }
+        public float PlanetStartInfectionLevel { get; set; }
+        public int PlanetStartWaveNumber { get; set; }
+        public int PlanetStartInitialSeeders { get; set; }
+        public int PlanetStartInitialDrones { get; set; }
+        public int PlanetStartInitialMotherShips { get; set; }
+        public int PlanetStartPlanetStyleBonusScore { get; set; }
+        public int PlanetStartPlanetStyleBonusSceneIndex { get; set; }
+
         public string SavedAtUtc { get; set; } = "";
     }
 }

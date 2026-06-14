@@ -16,7 +16,7 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
         private const float BaseZRotation = 90f;
         private const float RotationDegreesPerSecond = 60f;
         private const float ExplosionForce = 200f;
-        private const float SurfaceAltitudeLift = 30f;
+        private const float SurfaceAltitudeLift = 60f;
 
         // Propeller animation
         private const float PropellerDegreesPerSecond = 720f;
