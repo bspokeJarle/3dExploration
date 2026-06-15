@@ -242,7 +242,7 @@ namespace _3dTesting.Helpers
                         if (obj.WorldPosition == null) continue;
                         if (obj.WorldPosition.x == 0 && obj.WorldPosition.z == 0) continue;
 
-                        int markerX = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
+                        int markerX = MapCoordinateHelpers.WorldToTileIndex(GetMarkerMapX(obj), tileSize, mapWidth);
                         int markerZ = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
                         int mx = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX, cropOriginX, mapWidth);
                         int mz = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ, cropOriginZ, mapHeight);
@@ -281,7 +281,7 @@ namespace _3dTesting.Helpers
 
                         if (isPowerUp)
                         {
-                            int markerX = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
+                            int markerX = MapCoordinateHelpers.WorldToTileIndex(GetMarkerMapX(obj), tileSize, mapWidth);
                             int markerZ = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
                             int bx = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX, cropOriginX, mapWidth);
                             int bz = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ, cropOriginZ, mapHeight);
@@ -312,7 +312,7 @@ namespace _3dTesting.Helpers
                         {
                             if (obj.ObjectName == "ZeppelinBomber")
                             {
-                                int markerX = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
+                                int markerX = MapCoordinateHelpers.WorldToTileIndex(GetMarkerMapX(obj), tileSize, mapWidth);
                                 int markerZ = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
                                 int bxZ = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX, cropOriginX, mapWidth);
                                 int bzZ = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ, cropOriginZ, mapHeight);
@@ -328,7 +328,7 @@ namespace _3dTesting.Helpers
                             continue;
                         }
 
-                        int markerX2 = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
+                        int markerX2 = MapCoordinateHelpers.WorldToTileIndex(GetMarkerMapX(obj), tileSize, mapWidth);
                         int markerZ2 = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
                         int bx2 = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX2, cropOriginX, mapWidth);
                         int bz2 = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ2, cropOriginZ, mapHeight);
@@ -336,6 +336,12 @@ namespace _3dTesting.Helpers
                     }
                 }
             }
+        }
+
+        private static float GetMarkerMapX(_3dObject obj)
+        {
+            int viewportCenterOffset = (SurfaceSetup.viewPortSize * MapSetup.tileSize) / 2;
+            return obj.WorldPosition.x + viewportCenterOffset + (obj.ObjectOffsets?.x ?? 0f);
         }
 
         public static byte[] GetMinimapMarkerBlinkBgra(SceneBiomeTypes biome, byte[] primaryBgra, bool usePrimaryColor)
