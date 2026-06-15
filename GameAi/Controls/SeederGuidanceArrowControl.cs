@@ -131,7 +131,7 @@ namespace GameAiAndControls.Controls
                 if (!isSeeder && !isDrone && !isMotherShip && !isBomber)
                     continue;
 
-                var pos = GetNavigationTargetWorldPosition(obj);
+                var pos = SurfacePositionSyncHelpers.GetGuidanceTargetWorldPosition(obj);
                 if (pos == null)
                     continue;
 
@@ -174,20 +174,6 @@ namespace GameAiAndControls.Controls
             // Fallback before ship controls have run
             var map = GameState.SurfaceState.GlobalMapPosition;
             return new Vector3 { x = map.x, y = map.y, z = map.z };
-        }
-
-        private static Vector3? GetNavigationTargetWorldPosition(I3dObject obj)
-        {
-            var pos = obj.WorldPosition;
-            if (pos == null)
-                return null;
-
-            return new Vector3
-            {
-                x = pos.x + (ScreenSetup.screenSizeX / 2f) + (obj.ObjectOffsets?.x ?? 0f),
-                y = pos.y,
-                z = pos.z
-            };
         }
 
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
