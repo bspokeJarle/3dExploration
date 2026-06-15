@@ -28,7 +28,7 @@ namespace _3dRotations.Scene.Scene6
         public GameModes GameMode { get; } = GameModes.Playback;
 
         public float InfectionThresholdPercent { get; } = 11.5f;
-        public int InfectionSpreadRate { get; } = 8;
+        public int InfectionSpreadRate { get; } = 7;
         public int SeederOffscreenSpeedFactor { get; } = 20;
         public float LocalInfectionSpreadDelaySec { get; } = 1.8f;
         public float LocalInfectionSpreadRadius { get; } = 5800f;
@@ -107,8 +107,8 @@ namespace _3dRotations.Scene.Scene6
                 totalSeederCount: 21,
                 regularSeed: 6061,
                 nearSeederCount: 5,
-                firstRingRadius: 7500f,
-                ringRadiusStep: 11500f);
+                firstRingRadius: 6500f,
+                ringRadiusStep: 9000f);
 
             var motherShipMedium = MotherShipMedium.CreateMotherShipMedium(Surface);
             motherShipMedium.Rotation = new Vector3 { };

@@ -34,7 +34,7 @@ public class SceneInfectionTuningTests
             (new Scene3(), 20, 5),
             (new Scene4(), 17, 6),
             (new Scene5(), 15, 7),
-            (new Scene6(), 13, 8),
+            (new Scene6(), 13, 7),
             (new Scene7(), 11, 9),
             (new Scene8(), 10, 10)
         ];
