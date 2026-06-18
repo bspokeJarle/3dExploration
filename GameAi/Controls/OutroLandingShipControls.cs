@@ -14,6 +14,7 @@ namespace GameAiAndControls.Controls
         public const float LandingSeconds = 3.2f;
         public const float LandingZSortBias = 560f;
         public const int ParticleEmissionFrameInterval = 5;
+        private const float ParticleEmissionIntervalSeconds = ParticleEmissionFrameInterval / GameState.GameplayBaselineFps;
         public const float LandingVisualScale = 1.24f;
         public const float UpperHatchOpenSeconds = 0.9f;
         public const float UpperHatchOpenDegrees = -72f;
@@ -31,7 +32,7 @@ namespace GameAiAndControls.Controls
         private const string LowerHullPartName = "LowerPart";
         private const string TopCannonPartName = "TopCannon";
 
-        private int _particleFrameCounter = ParticleEmissionFrameInterval;
+        private float _particleEmissionSeconds = ParticleEmissionIntervalSeconds;
         private float _elapsedSeconds;
         private bool _hasInitialized;
         private readonly Vector3 _initialOffset;
@@ -120,8 +121,8 @@ namespace GameAiAndControls.Controls
                 return;
             }
 
-            _particleFrameCounter++;
-            bool shouldEmit = !IsLanded && _particleFrameCounter >= ParticleEmissionFrameInterval;
+            _particleEmissionSeconds += GameState.ClampedDeltaTime;
+            bool shouldEmit = !IsLanded && _particleEmissionSeconds >= ParticleEmissionIntervalSeconds;
             if (shouldEmit)
             {
                 theObject.Particles.ReleaseParticles(
@@ -131,7 +132,7 @@ namespace GameAiAndControls.Controls
                     this,
                     LowerEngineThrust,
                     false);
-                _particleFrameCounter = 0;
+                _particleEmissionSeconds = 0f;
             }
             theObject.Particles.MoveParticles();
         }
@@ -171,6 +172,7 @@ namespace GameAiAndControls.Controls
             theObject.WorldPosition = new Vector3 { x = 0f, y = 0f, z = 0f };
             theObject.Rotation = CreateInitialLandingRotation();
             theObject.ZSortBias = LandingZSortBias;
+            _particleEmissionSeconds = ParticleEmissionIntervalSeconds;
             ConfigureParticleStyle(theObject);
             CaptureBaselineGeometry(theObject);
             ApplyLandingPose(theObject, 0f, 0f);
@@ -203,7 +205,7 @@ namespace GameAiAndControls.Controls
             if (GameState.DeltaTime > 0f)
                 return Math.Min(GameState.DeltaTime, 0.1f);
 
-            return 1f / ScreenSetup.targetFps;
+            return GameState.GameplayBaselineDeltaTime;
         }
 
         private static float SmoothStep(float value)

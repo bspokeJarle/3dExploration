@@ -456,7 +456,7 @@ namespace GameAiAndControls.Controls
         {
             float deltaSeconds = GameState.DeltaTime;
             if (deltaSeconds <= 0f || deltaSeconds > 0.25f)
-                return 1f / ScreenSetup.targetFps;
+                return GameState.GameplayBaselineDeltaTime;
 
             return deltaSeconds;
         }

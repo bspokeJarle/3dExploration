@@ -629,14 +629,15 @@ namespace _3dTesting.MainWindowClasses.Loops
                                 "Progression");
                         }
 
-                        // Kill-time powerup assignment: seeders are spawned with HasPowerUp=false
-                        // and only get promoted to a powerup drop when their kill index matches
-                        // a threshold from the wave-wide PowerUpDropPolicy. This spreads drops
-                        // evenly through the wave instead of bunching them at the end.
+                        // The scene policy assigns both drop timing and type at kill time.
+                        // Seeders themselves remain location-independent and unflagged at spawn.
                         if (!isTutorialScene && obj.ObjectName == "Seeder")
                         {
-                            if (PowerUpDropPolicy.TryConsumeDrop())
+                            if (PowerUpDropPolicy.TryConsumeDrop(out var powerUpType, canAward: !obj.HasPowerUp))
+                            {
                                 obj.HasPowerUp = true;
+                                obj.PowerUpType = powerUpType;
+                            }
                         }
 
                         if (!isTutorialScene && GameSetup.IsCheckpointEnemy(obj.ObjectName, obj.HasPowerUp))
@@ -645,8 +646,10 @@ namespace _3dTesting.MainWindowClasses.Loops
 
                     if (obj.HasPowerUp && obj.WorldPosition != null)
                     {
-                        // Only one PowerUp at a time — skip if one already exists.
-                        if (powerUpAlreadyExists) continue;
+                        // Standard drops stay limited to one at a time. A scene-authored
+                        // speed pickup must not disappear while a standard drop is waiting.
+                        if (powerUpAlreadyExists && obj.PowerUpType == PowerUpType.Standard)
+                            continue;
 
                         var powerup = CreatePowerUpDrop(obj);
                         inhabitants.Add(powerup);
@@ -715,7 +718,7 @@ namespace _3dTesting.MainWindowClasses.Loops
 
         private static _3dObject CreatePowerUpDrop(_3dObject source)
         {
-            var powerup = PowerUp.CreatePowerup(source.ParentSurface);
+            var powerup = PowerUp.CreatePowerup(source.ParentSurface, source.PowerUpType);
             var sourceWorld = source.WorldPosition ?? new Vector3();
             var sourceOffsets = source.ObjectOffsets ?? new Vector3();
 

@@ -155,17 +155,18 @@ namespace GameAiAndControls.Controls
 
         private void UpdateWind()
         {
-            _windPhase += 0.012f;
+            _windPhase += 0.012f * GameState.FrameScale90;
             _windX = BaseWindX + MathF.Sin(_windPhase) * WindPulseX;
             _windZ = BaseWindZ + MathF.Cos(_windPhase * 0.7f) * WindPulseZ;
         }
 
         private void MoveDrop(Raindrop drop)
         {
-            drop.OffsetY += drop.FallSpeed;
-            drop.WorldX += (_windX * drop.WindWeight) + drop.DriftX;
-            drop.WorldZ += (_windZ * drop.WindWeight) + drop.DriftZ;
-            drop.Opacity = Math.Min(1f, drop.Opacity + FadeInStep);
+            float frameScale = GameState.FrameScale90;
+            drop.OffsetY += drop.FallSpeed * frameScale;
+            drop.WorldX += ((_windX * drop.WindWeight) + drop.DriftX) * frameScale;
+            drop.WorldZ += ((_windZ * drop.WindWeight) + drop.DriftZ) * frameScale;
+            drop.Opacity = Math.Min(1f, drop.Opacity + FadeInStep * frameScale);
             drop.VisualWindX = _windX * drop.WindWeight;
         }
 

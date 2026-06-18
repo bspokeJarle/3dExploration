@@ -166,15 +166,15 @@ namespace GameAiAndControls.Controls.SeederControls
 
             long nowTicks = DateTime.Now.Ticks;
 
-            ComputeStepModel(isOnScreen, s, out float localSpeed, out float speed, out float step60, out float stepOff, out float step);
+            ComputeStepModel(isOnScreen, s, out float localSpeed, out float speed, out float stepBaseline, out float stepOff, out float step);
 
-            LogHeartbeatIfNeeded(isOnScreen, s, id, nowTicks, dt, step60, stepOff, OffscreenStepFactor, current);
+            LogHeartbeatIfNeeded(isOnScreen, s, id, nowTicks, dt, stepBaseline, stepOff, OffscreenStepFactor, current);
 
             if (isOnScreen && nowTicks < s.ParticleEmitUntilTicks)
                 moveThisObject.Movement.ReleaseParticles(moveThisObject);
 
             if (s.HasMovementTarget)
-                return HandleMoveTowardTarget(isOnScreen, moveThisObject, s, id, nowTicks, dt, step60, step, OffscreenStepFactor, current);
+                return HandleMoveTowardTarget(isOnScreen, moveThisObject, s, id, nowTicks, dt, stepBaseline, step, OffscreenStepFactor, current);
 
             if (s.IsSearchingGlobally)
                 return HandleGlobalSearch(isOnScreen, moveThisObject, s, id, nowTicks, ecoMap, current);
@@ -413,7 +413,7 @@ namespace GameAiAndControls.Controls.SeederControls
             AiState s,
             out float localSpeed,
             out float speed,
-            out float step60,
+            out float stepBaseline,
             out float stepOff,
             out float step)
         {
@@ -431,12 +431,12 @@ namespace GameAiAndControls.Controls.SeederControls
             if (!s.TargetIsLocalBio && GlobalOffscreenSpeedFactor != 1.0f)
                 speed *= GlobalOffscreenSpeedFactor;
 
-            // Base step at 60 FPS
-            step60 = speed / 60f;
+            // Base step at the gameplay baseline FPS.
+            stepBaseline = speed / GameState.GameplayBaselineFps;
             // Offscreen acceleration
-            stepOff = step60 * OffscreenStepFactor;
+            stepOff = stepBaseline * OffscreenStepFactor;
             // Final step depends on onscreen/offscreen (same formula, but uses above factors)
-            step = isOnScreen ? step60 : stepOff;
+            step = isOnScreen ? stepBaseline : stepOff;
         }
 
         private static void LogHeartbeatIfNeeded(
@@ -445,7 +445,7 @@ namespace GameAiAndControls.Controls.SeederControls
             int id,
             long nowTicks,
             float dt,
-            float step60,
+            float stepBaseline,
             float stepOff,
             int offscreenStepFactor,
             Vector3 current)
@@ -468,7 +468,7 @@ namespace GameAiAndControls.Controls.SeederControls
             SafeLog(
                 $"AI:HB onScreen={isOnScreen} state={stateName} " +
                 $"hasTarget={s.HasMovementTarget} localTarget={s.TargetIsLocalBio} " +
-                $"dt={dt:0.0000} step60={step60:0.00} stepOff={stepOff:0.00} factor={offscreenStepFactor} " +
+                $"dt={dt:0.0000} step90={stepBaseline:0.00} stepOff={stepOff:0.00} factor={offscreenStepFactor} " +
                 $"pos={V2(current)} target={targetStr} stepsRemaining={stepsStr} " +
                 $"cooldowns globalNext={gNext} localNext={lNext} ObjectId:{id}"
             );
@@ -481,7 +481,7 @@ namespace GameAiAndControls.Controls.SeederControls
             int id,
             long nowTicks,
             float dt,
-            float step60,
+            float stepBaseline,
             float step,
             int offscreenStepFactor,
             Vector3 current)
@@ -490,21 +490,21 @@ namespace GameAiAndControls.Controls.SeederControls
             if (s.StepsRemaining <= 0)
             {
                 float dist = DistanceXZ(current, s.TargetWorld);
-                int stepsNeeded = (int)Math.Ceiling(dist / Math.Max(0.0001f, step60));
+                int stepsNeeded = (int)Math.Ceiling(dist / Math.Max(0.0001f, stepBaseline));
                 if (stepsNeeded < 1) stepsNeeded = 1;
 
                 s.StepsRemaining = stepsNeeded;
 
                 SafeLog(
                     $"AI:STEPS_INIT onScreen={isOnScreen} localTarget={s.TargetIsLocalBio} " +
-                    $"dist={dist:0.0} step60={step60:0.00} stepsNeeded={stepsNeeded} " +
+                    $"dist={dist:0.0} step90={stepBaseline:0.00} stepsNeeded={stepsNeeded} " +
                     $"pos={V2(current)} target={V2(s.TargetWorld)} ObjectId:{id}"
                 );
             }
 
-            // Frame-rate compensation: scale step and decrement by dt*60
+            // Frame-rate compensation: scale step and decrement by dt*baseline FPS
             // so the seeder covers the same distance per second at any FPS.
-            float dtScale = dt * 60f;
+            float dtScale = dt * GameState.GameplayBaselineFps;
             float actualStep = step * dtScale;
 
             Vector3 next = SeederMovementHelpers.StepTowardTargetWorldXZ(current, s.TargetWorld, actualStep);
@@ -684,8 +684,8 @@ namespace GameAiAndControls.Controls.SeederControls
 
                 var candidate = new Vector3 { x = localTarget.x, y = current.y, z = localTarget.z };
 
-                float localStep60 = localSpeed / 60f;
-                float effectiveStep = isOnScreen ? localStep60 : localStep60 * OffscreenStepFactor;
+                float localStepBaseline = localSpeed / GameState.GameplayBaselineFps;
+                float effectiveStep = isOnScreen ? localStepBaseline : localStepBaseline * OffscreenStepFactor;
                 float dist = DistanceXZ(current, candidate);
                 int stepsNeeded = (int)Math.Ceiling(dist / Math.Max(0.0001f, effectiveStep));
                 if (stepsNeeded < 1) stepsNeeded = 1;

@@ -27,6 +27,7 @@ namespace GameAiAndControls.Controls
         private const float DiveHeadingZ = 0f;
         private const float ImpactHoldSeconds = 0.5f;
         private const int ParticleEmissionFrameInterval = 5;
+        private const float ParticleEmissionIntervalSeconds = ParticleEmissionFrameInterval / GameState.GameplayBaselineFps;
         private const float StartScreenXRatio = 0.45f;
         private const float StartScreenYRatio = -0.10f;
         private const int EngineThrustPerNozzle = 5;
@@ -36,7 +37,7 @@ namespace GameAiAndControls.Controls
 
         private readonly Func<DateTime> _utcNow;
         private DateTime _lastUpdateTime;
-        private int _particleEmissionFrameCounter = ParticleEmissionFrameInterval;
+        private float _particleEmissionSeconds = ParticleEmissionIntervalSeconds;
         private float _elapsedSeconds;
         private bool _hasInitialized;
         private bool _finished;
@@ -96,7 +97,7 @@ namespace GameAiAndControls.Controls
             float deltaTime = (float)(now - _lastUpdateTime).TotalSeconds;
             _lastUpdateTime = now;
             if (deltaTime <= 0f)
-                deltaTime = 1f / 60f;
+                deltaTime = GameState.GameplayBaselineDeltaTime;
 
             _elapsedSeconds += deltaTime;
 
@@ -149,8 +150,8 @@ namespace GameAiAndControls.Controls
                 return;
             }
 
-            _particleEmissionFrameCounter++;
-            bool shouldEmit = _particleEmissionFrameCounter >= ParticleEmissionFrameInterval;
+            _particleEmissionSeconds += GameState.ClampedDeltaTime;
+            bool shouldEmit = _particleEmissionSeconds >= ParticleEmissionIntervalSeconds;
 
             if (shouldEmit)
             {
@@ -169,7 +170,7 @@ namespace GameAiAndControls.Controls
                     this,
                     EngineThrustPerNozzle,
                     false);
-                _particleEmissionFrameCounter = 0;
+                _particleEmissionSeconds = 0f;
             }
             theObject.Particles.MoveParticles();
         }
@@ -198,6 +199,7 @@ namespace GameAiAndControls.Controls
         {
             _hasInitialized = true;
             _lastUpdateTime = _utcNow();
+            _particleEmissionSeconds = ParticleEmissionIntervalSeconds;
             ConfigureParticleStyle(theObject);
             CaptureBaselineGeometry(theObject);
             theObject.IsActive = true;

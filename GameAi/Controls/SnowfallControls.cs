@@ -138,10 +138,11 @@ namespace GameAiAndControls.Controls
 
         private static void MoveFlake(Snowflake flake)
         {
-            flake.Phase += flake.SwaySpeed;
-            flake.WorldX += flake.DriftX + MathF.Sin(flake.Phase) * flake.SwayAmount;
-            flake.OffsetY += flake.FallSpeed;
-            flake.WorldZ += flake.DriftZ;
+            float frameScale = GameState.FrameScale90;
+            flake.Phase += flake.SwaySpeed * frameScale;
+            flake.WorldX += (flake.DriftX + MathF.Sin(flake.Phase) * flake.SwayAmount) * frameScale;
+            flake.OffsetY += flake.FallSpeed * frameScale;
+            flake.WorldZ += flake.DriftZ * frameScale;
         }
 
         private bool ShouldRecycle(Snowflake flake, IVector3 mapPosition, float endOffsetY)

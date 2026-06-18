@@ -183,7 +183,7 @@ namespace GameAiAndControls.Controls
                 return Math.Clamp(GameState.DeltaTime, 0f, 0.1f);
 
             var now = DateTime.Now;
-            float deltaSeconds = 1f / ScreenSetup.targetFps;
+            float deltaSeconds = GameState.GameplayBaselineDeltaTime;
             if (_lastFrameTime != DateTime.MinValue)
                 deltaSeconds = (float)(now - _lastFrameTime).TotalSeconds;
 

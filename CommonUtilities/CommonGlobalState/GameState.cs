@@ -23,6 +23,16 @@ namespace CommonUtilities.CommonGlobalState
         public static List<_3dSpecificsImplementations._3dObject> PendingWorldObjects { get; } = new();
         public static long FrameCount { get; set; } = 0;
         public static int ObjectIdCounter { get; set; } = 0;
-        public static float DeltaTime { get; set; }
+        public const float GameplayBaselineFps = 90f;
+        public const float GameplayBaselineDeltaTime = 1f / GameplayBaselineFps;
+        public static float DeltaTime { get; set; } = GameplayBaselineDeltaTime;
+        public static float ClampedDeltaTime => DeltaTime > 0f
+            ? Math.Clamp(DeltaTime, 0f, 0.1f)
+            : GameplayBaselineDeltaTime;
+        public static float FrameScale90 => ClampedDeltaTime * GameplayBaselineFps;
+        public static float ScaleDampingPer90Frame(float perFrameDamping)
+        {
+            return MathF.Pow(perFrameDamping, FrameScale90);
+        }
     }
 }

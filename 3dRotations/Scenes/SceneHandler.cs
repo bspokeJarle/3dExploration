@@ -46,13 +46,14 @@ namespace _3DWorld.Scene
 
         private readonly struct TutorialEntrySnapshot
         {
-            public TutorialEntrySnapshot(long score, int kills, int shots, int deaths, int powerUps)
+            public TutorialEntrySnapshot(long score, int kills, int shots, int deaths, int powerUps, int speedPowerUpLevel)
             {
                 Score = score;
                 TotalKills = kills;
                 TotalShotsFired = shots;
                 TotalDeaths = deaths;
                 PowerUpsCollected = powerUps;
+                SpeedPowerUpLevel = speedPowerUpLevel;
             }
 
             public long Score { get; }
@@ -60,6 +61,7 @@ namespace _3DWorld.Scene
             public int TotalShotsFired { get; }
             public int TotalDeaths { get; }
             public int PowerUpsCollected { get; }
+            public int SpeedPowerUpLevel { get; }
         }
 
         public SceneHandler()
@@ -103,7 +105,8 @@ namespace _3DWorld.Scene
                 gps.TotalKills,
                 gps.TotalShotsFired,
                 gps.TotalDeaths,
-                gps.PowerUpsCollected);
+                gps.PowerUpsCollected,
+                gps.SpeedPowerUpLevel);
         }
 
         public void ResetActiveScene(I3dWorld world)
@@ -127,6 +130,7 @@ namespace _3DWorld.Scene
             int prevShots = gps.TotalShotsFired;
             int prevDeaths = gps.TotalDeaths;
             int prevPowerUps = gps.PowerUpsCollected;
+            int prevSpeedPowerUpLevel = gps.SpeedPowerUpLevel;
 
             ClearVideoOverlay();
             gps.ResetForNewGame();
@@ -184,6 +188,7 @@ namespace _3DWorld.Scene
                 gps.TotalShotsFired = prevShots;
                 gps.TotalDeaths = prevDeaths + 1;
                 gps.PowerUpsCollected = prevPowerUps;
+                gps.SpeedPowerUpLevel = prevSpeedPowerUpLevel;
 
                 if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: No checkpoint — stats preserved. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
             }
@@ -215,6 +220,7 @@ namespace _3DWorld.Scene
             int prevShots = gps.TotalShotsFired;
             int prevDeaths = gps.TotalDeaths;
             int prevPowerUps = gps.PowerUpsCollected;
+            int prevSpeedPowerUpLevel = gps.SpeedPowerUpLevel;
 
             ClearVideoOverlay();
             gps.ResetForNewGame();
@@ -241,6 +247,7 @@ namespace _3DWorld.Scene
                 gps.TotalShotsFired = prevShots;
                 gps.TotalDeaths = prevDeaths;
                 gps.PowerUpsCollected = prevPowerUps;
+                gps.SpeedPowerUpLevel = prevSpeedPowerUpLevel;
                 gps.InfectionLevel = 0f;
                 gps.PlanetStyleBonusScore = 0;
                 gps.PlanetStyleBonusSceneIndex = sceneIndex;
@@ -270,6 +277,7 @@ namespace _3DWorld.Scene
             int prevShots = gps.TotalShotsFired;
             int prevDeaths = gps.TotalDeaths;
             int prevPowerUps = gps.PowerUpsCollected;
+            int prevSpeedPowerUpLevel = gps.SpeedPowerUpLevel;
 
             if (isOutro || isSimulation)
             {
@@ -302,6 +310,7 @@ namespace _3DWorld.Scene
                 gps.TotalShotsFired = prevShots;
                 gps.TotalDeaths = prevDeaths;
                 gps.PowerUpsCollected = prevPowerUps;
+                gps.SpeedPowerUpLevel = prevSpeedPowerUpLevel;
 
                 gps.SavePlanetStartSnapshot();
                 PersistSceneBoundaryProgress(gps);
@@ -337,6 +346,7 @@ namespace _3DWorld.Scene
                 gps.TotalShotsFired = prevShots;
                 gps.TotalDeaths = prevDeaths;
                 gps.PowerUpsCollected = prevPowerUps;
+                gps.SpeedPowerUpLevel = prevSpeedPowerUpLevel;
             }
             else if (isTutorial &&
                 (nextScene.SceneType == SceneTypes.Game || nextScene.SceneType == SceneTypes.Simulation))
@@ -354,6 +364,7 @@ namespace _3DWorld.Scene
                     gps.TotalShotsFired = snapshot.Value.TotalShotsFired;
                     gps.TotalDeaths = snapshot.Value.TotalDeaths;
                     gps.PowerUpsCollected = snapshot.Value.PowerUpsCollected;
+                    gps.SpeedPowerUpLevel = snapshot.Value.SpeedPowerUpLevel;
                 }
                 else
                 {
@@ -364,6 +375,7 @@ namespace _3DWorld.Scene
                     gps.TotalShotsFired = 0;
                     gps.TotalDeaths = 0;
                     gps.PowerUpsCollected = 0;
+                    gps.SpeedPowerUpLevel = 0;
                 }
 
                 _tutorialEntrySnapshot = null;
@@ -427,6 +439,7 @@ namespace _3DWorld.Scene
                 gps.TotalShotsFired = _pendingSavedState.TotalShotsFired;
                 gps.TotalDeaths = _pendingSavedState.TotalDeaths;
                 gps.PowerUpsCollected = _pendingSavedState.PowerUpsCollected;
+                gps.SpeedPowerUpLevel = _pendingSavedState.SpeedPowerUpLevel;
 
                 // If loading into the simulation slot, rebuild it for the restored round
                 if (GetActiveScene().SceneType == SceneTypes.Simulation)
@@ -644,6 +657,7 @@ namespace _3DWorld.Scene
                 overlay.IsNameConfirmed = true;
                 GameState.GamePlayState.PlayerName = name;
                 PersistenceSetup.SaveLastPlayerName(name);
+                PlayerProgressService.ApplyDurableProgress(GameState.GamePlayState);
 
                 // Check for saved scene progress for this player
                 var saved = GameStatePersistence.LoadGameState(name);
@@ -1001,6 +1015,7 @@ namespace _3DWorld.Scene
                 && gamePlayState.TotalShotsFired == 0
                 && gamePlayState.TotalDeaths == 0
                 && gamePlayState.PowerUpsCollected == 0
+                && gamePlayState.SpeedPowerUpLevel == 0
                 && !gamePlayState.HasCheckpoint;
         }
 
@@ -1248,6 +1263,7 @@ namespace _3DWorld.Scene
             gps.Lives = snapshot.Lives;
             gps.Health = snapshot.Health;
             gps.PowerUpsCollected = snapshot.PowerUpsCollected;
+            gps.SpeedPowerUpLevel = snapshot.SpeedPowerUpLevel;
             gps.SeedersRemaining = snapshot.SeedersRemaining;
             gps.DronesRemaining = snapshot.DronesRemaining;
             gps.MotherShipsRemaining = snapshot.MotherShipsRemaining;

@@ -90,7 +90,7 @@ namespace GameAiAndControls.Controls
         private void ApplyIdlePose(I3dObject theObject)
         {
             theObject.Rotation ??= new _3dSpecificsImplementations.Vector3();
-            float dt = GameState.DeltaTime > 0f ? GameState.DeltaTime : 1f / ScreenSetup.targetFps;
+            float dt = GameState.DeltaTime > 0f ? GameState.DeltaTime : GameState.GameplayBaselineDeltaTime;
             _zRotation += IdleSpinDegreesPerSecond * dt;
 
             theObject.Rotation.x = 90f;

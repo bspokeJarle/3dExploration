@@ -28,7 +28,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
         const int DroneSpeedScreenPrSecond = 3; //How many seconds it should take for the drone to cross the entire screen at its current speed. Adjust as needed.
         private const float RotationDegreesPerSecond = 180f;
         private const float DirectionUpdateIntervalSeconds = 1f;
-        private const int OvershootFrameCount = 5;
+        private const float OvershootSeconds = 5f / GameState.GameplayBaselineFps;
         private const float DroneFlyingVolumeBoost = 1.15f;
         private DateTime LastDirectionUpdateDateTime = DateTime.MinValue;
         private DateTime LastMovementDateTime = DateTime.MinValue;
@@ -52,7 +52,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
         private SoundDefinition? _explosionSound;
         private SoundDefinition? _droneFlyingSound;
         private IAudioInstance? _droneFlyingInstance;
-        private int _overshootFramesRemaining = 0;
+        private float _overshootSecondsRemaining = 0f;
         private Vector3 _overshootDirection = new Vector3();
 
         public KamikazeDroneControls()
@@ -181,7 +181,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 _trackedObjectId = theObject.ObjectId;
                 _storedWorldPosition = KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition);
                 _storedWorldPositionInitialized = theObject.WorldPosition != null;
-                _overshootFramesRemaining = 0;
+                _overshootSecondsRemaining = 0f;
                 _overshootDirection = new Vector3();
             }
             else if (_storedWorldPositionInitialized)
@@ -304,7 +304,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             // Drones stay idle until the player unlocks the Decoy powerup
             if (!GameState.GamePlayState.IsDecoyUnlocked)
             {
-                TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, 1f / ScreenSetup.targetFps);
+                TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, GameState.ClampedDeltaTime);
                 _storedWorldPosition = KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition);
                 _storedWorldPositionInitialized = theObject.WorldPosition != null;
                 KamikazeDroneAi.SyncAuthoritativeDroneState(theObject);
@@ -318,7 +318,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             IVector3? currentTargetPosition = null;
             Vector3 directionToTarget = new Vector3();
             bool shouldRecalculateDirection = false;
-            bool isOvershooting = _overshootFramesRemaining > 0;
+            bool isOvershooting = _overshootSecondsRemaining > 0f;
             float speedPerSecond = 0f;
 
             var closestDecoy = KamikazeDroneAi.GetClosestActiveDecoy(ParentObject);
@@ -405,10 +405,10 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                         Vector3 moveDirection;
                         float moveDistance = speedPerSecond * (float)deltaSeconds;
 
-                        if (_overshootFramesRemaining > 0)
+                        if (_overshootSecondsRemaining > 0f)
                         {
                             moveDirection = KamikazeDroneMovementHelpers.Normalize(_overshootDirection);
-                            _overshootFramesRemaining--;
+                            _overshootSecondsRemaining = MathF.Max(0f, _overshootSecondsRemaining - (float)deltaSeconds);
                         }
                         else
                         {
@@ -417,7 +417,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                             if (currentDistance > 0f && moveDistance >= currentDistance)
                             {
                                 _overshootDirection = moveDirection;
-                                _overshootFramesRemaining = OvershootFrameCount - 1;
+                                _overshootSecondsRemaining = OvershootSeconds;
                             }
                             else if (currentDistance <= 0f)
                             {
@@ -667,7 +667,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             _isSurpriseDrone = false;
             _surpriseDelayInitialized = false;
             _surpriseStartHuntDateTime = null;
-            _overshootFramesRemaining = 0;
+            _overshootSecondsRemaining = 0f;
             _overshootDirection = new Vector3();
             _explosionWorldPosition = null;
             _explosionObjectOffsets = null;

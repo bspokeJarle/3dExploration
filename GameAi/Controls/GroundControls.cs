@@ -131,7 +131,7 @@ namespace GameAiAndControls.Controls
         private void AdvanceWaterWaveTime()
         {
             var now = DateTime.Now;
-            float deltaSeconds = 1f / 60f;
+            float deltaSeconds = GameState.GameplayBaselineDeltaTime;
             if (_lastWaterWaveFrame != DateTime.MinValue)
             {
                 deltaSeconds = (float)(now - _lastWaterWaveFrame).TotalSeconds;

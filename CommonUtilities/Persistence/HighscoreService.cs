@@ -15,6 +15,7 @@ namespace CommonUtilities.Persistence
     /// </summary>
     public static class HighscoreService
     {
+        private static readonly object LocalFileGate = new();
         private static readonly JsonSerializerOptions JsonOptions = new()
         {
             WriteIndented = true,
@@ -41,9 +42,10 @@ namespace CommonUtilities.Persistence
                 var path = PersistenceSetup.LocalHighscoreFilePath;
                 var keyPath = PersistenceSetup.LocalKeyFilePath;
 
-                if (!File.Exists(path)) return new HighscoreList();
-
-                var json = EncryptionHelper.DecryptFromFile(path, keyPath);
+                var json = EncryptionHelper.DecryptFromFileOrBackup(
+                    path,
+                    PersistenceSetup.LocalHighscoreBackupFilePath,
+                    keyPath);
                 if (json == null) return new HighscoreList();
 
                 var list = JsonSerializer.Deserialize<HighscoreList>(json, JsonOptions)
@@ -58,23 +60,46 @@ namespace CommonUtilities.Persistence
             }
         }
 
+        public static long GetBestLocalScore(string playerName)
+        {
+            if (string.IsNullOrWhiteSpace(playerName))
+                return 0;
+
+            return LoadLocalHighscores().Entries
+                .Where(entry => string.Equals(
+                    entry.PlayerName,
+                    playerName.Trim(),
+                    StringComparison.OrdinalIgnoreCase))
+                .Select(entry => entry.Score)
+                .DefaultIfEmpty(0L)
+                .Max();
+        }
+
         /// <summary>
         /// Writes the highscore list to the local encrypted file.
         /// </summary>
         public static void SaveLocalHighscores(HighscoreList list)
         {
-            list.Entries = NormalizeEntriesByPlayer(list.Entries);
+            lock (LocalFileGate)
+            {
+                var existing = LoadLocalHighscores();
+                list.Entries = MergeLists(existing.Entries, list.Entries);
 
-            var path = PersistenceSetup.LocalHighscoreFilePath;
-            var keyPath = PersistenceSetup.LocalKeyFilePath;
+                var path = PersistenceSetup.LocalHighscoreFilePath;
+                var keyPath = PersistenceSetup.LocalKeyFilePath;
 
-            var dir = Path.GetDirectoryName(path);
-            if (dir != null) Directory.CreateDirectory(dir);
+                var dir = Path.GetDirectoryName(path);
+                if (dir != null) Directory.CreateDirectory(dir);
 
-            EncryptionHelper.EnsureKeyFile(keyPath);
+                EncryptionHelper.EnsureKeyFile(keyPath);
 
-            var json = JsonSerializer.Serialize(list, JsonOptions);
-            EncryptionHelper.EncryptToFile(path, json, keyPath);
+                var json = JsonSerializer.Serialize(list, JsonOptions);
+                EncryptionHelper.EncryptToFileAtomic(
+                    path,
+                    PersistenceSetup.LocalHighscoreBackupFilePath,
+                    json,
+                    keyPath);
+            }
         }
 
         // -----------------------------------------------------------------

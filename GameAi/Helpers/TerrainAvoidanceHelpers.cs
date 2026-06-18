@@ -92,7 +92,7 @@ namespace GameAiAndControls.Helpers
                 return false;
 
             if (deltaSeconds <= 0f)
-                deltaSeconds = 1f / ScreenSetup.targetFps;
+                deltaSeconds = GameState.GameplayBaselineDeltaTime;
 
             deltaSeconds = Math.Clamp(deltaSeconds, 0f, 0.1f);
             float intensity = state.DurationSeconds <= 0f

@@ -102,7 +102,8 @@ namespace _3dRotations.Scene.Scene7
                 GameState.SurfaceState.GlobalMapPosition,
                 totalSeederCount: 23,
                 regularSeed: 7071,
-                nearSeederCount: 10);
+                nearSeederCount: 10,
+                firstKillPowerUpType: PowerUpType.TravelSpeedLevel2);
 
             var motherShipLarge = MotherShipLarge.CreateMotherShipLarge(Surface);
             motherShipLarge.Rotation = new Vector3 { };

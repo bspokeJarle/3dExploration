@@ -108,7 +108,8 @@ namespace _3dRotations.Scene.Scene6
                 regularSeed: 6061,
                 nearSeederCount: 5,
                 firstRingRadius: 6500f,
-                ringRadiusStep: 9000f);
+                ringRadiusStep: 9000f,
+                firstKillPowerUpType: PowerUpType.TravelSpeedLevel1);
 
             var motherShipMedium = MotherShipMedium.CreateMotherShipMedium(Surface);
             motherShipMedium.Rotation = new Vector3 { };

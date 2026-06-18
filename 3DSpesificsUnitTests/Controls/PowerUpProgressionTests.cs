@@ -1,4 +1,5 @@
 using _3dRotations.Helpers;
+using _3dRotations.World.Objects;
 using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using Domain;
@@ -86,6 +87,97 @@ public class PowerUpProgressionTests
         Assert.AreEqual(0, PowerUpDropPolicy.SeederKillsObserved,
             "Configure must reset the observed kill counter for the new wave.");
         Assert.AreEqual(1, PowerUpDropPolicy.CurrentThresholds.Count);
+    }
+
+    [TestMethod]
+    public void FirstSeederKill_DropsConfiguredTypedPowerUpBeforeStandardThresholds()
+    {
+        PowerUpDropPolicy.ConfigureForWave(
+            totalSeeders: 21,
+            powerUpCount: 2,
+            firstKillPowerUpType: PowerUpType.TravelSpeedLevel1);
+
+        Assert.IsTrue(PowerUpDropPolicy.TryConsumeDrop(out var firstType));
+        Assert.AreEqual(PowerUpType.TravelSpeedLevel1, firstType);
+
+        for (int kill = 2; kill < 14; kill++)
+            Assert.IsFalse(PowerUpDropPolicy.TryConsumeDrop(out _));
+
+        Assert.IsTrue(PowerUpDropPolicy.TryConsumeDrop(out var standardType));
+        Assert.AreEqual(PowerUpType.Standard, standardType);
+    }
+
+    [TestMethod]
+    public void FirstTypedDrop_AlreadyOwned_IsSkippedWithoutConsumingStandardDrop()
+    {
+        GameState.GamePlayState.SpeedPowerUpLevel = 1;
+        PowerUpDropPolicy.ConfigureForWave(
+            totalSeeders: 21,
+            powerUpCount: 2,
+            firstKillPowerUpType: PowerUpType.TravelSpeedLevel1);
+
+        Assert.IsFalse(PowerUpDropPolicy.TryConsumeDrop(out _));
+        for (int kill = 2; kill < 14; kill++)
+            Assert.IsFalse(PowerUpDropPolicy.TryConsumeDrop(out _));
+
+        Assert.IsTrue(PowerUpDropPolicy.TryConsumeDrop(out var standardType));
+        Assert.AreEqual(PowerUpType.Standard, standardType);
+    }
+
+    [TestMethod]
+    public void DeferredDrop_DoesNotConsumeStandardDropThreshold()
+    {
+        PowerUpDropPolicy.ConfigureForWave(totalSeeders: 6, powerUpCount: 1);
+
+        PowerUpDropPolicy.TryConsumeDrop();
+        PowerUpDropPolicy.TryConsumeDrop();
+        Assert.IsFalse(PowerUpDropPolicy.TryConsumeDrop(canAward: false));
+        Assert.IsTrue(PowerUpDropPolicy.TryConsumeDrop(),
+            "The next regular seeder should receive the deferred standard powerup.");
+    }
+
+    [TestMethod]
+    public void SpeedPowerUps_ApplyCumulativeTravelMultiplierWithoutUnlockingWeapons()
+    {
+        var gps = GameState.GamePlayState;
+
+        Assert.AreEqual(1f, gps.TravelSpeedMultiplier);
+        Assert.IsTrue(gps.ApplySpeedPowerUp(PowerUpType.TravelSpeedLevel1));
+        Assert.AreEqual(1.20f, gps.TravelSpeedMultiplier);
+        Assert.AreEqual(0, gps.PowerUpsCollected);
+        Assert.IsFalse(gps.IsDecoyUnlocked);
+
+        Assert.IsTrue(gps.ApplySpeedPowerUp(PowerUpType.TravelSpeedLevel2));
+        Assert.AreEqual(1.50f, gps.TravelSpeedMultiplier);
+        Assert.AreEqual(0, gps.PowerUpsCollected);
+        Assert.IsFalse(gps.IsLazerUnlocked);
+        Assert.IsFalse(gps.ApplySpeedPowerUp(PowerUpType.TravelSpeedLevel1));
+    }
+
+    [TestMethod]
+    public void TravelSpeedPowerUpGeometry_UsesRequestedBoltCount()
+    {
+        Assert.AreEqual(48, PowerUp.TravelSpeedBody(2).Count);
+        Assert.AreEqual(72, PowerUp.TravelSpeedBody(3).Count);
+    }
+
+    [TestMethod]
+    public void PlanetReset_RestoresWeaponAndSpeedProgressFromArrivalSnapshot()
+    {
+        var gps = GameState.GamePlayState;
+        gps.SceneIndex = 6;
+        gps.PowerUpsCollected = 2;
+        gps.SpeedPowerUpLevel = 1;
+        gps.SavePlanetStartSnapshot();
+
+        gps.PowerUpsCollected = 0;
+        gps.SpeedPowerUpLevel = 0;
+        gps.ApplyPlanetStartSnapshot();
+
+        Assert.AreEqual(2, gps.PowerUpsCollected);
+        Assert.AreEqual(1, gps.SpeedPowerUpLevel);
+        Assert.IsTrue(gps.IsLazerUnlocked);
+        Assert.AreEqual(1.20f, gps.TravelSpeedMultiplier);
     }
 
     [TestMethod]

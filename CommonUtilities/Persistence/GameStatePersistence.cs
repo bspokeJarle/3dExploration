@@ -28,6 +28,8 @@ namespace CommonUtilities.Persistence
             var state = GameState.GamePlayState;
             if (string.IsNullOrWhiteSpace(state.PlayerName)) return;
 
+            PlayerProgressService.ProtectAndApply(state);
+
             bool useCheckpoint = state.HasCheckpoint;
 
             var saved = new SavedGameState
@@ -44,6 +46,7 @@ namespace CommonUtilities.Persistence
                 MaxHealth = state.MaxHealth,
                 WaveNumber = useCheckpoint ? state.CheckpointWaveNumber : state.WaveNumber,
                 PowerUpsCollected = useCheckpoint ? state.CheckpointPowerUpsCollected : state.PowerUpsCollected,
+                SpeedPowerUpLevel = useCheckpoint ? state.CheckpointSpeedPowerUpLevel : state.SpeedPowerUpLevel,
                 InfectionLevel = useCheckpoint ? state.CheckpointInfectionLevel : state.InfectionLevel,
                 TotalBioTiles = state.TotalBioTiles,
                 SeedersRemaining = useCheckpoint ? state.CheckpointSeedersRemaining : state.SeedersRemaining,
@@ -60,6 +63,7 @@ namespace CommonUtilities.Persistence
                 CheckpointLives = state.CheckpointLives,
                 CheckpointHealth = state.CheckpointHealth,
                 CheckpointPowerUpsCollected = state.CheckpointPowerUpsCollected,
+                CheckpointSpeedPowerUpLevel = state.CheckpointSpeedPowerUpLevel,
                 CheckpointSeedersRemaining = state.CheckpointSeedersRemaining,
                 CheckpointDronesRemaining = state.CheckpointDronesRemaining,
                 CheckpointMotherShipsRemaining = state.CheckpointMotherShipsRemaining,
@@ -79,6 +83,7 @@ namespace CommonUtilities.Persistence
                 PlanetStartLives = state.PlanetStartLives,
                 PlanetStartHealth = state.PlanetStartHealth,
                 PlanetStartPowerUpsCollected = state.PlanetStartPowerUpsCollected,
+                PlanetStartSpeedPowerUpLevel = state.PlanetStartSpeedPowerUpLevel,
                 PlanetStartSeedersRemaining = state.PlanetStartSeedersRemaining,
                 PlanetStartDronesRemaining = state.PlanetStartDronesRemaining,
                 PlanetStartMotherShipsRemaining = state.PlanetStartMotherShipsRemaining,
@@ -100,8 +105,9 @@ namespace CommonUtilities.Persistence
             EncryptionHelper.EnsureKeyFile(PersistenceSetup.LocalKeyFilePath);
 
             var json = JsonSerializer.Serialize(saved, JsonOptions);
-            EncryptionHelper.EncryptToFile(
+            EncryptionHelper.EncryptToFileAtomic(
                 filePath,
+                PersistenceSetup.GetPlayerGameStateBackupFilePath(state.PlayerName),
                 json,
                 PersistenceSetup.LocalKeyFilePath);
         }
@@ -115,16 +121,21 @@ namespace CommonUtilities.Persistence
             try
             {
                 var filePath = PersistenceSetup.GetPlayerGameStateFilePath(playerName);
-                if (!File.Exists(filePath))
+                var backupFilePath = PersistenceSetup.GetPlayerGameStateBackupFilePath(playerName);
+                if (!File.Exists(filePath) && !File.Exists(backupFilePath))
                     return null;
 
-                var json = EncryptionHelper.DecryptFromFile(
+                var json = EncryptionHelper.DecryptFromFileOrBackup(
                     filePath,
+                    backupFilePath,
                     PersistenceSetup.LocalKeyFilePath);
 
                 if (json == null) return null;
 
-                return JsonSerializer.Deserialize<SavedGameState>(json, JsonOptions);
+                var saved = JsonSerializer.Deserialize<SavedGameState>(json, JsonOptions);
+                if (saved != null)
+                    PlayerProgressService.ProtectAndApply(saved);
+                return saved;
             }
             catch
             {
@@ -151,6 +162,7 @@ namespace CommonUtilities.Persistence
             state.MaxHealth = saved.MaxHealth;
             state.WaveNumber = saved.WaveNumber;
             state.PowerUpsCollected = saved.PowerUpsCollected;
+            state.SpeedPowerUpLevel = saved.SpeedPowerUpLevel;
             state.InfectionLevel = saved.InfectionLevel;
             state.TotalBioTiles = saved.TotalBioTiles;
             state.SeedersRemaining = saved.SeedersRemaining;
@@ -167,6 +179,7 @@ namespace CommonUtilities.Persistence
             state.CheckpointLives = saved.CheckpointLives;
             state.CheckpointHealth = saved.CheckpointHealth;
             state.CheckpointPowerUpsCollected = saved.CheckpointPowerUpsCollected;
+            state.CheckpointSpeedPowerUpLevel = saved.CheckpointSpeedPowerUpLevel;
             state.CheckpointSeedersRemaining = saved.CheckpointSeedersRemaining;
             state.CheckpointDronesRemaining = saved.CheckpointDronesRemaining;
             state.CheckpointMotherShipsRemaining = saved.CheckpointMotherShipsRemaining;
@@ -186,6 +199,7 @@ namespace CommonUtilities.Persistence
             state.PlanetStartLives = saved.PlanetStartLives;
             state.PlanetStartHealth = saved.PlanetStartHealth;
             state.PlanetStartPowerUpsCollected = saved.PlanetStartPowerUpsCollected;
+            state.PlanetStartSpeedPowerUpLevel = saved.PlanetStartSpeedPowerUpLevel;
             state.PlanetStartSeedersRemaining = saved.PlanetStartSeedersRemaining;
             state.PlanetStartDronesRemaining = saved.PlanetStartDronesRemaining;
             state.PlanetStartMotherShipsRemaining = saved.PlanetStartMotherShipsRemaining;
@@ -215,6 +229,9 @@ namespace CommonUtilities.Persistence
             var path = PersistenceSetup.GetPlayerGameStateFilePath(playerName);
             if (File.Exists(path))
                 File.Delete(path);
+            var backupPath = PersistenceSetup.GetPlayerGameStateBackupFilePath(playerName);
+            if (File.Exists(backupPath))
+                File.Delete(backupPath);
         }
 
         /// <summary>
@@ -243,6 +260,7 @@ namespace CommonUtilities.Persistence
             saved.PlanetStyleBonusSceneIndex = 1;
             saved.WaveNumber = 1;
             saved.PowerUpsCollected = 0;
+            saved.SpeedPowerUpLevel = 0;
             saved.InfectionLevel = 0f;
             saved.TotalBioTiles = 0;
             saved.TotalShotsFired = 0;
@@ -259,6 +277,7 @@ namespace CommonUtilities.Persistence
             saved.CheckpointLives = 3;
             saved.CheckpointHealth = 100f;
             saved.CheckpointPowerUpsCollected = 0;
+            saved.CheckpointSpeedPowerUpLevel = 0;
             saved.CheckpointSeedersRemaining = 0;
             saved.CheckpointDronesRemaining = 0;
             saved.CheckpointMotherShipsRemaining = 0;
@@ -278,6 +297,7 @@ namespace CommonUtilities.Persistence
             saved.PlanetStartLives = 3;
             saved.PlanetStartHealth = 100f;
             saved.PlanetStartPowerUpsCollected = 0;
+            saved.PlanetStartSpeedPowerUpLevel = 0;
             saved.PlanetStartSeedersRemaining = 0;
             saved.PlanetStartDronesRemaining = 0;
             saved.PlanetStartMotherShipsRemaining = 0;
@@ -292,12 +312,17 @@ namespace CommonUtilities.Persistence
             saved.PlanetStartPlanetStyleBonusScore = 0;
             saved.PlanetStartPlanetStyleBonusSceneIndex = 1;
             saved.SavedAtUtc = DateTime.UtcNow.ToString("o");
+            PlayerProgressService.ProtectAndApply(saved);
 
             var filePath = PersistenceSetup.GetPlayerGameStateFilePath(playerName);
             Directory.CreateDirectory(PersistenceSetup.LocalFolder);
             EncryptionHelper.EnsureKeyFile(PersistenceSetup.LocalKeyFilePath);
             var json = JsonSerializer.Serialize(saved, JsonOptions);
-            EncryptionHelper.EncryptToFile(filePath, json, PersistenceSetup.LocalKeyFilePath);
+            EncryptionHelper.EncryptToFileAtomic(
+                filePath,
+                PersistenceSetup.GetPlayerGameStateBackupFilePath(playerName),
+                json,
+                PersistenceSetup.LocalKeyFilePath);
 
             // If this player is active in-memory, reset runtime state as well so
             // scene progression does not keep stale values until next restart.
@@ -311,6 +336,7 @@ namespace CommonUtilities.Persistence
                 state.PlanetStyleBonusSceneIndex = 1;
                 state.WaveNumber = 1;
                 state.PowerUpsCollected = 0;
+                state.SpeedPowerUpLevel = 0;
                 state.InfectionLevel = 0f;
                 state.TotalBioTiles = 0;
                 state.TotalShotsFired = 0;
@@ -321,6 +347,7 @@ namespace CommonUtilities.Persistence
                 state.MaxHealth = 100f;
                 state.ClearCheckpoint();
                 state.ClearPlanetStartSnapshot();
+                PlayerProgressService.ApplyDurableProgress(state);
             }
         }
     }

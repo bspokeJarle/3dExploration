@@ -1,5 +1,6 @@
 ﻿using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
+using CommonUtilities.Persistence;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -53,6 +54,11 @@ namespace _3dTesting.MainWindowClasses
         private readonly Image _powerupLazerIcon;
         private readonly Image _powerupDecoyIcon;
         private readonly Image _powerupBulletIcon;
+        private readonly Image _speedPowerupIcon;
+        private readonly BitmapImage? _speedLevel1IconSource;
+        private readonly BitmapImage? _speedLevel2IconSource;
+        private string _cachedHighscorePlayer = string.Empty;
+        private long _cachedPlayerHighscore;
 
         // Enemy remaining: icon + percentage bar (same style as alt/thr/bio)
         private readonly Image _droneIcon;
@@ -106,6 +112,7 @@ namespace _3dTesting.MainWindowClasses
         private const double PowerupBulletX = 845;
         private const double PowerupDecoyX = 945;
         private const double PowerupLazerX = 1045;
+        private const double SpeedPowerupX = 1145;
         private const double PowerupRowY = 85;
         private const double PowerupIconSize = 48;
 
@@ -230,6 +237,10 @@ namespace _3dTesting.MainWindowClasses
             _powerupLazerIcon.Source = TryLoadBitmapImage("GameGraphics\\laser_icon_48.png");
             _powerupDecoyIcon.Source = TryLoadBitmapImage("GameGraphics\\decoy_icon_48.png");
             _powerupBulletIcon.Source = TryLoadBitmapImage("GameGraphics\\bullet_icon_48.png");
+            _speedLevel1IconSource = TryLoadBitmapImage("GameGraphics\\speed_2_icon_48.png");
+            _speedLevel2IconSource = TryLoadBitmapImage("GameGraphics\\speed_3_icon_48.png");
+            _speedPowerupIcon = CreatePowerupIcon(SpeedPowerupX, PowerupRowY, PowerupIconSize);
+            _speedPowerupIcon.Visibility = Visibility.Collapsed;
 
             // ----- Enemy icon + bar -----
             _droneIcon = CreatePowerupIcon(DroneRowX, DroneRowY, EnemyIconSize);
@@ -280,6 +291,7 @@ namespace _3dTesting.MainWindowClasses
             _canvas.Children.Add(_powerupLazerIcon);
             _canvas.Children.Add(_powerupDecoyIcon);
             _canvas.Children.Add(_powerupBulletIcon);
+            _canvas.Children.Add(_speedPowerupIcon);
 
             _canvas.Children.Add(_altBarFill);
             _canvas.Children.Add(_thrBarFill);
@@ -365,6 +377,7 @@ namespace _3dTesting.MainWindowClasses
                 : activePowerup == "DECOY" ? 1.0 : 0.45;
             _powerupLazerIcon.Opacity = !gameplay.IsLazerUnlocked ? 0.15
                 : activePowerup == "LAZER" ? 1.0 : 0.45;
+            UpdateSpeedPowerupIcon(gameplay.SpeedPowerUpLevel);
 
             // Ship power (health) vertical bar: fills bottom-to-top, green→red
             UpdatePowerBar(gameplay);
@@ -385,7 +398,7 @@ namespace _3dTesting.MainWindowClasses
             SetBarFill(_droneBarFill, dronePct, EnemyBarW);
             SetBarFill(_seederBarFill, seederPct, EnemyBarW);
 
-            _highscoreValue.Text = gameplay.Score.ToString("N0");
+            _highscoreValue.Text = GetDisplayedHighscore(gameplay).ToString("N0");
 
             UpdateViewportRect();
         }
@@ -457,6 +470,30 @@ namespace _3dTesting.MainWindowClasses
             }
 
             _powerBarFill.Fill = new SolidColorBrush(Color.FromArgb(220, r, g, 0));
+        }
+
+        private void UpdateSpeedPowerupIcon(int speedPowerUpLevel)
+        {
+            _speedPowerupIcon.Visibility = speedPowerUpLevel > 0
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+            _speedPowerupIcon.Source = speedPowerUpLevel >= 2
+                ? _speedLevel2IconSource
+                : _speedLevel1IconSource;
+            _speedPowerupIcon.Opacity = 1.0;
+        }
+
+        private long GetDisplayedHighscore(GamePlayState gameplay)
+        {
+            string playerName = gameplay.PlayerName?.Trim() ?? string.Empty;
+            if (!string.Equals(_cachedHighscorePlayer, playerName, StringComparison.OrdinalIgnoreCase))
+            {
+                _cachedHighscorePlayer = playerName;
+                _cachedPlayerHighscore = HighscoreService.GetBestLocalScore(playerName);
+            }
+
+            _cachedPlayerHighscore = Math.Max(_cachedPlayerHighscore, gameplay.Score);
+            return _cachedPlayerHighscore;
         }
 
         private static Image CreatePowerupIcon(double x, double y, double size)

@@ -34,8 +34,8 @@ namespace GameAiAndControls.Controls
         private float _rotY;
         private float _spinSpeed;
 
-        // Countdown until next visible pass (in frames)
-        private int _waitFrames;
+        // Countdown until next visible pass.
+        private float _waitSeconds;
         private bool _traveling;
 
         private readonly Random _rng;
@@ -43,9 +43,9 @@ namespace GameAiAndControls.Controls
 
         private const float MinSpeed = 4.5f;
         private const float MaxSpeed = 9.0f;
-        private const float MinWaitFrames = 180;
-        private const float MaxWaitFrames = 500;
-        private const int TrailEmissionFrameInterval = 2;
+        private const float MinWaitSeconds = 180f / GameState.GameplayBaselineFps;
+        private const float MaxWaitSeconds = 500f / GameState.GameplayBaselineFps;
+        private const float TrailEmissionIntervalSeconds = 2f / GameState.GameplayBaselineFps;
         private const int TrailThrust = 2;
         private const float TrailStartDistance = 14f;
         private const float TrailGuideDistance = 86f;
@@ -54,7 +54,7 @@ namespace GameAiAndControls.Controls
         private bool? _forcedRight;
         private bool? _forcedDown;
         private ForcedScreenPath? _forcedScreenPath;
-        private int _trailFrameCounter;
+        private float _trailEmissionSeconds;
 
         public bool EmitTrailParticles { get; set; }
         public float SpeedMultiplier { get; set; } = 1f;
@@ -85,7 +85,7 @@ namespace GameAiAndControls.Controls
             _depth = depth;
             _rotY = (float)(_rng.NextDouble() * 360.0);
             _spinSpeed = 0.4f + (float)_rng.NextDouble() * 1.2f;
-            _waitFrames = startImmediately ? 0 : (int)(MinWaitFrames + _rng.NextDouble() * (MaxWaitFrames - MinWaitFrames));
+            _waitSeconds = startImmediately ? 0f : RandomWaitSeconds();
             _traveling = false;
         }
 
@@ -96,14 +96,15 @@ namespace GameAiAndControls.Controls
             if (!_traveling)
             {
                 theObject.Particles?.MoveParticles();
-                _waitFrames--;
-                if (_waitFrames <= 0)
+                _waitSeconds -= GameState.ClampedDeltaTime;
+                if (_waitSeconds <= 0f)
                     Spawn(theObject);
                 return theObject;
             }
 
             // Spin
-            _rotY += _spinSpeed;
+            float frameScale = GameState.FrameScale90;
+            _rotY += _spinSpeed * frameScale;
             if (_rotY > 360f) _rotY -= 360f;
             if (theObject.Rotation != null)
                 theObject.Rotation.y = _rotY;
@@ -116,8 +117,8 @@ namespace GameAiAndControls.Controls
                 _curY = theObject.ObjectOffsets.y;
                 _hasPosition = true;
             }
-            _curX += _vx;
-            _curY += _vy;
+            _curX += _vx * frameScale;
+            _curY += _vy * frameScale;
             if (theObject.ObjectOffsets != null)
             {
                 theObject.ObjectOffsets.x = _curX;
@@ -132,7 +133,7 @@ namespace GameAiAndControls.Controls
             {
                 _traveling = false;
                 _hasPosition = false;
-                _waitFrames = (int)(MinWaitFrames + _rng.NextDouble() * (MaxWaitFrames - MinWaitFrames));
+                _waitSeconds = RandomWaitSeconds();
                 theObject.IsActive = false;
             }
 
@@ -216,8 +217,8 @@ namespace GameAiAndControls.Controls
                 return;
             }
 
-            _trailFrameCounter++;
-            if (_trailFrameCounter >= TrailEmissionFrameInterval)
+            _trailEmissionSeconds += GameState.ClampedDeltaTime;
+            if (_trailEmissionSeconds >= TrailEmissionIntervalSeconds)
             {
                 float length = MathF.Sqrt((_vx * _vx) + (_vy * _vy));
                 if (length > 0.001f && theObject.ObjectOffsets != null)
@@ -236,7 +237,7 @@ namespace GameAiAndControls.Controls
                     theObject.Particles.ReleaseParticles(guide, start, theObject.ObjectOffsets, this, TrailThrust, false);
                 }
 
-                _trailFrameCounter = 0;
+                _trailEmissionSeconds = 0f;
             }
 
             theObject.Particles.MoveParticles();
@@ -263,6 +264,11 @@ namespace GameAiAndControls.Controls
         public void Dispose()
         {
             _traveling = false;
+        }
+
+        private float RandomWaitSeconds()
+        {
+            return MinWaitSeconds + (float)_rng.NextDouble() * (MaxWaitSeconds - MinWaitSeconds);
         }
 
         private sealed class ForcedScreenPath

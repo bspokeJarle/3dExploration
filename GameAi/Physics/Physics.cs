@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Linq;
 using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using GameAiAndControls.Helpers;
 using static Domain._3dSpecificsImplementations;
@@ -101,17 +102,25 @@ namespace GameAiAndControls.Physics
         private const float DragSpeedScaling = 0.08f;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private float ApplyDragAndClamp(float inertia)
+        private float ApplyDragAndClamp(float inertia, float deltaTime)
         {
             float speedRatio = MathF.Abs(inertia) / MaxInertia;
             float drag = InertiaDrag - DragSpeedScaling * speedRatio * speedRatio;
-            return Math.Clamp(inertia * drag, -MaxInertia, MaxInertia);
+            float scaledDrag = MathF.Pow(drag, deltaTime * GameState.GameplayBaselineFps);
+            return Math.Clamp(inertia * scaledDrag, -MaxInertia, MaxInertia);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int ConsumeFrameCooldown(int frames, float deltaTime)
+        {
+            float frameScale = deltaTime * GameState.GameplayBaselineFps;
+            return Math.Max(0, frames - Math.Max(1, (int)MathF.Round(frameScale)));
         }
 
         // Applies drag to the current velocity and returns the updated position
         public IVector3 ApplyDragForce(IVector3 currentPosition, float deltaTime)
         {
-            float scaledDrag = MathF.Pow(1f - Friction, deltaTime * 60f);
+            float scaledDrag = MathF.Pow(1f - Friction, deltaTime * GameState.GameplayBaselineFps);
             Velocity = PhysicsHelpers.Multiply(Velocity, scaledDrag);
             return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
         }
@@ -121,7 +130,7 @@ namespace GameAiAndControls.Physics
         {
             if (BounceCooldownFrames > 0)
             {
-                BounceCooldownFrames--;
+                BounceCooldownFrames = ConsumeFrameCooldown(BounceCooldownFrames, deltaTime);
                 return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
             }
 
@@ -130,7 +139,7 @@ namespace GameAiAndControls.Physics
             Velocity = PhysicsHelpers.Add(Velocity, PhysicsHelpers.Multiply(gravityForce, deltaTime));
 
             Velocity = PhysicsHelpers.Add(Velocity, PhysicsHelpers.Multiply(Acceleration, deltaTime));
-            Velocity = PhysicsHelpers.Multiply(Velocity, 1 - Friction);
+            Velocity = PhysicsHelpers.Multiply(Velocity, MathF.Pow(1f - Friction, deltaTime * GameState.GameplayBaselineFps));
 
             return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
         }
@@ -140,27 +149,30 @@ namespace GameAiAndControls.Physics
         {
             if (BounceCooldownFrames > 0)
             {
-                BounceCooldownFrames--;
+                BounceCooldownFrames = ConsumeFrameCooldown(BounceCooldownFrames, deltaTime);
                 return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
             }
 
+            float frameScale = deltaTime * GameState.GameplayBaselineFps;
+
             // 1. Add acceleration (if the particle has it)
-            Velocity.x += Acceleration.x;
-            Velocity.y += Acceleration.y;
-            Velocity.z += Acceleration.z;
+            Velocity.x += Acceleration.x * frameScale;
+            Velocity.y += Acceleration.y * frameScale;
+            Velocity.z += Acceleration.z * frameScale;
 
             // 2. Apply gravity on the Y axis (GravityStrength pulls down, minus since -Y is up)
             Velocity.y -= GravityStrength * deltaTime;
 
             // 3. Apply friction
-            Velocity.x *= 0.95f;
-            Velocity.y *= 0.95f;
-            Velocity.z *= 0.95f;
+            float scaledFriction = MathF.Pow(0.95f, frameScale);
+            Velocity.x *= scaledFriction;
+            Velocity.y *= scaledFriction;
+            Velocity.z *= scaledFriction;
 
             // 4. Move position opposite to velocity
-            currentPosition.x -= Velocity.x;
-            currentPosition.y -= Velocity.y;
-            currentPosition.z -= Velocity.z;
+            currentPosition.x -= Velocity.x * frameScale;
+            currentPosition.y -= Velocity.y * frameScale;
+            currentPosition.z -= Velocity.z * frameScale;
 
             return currentPosition;
         }
@@ -170,7 +182,7 @@ namespace GameAiAndControls.Physics
         {
             if (BounceCooldownFrames > 0)
             {
-                BounceCooldownFrames--;
+                BounceCooldownFrames = ConsumeFrameCooldown(BounceCooldownFrames, deltaTime);
                 return PhysicsHelpers.Add(currentPosition, PhysicsHelpers.Multiply(Velocity, deltaTime));
             }
 
@@ -239,11 +251,12 @@ namespace GameAiAndControls.Physics
         public IVector3 ApplyRotationDragForce(IVector3 rotationVector)
         {
             const float RotationalDamping = 0.94f;
+            float scaledDamping = GameState.ScaleDampingPer90Frame(RotationalDamping);
             return new Vector3
             {
-                x = rotationVector.x * RotationalDamping,
-                y = rotationVector.y * RotationalDamping,
-                z = rotationVector.z * RotationalDamping
+                x = rotationVector.x * scaledDamping,
+                y = rotationVector.y * scaledDamping,
+                z = rotationVector.z * scaledDamping
             };
         }
 
@@ -253,7 +266,8 @@ namespace GameAiAndControls.Physics
 
         public void TiltStabilization(ref IVector3 tiltState)
         {
-            tiltState.x -= tiltState.x * StabilizationRate;
+            float scaledRate = 1f - MathF.Pow(1f - StabilizationRate, GameState.FrameScale90);
+            tiltState.x -= tiltState.x * scaledRate;
         }
 
         // Applies gravity when falling (no thrust). Returns updated InertiaY.
@@ -267,7 +281,7 @@ namespace GameAiAndControls.Physics
             float gravityModifier = Math.Clamp(MathF.Sin(rotationRad), 0.3f, 1.0f);
             float gravityPull = GravityAcceleration * gravityModifier * GravityPullMultiplier * gravityScale * deltaTime;
 
-            InertiaY = ApplyDragAndClamp(InertiaY - gravityPull);
+            InertiaY = ApplyDragAndClamp(InertiaY - gravityPull, deltaTime);
             FallVelocity = MathF.Max(-InertiaY, 0f);
             return InertiaY;
         }
@@ -314,15 +328,15 @@ namespace GameAiAndControls.Physics
 
             // Horizontal forces — projected onto world X/Z axes
             float horizontalForce = thrust * ThrustEffect * ThrustSpeedMultiplier * forwardFactor * deltaTime;
-            InertiaX = ApplyDragAndClamp(InertiaX + horizontalForce * dirX);
-            InertiaZ = ApplyDragAndClamp(InertiaZ - horizontalForce * dirZ);
+            InertiaX = ApplyDragAndClamp(InertiaX + horizontalForce * dirX, deltaTime);
+            InertiaZ = ApplyDragAndClamp(InertiaZ - horizontalForce * dirZ, deltaTime);
 
             // Vertical thrust — angle-dependent (negative when inverted pushes into ground)
             float verticalThrust = thrust * ThrustEffect * VerticalLiftFactor * ThrustHeightMultiplier
                                  * upwardFactor * VerticalThrustSmoothing * deltaTime;
             float gravityPull = GravityAcceleration * GravityPullMultiplier * VerticalLiftFactor * deltaTime;
 
-            InertiaY = ApplyDragAndClamp(InertiaY + verticalThrust - gravityPull);
+            InertiaY = ApplyDragAndClamp(InertiaY + verticalThrust - gravityPull, deltaTime);
             FallVelocity = MathF.Max(-InertiaY, 0f);
             return InertiaY;
         }

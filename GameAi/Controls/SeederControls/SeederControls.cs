@@ -251,12 +251,12 @@ namespace GameAiAndControls.Controls.SeederControls
 
             // Visual spin
             if (!isExploding)
-                Zrotation += BaseZRotationIncrementPerFrame;
+                Zrotation += BaseZRotationIncrementPerFrame * GameState.FrameScale90;
 
             if (!isExploding)
             {
                 SyncMovement(theObject);
-                if (TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, 1f / ScreenSetup.targetFps) && theObject.WorldPosition != null)
+                if (TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, GameState.ClampedDeltaTime) && theObject.WorldPosition != null)
                 {
                     _trackedWorldPosition = new Vector3
                     {

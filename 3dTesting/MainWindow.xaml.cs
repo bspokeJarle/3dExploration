@@ -67,6 +67,7 @@ namespace _3dTesting
         private DateTime fadeOutTrigged = DateTime.MinValue;
         private int _updateInProgress = 0;
         private long _lastTickTimestamp = 0;
+        private long _lastWorldUpdateTimestamp = 0;
         private int _minimapFrameSkip = 0;
         private readonly object _triangleListPoolLock = new();
         private readonly Stack<List<_Coordinates._2dTriangleMesh>> _triangleListPool = new();
@@ -611,7 +612,6 @@ namespace _3dTesting
             }
 
             float dt = (float)dtSeconds;
-            GameState.DeltaTime = dt;
             SynchronizeTutorialOverlayPause();
 
             if (GameState.ScreenOverlayState.ShowDebugOverlay == false)
@@ -709,10 +709,15 @@ namespace _3dTesting
             }
 
             if (pauseFrameCount >= limitFrameCount)
+            {
+                _lastWorldUpdateTimestamp = 0;
                 return;
+            }
 
             if (System.Threading.Interlocked.Exchange(ref _updateInProgress, 1) == 1)
                 return;
+
+            GameState.DeltaTime = CaptureWorldUpdateDeltaTime(dt);
 
             _ = Task.Run(() =>
             {
@@ -764,6 +769,19 @@ namespace _3dTesting
                     System.Threading.Interlocked.Exchange(ref _updateInProgress, 0);
                 }
             });
+        }
+
+        private float CaptureWorldUpdateDeltaTime(float fallbackDeltaTime)
+        {
+            long now = Stopwatch.GetTimestamp();
+            float deltaTime = _lastWorldUpdateTimestamp == 0
+                ? fallbackDeltaTime
+                : (now - _lastWorldUpdateTimestamp) / (float)Stopwatch.Frequency;
+
+            _lastWorldUpdateTimestamp = now;
+            return deltaTime > 0f
+                ? Math.Clamp(deltaTime, 0f, 0.1f)
+                : GameState.GameplayBaselineDeltaTime;
         }
 
         private void SynchronizeTutorialOverlayPause()

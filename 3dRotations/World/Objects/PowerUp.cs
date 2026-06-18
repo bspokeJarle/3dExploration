@@ -27,9 +27,13 @@ namespace _3dRotations.World.Objects
         private const string SideLightColor = "5599EE";
         private const string SideDarkColor = "2266DD";
 
-        public static _3dObject CreatePowerup(ISurface parentSurface)
+        public static _3dObject CreatePowerup(
+            ISurface parentSurface,
+            PowerUpType powerUpType = PowerUpType.Standard)
         {
-            var body = PlusSignBody();
+            var body = powerUpType == PowerUpType.Standard
+                ? PlusSignBody()
+                : TravelSpeedBody(powerUpType == PowerUpType.TravelSpeedLevel2 ? 3 : 2);
             var crash = PlusSignCrashBoxes();
 
             var powerup = new _3dObject
@@ -43,6 +47,7 @@ namespace _3dRotations.World.Objects
                 ObjectName = "PowerUp",
                 CrashBoxDebugMode = false,
                 ImpactStatus = new ImpactStatus { ObjectName = "PowerUp" },
+                PowerUpType = powerUpType,
                 HasShadow = true
             };
 
@@ -50,7 +55,7 @@ namespace _3dRotations.World.Objects
             {
                 powerup.ObjectParts.Add(new _3dObjectPart
                 {
-                    PartName = "PowerUpBody",
+                    PartName = powerUpType == PowerUpType.Standard ? "PowerUpBody" : "TravelSpeedPowerUpBody",
                     Triangles = body,
                     IsVisible = true
                 });
@@ -115,6 +120,72 @@ namespace _3dRotations.World.Objects
                 FrontColor, BackColor, TopColor, BottomColor, SideDarkColor, SideLightColor);
 
             return tris;
+        }
+
+        public static List<ITriangleMeshWithColor> TravelSpeedBody(int boltCount)
+        {
+            var tris = new List<ITriangleMeshWithColor>();
+            int count = Math.Clamp(boltCount, 2, 3);
+            float scale = count == 2 ? 0.72f : 0.58f;
+            float spacing = count == 2 ? 22f : 24f;
+            float startX = -spacing * (count - 1) / 2f;
+
+            for (int i = 0; i < count; i++)
+                AddLightningBolt(tris, startX + (i * spacing), scale);
+
+            return tris;
+        }
+
+        private static void AddLightningBolt(
+            List<ITriangleMeshWithColor> tris,
+            float offsetX,
+            float scale)
+        {
+            const float depth = 9f;
+            var outline = new[]
+            {
+                new Vector3 { x = offsetX + (-5f * scale), y = -depth, z = -36f * scale },
+                new Vector3 { x = offsetX + (16f * scale), y = -depth, z = -36f * scale },
+                new Vector3 { x = offsetX + (5f * scale), y = -depth, z = -7f * scale },
+                new Vector3 { x = offsetX + (19f * scale), y = -depth, z = -7f * scale },
+                new Vector3 { x = offsetX + (-13f * scale), y = -depth, z = 36f * scale },
+                new Vector3 { x = offsetX + (-3f * scale), y = -depth, z = 7f * scale },
+                new Vector3 { x = offsetX + (-18f * scale), y = -depth, z = 7f * scale }
+            };
+
+            var center = new Vector3 { x = offsetX, y = 0f, z = 0f };
+            int[,] faces =
+            {
+                { 0, 1, 2 },
+                { 0, 2, 6 },
+                { 6, 2, 5 },
+                { 5, 2, 3 },
+                { 5, 3, 4 }
+            };
+
+            for (int i = 0; i < faces.GetLength(0); i++)
+            {
+                var a = outline[faces[i, 0]];
+                var b = outline[faces[i, 1]];
+                var c = outline[faces[i, 2]];
+                tris.Add(CreateTriangleOutward(a, b, c, center, i == 3 ? "FFAA22" : FrontColor));
+
+                var backA = new Vector3 { x = a.x, y = depth, z = a.z };
+                var backB = new Vector3 { x = b.x, y = depth, z = b.z };
+                var backC = new Vector3 { x = c.x, y = depth, z = c.z };
+                tris.Add(CreateTriangleOutward(backA, backC, backB, center, BackColor));
+            }
+
+            for (int i = 0; i < outline.Length; i++)
+            {
+                var frontA = outline[i];
+                var frontB = outline[(i + 1) % outline.Length];
+                var backA = new Vector3 { x = frontA.x, y = depth, z = frontA.z };
+                var backB = new Vector3 { x = frontB.x, y = depth, z = frontB.z };
+                string color = i % 2 == 0 ? TopColor : SideDarkColor;
+                tris.Add(CreateTriangleOutward(frontA, frontB, backB, center, color));
+                tris.Add(CreateTriangleOutward(frontA, backB, backA, center, color));
+            }
         }
 
         // Generates 12 triangles (6 faces) for an axis-aligned box

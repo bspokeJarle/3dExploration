@@ -262,6 +262,37 @@ public class PowerUpCheckpointPersistenceTests
             "Checkpoint should not force mothership phase while other enemies remain.");
     }
 
+    [TestMethod]
+    public void CollectingSpeedPowerUp_PersistsSpeedWithoutAdvancingWeaponTier()
+    {
+        var gps = GameState.GamePlayState;
+        var controls = new ShipControls();
+        try
+        {
+            var ship = CreatePowerUpHitShip(41, controls);
+            var powerUp = CreateCrashedPowerUp(42);
+            powerUp.PowerUpType = PowerUpType.TravelSpeedLevel1;
+            GameState.SurfaceState.AiObjects.Add(powerUp);
+
+            controls.MoveObject(ship, null, null);
+
+            Assert.AreEqual(1, gps.SpeedPowerUpLevel);
+            Assert.AreEqual(1.20f, gps.TravelSpeedMultiplier);
+            Assert.AreEqual(0, gps.PowerUpsCollected);
+            Assert.IsFalse(gps.IsDecoyUnlocked);
+            Assert.AreEqual(1, gps.CheckpointSpeedPowerUpLevel);
+
+            var loaded = GameStatePersistence.LoadGameState("Jarle");
+            Assert.IsNotNull(loaded);
+            Assert.AreEqual(1, loaded!.SpeedPowerUpLevel);
+            Assert.AreEqual(1, loaded.CheckpointSpeedPowerUpLevel);
+        }
+        finally
+        {
+            controls.Dispose();
+        }
+    }
+
     private static _3dObject CreatePowerUpHitShip(int objectId, ShipControls controls)
     {
         return new _3dObject

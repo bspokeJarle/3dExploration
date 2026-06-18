@@ -21,6 +21,7 @@ namespace CommonUtilities.Persistence
         public float MaxHealth { get; set; }
         public int WaveNumber { get; set; }
         public int PowerUpsCollected { get; set; }
+        public int SpeedPowerUpLevel { get; set; }
         public float InfectionLevel { get; set; }
         public int TotalBioTiles { get; set; }
         public int SeedersRemaining { get; set; }
@@ -41,6 +42,7 @@ namespace CommonUtilities.Persistence
         public int CheckpointLives { get; set; }
         public float CheckpointHealth { get; set; }
         public int CheckpointPowerUpsCollected { get; set; }
+        public int CheckpointSpeedPowerUpLevel { get; set; }
         public int CheckpointSeedersRemaining { get; set; }
         public int CheckpointDronesRemaining { get; set; }
         public int CheckpointMotherShipsRemaining { get; set; }
@@ -62,6 +64,7 @@ namespace CommonUtilities.Persistence
         public int PlanetStartLives { get; set; }
         public float PlanetStartHealth { get; set; }
         public int PlanetStartPowerUpsCollected { get; set; }
+        public int PlanetStartSpeedPowerUpLevel { get; set; }
         public int PlanetStartSeedersRemaining { get; set; }
         public int PlanetStartDronesRemaining { get; set; }
         public int PlanetStartMotherShipsRemaining { get; set; }

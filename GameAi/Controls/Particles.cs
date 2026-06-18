@@ -7,6 +7,7 @@ using System.Windows;
 using GameAiAndControls.Physics;
 using GameAiAndControls.Helpers;
 using System.Dynamic;
+using CommonUtilities.CommonGlobalState;
 
 public class ParticlesAI : IParticles
 {
@@ -52,8 +53,10 @@ public class ParticlesAI : IParticles
         long currentTicks = now.Ticks;
 
         float deltaTime = (float)(now - _lastUpdateTime).TotalSeconds;
-        if (deltaTime <= 0f || deltaTime > 1f) deltaTime = 1f / 60f;
+        if (deltaTime <= 0f || deltaTime > 1f) deltaTime = GameState.GameplayBaselineDeltaTime;
+        deltaTime = Math.Clamp(deltaTime, 0f, 0.1f);
         _lastUpdateTime = now;
+        float frameScale = deltaTime * GameState.GameplayBaselineFps;
 
         var numLogParticles = 0;
 
@@ -141,24 +144,25 @@ public class ParticlesAI : IParticles
                 }
                 else
                 {
-                    particle.Velocity.x += particle.Acceleration.x;
-                    particle.Velocity.y += particle.Acceleration.y;
-                    particle.Velocity.z += particle.Acceleration.z;
+                    particle.Velocity.x += particle.Acceleration.x * frameScale;
+                    particle.Velocity.y += particle.Acceleration.y * frameScale;
+                    particle.Velocity.z += particle.Acceleration.z * frameScale;
 
-                    particle.Velocity.x *= 0.95f;
-                    particle.Velocity.y *= 0.95f;
-                    particle.Velocity.z *= 0.95f;
+                    float scaledFriction = MathF.Pow(0.95f, frameScale);
+                    particle.Velocity.x *= scaledFriction;
+                    particle.Velocity.y *= scaledFriction;
+                    particle.Velocity.z *= scaledFriction;
 
-                    particle.Position.x -= particle.Velocity.x;
-                    particle.Position.y -= particle.Velocity.y;
-                    particle.Position.z -= particle.Velocity.z;
+                    particle.Position.x -= particle.Velocity.x * frameScale;
+                    particle.Position.y -= particle.Velocity.y * frameScale;
+                    particle.Position.z -= particle.Velocity.z * frameScale;
                 }
 
                 if (particle.Rotation != null && particle.RotationSpeed != null)
                 {
-                    particle.Rotation.x += particle.RotationSpeed.x;
-                    particle.Rotation.y += particle.RotationSpeed.y;
-                    particle.Rotation.z += particle.RotationSpeed.z;
+                    particle.Rotation.x += particle.RotationSpeed.x * frameScale;
+                    particle.Rotation.y += particle.RotationSpeed.y * frameScale;
+                    particle.Rotation.z += particle.RotationSpeed.z * frameScale;
                 }
             }
             else
