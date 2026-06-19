@@ -438,7 +438,7 @@ namespace GameAiAndControls.Controls
             // controllable until the fade-out actually completes.
             return !isGameplayScene ||
                    GameState.TutorialState.InstructionOverlayPauseActive ||
-                   (overlay.ShowOverlay && overlay.IsModal) ||
+                   overlay.BlocksGameplayInput ||
                    gameplay.IsPaused;
         }
 

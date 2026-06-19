@@ -314,7 +314,8 @@ namespace _3dTesting
 
             if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
             {
-                ToggleGameplayPause();
+                if (IsGameplaySceneForPause() && !GameState.ScreenOverlayState.BlocksGameplayInput)
+                    ToggleGameplayPause();
                 e.Handled = true;
                 return;
             }

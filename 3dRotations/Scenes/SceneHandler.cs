@@ -214,11 +214,6 @@ namespace _3DWorld.Scene
                 ? gps.CapturePlanetStartSnapshot()
                 : default;
 
-            long prevScore = gps.Score;
-            int prevLives = gps.Lives;
-            int prevKills = gps.TotalKills;
-            int prevShots = gps.TotalShotsFired;
-            int prevDeaths = gps.TotalDeaths;
             int prevPowerUps = gps.PowerUpsCollected;
             int prevSpeedPowerUpLevel = gps.SpeedPowerUpLevel;
 
@@ -241,11 +236,8 @@ namespace _3DWorld.Scene
             }
             else
             {
-                gps.Score = prevScore;
-                gps.Lives = prevLives;
-                gps.TotalKills = prevKills;
-                gps.TotalShotsFired = prevShots;
-                gps.TotalDeaths = prevDeaths;
+                // Legacy saves have no trustworthy arrival totals. Keep durable
+                // unlocks, but do not retain rewards earned on the lost planet.
                 gps.PowerUpsCollected = prevPowerUps;
                 gps.SpeedPowerUpLevel = prevSpeedPowerUpLevel;
                 gps.InfectionLevel = 0f;
@@ -431,15 +423,9 @@ namespace _3DWorld.Scene
             // Restore score and combat stats from saved game so the player builds upon them
             if (_pendingSavedState != null)
             {
+                var pendingSavedState = _pendingSavedState;
                 var gps = GameState.GamePlayState;
-                gps.Score = _pendingSavedState.Score;
-                gps.SimulationRound = _pendingSavedState.SimulationRound;
-                gps.CurrentSceneBiome = _pendingSavedState.SceneBiome;
-                gps.TotalKills = _pendingSavedState.TotalKills;
-                gps.TotalShotsFired = _pendingSavedState.TotalShotsFired;
-                gps.TotalDeaths = _pendingSavedState.TotalDeaths;
-                gps.PowerUpsCollected = _pendingSavedState.PowerUpsCollected;
-                gps.SpeedPowerUpLevel = _pendingSavedState.SpeedPowerUpLevel;
+                gps.SimulationRound = pendingSavedState.SimulationRound;
 
                 // If loading into the simulation slot, rebuild it for the restored round
                 if (GetActiveScene().SceneType == SceneTypes.Simulation)
@@ -453,16 +439,16 @@ namespace _3DWorld.Scene
                     }
                 }
 
+                GameStatePersistence.RestoreToGamePlayState(pendingSavedState);
+                ApplySceneSettings(GetActiveScene());
+
                 // If there's a checkpoint, trim enemies and restore full checkpoint state
                 bool shouldRestoreCheckpoint =
-                    _pendingSavedState.HasCheckpoint &&
-                    SavedCheckpointMatchesActiveScene(_pendingSavedState);
+                    pendingSavedState.HasCheckpoint &&
+                    SavedCheckpointMatchesActiveScene(pendingSavedState);
 
                 if (shouldRestoreCheckpoint)
                 {
-                    GameStatePersistence.RestoreToGamePlayState(_pendingSavedState);
-                    ApplySceneSettings(GetActiveScene());
-
                     var snapshot = gps.CaptureCheckpointSnapshot();
                     ApplyCheckpointSnapshotToCurrentState(gps, snapshot);
                     int restoredMotherShips = ResolveRestoredMotherShipCount(snapshot.MotherShipsRemaining);
@@ -483,7 +469,7 @@ namespace _3DWorld.Scene
                     var scene = GetActiveScene();
                     scene.Director?.Initialize(world.EventBus!, world);
                 }
-                else if (_pendingSavedState.HasCheckpoint)
+                else if (pendingSavedState.HasCheckpoint)
                 {
                     ClearCheckpointState(gps);
                 }

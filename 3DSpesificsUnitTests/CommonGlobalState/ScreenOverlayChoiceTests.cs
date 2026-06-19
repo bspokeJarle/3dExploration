@@ -6,6 +6,21 @@ namespace _3DSpesificsUnitTests.CommonGlobalState;
 public class ScreenOverlayChoiceTests
 {
     [TestMethod]
+    public void BlocksGameplayInput_RequiresVisibleModalOverlay()
+    {
+        var overlay = new ScreenOverlayState { ShowOverlay = true, IsModal = true };
+
+        Assert.IsTrue(overlay.BlocksGameplayInput);
+
+        overlay.ShowOverlay = false;
+        Assert.IsFalse(overlay.BlocksGameplayInput);
+
+        overlay.ShowOverlay = true;
+        overlay.IsModal = false;
+        Assert.IsFalse(overlay.BlocksGameplayInput);
+    }
+
+    [TestMethod]
     public void MoveChoiceSelection_UpdatesBodyAndWraps()
     {
         var overlay = new ScreenOverlayState();

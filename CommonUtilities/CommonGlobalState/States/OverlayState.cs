@@ -62,6 +62,8 @@ namespace Domain
         /// </summary>
         public bool IsModal { get; set; } = false;
 
+        public bool BlocksGameplayInput => ShowOverlay && IsModal;
+
         // -----------------------------
         // Content
         // -----------------------------
