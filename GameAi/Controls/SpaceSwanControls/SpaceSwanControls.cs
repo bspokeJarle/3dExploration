@@ -191,7 +191,7 @@ namespace GameAiAndControls.Controls.SpaceSwanControls
 
             // Advance flap phase every frame (needed for off-screen sound timing)
             float flapMultiplier = _aiState.CurrentSpeed / SpaceSwanAi.BaseFlySpeed;
-            _flapPhase += BaseFlapSpeed * flapMultiplier;
+            _flapPhase += BaseFlapSpeed * flapMultiplier * deltaSeconds * GameState.GameplayBaselineFps;
 
             // Wing geometry — only modify on rendering deep copies (on-screen).
             // Off-screen AI updates share the same Movement instance and would

@@ -131,7 +131,7 @@ namespace GameAiAndControls.Controls
                 if (!isSeeder && !isDrone && !isMotherShip && !isBomber)
                     continue;
 
-                var pos = obj.WorldPosition;
+                var pos = SurfacePositionSyncHelpers.GetGuidanceTargetWorldPosition(obj);
                 if (pos == null)
                     continue;
 

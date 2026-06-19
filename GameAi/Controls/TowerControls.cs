@@ -1,4 +1,5 @@
 ﻿using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
 using Domain;
 using System;
@@ -92,7 +93,7 @@ namespace GameAiAndControls.Controls
 
         public void RotateUpperTowerAnimation()
         {
-            TowerZRotation += TowerRotationSpeedZ;
+            TowerZRotation += TowerRotationSpeedZ * GameState.FrameScale90;
 
             if (ParentObject == null) return;
             CacheOriginalTopParts();

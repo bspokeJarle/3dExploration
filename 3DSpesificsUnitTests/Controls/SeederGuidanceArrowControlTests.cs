@@ -58,6 +58,23 @@ public class SeederGuidanceArrowControlTests
     }
 
     [TestMethod]
+    public void MoveObject_UsesRenderAlignedTargetX_WhenSeederIsStraightAhead()
+    {
+        var control = new SeederGuidanceArrowControl();
+        var arrow = CreateArrow();
+
+        GameState.ShipState.ShipWorldPosition = new Vector3 { x = 1000f, y = 0f, z = 1000f };
+        GameState.SurfaceState.AiObjects.Add(CreateAi("Seeder", 250f, 0f, 2000f, isActive: true));
+
+        control.MoveObject(arrow, null, null);
+        Thread.Sleep(40);
+        control.MoveObject(arrow, null, null);
+
+        Assert.AreEqual(90f, arrow.Rotation!.z, 0.1f,
+            "A seeder rendered straight ahead should not inherit a false leftward heading from raw WorldPosition.x.");
+    }
+
+    [TestMethod]
     public void MoveObject_AnchorsArrowBelowGameOverlay_OnLowHeightScreen()
     {
         ScreenSetup.Initialize(1920, 1080);

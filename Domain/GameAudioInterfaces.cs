@@ -130,6 +130,12 @@ namespace Domain
         /// Stop all currently playing sounds.
         /// </summary>
         void StopAll();
+
+        /// <summary>
+        /// Stop all currently playing sounds except background music.
+        /// </summary>
+        void StopNonMusic();
+
         /// <summary>
         /// Start playing music
         /// </summary>

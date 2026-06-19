@@ -123,7 +123,7 @@ namespace GameAiAndControls.Controls
             if (GameState.DeltaTime > 0f)
                 return Math.Min(GameState.DeltaTime, 0.1f);
 
-            return 1f / ScreenSetup.targetFps;
+            return GameState.GameplayBaselineDeltaTime;
         }
 
         private static List<ITriangleMeshWithColor> CloneTriangles(List<ITriangleMeshWithColor> source)

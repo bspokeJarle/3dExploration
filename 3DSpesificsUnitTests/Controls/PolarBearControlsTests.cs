@@ -107,9 +107,14 @@ public class PolarBearControlsTests
 
         MoveOneFrame(control, bear, null, null);
 
+        Assert.AreEqual(
+            WorldViewSetup.SurfaceFacingObjectPitchDegrees,
+            ((Vector3)bear.Rotation!).x,
+            0.001f,
+            "Bear should keep the shared surface-facing pitch instead of twisting around X while roaring.");
         Assert.IsTrue(
-            ((Vector3)bear.Rotation!).x < WorldViewSetup.SurfaceFacingObjectPitchDegrees - 10f,
-            "Bear should rear up into the roar pose during the turn pause.");
+            MathF.Abs(((Vector3)bear.Rotation!).y) > 10f,
+            "Bear should rear up around the Y axis during the turn pause.");
         Assert.AreEqual(
             ExpectedBaseOffsetYAfterFrames(5),
             bear.ObjectOffsets!.y,
@@ -191,7 +196,10 @@ public class PolarBearControlsTests
     private static float ExpectedBaseOffsetYAfterFrames(int frameCount)
     {
         float phase = frameCount * 0.1f * 4.8f;
-        return 280f + LandBasedObjectSetup.GroundContactNudgeYScaled - (MathF.Abs(MathF.Sin(phase)) * 0.45f);
+        float terrainLiftY = 8f * ScreenSetup.ScreenScaleY;
+        return 280f + LandBasedObjectSetup.GroundContactNudgeYScaled
+            - terrainLiftY
+            - (MathF.Abs(MathF.Sin(phase)) * 0.45f);
     }
 
     private static Vector3 ExpectedAudioPosition(IVector3 worldPosition, IVector3 objectOffsets, IVector3 globalMapPosition)
@@ -268,6 +276,10 @@ public class PolarBearControlsTests
         }
 
         public void StopAll()
+        {
+        }
+
+        public void StopNonMusic()
         {
         }
 

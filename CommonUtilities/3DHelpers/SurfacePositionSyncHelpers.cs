@@ -88,6 +88,35 @@ namespace CommonUtilities._3DHelpers
             };
         }
 
+        public static Vector3? GetMinimapMarkerWorldPosition(I3dObject obj)
+        {
+            var worldPosition = obj.WorldPosition;
+            if (worldPosition == null)
+                return null;
+
+            int viewportCenterOffset = (SurfaceSetup.viewPortSize * SurfaceSetup.tileSize) / 2;
+            return new Vector3
+            {
+                x = worldPosition.x + viewportCenterOffset + (obj.ObjectOffsets?.x ?? 0f),
+                y = worldPosition.y,
+                z = worldPosition.z
+            };
+        }
+
+        public static Vector3? GetGuidanceTargetWorldPosition(I3dObject obj)
+        {
+            var worldPosition = obj.WorldPosition;
+            if (worldPosition == null)
+                return null;
+
+            return new Vector3
+            {
+                x = worldPosition.x + (ScreenSetup.screenSizeX / 2f) + (obj.ObjectOffsets?.x ?? 0f),
+                y = worldPosition.y,
+                z = worldPosition.z
+            };
+        }
+
         public static Vector3 GetShipRamTargetWorldPosition(I3dObject enemyObject)
         {
             if (GameState.ShipState.ShipCrashCenterWorldPosition is Vector3 shipCrashCenterWorldPosition)

@@ -78,7 +78,7 @@ namespace Domain
         /// Used to preserve checkpoint data across scene resets.
         /// </summary>
         public readonly record struct CheckpointSnapshot(
-            long Score, int Lives, float Health, int PowerUpsCollected,
+            long Score, int Lives, float Health, int PowerUpsCollected, int SpeedPowerUpLevel,
             int SeedersRemaining, int DronesRemaining, int MotherShipsRemaining,
             int TotalShotsFired, int TotalKills, int TotalDeaths,
             float InfectionLevel, int WaveNumber,
@@ -90,6 +90,7 @@ namespace Domain
         public int CheckpointLives { get; set; } = 3;
         public float CheckpointHealth { get; set; } = 100f;
         public int CheckpointPowerUpsCollected { get; set; } = 0;
+        public int CheckpointSpeedPowerUpLevel { get; set; } = 0;
         public int CheckpointSeedersRemaining { get; set; } = 0;
         public int CheckpointDronesRemaining { get; set; } = 0;
         public int CheckpointMotherShipsRemaining { get; set; } = 0;
@@ -104,17 +105,46 @@ namespace Domain
         public int CheckpointPlanetStyleBonusScore { get; set; } = 0;
         public int CheckpointPlanetStyleBonusSceneIndex { get; set; } = 0;
 
+        public bool HasPlanetStartSnapshot { get; set; } = false;
+        public int PlanetStartSceneIndex { get; set; } = 0;
+        public long PlanetStartScore { get; set; } = 0;
+        public int PlanetStartLives { get; set; } = 3;
+        public float PlanetStartHealth { get; set; } = 100f;
+        public int PlanetStartPowerUpsCollected { get; set; } = 0;
+        public int PlanetStartSpeedPowerUpLevel { get; set; } = 0;
+        public int PlanetStartSeedersRemaining { get; set; } = 0;
+        public int PlanetStartDronesRemaining { get; set; } = 0;
+        public int PlanetStartMotherShipsRemaining { get; set; } = 0;
+        public int PlanetStartTotalShotsFired { get; set; } = 0;
+        public int PlanetStartTotalKills { get; set; } = 0;
+        public int PlanetStartTotalDeaths { get; set; } = 0;
+        public float PlanetStartInfectionLevel { get; set; } = 0f;
+        public int PlanetStartWaveNumber { get; set; } = 1;
+        public int PlanetStartInitialSeeders { get; set; } = 0;
+        public int PlanetStartInitialDrones { get; set; } = 0;
+        public int PlanetStartInitialMotherShips { get; set; } = 0;
+        public int PlanetStartPlanetStyleBonusScore { get; set; } = 0;
+        public int PlanetStartPlanetStyleBonusSceneIndex { get; set; } = 0;
+
         /// <summary>
         /// Captures the current checkpoint fields into a snapshot value type.
         /// Call before ResetForNewGame to preserve checkpoint data.
         /// </summary>
         public CheckpointSnapshot CaptureCheckpointSnapshot() => new(
-            CheckpointScore, CheckpointLives, CheckpointHealth, CheckpointPowerUpsCollected,
+            CheckpointScore, CheckpointLives, CheckpointHealth, CheckpointPowerUpsCollected, CheckpointSpeedPowerUpLevel,
             CheckpointSeedersRemaining, CheckpointDronesRemaining, CheckpointMotherShipsRemaining,
             CheckpointTotalShotsFired, CheckpointTotalKills, CheckpointTotalDeaths,
             CheckpointInfectionLevel, CheckpointWaveNumber,
             CheckpointInitialSeeders, CheckpointInitialDrones, CheckpointInitialMotherShips,
             CheckpointPlanetStyleBonusScore, CheckpointPlanetStyleBonusSceneIndex);
+
+        public CheckpointSnapshot CapturePlanetStartSnapshot() => new(
+            PlanetStartScore, PlanetStartLives, PlanetStartHealth, PlanetStartPowerUpsCollected, PlanetStartSpeedPowerUpLevel,
+            PlanetStartSeedersRemaining, PlanetStartDronesRemaining, PlanetStartMotherShipsRemaining,
+            PlanetStartTotalShotsFired, PlanetStartTotalKills, PlanetStartTotalDeaths,
+            PlanetStartInfectionLevel, PlanetStartWaveNumber,
+            PlanetStartInitialSeeders, PlanetStartInitialDrones, PlanetStartInitialMotherShips,
+            PlanetStartPlanetStyleBonusScore, PlanetStartPlanetStyleBonusSceneIndex);
 
         /// <summary>
         /// Restores both current gameplay state and checkpoint fields from a snapshot.
@@ -129,6 +159,7 @@ namespace Domain
             Lives = Math.Max(0, cp.Lives - 1);
             Health = cp.Health;
             PowerUpsCollected = cp.PowerUpsCollected;
+            SpeedPowerUpLevel = cp.SpeedPowerUpLevel;
             TotalShotsFired = cp.TotalShotsFired;
             TotalKills = cp.TotalKills;
             TotalDeaths = cp.TotalDeaths + 1;
@@ -145,6 +176,7 @@ namespace Domain
             CheckpointLives = cp.Lives;
             CheckpointHealth = cp.Health;
             CheckpointPowerUpsCollected = cp.PowerUpsCollected;
+            CheckpointSpeedPowerUpLevel = cp.SpeedPowerUpLevel;
             CheckpointSeedersRemaining = cp.SeedersRemaining;
             CheckpointDronesRemaining = cp.DronesRemaining;
             CheckpointMotherShipsRemaining = cp.MotherShipsRemaining;
@@ -158,6 +190,129 @@ namespace Domain
             CheckpointInitialMotherShips = cp.InitialMotherShips;
             CheckpointPlanetStyleBonusScore = cp.PlanetStyleBonusScore;
             CheckpointPlanetStyleBonusSceneIndex = cp.PlanetStyleBonusSceneIndex;
+        }
+
+        public void SavePlanetStartSnapshot()
+        {
+            EnsurePlanetStyleBonusScene();
+
+            HasPlanetStartSnapshot = true;
+            PlanetStartSceneIndex = SceneIndex;
+            PlanetStartScore = Score;
+            PlanetStartLives = Lives;
+            PlanetStartHealth = Health;
+            PlanetStartPowerUpsCollected = PowerUpsCollected;
+            PlanetStartSpeedPowerUpLevel = SpeedPowerUpLevel;
+            PlanetStartSeedersRemaining = SeedersRemaining;
+            PlanetStartDronesRemaining = DronesRemaining;
+            PlanetStartMotherShipsRemaining = MotherShipsRemaining;
+            PlanetStartTotalShotsFired = TotalShotsFired;
+            PlanetStartTotalKills = TotalKills;
+            PlanetStartTotalDeaths = TotalDeaths;
+            PlanetStartInfectionLevel = InfectionLevel;
+            PlanetStartWaveNumber = WaveNumber;
+            PlanetStartInitialSeeders = InitialSeeders;
+            PlanetStartInitialDrones = InitialDrones;
+            PlanetStartInitialMotherShips = InitialMotherShips;
+            PlanetStartPlanetStyleBonusScore = PlanetStyleBonusScore;
+            PlanetStartPlanetStyleBonusSceneIndex = PlanetStyleBonusSceneIndex;
+        }
+
+        public void RestorePlanetStartSnapshotFields(CheckpointSnapshot snapshot, int sceneIndex)
+        {
+            HasPlanetStartSnapshot = true;
+            PlanetStartSceneIndex = sceneIndex;
+            PlanetStartScore = snapshot.Score;
+            PlanetStartLives = snapshot.Lives;
+            PlanetStartHealth = snapshot.Health;
+            PlanetStartPowerUpsCollected = snapshot.PowerUpsCollected;
+            PlanetStartSpeedPowerUpLevel = snapshot.SpeedPowerUpLevel;
+            PlanetStartSeedersRemaining = snapshot.SeedersRemaining;
+            PlanetStartDronesRemaining = snapshot.DronesRemaining;
+            PlanetStartMotherShipsRemaining = snapshot.MotherShipsRemaining;
+            PlanetStartTotalShotsFired = snapshot.TotalShotsFired;
+            PlanetStartTotalKills = snapshot.TotalKills;
+            PlanetStartTotalDeaths = snapshot.TotalDeaths;
+            PlanetStartInfectionLevel = snapshot.InfectionLevel;
+            PlanetStartWaveNumber = snapshot.WaveNumber;
+            PlanetStartInitialSeeders = snapshot.InitialSeeders;
+            PlanetStartInitialDrones = snapshot.InitialDrones;
+            PlanetStartInitialMotherShips = snapshot.InitialMotherShips;
+            PlanetStartPlanetStyleBonusScore = snapshot.PlanetStyleBonusScore;
+            PlanetStartPlanetStyleBonusSceneIndex = snapshot.PlanetStyleBonusSceneIndex;
+        }
+
+        public void ApplyPlanetStartSnapshot()
+        {
+            if (!HasPlanetStartSnapshot)
+                return;
+
+            Score = PlanetStartScore;
+            Lives = PlanetStartLives;
+            Health = PlanetStartHealth;
+            PowerUpsCollected = PlanetStartPowerUpsCollected;
+            SpeedPowerUpLevel = PlanetStartSpeedPowerUpLevel;
+            SeedersRemaining = PlanetStartSeedersRemaining;
+            DronesRemaining = PlanetStartDronesRemaining;
+            MotherShipsRemaining = PlanetStartMotherShipsRemaining;
+            TotalShotsFired = PlanetStartTotalShotsFired;
+            TotalKills = PlanetStartTotalKills;
+            TotalDeaths = PlanetStartTotalDeaths;
+            InfectionLevel = PlanetStartInfectionLevel;
+            WaveNumber = PlanetStartWaveNumber;
+            InitialSeeders = PlanetStartInitialSeeders;
+            InitialDrones = PlanetStartInitialDrones;
+            InitialMotherShips = PlanetStartInitialMotherShips;
+            PlanetStyleBonusScore = PlanetStartPlanetStyleBonusScore;
+            PlanetStyleBonusSceneIndex = PlanetStartPlanetStyleBonusSceneIndex;
+            ClearCheckpoint();
+        }
+
+        public void ClearCheckpoint()
+        {
+            HasCheckpoint = false;
+            CheckpointScore = 0;
+            CheckpointLives = 3;
+            CheckpointHealth = 100f;
+            CheckpointPowerUpsCollected = 0;
+            CheckpointSpeedPowerUpLevel = 0;
+            CheckpointSeedersRemaining = 0;
+            CheckpointDronesRemaining = 0;
+            CheckpointMotherShipsRemaining = 0;
+            CheckpointTotalShotsFired = 0;
+            CheckpointTotalKills = 0;
+            CheckpointTotalDeaths = 0;
+            CheckpointInfectionLevel = 0f;
+            CheckpointWaveNumber = 1;
+            CheckpointInitialSeeders = 0;
+            CheckpointInitialDrones = 0;
+            CheckpointInitialMotherShips = 0;
+            CheckpointPlanetStyleBonusScore = 0;
+            CheckpointPlanetStyleBonusSceneIndex = SceneIndex;
+        }
+
+        public void ClearPlanetStartSnapshot()
+        {
+            HasPlanetStartSnapshot = false;
+            PlanetStartSceneIndex = SceneIndex;
+            PlanetStartScore = 0;
+            PlanetStartLives = 3;
+            PlanetStartHealth = 100f;
+            PlanetStartPowerUpsCollected = 0;
+            PlanetStartSpeedPowerUpLevel = 0;
+            PlanetStartSeedersRemaining = 0;
+            PlanetStartDronesRemaining = 0;
+            PlanetStartMotherShipsRemaining = 0;
+            PlanetStartTotalShotsFired = 0;
+            PlanetStartTotalKills = 0;
+            PlanetStartTotalDeaths = 0;
+            PlanetStartInfectionLevel = 0f;
+            PlanetStartWaveNumber = 1;
+            PlanetStartInitialSeeders = 0;
+            PlanetStartInitialDrones = 0;
+            PlanetStartInitialMotherShips = 0;
+            PlanetStartPlanetStyleBonusScore = 0;
+            PlanetStartPlanetStyleBonusSceneIndex = SceneIndex;
         }
 
         // -----------------------------
@@ -275,6 +430,36 @@ namespace Domain
         public int PowerUpsCollected { get; set; } = 0;
         public bool IsDecoyUnlocked => PowerUpsCollected >= 1;
         public bool IsLazerUnlocked => PowerUpsCollected >= 2;
+
+        private int _speedPowerUpLevel;
+        public int SpeedPowerUpLevel
+        {
+            get => _speedPowerUpLevel;
+            set => _speedPowerUpLevel = Math.Clamp(value, 0, 2);
+        }
+
+        public float TravelSpeedMultiplier => SpeedPowerUpLevel switch
+        {
+            1 => 1.20f,
+            >= 2 => 1.50f,
+            _ => 1f
+        };
+
+        public bool ApplySpeedPowerUp(PowerUpType powerUpType)
+        {
+            int requestedLevel = powerUpType switch
+            {
+                PowerUpType.TravelSpeedLevel1 => 1,
+                PowerUpType.TravelSpeedLevel2 => 2,
+                _ => 0
+            };
+
+            if (requestedLevel <= SpeedPowerUpLevel)
+                return false;
+
+            SpeedPowerUpLevel = requestedLevel;
+            return true;
+        }
 
         public int LaserAmmo { get; set; } = -1;   // -1 means infinite
         public int RocketAmmo { get; set; } = 10;
@@ -420,24 +605,8 @@ namespace Domain
             TotalKills = 0;
             TotalDeaths = 0;
 
-            HasCheckpoint = false;
-            CheckpointScore = 0;
-            CheckpointLives = 3;
-            CheckpointHealth = 100f;
-            CheckpointPowerUpsCollected = 0;
-            CheckpointSeedersRemaining = 0;
-            CheckpointDronesRemaining = 0;
-            CheckpointMotherShipsRemaining = 0;
-            CheckpointTotalShotsFired = 0;
-            CheckpointTotalKills = 0;
-            CheckpointTotalDeaths = 0;
-            CheckpointInfectionLevel = 0f;
-            CheckpointWaveNumber = 1;
-            CheckpointInitialSeeders = 0;
-            CheckpointInitialDrones = 0;
-            CheckpointInitialMotherShips = 0;
-            CheckpointPlanetStyleBonusScore = 0;
-            CheckpointPlanetStyleBonusSceneIndex = SceneIndex;
+            ClearCheckpoint();
+            ClearPlanetStartSnapshot();
 
             DronesRemaining = 0;
             SeedersRemaining = 0;
@@ -474,6 +643,7 @@ namespace Domain
             SelectedWeapon = WeaponType.Bullet;
             ActivePowerup = "BULLET";
             PowerUpsCollected = 0;
+            SpeedPowerUpLevel = 0;
             LaserAmmo = -1;
             RocketAmmo = 10;
             BulletAmmo = -1;
@@ -540,6 +710,7 @@ namespace Domain
             CheckpointLives = Lives;
             CheckpointHealth = Health;
             CheckpointPowerUpsCollected = PowerUpsCollected;
+            CheckpointSpeedPowerUpLevel = SpeedPowerUpLevel;
             CheckpointSeedersRemaining = SeedersRemaining;
             CheckpointDronesRemaining = DronesRemaining;
             CheckpointMotherShipsRemaining = MotherShipsRemaining;
@@ -567,6 +738,7 @@ namespace Domain
             Score = CheckpointScore;
             Lives = CheckpointLives;
             PowerUpsCollected = CheckpointPowerUpsCollected;
+            SpeedPowerUpLevel = CheckpointSpeedPowerUpLevel;
             SeedersRemaining = CheckpointSeedersRemaining;
             DronesRemaining = CheckpointDronesRemaining;
             MotherShipsRemaining = CheckpointMotherShipsRemaining;

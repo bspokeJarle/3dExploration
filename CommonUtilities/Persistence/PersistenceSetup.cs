@@ -42,6 +42,7 @@ namespace CommonUtilities.Persistence
 
         public static string LocalKeyFilePath => Path.Combine(LocalFolder, KeyFileName);
         public static string LocalHighscoreFilePath => Path.Combine(LocalFolder, HighscoreFileName);
+        public static string LocalHighscoreBackupFilePath => LocalHighscoreFilePath + ".bak";
 
         /// <summary>
         /// Returns the per-player save file path for the given player name.
@@ -52,6 +53,18 @@ namespace CommonUtilities.Persistence
             var safe = SanitiseFileName(playerName);
             return Path.Combine(LocalFolder, $"save_{safe}.enc");
         }
+
+        public static string GetPlayerGameStateBackupFilePath(string playerName)
+            => GetPlayerGameStateFilePath(playerName) + ".bak";
+
+        public static string GetPlayerProgressFilePath(string playerName)
+        {
+            var safe = SanitiseFileName(playerName);
+            return Path.Combine(LocalFolder, $"progress_{safe}.enc");
+        }
+
+        public static string GetPlayerProgressBackupFilePath(string playerName)
+            => GetPlayerProgressFilePath(playerName) + ".bak";
 
         /// <summary>
         /// Returns the per-player tutorial progress file path for the given player name.
@@ -66,7 +79,8 @@ namespace CommonUtilities.Persistence
         /// Returns true if a per-player save file exists for the given name.
         /// </summary>
         public static bool HasPlayerSaveFile(string playerName)
-            => File.Exists(GetPlayerGameStateFilePath(playerName));
+            => File.Exists(GetPlayerGameStateFilePath(playerName)) ||
+               File.Exists(GetPlayerGameStateBackupFilePath(playerName));
 
         private static string SanitiseFileName(string name)
         {

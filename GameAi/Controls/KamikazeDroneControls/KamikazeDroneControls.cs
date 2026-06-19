@@ -28,7 +28,8 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
         const int DroneSpeedScreenPrSecond = 3; //How many seconds it should take for the drone to cross the entire screen at its current speed. Adjust as needed.
         private const float RotationDegreesPerSecond = 180f;
         private const float DirectionUpdateIntervalSeconds = 1f;
-        private const int OvershootFrameCount = 5;
+        private const float OvershootSeconds = 5f / GameState.GameplayBaselineFps;
+        private const float DroneFlyingVolumeBoost = 1.15f;
         private DateTime LastDirectionUpdateDateTime = DateTime.MinValue;
         private DateTime LastMovementDateTime = DateTime.MinValue;
         private IVector3 DirectionVelocity = new Vector3 { x = 0, y = 0, z = 0 }; // Initially standing still until the first direction is calculated
@@ -42,11 +43,16 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
         private DateTime _explosionDeltaTime = DateTime.Now;
         private Vector3? _explosionWorldPosition;
         private Vector3? _explosionObjectOffsets;
+        private int _surpriseDroneObjectId = -1;
+        private bool _surpriseDroneInitialized = false;
+        private bool _isSurpriseDrone = false;
+        private bool _surpriseDelayInitialized = false;
+        private DateTime? _surpriseStartHuntDateTime;
         private IAudioPlayer? _audio;
         private SoundDefinition? _explosionSound;
         private SoundDefinition? _droneFlyingSound;
         private IAudioInstance? _droneFlyingInstance;
-        private int _overshootFramesRemaining = 0;
+        private float _overshootSecondsRemaining = 0f;
         private Vector3 _overshootDirection = new Vector3();
 
         public KamikazeDroneControls()
@@ -152,22 +158,22 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
+            var now = DateTime.Now;
+
             // Skip hunt until the delay expires, unless the ship is already close
-            if (DateTime.Now < StartHuntDateTime && HasLiveNonDroneEnemies())
+            if (StartHuntDateTime != null &&
+                now < StartHuntDateTime &&
+                HasLiveNonDroneEnemies() &&
+                IsShipOutsideImmediateHuntRange(theObject))
             {
-                var shipPos = GameState.ShipState?.ShipCrashCenterWorldPosition;
-                if (shipPos != null && theObject.WorldPosition != null)
-                {
-                    float distToShip = (float)Common3dObjectHelpers.GetDistance(
-                        KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition), KamikazeDroneMovementHelpers.ToVector3(shipPos));
-                    if (distToShip > 10_000f)
-                        return theObject;
-                }
-                else
-                {
-                    return theObject;
-                }
+                return theObject;
             }
+
+            if (ShouldWaitForSurpriseHuntDelay(theObject, now))
+            {
+                return theObject;
+            }
+
             ConfigureAudio(audioPlayer, soundRegistry);
 
             if (_trackedObjectId != theObject.ObjectId)
@@ -175,7 +181,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 _trackedObjectId = theObject.ObjectId;
                 _storedWorldPosition = KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition);
                 _storedWorldPositionInitialized = theObject.WorldPosition != null;
-                _overshootFramesRemaining = 0;
+                _overshootSecondsRemaining = 0f;
                 _overshootDirection = new Vector3();
             }
             else if (_storedWorldPositionInitialized)
@@ -214,7 +220,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                             });
                     }
 
-                    _droneFlyingInstance.SetVolume(_droneFlyingSound.Settings.Volume);
+                    _droneFlyingInstance.SetVolume(GetDroneFlyingVolume());
                     _droneFlyingInstance.SetWorldPosition(new System.Numerics.Vector3(audioPosition.x, audioPosition.y, audioPosition.z));
                 }
                 else
@@ -232,7 +238,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                         {
                             float distance = MathF.Sqrt(distSq);
                             float normalized = distance / maxDist;
-                            float volume = _droneFlyingSound.Settings.Volume *
+                            float volume = GetDroneFlyingVolume() *
                                 MathF.Pow(1f - normalized, AudioSetup.OffscreenAiAudioCurveExponent);
 
                             if (_droneFlyingInstance == null || !_droneFlyingInstance.IsPlaying)
@@ -290,8 +296,6 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 return theObject;
             }
 
-            var now = DateTime.Now;
-
             if (LastMovementDateTime == DateTime.MinValue)
             {
                 LastMovementDateTime = now;
@@ -300,7 +304,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             // Drones stay idle until the player unlocks the Decoy powerup
             if (!GameState.GamePlayState.IsDecoyUnlocked)
             {
-                TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, 1f / ScreenSetup.targetFps);
+                TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, GameState.ClampedDeltaTime);
                 _storedWorldPosition = KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition);
                 _storedWorldPositionInitialized = theObject.WorldPosition != null;
                 KamikazeDroneAi.SyncAuthoritativeDroneState(theObject);
@@ -314,7 +318,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             IVector3? currentTargetPosition = null;
             Vector3 directionToTarget = new Vector3();
             bool shouldRecalculateDirection = false;
-            bool isOvershooting = _overshootFramesRemaining > 0;
+            bool isOvershooting = _overshootSecondsRemaining > 0f;
             float speedPerSecond = 0f;
 
             var closestDecoy = KamikazeDroneAi.GetClosestActiveDecoy(ParentObject);
@@ -401,10 +405,10 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                         Vector3 moveDirection;
                         float moveDistance = speedPerSecond * (float)deltaSeconds;
 
-                        if (_overshootFramesRemaining > 0)
+                        if (_overshootSecondsRemaining > 0f)
                         {
                             moveDirection = KamikazeDroneMovementHelpers.Normalize(_overshootDirection);
-                            _overshootFramesRemaining--;
+                            _overshootSecondsRemaining = MathF.Max(0f, _overshootSecondsRemaining - (float)deltaSeconds);
                         }
                         else
                         {
@@ -413,7 +417,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                             if (currentDistance > 0f && moveDistance >= currentDistance)
                             {
                                 _overshootDirection = moveDirection;
-                                _overshootFramesRemaining = OvershootFrameCount - 1;
+                                _overshootSecondsRemaining = OvershootSeconds;
                             }
                             else if (currentDistance <= 0f)
                             {
@@ -525,6 +529,119 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 || objectName == "Endboss2";
         }
 
+        private bool ShouldWaitForSurpriseHuntDelay(I3dObject theObject, DateTime now)
+        {
+            if (!GameState.GamePlayState.IsDecoyUnlocked)
+            {
+                return false;
+            }
+
+            if (!IsSurpriseDelayScene())
+            {
+                return false;
+            }
+
+            if (!IsSurpriseDrone(theObject))
+            {
+                return false;
+            }
+
+            if (!_surpriseDelayInitialized)
+            {
+                _surpriseDelayInitialized = true;
+                _surpriseStartHuntDateTime = now.AddSeconds(GameSetup.KamikazeDroneSurpriseHuntDelaySeconds);
+            }
+
+            return now < _surpriseStartHuntDateTime && IsShipOutsideImmediateHuntRange(theObject);
+        }
+
+        private bool IsSurpriseDrone(I3dObject theObject)
+        {
+            if (_surpriseDroneObjectId != theObject.ObjectId)
+            {
+                _surpriseDroneObjectId = theObject.ObjectId;
+                _surpriseDroneInitialized = false;
+                _isSurpriseDrone = false;
+                _surpriseDelayInitialized = false;
+                _surpriseStartHuntDateTime = null;
+            }
+
+            if (!_surpriseDroneInitialized)
+            {
+                _isSurpriseDrone = ShouldUseSurpriseDelay(theObject);
+                _surpriseDroneInitialized = true;
+            }
+
+            return _isSurpriseDrone;
+        }
+
+        private static bool ShouldUseSurpriseDelay(I3dObject theObject)
+        {
+            if (theObject.ObjectName != "KamikazeDrone")
+            {
+                return false;
+            }
+
+            int percent = Math.Clamp(GameSetup.KamikazeDroneSurpriseDelayPercent, 0, 100);
+            if (percent <= 0)
+            {
+                return false;
+            }
+
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null || aiObjects.Count == 0)
+            {
+                return false;
+            }
+
+            int droneCount = 0;
+            int droneIndex = -1;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                if (aiObjects[i].ObjectName != "KamikazeDrone")
+                {
+                    continue;
+                }
+
+                if (aiObjects[i].ObjectId == theObject.ObjectId)
+                {
+                    droneIndex = droneCount;
+                }
+
+                droneCount++;
+            }
+
+            if (droneIndex < 0 || droneCount <= 0)
+            {
+                return false;
+            }
+
+            int surpriseCount = Math.Max(1, (droneCount * percent + 99) / 100);
+            return droneIndex >= droneCount - surpriseCount;
+        }
+
+        private static bool IsSurpriseDelayScene()
+        {
+            var sceneType = GameState.GamePlayState.CurrentSceneType;
+            return sceneType == SceneTypes.Game || sceneType == SceneTypes.Simulation;
+        }
+
+        private static bool IsShipOutsideImmediateHuntRange(I3dObject theObject)
+        {
+            var shipPos = GameState.ShipState?.ShipCrashCenterWorldPosition;
+            if (shipPos == null || theObject.WorldPosition == null)
+            {
+                return true;
+            }
+
+            float distToShip = (float)Common3dObjectHelpers.GetDistance(
+                KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition),
+                KamikazeDroneMovementHelpers.ToVector3(shipPos));
+
+            return distToShip > GameSetup.KamikazeDroneProximityHuntDistance;
+        }
+
         public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
         {
         }
@@ -545,7 +662,12 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             _trackedObjectId = -1;
             _storedWorldPositionInitialized = false;
             _storedWorldPosition = new Vector3();
-            _overshootFramesRemaining = 0;
+            _surpriseDroneObjectId = -1;
+            _surpriseDroneInitialized = false;
+            _isSurpriseDrone = false;
+            _surpriseDelayInitialized = false;
+            _surpriseStartHuntDateTime = null;
+            _overshootSecondsRemaining = 0f;
             _overshootDirection = new Vector3();
             _explosionWorldPosition = null;
             _explosionObjectOffsets = null;
@@ -587,6 +709,11 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
                 _droneFlyingSound = droneComingSound;
             }
             _audioConfigured = true;
+        }
+
+        private float GetDroneFlyingVolume()
+        {
+            return (_droneFlyingSound?.Settings.Volume ?? 1f) * DroneFlyingVolumeBoost;
         }
 
         public void ReleaseParticles(I3dObject theObject)

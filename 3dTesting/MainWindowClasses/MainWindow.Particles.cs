@@ -119,7 +119,7 @@ namespace _3dTesting.MainWindowClasses
                 //
                 // The shadow belongs to the GROUND, not the particle.
                 // Approach mirrors ObjectShadowManager:
-                //   1. Find the ground tile under the particle's X.
+                //   1. Find the ground point under the particle's X/Z.
                 //   2. Compute an "altitude" = how high above the surface
                 //      the particle is on screen (surfaceY - particleY).
                 //   3. Project along the global light direction, using
@@ -132,7 +132,7 @@ namespace _3dTesting.MainWindowClasses
                 //      Rotation=(0,0,0), parent to surface.ObjectOffsets.
                 // ---------------------------------------------------------
 
-                // Find the ground tile under the particle. Mirrors the
+                // Find the ground point under the particle. Mirrors the
                 // free-flying branch in ObjectShadowManager: after the X=70°
                 // surface tilt, tile centers are laid out primarily in the
                 // X-Z plane (X = lateral, Z = scroll axis), while Y is the
@@ -142,7 +142,7 @@ namespace _3dTesting.MainWindowClasses
                 // spread them across the bottom of the screen.
                 //   - X from the PARTICLE (continuous, not snapped)
                 //   - Z from the PARTICLE (continuous, not snapped)
-                //   - Y from the nearest TILE (ground surface depth below)
+                //   - Y interpolated from the surface triangle below
                 float targetX = particleOffsetX - surfaceX;
                 float targetZ = particleOffsetZ - surfaceObj!.ObjectOffsets.z;
                 float groundLocalX = targetX;
@@ -152,22 +152,13 @@ namespace _3dTesting.MainWindowClasses
 
                 if (rotatedTiles != null && rotatedTiles.Count > 0)
                 {
-                    float bestDistSq = float.MaxValue;
-                    for (int i = 0; i < rotatedTiles.Count; i++)
-                    {
-                        var tile = rotatedTiles[i];
-                        float cx = (tile.vert1.x + tile.vert2.x + tile.vert3.x) / 3f;
-                        float cz = (tile.vert1.z + tile.vert2.z + tile.vert3.z) / 3f;
-                        float dx = cx - targetX;
-                        float dz = cz - targetZ;
-                        float d2 = dx * dx + dz * dz;
-                        if (d2 < bestDistSq)
-                        {
-                            bestDistSq = d2;
-                            groundLocalY = (tile.vert1.y + tile.vert2.y + tile.vert3.y) / 3f;
-                            grounded = true;
-                        }
-                    }
+                    grounded = ObjectShadowManager.TryGetSurfaceGroundPoint(
+                        rotatedTiles,
+                        targetX,
+                        targetZ,
+                        out groundLocalX,
+                        out groundLocalY,
+                        out groundLocalZ);
                 }
 
                 if (!grounded) continue;

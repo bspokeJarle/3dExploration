@@ -27,8 +27,8 @@ namespace _3dRotations.Scene.Scene6
         public ISceneDirector Director { get; } = new Scene6Director();
         public GameModes GameMode { get; } = GameModes.Playback;
 
-        public float InfectionThresholdPercent { get; } = 11.5f;
-        public int InfectionSpreadRate { get; } = 8;
+        public float InfectionThresholdPercent { get; } = 15.0f;
+        public int InfectionSpreadRate { get; } = 6;
         public int SeederOffscreenSpeedFactor { get; } = 20;
         public float LocalInfectionSpreadDelaySec { get; } = 1.8f;
         public float LocalInfectionSpreadRadius { get; } = 5800f;
@@ -107,8 +107,9 @@ namespace _3dRotations.Scene.Scene6
                 totalSeederCount: 21,
                 regularSeed: 6061,
                 nearSeederCount: 5,
-                firstRingRadius: 7500f,
-                ringRadiusStep: 11500f);
+                firstRingRadius: 6500f,
+                ringRadiusStep: 9000f,
+                firstKillPowerUpType: PowerUpType.TravelSpeedLevel1);
 
             var motherShipMedium = MotherShipMedium.CreateMotherShipMedium(Surface);
             motherShipMedium.Rotation = new Vector3 { };
@@ -839,7 +840,7 @@ namespace _3dRotations.Scene.Scene6
                 "Sand contamination identified as Omega Strain vector.\n" +
                 "Twenty-one seeders detected across dune fields.\n" +
                 "Kamikaze escort: FOURTEEN units. Bomber wing: SIX.\n" +
-                "Spread delay: 1.8 seconds. Bio-tolerance: 11.5%.\n\n" +
+                "Spread delay: 1.8 seconds. Bio-tolerance: 15.0%.\n\n" +
                 "DIRECTIVE:\n" +
                 "Destroy all seeders before the desert biome collapses entirely.";
             o.Footer = "PRESS ANY KEY TO BEGIN DESCENT";

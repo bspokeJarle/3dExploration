@@ -236,6 +236,7 @@ public class RainfallControlsTests
         public void PlayOneShot(SoundDefinition definition, AudioPlayOptions? options = null) => Play(definition, AudioPlayMode.OneShot, options);
         public void Stop(IAudioInstance instance, bool playEndSegment) => instance.Stop(playEndSegment);
         public void StopAll() => LastInstance.Stop(false);
+        public void StopNonMusic() => LastInstance.Stop(false);
         public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) { }
         public void SetMusicVolume(float volume) => MusicVolume = volume;
         public void StopMusic() { }

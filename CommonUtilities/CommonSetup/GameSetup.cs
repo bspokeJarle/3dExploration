@@ -13,6 +13,8 @@ namespace CommonUtilities.CommonSetup
         public static int KamikazeDroneMinHuntDelay { get; set; } = 5;
         public static int KamikazeDroneMaxHuntDelay { get; set; } = 45;
         public static float KamikazeDroneProximityHuntDistance { get; set; } = 10_000f;
+        public static int KamikazeDroneSurpriseDelayPercent { get; set; } = 10;
+        public static int KamikazeDroneSurpriseHuntDelaySeconds { get; set; } = 12;
 
         // Decoy blast radius: exploding decoys damage nearby objects within this distance.
         // Viewport diagonal is ~960 world units; 850 covers most of the visible screen.

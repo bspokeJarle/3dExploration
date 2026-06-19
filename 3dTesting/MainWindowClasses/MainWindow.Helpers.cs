@@ -189,7 +189,8 @@ namespace _3dTesting.Helpers
             int tileSize = MapSetup.tileSize;
 
             _markerFrame++;
-            bool aiVisible = (_markerFrame % 30) < 15;
+            bool aiPrimaryColor = (_markerFrame % 30) < 15;
+            var biome = GameState.SurfaceState.SceneBiome;
 
             // BGRA format
             byte[] greyPx    = { 180, 180, 180, 255 }; // Ship
@@ -200,13 +201,14 @@ namespace _3dTesting.Helpers
             byte[] swanPx    = { 240, 240, 240, 255 }; // SpaceSwan (white)
             byte[] zeppelinPx = { 0, 200, 200, 255 };   // ZeppelinBomber (yellow-green, BGRA)
 
-            // Mothership — large marker flashing red/black independently
+            // Mothership — large marker flashing red/strong-red independently
             bool mothershipFlashRed = (_markerFrame % 20) < 10;
-            byte[] mothershipPx = mothershipFlashRed
-                ? new byte[] { 0, 0, 255, 255 }    // BGRA red
-                : new byte[] { 0, 0, 0, 255 };     // BGRA black
+            byte[] mothershipPx = GetMinimapMarkerBlinkBgra(
+                biome,
+                new byte[] { 0, 0, 255, 255 }, // BGRA red
+                mothershipFlashRed);
 
-            bool powerupVisible = (_markerFrame % 8) < 5;
+            bool powerupPrimaryColor = (_markerFrame % 8) < 5;
 
             // Ship marker — always visible at viewport center
             var mapPos = GameState.SurfaceState.GlobalMapPosition;
@@ -240,8 +242,11 @@ namespace _3dTesting.Helpers
                         if (obj.WorldPosition == null) continue;
                         if (obj.WorldPosition.x == 0 && obj.WorldPosition.z == 0) continue;
 
-                        int markerX = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
-                        int markerZ = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
+                        var markerWorld = SurfacePositionSyncHelpers.GetMinimapMarkerWorldPosition(obj);
+                        if (markerWorld == null) continue;
+
+                        int markerX = MapCoordinateHelpers.WorldToTileIndex(markerWorld.x, tileSize, mapWidth);
+                        int markerZ = MapCoordinateHelpers.WorldToTileIndex(markerWorld.z, tileSize, mapHeight);
                         int mx = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX, cropOriginX, mapWidth);
                         int mz = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ, cropOriginZ, mapHeight);
                         StampMarkerBoss(pixels, cropW, cropH, stride, mx, mz, mothershipPx);
@@ -249,8 +254,8 @@ namespace _3dTesting.Helpers
                 }
             }
 
-            // AI objects — only during blink-on phase
-            if (aiVisible)
+            // AI objects — always visible, blinking between their own marker color
+            // and a stronger variant of the same color family.
             {
                 var aiObjects = GameState.SurfaceState?.AiObjects;
                 _3dObject[]? snapshot = null;
@@ -275,16 +280,26 @@ namespace _3dTesting.Helpers
                         if (obj.WorldPosition.x == 0 && obj.WorldPosition.z == 0)
                             continue;
 
+                        var markerWorld = SurfacePositionSyncHelpers.GetMinimapMarkerWorldPosition(obj);
+                        if (markerWorld == null)
+                            continue;
+
                         bool isPowerUp = obj.ObjectName == "PowerUp";
 
                         if (isPowerUp)
                         {
-                            if (!powerupVisible) continue;
-                            int markerX = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
-                            int markerZ = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
+                            int markerX = MapCoordinateHelpers.WorldToTileIndex(markerWorld.x, tileSize, mapWidth);
+                            int markerZ = MapCoordinateHelpers.WorldToTileIndex(markerWorld.z, tileSize, mapHeight);
                             int bx = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX, cropOriginX, mapWidth);
                             int bz = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ, cropOriginZ, mapHeight);
-                            StampMarkerLarge(pixels, cropW, cropH, stride, bx, bz, powerupPx);
+                            StampMarkerLarge(
+                                pixels,
+                                cropW,
+                                cropH,
+                                stride,
+                                bx,
+                                bz,
+                                GetMinimapMarkerBlinkBgra(biome, powerupPx, powerupPrimaryColor));
                             continue;
                         }
 
@@ -304,23 +319,84 @@ namespace _3dTesting.Helpers
                         {
                             if (obj.ObjectName == "ZeppelinBomber")
                             {
-                                int markerX = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
-                                int markerZ = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
+                                int markerX = MapCoordinateHelpers.WorldToTileIndex(markerWorld.x, tileSize, mapWidth);
+                                int markerZ = MapCoordinateHelpers.WorldToTileIndex(markerWorld.z, tileSize, mapHeight);
                                 int bxZ = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX, cropOriginX, mapWidth);
                                 int bzZ = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ, cropOriginZ, mapHeight);
-                                StampMarkerLarge(pixels, cropW, cropH, stride, bxZ, bzZ, zeppelinPx);
+                                StampMarkerLarge(
+                                    pixels,
+                                    cropW,
+                                    cropH,
+                                    stride,
+                                    bxZ,
+                                    bzZ,
+                                    GetMinimapMarkerBlinkBgra(biome, zeppelinPx, aiPrimaryColor));
                             }
                             continue;
                         }
 
-                        int markerX2 = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.x, tileSize, mapWidth);
-                        int markerZ2 = MapCoordinateHelpers.WorldToTileIndex(obj.WorldPosition.z, tileSize, mapHeight);
+                        int markerX2 = MapCoordinateHelpers.WorldToTileIndex(markerWorld.x, tileSize, mapWidth);
+                        int markerZ2 = MapCoordinateHelpers.WorldToTileIndex(markerWorld.z, tileSize, mapHeight);
                         int bx2 = MapCoordinateHelpers.GetWrappedRelativeIndex(markerX2, cropOriginX, mapWidth);
                         int bz2 = MapCoordinateHelpers.GetWrappedRelativeIndex(markerZ2, cropOriginZ, mapHeight);
-                        StampMarker(pixels, cropW, cropH, stride, bx2, bz2, color);
+                        StampMarker(pixels, cropW, cropH, stride, bx2, bz2, GetMinimapMarkerBlinkBgra(biome, color, aiPrimaryColor));
                     }
                 }
             }
+        }
+
+        public static byte[] GetMinimapMarkerBlinkBgra(SceneBiomeTypes biome, byte[] primaryBgra, bool usePrimaryColor)
+        {
+            if (usePrimaryColor)
+            {
+                return primaryBgra;
+            }
+
+            return GetMinimapMarkerHighlightBgra(primaryBgra);
+        }
+
+        public static byte[] GetMinimapMarkerHighlightBgra(byte[] primaryBgra)
+        {
+            if (primaryBgra.Length < 3)
+            {
+                return new byte[] { 255, 255, 255, 255 };
+            }
+
+            int b = primaryBgra[0];
+            int g = primaryBgra[1];
+            int r = primaryBgra[2];
+            byte a = primaryBgra.Length > 3 ? primaryBgra[3] : (byte)255;
+            int max = Math.Max(b, Math.Max(g, r));
+            int min = Math.Min(b, Math.Min(g, r));
+
+            if (max < 24)
+            {
+                return new byte[] { 90, 90, 90, a };
+            }
+
+            if (min > 230)
+            {
+                return new byte[] { 210, 255, 255, a };
+            }
+
+            return new byte[]
+            {
+                BoostMarkerChannel(b, max),
+                BoostMarkerChannel(g, max),
+                BoostMarkerChannel(r, max),
+                a
+            };
+        }
+
+        private static byte BoostMarkerChannel(int value, int max)
+        {
+            if (value >= max)
+                return 255;
+
+            if (value <= 0)
+                return 0;
+
+            return (byte)Math.Min(255, value + 70);
         }
 
         private static byte[] CopyWrappedPixels(

@@ -266,6 +266,7 @@ public class TutorialVoicePromptControlsTests
 
         public void Stop(IAudioInstance instance, bool playEndSegment) => instance.Stop(playEndSegment);
         public void StopAll() { }
+        public void StopNonMusic() { }
         public void PlayMusic(SoundDefinition definition, float? volumeOverride = null) { }
         public void SetMusicVolume(float volume) => MusicVolume = volume;
         public void StopMusic() { }

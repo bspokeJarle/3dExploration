@@ -25,8 +25,8 @@ namespace _3dRotations.Scene.Scene8
         public ISceneDirector Director { get; } = new Scene8Director();
         public GameModes GameMode { get; } = GameModes.Playback;
 
-        public float InfectionThresholdPercent { get; } = 10.0f;
-        public int InfectionSpreadRate { get; } = 10;
+        public float InfectionThresholdPercent { get; } = 13.0f;
+        public int InfectionSpreadRate { get; } = 8;
         public int SeederOffscreenSpeedFactor { get; } = 22;
         public float LocalInfectionSpreadDelaySec { get; } = 1.2f;
         public float LocalInfectionSpreadRadius { get; } = 6500f;
@@ -274,7 +274,7 @@ namespace _3dRotations.Scene.Scene8
                 "All previous planets compromised. This is the final canopy perimeter.\n" +
                 "Twenty-five seeders confirmed. Kamikaze escort: EIGHTEEN units.\n" +
                 "Bomber wing: EIGHT. Large-class war carrier: MAXIMUM aggression.\n" +
-                "Spread delay: 1.2 seconds. Bio-tolerance: 10.0%.\n" +
+                "Spread delay: 1.2 seconds. Bio-tolerance: 13.0%.\n" +
                 "Kill Seeders first; every Seeder destroyed slows the infection cascade.\n\n" +
                 "DIRECTIVE:\n" +
                 "Win here. There is nowhere left to fall back to.";

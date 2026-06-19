@@ -1,4 +1,7 @@
 using _3dRotations.World.Objects;
+using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls.ZeppelinBomberControls;
 using System.Reflection;
@@ -9,6 +12,18 @@ namespace _3DSpesificsUnitTests.WorldObjects;
 [TestClass]
 public class ZeppelinBomberGeometryTests
 {
+    [TestInitialize]
+    public void Setup()
+    {
+        GameState.GamePlayState = new GamePlayState();
+        GameState.SurfaceState = new SurfaceState
+        {
+            GlobalMapPosition = new Vector3 { x = 0f, y = 40f, z = 0f },
+            AiObjects = new List<_3dObject>()
+        };
+        GameState.ShipState = new ShipState();
+    }
+
     [TestMethod]
     public void BomberPropeller_AttachesToRearMount()
     {
@@ -53,6 +68,24 @@ public class ZeppelinBomberGeometryTests
             "Propeller animation should keep the hub centered on local Y.");
         Assert.AreEqual(originalHubCenter.z, animatedHubCenter.z, 0.001f,
             "Propeller animation should keep the hub centered on local Z.");
+    }
+
+    [TestMethod]
+    public void BomberMovement_SyncsSixtyUnitsAboveSurface()
+    {
+        var bomber = ZeppelinBomber.CreateZeppelinBomber(null!);
+        bomber.WorldPosition = new Vector3 { x = 1000f, y = 0f, z = 2000f };
+        bomber.ObjectOffsets = new Vector3 { x = 10f, y = 120f, z = 400f };
+        bomber.Rotation = new Vector3();
+        bomber.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.ZeppelinBomberHealth };
+
+        var controls = new ZeppelinBomberControls { ParentObject = bomber };
+
+        controls.MoveObject(bomber, null, null);
+
+        Assert.AreEqual(10f, bomber.ObjectOffsets!.x, 0.001f);
+        Assert.AreEqual(160f, bomber.ObjectOffsets.y, 0.001f);
+        Assert.AreEqual(400f, bomber.ObjectOffsets.z, 0.001f);
     }
 
     private static I3dObjectPart GetPart(I3dObject obj, string partName)

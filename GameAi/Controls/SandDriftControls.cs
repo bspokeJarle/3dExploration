@@ -145,7 +145,7 @@ namespace GameAiAndControls.Controls
 
         private void UpdateWind()
         {
-            _windPhase += 0.018f;
+            _windPhase += 0.018f * GameState.FrameScale90;
             float gust = MathF.Max(0f, MathF.Sin(_windPhase * 0.31f));
             _windX = BaseWindX + MathF.Sin(_windPhase) * WindPulseX + gust * 1.2f;
             _windZ = BaseWindZ + MathF.Cos(_windPhase * 0.66f) * WindPulseZ;
@@ -153,11 +153,12 @@ namespace GameAiAndControls.Controls
 
         private void MoveMote(DustMote mote)
         {
-            mote.Phase += mote.SwaySpeed;
-            mote.WorldX += (_windX * mote.WindWeight) + mote.DriftX + MathF.Sin(mote.Phase) * mote.SwayAmount;
-            mote.WorldZ += (_windZ * mote.WindWeight) + mote.DriftZ;
-            mote.OffsetY += mote.VerticalDrift + MathF.Sin(mote.Phase * 0.7f) * mote.VerticalSway;
-            mote.Opacity = Math.Min(1f, mote.Opacity + 0.035f);
+            float frameScale = GameState.FrameScale90;
+            mote.Phase += mote.SwaySpeed * frameScale;
+            mote.WorldX += ((_windX * mote.WindWeight) + mote.DriftX + MathF.Sin(mote.Phase) * mote.SwayAmount) * frameScale;
+            mote.WorldZ += ((_windZ * mote.WindWeight) + mote.DriftZ) * frameScale;
+            mote.OffsetY += (mote.VerticalDrift + MathF.Sin(mote.Phase * 0.7f) * mote.VerticalSway) * frameScale;
+            mote.Opacity = Math.Min(1f, mote.Opacity + 0.035f * frameScale);
         }
 
         private bool ShouldRecycle(DustMote mote, IVector3 mapPosition, float endOffsetY)

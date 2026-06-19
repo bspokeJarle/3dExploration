@@ -112,6 +112,33 @@ namespace CommonUtilities.Persistence
             File.WriteAllBytes(filePath, encrypted);
         }
 
+        public static void EncryptToFileAtomic(
+            string filePath,
+            string backupFilePath,
+            string json,
+            string keyFilePath)
+        {
+            var passphrase = ReadPassphrase(keyFilePath);
+            var plainBytes = Encoding.UTF8.GetBytes(json);
+            var encrypted = Encrypt(plainBytes, passphrase);
+            var directory = Path.GetDirectoryName(filePath);
+            if (directory != null)
+                Directory.CreateDirectory(directory);
+
+            string temporaryPath = filePath + ".tmp." + Guid.NewGuid().ToString("N");
+            try
+            {
+                File.WriteAllBytes(temporaryPath, encrypted);
+                File.Move(temporaryPath, filePath, overwrite: true);
+                File.Copy(filePath, backupFilePath, overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(temporaryPath))
+                    File.Delete(temporaryPath);
+            }
+        }
+
         /// <summary>
         /// Reads an encrypted file and returns the decrypted JSON string.
         /// Returns null if the file does not exist.
@@ -124,6 +151,41 @@ namespace CommonUtilities.Persistence
             var encrypted = File.ReadAllBytes(filePath);
             var decrypted = Decrypt(encrypted, passphrase);
             return Encoding.UTF8.GetString(decrypted);
+        }
+
+        public static string? DecryptFromFileOrBackup(
+            string filePath,
+            string backupFilePath,
+            string keyFilePath)
+        {
+            string? primary = TryDecryptFile(filePath, keyFilePath);
+            if (primary != null)
+            {
+                try
+                {
+                    if (!File.Exists(backupFilePath))
+                        File.Copy(filePath, backupFilePath, overwrite: false);
+                }
+                catch
+                {
+                }
+
+                return primary;
+            }
+
+            return TryDecryptFile(backupFilePath, keyFilePath);
+        }
+
+        private static string? TryDecryptFile(string filePath, string keyFilePath)
+        {
+            try
+            {
+                return DecryptFromFile(filePath, keyFilePath);
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

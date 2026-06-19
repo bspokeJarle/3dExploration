@@ -28,7 +28,9 @@ namespace GameAiAndControls.Controls
         private const float MouthOpenDegrees = 52f;
         private const float GrowlMouthTriggerDegrees = 7.5f;
         private const float GrowlMinIntervalSeconds = 3.5f;
-        private const float RearUpXTilt = 32f;    // degrees subtracted from BaseXRotation at peak
+        private const float TerrainLiftY = 8f;
+        private const float RearUpYTilt = 32f;
+        private static float TerrainLiftYScaled => TerrainLiftY * ScreenSetup.ScreenScaleY;
         private static int _visibleOnScreenBearId = -1;
 
         private readonly _3dRotationCommon _rotate = new();
@@ -160,8 +162,9 @@ namespace GameAiAndControls.Controls
             float rearUpFactor = mouthAngle / MouthOpenDegrees;
 
             var rotation = theObject.Rotation as Vector3 ?? new Vector3();
-            rotation.y = BaseYRotation + (bodyArc * BodySwayAmplitude);
-            rotation.x = BaseXRotation - (rearUpFactor * RearUpXTilt);
+            float rearUpTilt = (_walkDirection > 0 ? -1f : 1f) * rearUpFactor * RearUpYTilt;
+            rotation.y = BaseYRotation + (bodyArc * BodySwayAmplitude) + rearUpTilt;
+            rotation.x = BaseXRotation;
             rotation.z = _currentFacingZ;
             theObject.Rotation = rotation;
 
@@ -170,7 +173,9 @@ namespace GameAiAndControls.Controls
                 theObject.ObjectOffsets = new Vector3
                 {
                     x = _currentOffsetX,
-                    y = _baseOffsetY + LandBasedObjectSetup.GroundContactNudgeYScaled - (MathF.Abs(bodyArc) * SurfaceHeightBobAmplitude),
+                    y = _baseOffsetY + LandBasedObjectSetup.GroundContactNudgeYScaled
+                        - TerrainLiftYScaled
+                        - (MathF.Abs(bodyArc) * SurfaceHeightBobAmplitude),
                     z = _baseOffsetZ
                 };
             }
@@ -192,7 +197,7 @@ namespace GameAiAndControls.Controls
                 return Math.Clamp(GameState.DeltaTime, 0f, 0.1f);
 
             var now = DateTime.Now;
-            float deltaSeconds = 1f / ScreenSetup.targetFps;
+            float deltaSeconds = GameState.GameplayBaselineDeltaTime;
             if (_lastFrameUpdate != DateTime.MinValue)
                 deltaSeconds = (float)(now - _lastFrameUpdate).TotalSeconds;
 

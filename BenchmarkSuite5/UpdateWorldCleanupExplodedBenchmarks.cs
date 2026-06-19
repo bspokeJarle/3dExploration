@@ -133,6 +133,10 @@ public class UpdateWorldCleanupExplodedBenchmarks
         {
         }
 
+        public void ResetActiveSceneToPlanetStart(I3dWorld world)
+        {
+        }
+
         public void NextScene(I3dWorld world)
         {
         }

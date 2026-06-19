@@ -250,6 +250,92 @@ public class SceneHandlerSavedStateIsolationTests
     }
 
     [TestMethod]
+    public void UpdateFrame_LoadedSceneBoundarySave_RestoresArrivalSnapshot()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+
+        var loaded = new SavedGameState
+        {
+            PlayerName = "CharlieB",
+            SceneIndex = 1,
+            Score = 7200,
+            Lives = 2,
+            Health = 64f,
+            TotalKills = 18,
+            TotalShotsFired = 90,
+            TotalDeaths = 2,
+            PowerUpsCollected = 2,
+            HasCheckpoint = false,
+            HasPlanetStartSnapshot = true,
+            PlanetStartSceneIndex = 1,
+            PlanetStartScore = 5000,
+            PlanetStartLives = 3,
+            PlanetStartHealth = 92f,
+            PlanetStartPowerUpsCollected = 1,
+            PlanetStartSeedersRemaining = 7,
+            PlanetStartDronesRemaining = 4,
+            PlanetStartMotherShipsRemaining = 1,
+            PlanetStartTotalKills = 12,
+            PlanetStartTotalShotsFired = 55,
+            PlanetStartTotalDeaths = 1,
+            PlanetStartInitialSeeders = 7,
+            PlanetStartInitialDrones = 4,
+            PlanetStartInitialMotherShips = 1
+        };
+
+        SetPrivateField(handler, "_pendingSavedState", loaded);
+        SetPrivateField(handler, "_targetSceneIndex", 1);
+        SetPrivateField(handler, "_pendingSceneAdvance", true);
+        SetPrivateField(handler, "_pendingSceneAdvanceFramesLeft", 0);
+
+        handler.UpdateFrame(world);
+
+        var gps = GameState.GamePlayState;
+        Assert.AreEqual(7200L, gps.Score);
+        Assert.IsTrue(gps.HasPlanetStartSnapshot);
+        Assert.AreEqual(1, gps.PlanetStartSceneIndex);
+        Assert.AreEqual(5000L, gps.PlanetStartScore);
+        Assert.AreEqual(92f, gps.PlanetStartHealth);
+        Assert.AreEqual(7, gps.PlanetStartSeedersRemaining);
+        Assert.AreEqual(12, gps.PlanetStartTotalKills);
+    }
+
+    [TestMethod]
+    public void ResetActiveSceneToPlanetStart_WithoutSnapshot_DiscardsVolatileProgress()
+    {
+        var handler = new SceneHandler();
+        var world = CreateWorld(handler);
+        handler.NextScene(world);
+
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "CharlieB";
+        gps.Score = 7200;
+        gps.Lives = 1;
+        gps.Health = 24f;
+        gps.TotalKills = 18;
+        gps.TotalShotsFired = 90;
+        gps.TotalDeaths = 2;
+        gps.PowerUpsCollected = 2;
+        gps.SpeedPowerUpLevel = 1;
+        gps.InfectionLevel = 99f;
+        gps.ClearPlanetStartSnapshot();
+
+        handler.ResetActiveSceneToPlanetStart(world);
+
+        Assert.AreEqual(0L, gps.Score);
+        Assert.AreEqual(3, gps.Lives);
+        Assert.AreEqual(100f, gps.Health);
+        Assert.AreEqual(0, gps.TotalKills);
+        Assert.AreEqual(0, gps.TotalShotsFired);
+        Assert.AreEqual(0, gps.TotalDeaths);
+        Assert.AreEqual(0f, gps.InfectionLevel);
+        Assert.AreEqual(2, gps.PowerUpsCollected);
+        Assert.AreEqual(1, gps.SpeedPowerUpLevel);
+        Assert.IsTrue(gps.HasPlanetStartSnapshot);
+    }
+
+    [TestMethod]
     public void UpdateFrame_LoadedScene1MothershipCheckpoint_RestoresEvenWhenKillCountIsLowerThanCurrentEnemyTotal()
     {
         var handler = new SceneHandler();

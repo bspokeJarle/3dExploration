@@ -150,18 +150,19 @@ namespace GameAiAndControls.Controls
 
         private void UpdateWind()
         {
-            _windPhase += 0.014f;
+            _windPhase += 0.014f * GameState.FrameScale90;
             float gust = MathF.Max(0f, MathF.Sin(_windPhase * 0.23f));
             _windX = BaseWindX + MathF.Sin(_windPhase) * WindPulseX + gust * 0.9f;
         }
 
         private void MoveLeaf(FallingLeaf leaf)
         {
-            leaf.Phase += leaf.SwaySpeed;
-            leaf.Angle += leaf.SpinSpeed;
-            leaf.WorldX += _windX * leaf.WindWeight + leaf.DriftX + MathF.Sin(leaf.Phase) * leaf.SwayAmount;
-            leaf.OffsetY += leaf.FallSpeed + MathF.Sin(leaf.Phase * 0.55f) * leaf.VerticalSway;
-            leaf.WorldZ += leaf.DriftZ;
+            float frameScale = GameState.FrameScale90;
+            leaf.Phase += leaf.SwaySpeed * frameScale;
+            leaf.Angle += leaf.SpinSpeed * frameScale;
+            leaf.WorldX += (_windX * leaf.WindWeight + leaf.DriftX + MathF.Sin(leaf.Phase) * leaf.SwayAmount) * frameScale;
+            leaf.OffsetY += (leaf.FallSpeed + MathF.Sin(leaf.Phase * 0.55f) * leaf.VerticalSway) * frameScale;
+            leaf.WorldZ += leaf.DriftZ * frameScale;
         }
 
         private bool ShouldRecycle(FallingLeaf leaf, IVector3 mapPosition, float endOffsetY)

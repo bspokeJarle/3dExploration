@@ -45,7 +45,7 @@ namespace GameAiAndControls.Controls
 
         // Spawn zoom-in animation
         private bool _spawnAnimating = true;
-        private int _spawnFrame = 0;
+        private float _spawnFrame = 0f;
         private const int SpawnAnimationFrames = 45;
         private const float SpawnStartZExtra = 800f;
         private float _spawnTargetZ;
@@ -112,7 +112,7 @@ namespace GameAiAndControls.Controls
             if (theObject.Rotation != null) theObject.Rotation.z = Zrotation;
 
             // Visual spin around Y
-            Yrotation += BaseYRotationIncrementPerFrame;
+            Yrotation += BaseYRotationIncrementPerFrame * GameState.FrameScale90;
 
             // Keep offsets visually in sync with surface scrolling
             SyncMovement(theObject);
@@ -128,7 +128,7 @@ namespace GameAiAndControls.Controls
                     _spawnTargetCaptured = true;
                 }
 
-                _spawnFrame++;
+                _spawnFrame += GameState.FrameScale90;
                 float t = Math.Min(1f, (float)_spawnFrame / SpawnAnimationFrames);
                 float eased = 1f - (1f - t) * (1f - t);
                 theObject.ObjectOffsets.z = _spawnTargetZ + SpawnStartZExtra * (1f - eased);
@@ -235,7 +235,7 @@ namespace GameAiAndControls.Controls
             _syncInitialized = false;
             _syncY = 0;
             _spawnAnimating = true;
-            _spawnFrame = 0;
+            _spawnFrame = 0f;
             _spawnTargetCaptured = false;
             _savedCrashBoxes = null;
             _isExploding = false;

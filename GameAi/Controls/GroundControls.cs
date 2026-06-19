@@ -22,6 +22,7 @@ namespace GameAiAndControls.Controls
         private readonly HashSet<int> _processedBombCraters = new();
         private DateTime _lastWaterWaveFrame = DateTime.MinValue;
         private float _waterWaveTimeSeconds;
+        private const int BombCraterRadiusTiles = 2;
         private const int WaterWaveEdgePaddingTiles = 1;
         private const float WaterWaveTilePhaseJitterRadians = 0.20944f; // about 12 degrees
 
@@ -130,7 +131,7 @@ namespace GameAiAndControls.Controls
         private void AdvanceWaterWaveTime()
         {
             var now = DateTime.Now;
-            float deltaSeconds = 1f / 60f;
+            float deltaSeconds = GameState.GameplayBaselineDeltaTime;
             if (_lastWaterWaveFrame != DateTime.MinValue)
             {
                 deltaSeconds = (float)(now - _lastWaterWaveFrame).TotalSeconds;
@@ -357,10 +358,13 @@ namespace GameAiAndControls.Controls
                 int centerX = MapCoordinateHelpers.WorldXToTileIndex(wp.x, global2DMap);
                 int centerZ = MapCoordinateHelpers.WorldZToTileIndex(wp.z, global2DMap);
 
-                for (int dz = -1; dz <= 1; dz++)
+                for (int dz = -BombCraterRadiusTiles; dz <= BombCraterRadiusTiles; dz++)
                 {
-                    for (int dx = -1; dx <= 1; dx++)
+                    for (int dx = -BombCraterRadiusTiles; dx <= BombCraterRadiusTiles; dx++)
                     {
+                        if ((dx * dx) + (dz * dz) > BombCraterRadiusTiles * BombCraterRadiusTiles)
+                            continue;
+
                         int tileZ = MapCoordinateHelpers.WrapIndex(centerZ + dz, mapHeight);
                         int tileX = MapCoordinateHelpers.WrapIndex(centerX + dx, mapWidth);
 

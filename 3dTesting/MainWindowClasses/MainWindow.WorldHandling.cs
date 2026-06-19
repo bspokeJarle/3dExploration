@@ -68,5 +68,11 @@ namespace _3dTesting.MainWindowClasses
         {
             return GetActiveLoop(world).UpdateWorld(world, ref projectedCoordinates, ref crashBoxCoordinates);
         }
+
+        public void StopNonMusicAudio()
+        {
+            if (liveLoop is LiveGameLoop liveGameLoop)
+                liveGameLoop.StopNonMusicAudio();
+        }
     }
 }

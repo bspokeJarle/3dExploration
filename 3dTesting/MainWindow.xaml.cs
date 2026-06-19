@@ -67,6 +67,7 @@ namespace _3dTesting
         private DateTime fadeOutTrigged = DateTime.MinValue;
         private int _updateInProgress = 0;
         private long _lastTickTimestamp = 0;
+        private long _lastWorldUpdateTimestamp = 0;
         private int _minimapFrameSkip = 0;
         private readonly object _triangleListPoolLock = new();
         private readonly Stack<List<_Coordinates._2dTriangleMesh>> _triangleListPool = new();
@@ -296,6 +297,7 @@ namespace _3dTesting
 
             if (IsMenuExitKey(e.Key))
             {
+                var sceneTypeBeforeMenuExit = world?.SceneHandler?.GetActiveScene().SceneType;
                 if (ShouldShutdownFromMenuExitKey(e.Key))
                 {
                     Application.Current.Shutdown();
@@ -304,16 +306,18 @@ namespace _3dTesting
                 }
 
                 world.SceneHandler.HandleKeyPress(e, world);
+                StopNonMusicAudioIfReturnedToIntro(sceneTypeBeforeMenuExit);
                 SyncLocalPauseFromWorld();
                 e.Handled = true;
                 return;
             }
 
-            if (e.Key == Key.LeftCtrl)
+            if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
             {
-                isPaused = !isPaused;
-                world.IsPaused = isPaused;
-                pauseFrameCount = 0;
+                if (IsGameplaySceneForPause() && !GameState.ScreenOverlayState.BlocksGameplayInput)
+                    ToggleGameplayPause();
+                e.Handled = true;
+                return;
             }
             //Send keys to Scenehandler to handle scene switches and overlay switches
             world.SceneHandler.HandleKeyPress(e,world);
@@ -321,6 +325,15 @@ namespace _3dTesting
 
             if (overlayWasShowing)
                 e.Handled = true;
+        }
+
+        private void StopNonMusicAudioIfReturnedToIntro(SceneTypes? previousSceneType)
+        {
+            if (previousSceneType == null || previousSceneType == SceneTypes.Intro)
+                return;
+
+            if (world?.SceneHandler?.GetActiveScene().SceneType == SceneTypes.Intro)
+                gameWorldManager.StopNonMusicAudio();
         }
 
         private bool ShouldShutdownFromMenuExitKey(Key key)
@@ -342,6 +355,62 @@ namespace _3dTesting
             isPaused = world.IsPaused;
             if (!isPaused)
                 pauseFrameCount = 0;
+        }
+
+        private void ToggleGameplayPause()
+        {
+            bool shouldPause = !world.IsPaused;
+            world.IsPaused = shouldPause;
+            isPaused = shouldPause;
+            pauseFrameCount = shouldPause ? limitFrameCount : 0;
+
+            if (IsGameplaySceneForPause())
+                GameState.GamePlayState.Phase = shouldPause ? GamePhase.Paused : GamePhase.Playing;
+
+            if (shouldPause)
+                ClearShipGameplayInputForPause();
+            else
+                ResumeShipAfterGameplayPause();
+        }
+
+        private static bool IsGameplaySceneForPause()
+        {
+            var sceneType = GameState.GamePlayState.CurrentSceneType;
+            return sceneType == SceneTypes.Game ||
+                   sceneType == SceneTypes.Simulation ||
+                   sceneType == SceneTypes.Tutorial;
+        }
+
+        private void ClearShipGameplayInputForPause()
+        {
+            if (world?.WorldInhabitants == null)
+                return;
+
+            for (int i = 0; i < world.WorldInhabitants.Count; i++)
+            {
+                var obj = world.WorldInhabitants[i];
+                if (obj.ObjectName == "Ship" && obj.Movement is ShipControls shipControls)
+                {
+                    shipControls.ClearGameplayInputForPause();
+                    return;
+                }
+            }
+        }
+
+        private void ResumeShipAfterGameplayPause()
+        {
+            if (world?.WorldInhabitants == null)
+                return;
+
+            for (int i = 0; i < world.WorldInhabitants.Count; i++)
+            {
+                var obj = world.WorldInhabitants[i];
+                if (obj.ObjectName == "Ship" && obj.Movement is ShipControls shipControls)
+                {
+                    shipControls.ResumeFromGameplayPause(obj);
+                    return;
+                }
+            }
         }
 
         private static bool HasActiveSurfaceMapForMinimap()
@@ -544,7 +613,6 @@ namespace _3dTesting
             }
 
             float dt = (float)dtSeconds;
-            GameState.DeltaTime = dt;
             SynchronizeTutorialOverlayPause();
 
             if (GameState.ScreenOverlayState.ShowDebugOverlay == false)
@@ -642,10 +710,15 @@ namespace _3dTesting
             }
 
             if (pauseFrameCount >= limitFrameCount)
+            {
+                _lastWorldUpdateTimestamp = 0;
                 return;
+            }
 
             if (System.Threading.Interlocked.Exchange(ref _updateInProgress, 1) == 1)
                 return;
+
+            GameState.DeltaTime = CaptureWorldUpdateDeltaTime(dt);
 
             _ = Task.Run(() =>
             {
@@ -697,6 +770,19 @@ namespace _3dTesting
                     System.Threading.Interlocked.Exchange(ref _updateInProgress, 0);
                 }
             });
+        }
+
+        private float CaptureWorldUpdateDeltaTime(float fallbackDeltaTime)
+        {
+            long now = Stopwatch.GetTimestamp();
+            float deltaTime = _lastWorldUpdateTimestamp == 0
+                ? fallbackDeltaTime
+                : (now - _lastWorldUpdateTimestamp) / (float)Stopwatch.Frequency;
+
+            _lastWorldUpdateTimestamp = now;
+            return deltaTime > 0f
+                ? Math.Clamp(deltaTime, 0f, 0.1f)
+                : GameState.GameplayBaselineDeltaTime;
         }
 
         private void SynchronizeTutorialOverlayPause()

@@ -140,6 +140,41 @@ public class LiveGameLoopCleanupTests
     }
 
     [TestMethod]
+    public void CleanupExplodedObjects_SpeedDropSurvivesWhenStandardPowerUpAlreadyExists()
+    {
+        _3dRotations.Helpers.PowerUpDropPolicy.ConfigureForWave(
+            totalSeeders: 21,
+            powerUpCount: 2,
+            firstKillPowerUpType: PowerUpType.TravelSpeedLevel1);
+        GameState.SurfaceState.GlobalMapPosition = new Vector3();
+        GameState.GamePlayState.CurrentSceneType = SceneTypes.Game;
+        var existingPowerUp = CreateExplodedObject(32);
+        existingPowerUp.ObjectName = "PowerUp";
+        existingPowerUp.ImpactStatus!.HasExploded = false;
+
+        var speedCarrier = CreateExplodedObject(33);
+        speedCarrier.ObjectName = "Seeder";
+        speedCarrier.HasPowerUp = false;
+        speedCarrier.PowerUpType = PowerUpType.Standard;
+        speedCarrier.WorldPosition = new Vector3 { x = 100f, z = 200f };
+
+        GameState.SurfaceState.AiObjects = new List<_3dObject> { existingPowerUp, speedCarrier };
+        var world = new TestWorld
+        {
+            WorldInhabitants = new List<I3dObject> { existingPowerUp, speedCarrier }
+        };
+
+        InvokePrivate(new LiveGameLoop(), "CleanupExplodedObjects", world);
+
+        var drops = world.WorldInhabitants.OfType<_3dObject>()
+            .Where(obj => obj.ObjectName == "PowerUp")
+            .ToList();
+        Assert.AreEqual(2, drops.Count);
+        Assert.IsTrue(drops.Any(obj => obj.PowerUpType == PowerUpType.TravelSpeedLevel1),
+            "A standard pickup waiting in the world must not discard the one-off speed pickup.");
+    }
+
+    [TestMethod]
     public void CleanupExplodedObjects_TutorialSeederKillDoesNotConsumePowerUpDrop()
     {
         _3dRotations.Helpers.PowerUpDropPolicy.ConfigureForWave(totalSeeders: 1, powerUpCount: 1);
@@ -291,6 +326,7 @@ public class LiveGameLoopCleanupTests
     {
         public void SetupActiveScene(I3dWorld world) { }
         public void ResetActiveScene(I3dWorld world) { }
+        public void ResetActiveSceneToPlanetStart(I3dWorld world) { }
         public void NextScene(I3dWorld world) { }
         public IScene GetActiveScene() => null!;
         public void HandleKeyPress(KeyEventArgs k, I3dWorld world) { }

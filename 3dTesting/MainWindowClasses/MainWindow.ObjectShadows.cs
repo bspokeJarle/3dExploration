@@ -103,7 +103,7 @@ namespace _3dTesting.MainWindowClasses
         /// <summary>
         /// Creates a black flattened shadow projected onto the surface.
         /// The shadow shares the surface's ObjectOffsets so it scrolls with the terrain.
-        /// Shadow geometry is translated to the nearest tile center in surface-local space.
+        /// Shadow geometry is translated to the sampled surface point in surface-local space.
         /// </summary>
         public void HandleObjectShadow(_3dObject inhabitant, List<_3dObject> shadowList)
         {
@@ -244,43 +244,27 @@ namespace _3dTesting.MainWindowClasses
             else
             {
                 // Free-flying: mirror the ship branch but take ONLY Y (ground depth)
-                // from the nearest tile. X and Z come straight from the object, so
+                // from the surface under the object. X and Z come straight from the object, so
                 // the shadow tracks the object's continuous world-space position and
-                // does NOT snap/jump as the nearest tile changes from frame to frame.
+                // does NOT snap/jump as tile centers change from frame to frame.
                 //   - X from the OBJECT (lateral, continuous)
                 //   - Z from the OBJECT (scroll axis, continuous)
-                //   - Y from the nearest TILE (ground surface depth under the object)
+                //   - Y interpolated from the surface triangle under the object
                 shadowBaseX = targetX;
                 shadowBaseZ = targetZ;
 
-                float bestTileY = 0f;
-                float bestDistSq = float.MaxValue;
-                bool found = false;
-                for (int i = 0; i < rotatedTiles.Count; i++)
-                {
-                    var tile = rotatedTiles[i];
-                    float tileCenterX = (tile.vert1.x + tile.vert2.x + tile.vert3.x) / 3f;
-                    float tileCenterZ = (tile.vert1.z + tile.vert2.z + tile.vert3.z) / 3f;
-                    float dx = tileCenterX - targetX;
-                    float dz = tileCenterZ - targetZ;
-                    float d2 = dx * dx + dz * dz;
-                    if (d2 < bestDistSq)
-                    {
-                        bestDistSq = d2;
-                        bestTileY = (tile.vert1.y + tile.vert2.y + tile.vert3.y) / 3f;
-                        found = true;
-                    }
-                }
-                if (!found) return;
+                if (!TryGetSurfaceGroundPoint(rotatedTiles, targetX, targetZ, out _, out float groundY, out _))
+                    return;
 
-                shadowBaseY = bestTileY;
+                shadowBaseY = groundY;
             }
 
-            // Altitude for scaling: gap between object screen Y and surface screen Y.
+            // Altitude for scaling: gap between object screen Y and ground screen Y.
             // Free-flying objects get a larger base scale so their shadow reads
             // clearly even at altitude; altitude shrink still applies so the
             // shadow shrinks as the object climbs.
-            float altitude = MathF.Max(0f, surfScreenY - objScreenY);
+            float groundScreenY = !isShip && !isTowerLike ? surfScreenY + shadowBaseY : surfScreenY;
+            float altitude = MathF.Max(0f, groundScreenY - objScreenY);
             float baseScale = (isShip || isTowerLike) ? BaseScale : BaseScale * FreeFlyingShadowScale;
             float scale = MathF.Max(MinScale, baseScale - altitude * AltitudeShrinkFactor);
 
@@ -424,6 +408,87 @@ namespace _3dTesting.MainWindowClasses
                 ObjectOffsets = shadowObjectOffsets,
                 Rotation = new Vector3 { x = 0, y = 0, z = 0 }
             });
+        }
+
+        internal static bool TryGetSurfaceGroundPoint(
+            IReadOnlyList<ITriangleMeshWithColor> rotatedTiles,
+            float targetX,
+            float targetZ,
+            out float groundX,
+            out float groundY,
+            out float groundZ)
+        {
+            groundX = targetX;
+            groundY = 0f;
+            groundZ = targetZ;
+
+            if (rotatedTiles == null || rotatedTiles.Count == 0)
+                return false;
+
+            float fallbackY = 0f;
+            float bestDistSq = float.MaxValue;
+            bool hasFallback = false;
+
+            for (int i = 0; i < rotatedTiles.Count; i++)
+            {
+                var tile = rotatedTiles[i];
+                if (TryInterpolateTriangleY(tile, targetX, targetZ, out float interpolatedY))
+                {
+                    groundY = interpolatedY;
+                    return true;
+                }
+
+                float tileCenterX = (tile.vert1.x + tile.vert2.x + tile.vert3.x) / 3f;
+                float tileCenterZ = (tile.vert1.z + tile.vert2.z + tile.vert3.z) / 3f;
+                float dx = tileCenterX - targetX;
+                float dz = tileCenterZ - targetZ;
+                float d2 = dx * dx + dz * dz;
+                if (d2 < bestDistSq)
+                {
+                    bestDistSq = d2;
+                    fallbackY = (tile.vert1.y + tile.vert2.y + tile.vert3.y) / 3f;
+                    hasFallback = true;
+                }
+            }
+
+            if (!hasFallback)
+                return false;
+
+            groundY = fallbackY;
+            return true;
+        }
+
+        private static bool TryInterpolateTriangleY(
+            ITriangleMeshWithColor triangle,
+            float targetX,
+            float targetZ,
+            out float groundY)
+        {
+            groundY = 0f;
+            const float epsilon = 0.001f;
+
+            float x1 = triangle.vert1.x;
+            float z1 = triangle.vert1.z;
+            float x2 = triangle.vert2.x;
+            float z2 = triangle.vert2.z;
+            float x3 = triangle.vert3.x;
+            float z3 = triangle.vert3.z;
+
+            float denominator = ((z2 - z3) * (x1 - x3)) + ((x3 - x2) * (z1 - z3));
+            if (MathF.Abs(denominator) < 0.0001f)
+                return false;
+
+            float weight1 = (((z2 - z3) * (targetX - x3)) + ((x3 - x2) * (targetZ - z3))) / denominator;
+            float weight2 = (((z3 - z1) * (targetX - x3)) + ((x1 - x3) * (targetZ - z3))) / denominator;
+            float weight3 = 1f - weight1 - weight2;
+
+            if (weight1 < -epsilon || weight2 < -epsilon || weight3 < -epsilon)
+                return false;
+
+            groundY = (weight1 * triangle.vert1.y)
+                + (weight2 * triangle.vert2.y)
+                + (weight3 * triangle.vert3.y);
+            return true;
         }
     }
 }

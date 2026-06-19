@@ -130,7 +130,8 @@ namespace _3dRotations.Helpers
             int regularSeed,
             int nearSeederCount,
             float firstRingRadius = 7500f,
-            float ringRadiusStep = 11500f)
+            float ringRadiusStep = 11500f,
+            PowerUpType? firstKillPowerUpType = null)
         {
             int safeTotal = Math.Max(0, totalSeederCount);
             var positions = CreateRingSeederPositions(
@@ -146,13 +147,11 @@ namespace _3dRotations.Helpers
                 AddSeeder(world, surface, seederPosition, hasPowerUp: false);
             }
 
-            // Powerups are no longer baked into specific seeders at spawn. Instead,
-            // the kill-time policy decides which kill index should mark a seeder as
-            // a powerup drop. This keeps drops well-spaced through the wave rather
-            // than randomly bunching at the end when the last surviving seeders
-            // happened to be the powerup-flagged ones.
+            // All campaign powerups are assigned at kill time. Scenes may type and
+            // advance the first scheduled drop to kill one; later drops keep their
+            // existing distributed thresholds.
             int powerUpCount = GetPowerUpCountForSeeders(safeTotal);
-            PowerUpDropPolicy.ConfigureForWave(safeTotal, powerUpCount);
+            PowerUpDropPolicy.ConfigureForWave(safeTotal, powerUpCount, firstKillPowerUpType);
         }
 
         /// <summary>
@@ -231,6 +230,7 @@ namespace _3dRotations.Helpers
             seeder.CrashBoxDebugMode = false;
             seeder.ImpactStatus = new ImpactStatus { ObjectHealth = EnemySetup.SeederHealth };
             seeder.HasPowerUp = hasPowerUp;
+            seeder.PowerUpType = PowerUpType.Standard;
             world.WorldInhabitants.Add(seeder);
             GameState.SurfaceState.AiObjects.Add(seeder);
         }
@@ -250,6 +250,8 @@ namespace _3dRotations.Helpers
         private static List<int> _thresholds = new();
         private static int _seederKillsObserved;
         private static int _powerUpsAwarded;
+        private static PowerUpType? _firstKillPowerUpType;
+        private static bool _firstKillPowerUpResolved;
 
         public static IReadOnlyList<int> CurrentThresholds
         {
@@ -261,11 +263,19 @@ namespace _3dRotations.Helpers
             get { lock (_gate) return _seederKillsObserved; }
         }
 
+        public static PowerUpType? FirstKillPowerUpType
+        {
+            get { lock (_gate) return _firstKillPowerUpType; }
+        }
+
         /// <summary>
         /// Resets the policy for a new wave. Called by SeederPlacementHelpers.AddSeederGroup
         /// every time the scene is built (initial setup or after ResetActiveScene).
         /// </summary>
-        public static void ConfigureForWave(int totalSeeders, int powerUpCount)
+        public static void ConfigureForWave(
+            int totalSeeders,
+            int powerUpCount,
+            PowerUpType? firstKillPowerUpType = null)
         {
             lock (_gate)
             {
@@ -274,6 +284,8 @@ namespace _3dRotations.Helpers
                 _thresholds = ComputeThresholds(_totalSeeders, _powerUpCount);
                 _seederKillsObserved = 0;
                 _powerUpsAwarded = 0;
+                _firstKillPowerUpType = firstKillPowerUpType;
+                _firstKillPowerUpResolved = false;
             }
         }
 
@@ -282,11 +294,35 @@ namespace _3dRotations.Helpers
         /// drop threshold. Callers should mark that seeder's HasPowerUp = true so the
         /// existing drop pipeline in LiveGameLoop creates the PowerUp.
         /// </summary>
-        public static bool TryConsumeDrop()
+        public static bool TryConsumeDrop(bool canAward = true)
+        {
+            return TryConsumeDrop(out _, canAward);
+        }
+
+        public static bool TryConsumeDrop(out PowerUpType powerUpType, bool canAward = true)
         {
             lock (_gate)
             {
+                powerUpType = PowerUpType.Standard;
                 _seederKillsObserved++;
+
+                if (!_firstKillPowerUpResolved && _firstKillPowerUpType.HasValue)
+                {
+                    var configuredType = _firstKillPowerUpType.Value;
+                    if (IsAlreadyOwned(configuredType))
+                    {
+                        _firstKillPowerUpResolved = true;
+                        ConsumeScheduledDropSlot();
+                    }
+                    else if (canAward)
+                    {
+                        _firstKillPowerUpResolved = true;
+                        ConsumeScheduledDropSlot();
+                        powerUpType = configuredType;
+                        return true;
+                    }
+                }
+
                 if (_powerUpsAwarded >= _thresholds.Count)
                     return false;
 
@@ -294,9 +330,29 @@ namespace _3dRotations.Helpers
                 if (_seederKillsObserved < nextThreshold)
                     return false;
 
+                if (!canAward)
+                    return false;
+
                 _powerUpsAwarded++;
                 return true;
             }
+        }
+
+        private static bool IsAlreadyOwned(PowerUpType powerUpType)
+        {
+            int ownedSpeedLevel = GameState.GamePlayState.SpeedPowerUpLevel;
+            return powerUpType switch
+            {
+                PowerUpType.TravelSpeedLevel1 => ownedSpeedLevel >= 1,
+                PowerUpType.TravelSpeedLevel2 => ownedSpeedLevel >= 2,
+                _ => false
+            };
+        }
+
+        private static void ConsumeScheduledDropSlot()
+        {
+            if (_powerUpsAwarded < _thresholds.Count)
+                _powerUpsAwarded++;
         }
 
         internal static List<int> ComputeThresholds(int totalSeeders, int powerUpCount)

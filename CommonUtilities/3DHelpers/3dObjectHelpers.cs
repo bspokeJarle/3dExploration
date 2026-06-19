@@ -147,7 +147,7 @@ namespace CommonUtilities._3DHelpers
             var globalMapPosition = GameState.SurfaceState.GlobalMapPosition;
             var inhabitantPosition = inhabitant.WorldPosition;
 
-            const float maxDistance = ScreenSetup.ObjectVisibilityDistance;
+            float maxDistance = ScreenSetup.ObjectVisibilityDistance * ScreenSetup.ScreenScaleX;
             float maxDistanceSq = maxDistance * maxDistance;
             float distanceSq = GetDistanceSquared(globalMapPosition, inhabitantPosition);
 
@@ -288,6 +288,7 @@ namespace CommonUtilities._3DHelpers
                 ShadowOffset = CopyVector(original.ShadowOffset),
                 UseSurfaceFootprintPivot = original.UseSurfaceFootprintPivot,
                 HasPowerUp = original.HasPowerUp,
+                PowerUpType = original.PowerUpType,
                 ZSortBias = original.ZSortBias
             };
 
@@ -323,6 +324,7 @@ namespace CommonUtilities._3DHelpers
                 ShadowOffset = CopyVector(original.ShadowOffset),
                 UseSurfaceFootprintPivot = original.UseSurfaceFootprintPivot,
                 HasPowerUp = original.HasPowerUp,
+                PowerUpType = original.PowerUpType,
                 ZSortBias = original.ZSortBias
             };
 

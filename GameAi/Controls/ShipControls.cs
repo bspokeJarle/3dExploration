@@ -111,6 +111,7 @@ namespace GameAiAndControls.Controls
         private bool _rightHeld = false;
         private bool _upHeld = false;
         private bool _downHeld = false;
+        private readonly HashSet<int> _collectedPowerUpIds = new();
         private DateTime ExplosionDeltaTime = DateTime.Now;
         private bool _hasExplosionTransformSnapshot = false;
         private Vector3? _explosionWorldPosition;
@@ -437,7 +438,7 @@ namespace GameAiAndControls.Controls
             // controllable until the fade-out actually completes.
             return !isGameplayScene ||
                    GameState.TutorialState.InstructionOverlayPauseActive ||
-                   (overlay.ShowOverlay && overlay.IsModal) ||
+                   overlay.BlocksGameplayInput ||
                    gameplay.IsPaused;
         }
 
@@ -516,6 +517,21 @@ namespace GameAiAndControls.Controls
             _pitchVelocity = 0f;
             _yawAccumulator = 0f;
             _pitchAccumulator = 0f;
+        }
+
+        public void ClearGameplayInputForPause()
+        {
+            ClearBlockedGameplayInputState();
+            ClearTransientResumeInputState();
+        }
+
+        public void ResumeFromGameplayPause(I3dObject? ship = null)
+        {
+            lastUpdateTime = DateTime.Now;
+            ClearGameplayInputForPause();
+            ClearPendingShipCrash(ship ?? ParentObject);
+            GameState.ShipState.ShipGravityDisabledUntilUtc =
+                DateTime.UtcNow.AddSeconds(OverlayResumeGravityPauseSeconds);
         }
 
         private void ClearBlockedGameplayInputState()
@@ -763,7 +779,8 @@ namespace GameAiAndControls.Controls
 
         private void IncreaseThrustAndRelease()
         {
-            if (Thrust < MaxThrust) Thrust += ThrustIncreaseRate;
+            if (Thrust < MaxThrust)
+                Thrust = MathF.Min(MaxThrust, Thrust + ThrustIncreaseRate * GameState.FrameScale90);
 
             int totalThrust = (int)Thrust;
 
@@ -852,7 +869,7 @@ namespace GameAiAndControls.Controls
             }
 
             var now = DateTime.Now;
-            float deltaTime = (float)(now - lastUpdateTime).TotalSeconds;
+            float deltaTime = GameState.ClampedDeltaTime;
             lastUpdateTime = now;
 
             GameState.GamePlayState.Update(deltaTime);
@@ -886,8 +903,9 @@ namespace GameAiAndControls.Controls
                 _mousePitchInput = 0f;
             }
 
-            _yawVelocity = MathF.Max(-MaxRotationSpeed, MathF.Min(MaxRotationSpeed, _yawVelocity)) * RotationDrag;
-            _pitchVelocity = MathF.Max(-MaxRotationSpeed, MathF.Min(MaxRotationSpeed, _pitchVelocity)) * RotationDrag;
+            float rotationDrag = GameState.ScaleDampingPer90Frame(RotationDrag);
+            _yawVelocity = MathF.Max(-MaxRotationSpeed, MathF.Min(MaxRotationSpeed, _yawVelocity)) * rotationDrag;
+            _pitchVelocity = MathF.Max(-MaxRotationSpeed, MathF.Min(MaxRotationSpeed, _pitchVelocity)) * rotationDrag;
 
             _yawAccumulator += _yawVelocity * deltaTime;
             _pitchAccumulator += _pitchVelocity * deltaTime;
@@ -1009,6 +1027,11 @@ namespace GameAiAndControls.Controls
                     int ramDamage = ShipSetup.DefaultShipHealth / 2;
                     theObject.ImpactStatus.ObjectHealth -= ramDamage;
                     if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] MotherShip ram! Damage={ramDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
+                }
+                else if (crashedWith == "BomberBomb")
+                {
+                    theObject.ImpactStatus.ObjectHealth -= EnemySetup.BomberBombCollisionDamage;
+                    if (Logger.ShouldLog(logging)) Logger.Log($"[ShipCrash] BomberBomb hit! Damage={EnemySetup.BomberBombCollisionDamage}, NewHealth={theObject.ImpactStatus.ObjectHealth}");
                 }
                 else if (EnemySetup.IsEnemyTypeValid(crashedWith))
                 {
@@ -1441,21 +1464,23 @@ namespace GameAiAndControls.Controls
         public void HandleThrust(float deltaTime)
         {
             float verticalInertia = Physics.CalculateThrustForces(Thrust, tilt, rotationZ, deltaTime);
+            float frameScale = GameState.FrameScale90;
+            float travelSpeedMultiplier = GameState.GamePlayState.TravelSpeedMultiplier;
 
             float maxX = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
                          (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
             float maxZ = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
                          (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
 
-            GameState.SurfaceState.GlobalMapPosition.x = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.x, Physics.InertiaX, 75, maxX);
-            GameState.SurfaceState.GlobalMapPosition.z = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.z, Physics.InertiaZ, 0, maxZ);
+            GameState.SurfaceState.GlobalMapPosition.x = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.x, Physics.InertiaX * frameScale * travelSpeedMultiplier, 75, maxX);
+            GameState.SurfaceState.GlobalMapPosition.z = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.z, Physics.InertiaZ * frameScale * travelSpeedMultiplier, 0, maxZ);
 
             // Apply vertical inertia to screen position (positive InertiaY = up = ObjectOffsets.y decreases)
-            ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia));
+            ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia * frameScale));
             // Apply vertical inertia to altitude (positive InertiaY = up = altitude increases)
             // Ceiling-only clamp: FloorHeight must not cap gmpY or the gravity-settle
             // equilibrium oscillates against the clamp, causing surface vibration.
-            GameState.SurfaceState.GlobalMapPosition.y = MathF.Min(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia, Physics.CeilingHeight);
+            GameState.SurfaceState.GlobalMapPosition.y = MathF.Min(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia * frameScale, Physics.CeilingHeight);
         }
 
         public void ApplyGravity(float deltaTime)
@@ -1503,10 +1528,11 @@ namespace GameAiAndControls.Controls
             }
 
             float verticalInertia = Physics.ApplyFallGravity(rotationX, deltaTime);
-            ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia));
+            float frameScale = GameState.FrameScale90;
+            ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia * frameScale));
             // Ceiling-only clamp: FloorHeight must not cap gmpY or the gravity-settle
             // equilibrium oscillates against the clamp, causing surface vibration.
-            GameState.SurfaceState.GlobalMapPosition.y = MathF.Min(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia, Physics.CeilingHeight);
+            GameState.SurfaceState.GlobalMapPosition.y = MathF.Min(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia * frameScale, Physics.CeilingHeight);
 
             // Gently pull screen position and altitude back toward resting values
             const float MaxAirSettleSpeed = 300f;
@@ -1656,15 +1682,29 @@ namespace GameAiAndControls.Controls
                 var obj = aiObjects[i];
                 if (obj.ObjectName == "PowerUp" && obj.ImpactStatus?.HasCrashed == true)
                 {
+                    if (!_collectedPowerUpIds.Add(obj.ObjectId))
+                        continue;
+
+                    obj.CrashBoxes = new List<List<IVector3>>();
+
                     bool isTutorialScene = GameState.GamePlayState.CurrentSceneType == SceneTypes.Tutorial;
-                    // Every powerup pickup advances the unlock tier (1 -> Decoy, 2 -> Lazer,
-                    // 3 -> future weapon), including the tutorial pickup. Tutorial pickups still
-                    // do not award campaign score and do not write a campaign checkpoint/save.
-                    GameState.GamePlayState.PowerUpsCollected++;
+                    var gameplay = GameState.GamePlayState;
+                    bool isSpeedPowerUp = obj.PowerUpType != PowerUpType.Standard;
+                    bool progressionChanged;
+                    if (isSpeedPowerUp)
+                    {
+                        progressionChanged = gameplay.ApplySpeedPowerUp(obj.PowerUpType);
+                    }
+                    else
+                    {
+                        gameplay.PowerUpsCollected++;
+                        progressionChanged = true;
+                    }
 
                     if (!isTutorialScene)
                     {
-                        GameState.GamePlayState.Score += GameSetup.PowerUpCollectScore;
+                        if (progressionChanged)
+                            gameplay.Score += GameSetup.PowerUpCollectScore;
 
                         // Snapshot current remaining objective enemies before saving checkpoint
                         // so reset/load does not restore an already-cleared wave state by mistake.
@@ -1685,10 +1725,10 @@ namespace GameAiAndControls.Controls
                                 motherShipsLeft++;
                         }
 
-                        GameState.GamePlayState.SeedersRemaining = seedersLeft;
-                        GameState.GamePlayState.DronesRemaining = dronesLeft;
-                        GameState.GamePlayState.MotherShipsRemaining = motherShipsLeft;
-                        GameState.GamePlayState.SaveCheckpoint();
+                        gameplay.SeedersRemaining = seedersLeft;
+                        gameplay.DronesRemaining = dronesLeft;
+                        gameplay.MotherShipsRemaining = motherShipsLeft;
+                        gameplay.SaveCheckpoint();
 
                         try
                         {
@@ -1696,6 +1736,7 @@ namespace GameAiAndControls.Controls
                             _shipAiVoiceService.RequestGameplaySaveConfirmation();
                         }
                         catch { }
+                        try { HighscoreService.SubmitFromGamePlay(gameplay); } catch { }
                     }
 
                     if (_audio != null && _powerupSound != null)

@@ -11,6 +11,7 @@ using _3dRotations.Scenes.SceneSimulation;
 using _3dRotations.Scenes.Tutorial;
 using _3dTesting._3dWorld;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.Persistence;
 using Domain;
@@ -45,13 +46,14 @@ namespace _3DWorld.Scene
 
         private readonly struct TutorialEntrySnapshot
         {
-            public TutorialEntrySnapshot(long score, int kills, int shots, int deaths, int powerUps)
+            public TutorialEntrySnapshot(long score, int kills, int shots, int deaths, int powerUps, int speedPowerUpLevel)
             {
                 Score = score;
                 TotalKills = kills;
                 TotalShotsFired = shots;
                 TotalDeaths = deaths;
                 PowerUpsCollected = powerUps;
+                SpeedPowerUpLevel = speedPowerUpLevel;
             }
 
             public long Score { get; }
@@ -59,6 +61,7 @@ namespace _3DWorld.Scene
             public int TotalShotsFired { get; }
             public int TotalDeaths { get; }
             public int PowerUpsCollected { get; }
+            public int SpeedPowerUpLevel { get; }
         }
 
         public SceneHandler()
@@ -85,6 +88,7 @@ namespace _3DWorld.Scene
             scene.SetupScene((_3dWorld)world);
             InitializeDirector(scene, world);
             ValidateGameSceneSetup(scene, world);
+            CapturePlanetStartSnapshotIfNeeded(scene);
         }
 
         private void CaptureTutorialEntrySnapshotIfNeeded(IScene scene)
@@ -101,7 +105,8 @@ namespace _3DWorld.Scene
                 gps.TotalKills,
                 gps.TotalShotsFired,
                 gps.TotalDeaths,
-                gps.PowerUpsCollected);
+                gps.PowerUpsCollected,
+                gps.SpeedPowerUpLevel);
         }
 
         public void ResetActiveScene(I3dWorld world)
@@ -125,6 +130,7 @@ namespace _3DWorld.Scene
             int prevShots = gps.TotalShotsFired;
             int prevDeaths = gps.TotalDeaths;
             int prevPowerUps = gps.PowerUpsCollected;
+            int prevSpeedPowerUpLevel = gps.SpeedPowerUpLevel;
 
             ClearVideoOverlay();
             gps.ResetForNewGame();
@@ -182,10 +188,67 @@ namespace _3DWorld.Scene
                 gps.TotalShotsFired = prevShots;
                 gps.TotalDeaths = prevDeaths + 1;
                 gps.PowerUpsCollected = prevPowerUps;
+                gps.SpeedPowerUpLevel = prevSpeedPowerUpLevel;
 
                 if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: No checkpoint — stats preserved. Score={gps.Score} Lives={gps.Lives} Kills={gps.TotalKills}");
             }
 
+            InitializeDirector(newScene, world);
+        }
+
+        public void ResetActiveSceneToPlanetStart(I3dWorld world)
+        {
+            if (Logger.ShouldLog(enableLogging)) Logger.Log("Scenehandler: ResetActiveSceneToPlanetStart");
+
+            DisposeDirector();
+            var newScene = CreateFreshScene();
+            if (newScene == null)
+                throw new InvalidOperationException($"Failed to create a new instance of scene type {GetActiveScene().GetType()}.");
+
+            var gps = GameState.GamePlayState;
+            int sceneIndex = gps.SceneIndex;
+            bool hasPlanetStartSnapshot =
+                gps.HasPlanetStartSnapshot &&
+                gps.PlanetStartSceneIndex == gps.SceneIndex;
+            var planetStartSnapshot = hasPlanetStartSnapshot
+                ? gps.CapturePlanetStartSnapshot()
+                : default;
+
+            int prevPowerUps = gps.PowerUpsCollected;
+            int prevSpeedPowerUpLevel = gps.SpeedPowerUpLevel;
+
+            ClearVideoOverlay();
+            gps.ResetForNewGame();
+            gps.SceneIndex = sceneIndex;
+            ResetSurfaceState();
+
+            scenes[currentSceneIndex] = newScene;
+            GameState.ScreenOverlayState.HardHide();
+            newScene.SetupGameOverlay();
+            ApplySceneSettings(newScene);
+            newScene.SetupScene((_3dWorld)world);
+            ApplySceneSettings(newScene);
+
+            if (hasPlanetStartSnapshot)
+            {
+                gps.RestorePlanetStartSnapshotFields(planetStartSnapshot, sceneIndex);
+                gps.ApplyPlanetStartSnapshot();
+            }
+            else
+            {
+                // Legacy saves have no trustworthy arrival totals. Keep durable
+                // unlocks, but do not retain rewards earned on the lost planet.
+                gps.PowerUpsCollected = prevPowerUps;
+                gps.SpeedPowerUpLevel = prevSpeedPowerUpLevel;
+                gps.InfectionLevel = 0f;
+                gps.PlanetStyleBonusScore = 0;
+                gps.PlanetStyleBonusSceneIndex = sceneIndex;
+                gps.ClearCheckpoint();
+            }
+
+            SyncGameplayEnemyCountsFromScene(resetInitialCounts: true);
+            gps.SavePlanetStartSnapshot();
+            try { GameStatePersistence.SaveGameState(); } catch { }
             InitializeDirector(newScene, world);
         }
 
@@ -206,6 +269,7 @@ namespace _3DWorld.Scene
             int prevShots = gps.TotalShotsFired;
             int prevDeaths = gps.TotalDeaths;
             int prevPowerUps = gps.PowerUpsCollected;
+            int prevSpeedPowerUpLevel = gps.SpeedPowerUpLevel;
 
             if (isOutro || isSimulation)
             {
@@ -238,7 +302,9 @@ namespace _3DWorld.Scene
                 gps.TotalShotsFired = prevShots;
                 gps.TotalDeaths = prevDeaths;
                 gps.PowerUpsCollected = prevPowerUps;
+                gps.SpeedPowerUpLevel = prevSpeedPowerUpLevel;
 
+                gps.SavePlanetStartSnapshot();
                 PersistSceneBoundaryProgress(gps);
 
                 return;
@@ -272,6 +338,7 @@ namespace _3DWorld.Scene
                 gps.TotalShotsFired = prevShots;
                 gps.TotalDeaths = prevDeaths;
                 gps.PowerUpsCollected = prevPowerUps;
+                gps.SpeedPowerUpLevel = prevSpeedPowerUpLevel;
             }
             else if (isTutorial &&
                 (nextScene.SceneType == SceneTypes.Game || nextScene.SceneType == SceneTypes.Simulation))
@@ -289,6 +356,7 @@ namespace _3DWorld.Scene
                     gps.TotalShotsFired = snapshot.Value.TotalShotsFired;
                     gps.TotalDeaths = snapshot.Value.TotalDeaths;
                     gps.PowerUpsCollected = snapshot.Value.PowerUpsCollected;
+                    gps.SpeedPowerUpLevel = snapshot.Value.SpeedPowerUpLevel;
                 }
                 else
                 {
@@ -299,9 +367,15 @@ namespace _3DWorld.Scene
                     gps.TotalShotsFired = 0;
                     gps.TotalDeaths = 0;
                     gps.PowerUpsCollected = 0;
+                    gps.SpeedPowerUpLevel = 0;
                 }
 
                 _tutorialEntrySnapshot = null;
+            }
+
+            if (nextScene.SceneType == SceneTypes.Game || nextScene.SceneType == SceneTypes.Simulation)
+            {
+                gps.SavePlanetStartSnapshot();
             }
 
             if (currentScene.SceneType == SceneTypes.Game && IsSceneBoundarySaveTarget(nextScene))
@@ -349,14 +423,9 @@ namespace _3DWorld.Scene
             // Restore score and combat stats from saved game so the player builds upon them
             if (_pendingSavedState != null)
             {
+                var pendingSavedState = _pendingSavedState;
                 var gps = GameState.GamePlayState;
-                gps.Score = _pendingSavedState.Score;
-                gps.SimulationRound = _pendingSavedState.SimulationRound;
-                gps.CurrentSceneBiome = _pendingSavedState.SceneBiome;
-                gps.TotalKills = _pendingSavedState.TotalKills;
-                gps.TotalShotsFired = _pendingSavedState.TotalShotsFired;
-                gps.TotalDeaths = _pendingSavedState.TotalDeaths;
-                gps.PowerUpsCollected = _pendingSavedState.PowerUpsCollected;
+                gps.SimulationRound = pendingSavedState.SimulationRound;
 
                 // If loading into the simulation slot, rebuild it for the restored round
                 if (GetActiveScene().SceneType == SceneTypes.Simulation)
@@ -370,16 +439,16 @@ namespace _3DWorld.Scene
                     }
                 }
 
+                GameStatePersistence.RestoreToGamePlayState(pendingSavedState);
+                ApplySceneSettings(GetActiveScene());
+
                 // If there's a checkpoint, trim enemies and restore full checkpoint state
                 bool shouldRestoreCheckpoint =
-                    _pendingSavedState.HasCheckpoint &&
-                    SavedCheckpointMatchesActiveScene(_pendingSavedState);
+                    pendingSavedState.HasCheckpoint &&
+                    SavedCheckpointMatchesActiveScene(pendingSavedState);
 
                 if (shouldRestoreCheckpoint)
                 {
-                    GameStatePersistence.RestoreToGamePlayState(_pendingSavedState);
-                    ApplySceneSettings(GetActiveScene());
-
                     var snapshot = gps.CaptureCheckpointSnapshot();
                     ApplyCheckpointSnapshotToCurrentState(gps, snapshot);
                     int restoredMotherShips = ResolveRestoredMotherShipCount(snapshot.MotherShipsRemaining);
@@ -400,7 +469,7 @@ namespace _3DWorld.Scene
                     var scene = GetActiveScene();
                     scene.Director?.Initialize(world.EventBus!, world);
                 }
-                else if (_pendingSavedState.HasCheckpoint)
+                else if (pendingSavedState.HasCheckpoint)
                 {
                     ClearCheckpointState(gps);
                 }
@@ -433,6 +502,12 @@ namespace _3DWorld.Scene
             if (overlay.Type == ScreenOverlayType.NameEntry && overlay.ShowOverlay)
             {
                 HandleNameEntryKey(k, scene, overlay);
+                return;
+            }
+
+            if (overlay.ShowOverlay && overlay.ChoiceAction == ScreenOverlayChoiceAction.PlanetLostRecovery)
+            {
+                HandlePlanetLostRecoveryChoice(k, world, overlay);
                 return;
             }
 
@@ -568,6 +643,7 @@ namespace _3DWorld.Scene
                 overlay.IsNameConfirmed = true;
                 GameState.GamePlayState.PlayerName = name;
                 PersistenceSetup.SaveLastPlayerName(name);
+                PlayerProgressService.ApplyDurableProgress(GameState.GamePlayState);
 
                 // Check for saved scene progress for this player
                 var saved = GameStatePersistence.LoadGameState(name);
@@ -599,6 +675,47 @@ namespace _3DWorld.Scene
             }
 
             overlay.ProcessNameEntryKey(k.Key);
+        }
+
+        private static void HandlePlanetLostRecoveryChoice(KeyEventArgs k, I3dWorld world, ScreenOverlayState overlay)
+        {
+            if (k.Key == Key.Up || k.Key == Key.W || k.Key == Key.Left || k.Key == Key.A)
+            {
+                overlay.MoveChoiceSelection(-1);
+                return;
+            }
+
+            if (k.Key == Key.Down || k.Key == Key.S || k.Key == Key.Right || k.Key == Key.D)
+            {
+                overlay.MoveChoiceSelection(1);
+                return;
+            }
+
+            if (k.Key == Key.Escape || k.Key == Key.X)
+            {
+                StartPlanetLostRecoveryFade(world, resetToPlanetStart: false);
+                return;
+            }
+
+            if (k.Key == Key.Return || k.Key == Key.Enter || k.Key == Key.Space)
+            {
+                StartPlanetLostRecoveryFade(world, resetToPlanetStart: overlay.SelectedChoiceIndex == 1);
+            }
+        }
+
+        private static void StartPlanetLostRecoveryFade(I3dWorld world, bool resetToPlanetStart)
+        {
+            var overlay = GameState.ScreenOverlayState;
+            overlay.HardHide();
+            overlay.ClearChoiceOptions();
+
+            world.IsPaused = false;
+            GameState.GamePlayState.Phase = GamePhase.Playing;
+            GameState.WorldFade.RequestFadeOut(
+                1.0f,
+                resetToPlanetStart
+                    ? WorldFadeState.InfectionCriticalPlanetResetReason
+                    : WorldFadeState.InfectionCriticalContinueReason);
         }
 
         private void HandleIntroKey(ScreenOverlayState overlay, KeyEventArgs k)
@@ -781,6 +898,7 @@ namespace _3DWorld.Scene
             // highscores are written by checkpoint flows: powerups and motherships.
 
             // Clear all game objects so nothing from the current scene bleeds through
+            DisposeWorldMovements(world);
             world.WorldInhabitants.Clear();
             if (GameState.SurfaceState.AiObjects != null)
                 GameState.SurfaceState.AiObjects.Clear();
@@ -798,6 +916,21 @@ namespace _3DWorld.Scene
             introScene.SetupSceneOverlay();
             ApplySceneSettings(introScene);
             introScene.SetupScene((_3dWorld)world);
+        }
+
+        private static void DisposeWorldMovements(I3dWorld world)
+        {
+            foreach (var obj in world.WorldInhabitants.OfType<_3dObject>())
+            {
+                try
+                {
+                    obj.Movement?.Dispose();
+                }
+                catch (NotImplementedException)
+                {
+                    // Some passive movements still use the legacy no-op contract.
+                }
+            }
         }
 
         private static void ClearVideoOverlay()
@@ -868,6 +1001,7 @@ namespace _3DWorld.Scene
                 && gamePlayState.TotalShotsFired == 0
                 && gamePlayState.TotalDeaths == 0
                 && gamePlayState.PowerUpsCollected == 0
+                && gamePlayState.SpeedPowerUpLevel == 0
                 && !gamePlayState.HasCheckpoint;
         }
 
@@ -979,6 +1113,56 @@ namespace _3DWorld.Scene
             try { HighscoreService.SubmitFromGamePlay(gps); } catch { }
         }
 
+        private static void CapturePlanetStartSnapshotIfNeeded(IScene scene)
+        {
+            if (scene.SceneType != SceneTypes.Game && scene.SceneType != SceneTypes.Simulation)
+                return;
+
+            var gps = GameState.GamePlayState;
+            if (gps.HasPlanetStartSnapshot && gps.PlanetStartSceneIndex == gps.SceneIndex)
+                return;
+
+            SyncGameplayEnemyCountsFromScene(resetInitialCounts: true);
+            gps.SavePlanetStartSnapshot();
+        }
+
+        private static void SyncGameplayEnemyCountsFromScene(bool resetInitialCounts)
+        {
+            var gps = GameState.GamePlayState;
+            var aiObjects = GameState.SurfaceState?.AiObjects;
+            if (aiObjects == null)
+                return;
+
+            int seeders = 0;
+            int drones = 0;
+            int motherShips = 0;
+
+            for (int i = 0; i < aiObjects.Count; i++)
+            {
+                var obj = aiObjects[i];
+                if (obj.ImpactStatus?.HasExploded == true)
+                    continue;
+
+                if (obj.ObjectName == "Seeder")
+                    seeders++;
+                else if (obj.ObjectName == "KamikazeDrone" && obj.IsActive)
+                    drones++;
+                else if (IsMotherShipName(obj.ObjectName) && obj.IsActive)
+                    motherShips++;
+            }
+
+            gps.SeedersRemaining = seeders;
+            gps.DronesRemaining = drones;
+            gps.MotherShipsRemaining = motherShips;
+
+            if (resetInitialCounts || gps.InitialSeeders == 0)
+                gps.InitialSeeders = seeders;
+            if (resetInitialCounts || gps.InitialDrones == 0)
+                gps.InitialDrones = drones;
+            if (resetInitialCounts || gps.InitialMotherShips == 0)
+                gps.InitialMotherShips = motherShips;
+        }
+
         private static int CountSceneAi(string objectName)
         {
             var aiObjects = GameState.SurfaceState?.AiObjects;
@@ -1054,24 +1238,7 @@ namespace _3DWorld.Scene
 
         private static void ClearCheckpointState(GamePlayState gps)
         {
-            gps.HasCheckpoint = false;
-            gps.CheckpointScore = 0;
-            gps.CheckpointLives = 3;
-            gps.CheckpointHealth = 100f;
-            gps.CheckpointPowerUpsCollected = 0;
-            gps.CheckpointSeedersRemaining = 0;
-            gps.CheckpointDronesRemaining = 0;
-            gps.CheckpointMotherShipsRemaining = 0;
-            gps.CheckpointTotalShotsFired = 0;
-            gps.CheckpointTotalKills = 0;
-            gps.CheckpointTotalDeaths = 0;
-            gps.CheckpointInfectionLevel = 0f;
-            gps.CheckpointWaveNumber = 1;
-            gps.CheckpointInitialSeeders = 0;
-            gps.CheckpointInitialDrones = 0;
-            gps.CheckpointInitialMotherShips = 0;
-            gps.CheckpointPlanetStyleBonusScore = 0;
-            gps.CheckpointPlanetStyleBonusSceneIndex = gps.SceneIndex;
+            gps.ClearCheckpoint();
         }
 
         private static void ApplyCheckpointSnapshotToCurrentState(
@@ -1082,6 +1249,7 @@ namespace _3DWorld.Scene
             gps.Lives = snapshot.Lives;
             gps.Health = snapshot.Health;
             gps.PowerUpsCollected = snapshot.PowerUpsCollected;
+            gps.SpeedPowerUpLevel = snapshot.SpeedPowerUpLevel;
             gps.SeedersRemaining = snapshot.SeedersRemaining;
             gps.DronesRemaining = snapshot.DronesRemaining;
             gps.MotherShipsRemaining = snapshot.MotherShipsRemaining;

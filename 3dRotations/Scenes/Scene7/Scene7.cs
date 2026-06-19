@@ -30,8 +30,8 @@ namespace _3dRotations.Scene.Scene7
         public ISceneDirector Director { get; } = new Scene7Director();
         public GameModes GameMode { get; } = GameModes.Playback;
 
-        public float InfectionThresholdPercent { get; } = 11.0f;
-        public int InfectionSpreadRate { get; } = 9;
+        public float InfectionThresholdPercent { get; } = 14.0f;
+        public int InfectionSpreadRate { get; } = 7;
         public int SeederOffscreenSpeedFactor { get; } = 21;
         public float LocalInfectionSpreadDelaySec { get; } = 1.5f;
         public float LocalInfectionSpreadRadius { get; } = 6000f;
@@ -102,7 +102,8 @@ namespace _3dRotations.Scene.Scene7
                 GameState.SurfaceState.GlobalMapPosition,
                 totalSeederCount: 23,
                 regularSeed: 7071,
-                nearSeederCount: 10);
+                nearSeederCount: 10,
+                firstKillPowerUpType: PowerUpType.TravelSpeedLevel2);
 
             var motherShipLarge = MotherShipLarge.CreateMotherShipLarge(Surface);
             motherShipLarge.Rotation = new Vector3 { };
@@ -233,7 +234,7 @@ namespace _3dRotations.Scene.Scene7
                 "Omega Strain adapts rapidly under sub-zero conditions.\n" +
                 "Twenty-three seeders embedded in glacial terrain.\n" +
                 "Kamikaze escort: SIXTEEN units. Bomber wing: SEVEN.\n" +
-                "Spread delay: 1.5 seconds. Bio-tolerance: 11.0%.\n" +
+                "Spread delay: 1.5 seconds. Bio-tolerance: 14.0%.\n" +
                 "Large-class war carrier incoming.\n\n" +
                 "DIRECTIVE:\n" +
                 "Clear all hostiles - the ice planet will not survive another hour.";

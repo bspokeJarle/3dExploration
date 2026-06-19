@@ -69,4 +69,38 @@ public class HighscoreServiceConsistencyTests
             "Whitespace variants of the same player name should not create duplicate rows.");
         Assert.AreEqual(1300L, jarleEntries[0].Score);
     }
+
+    [TestMethod]
+    public void GetBestLocalScore_ReturnsPersistedScoreForPlayerCaseInsensitively()
+    {
+        HighscoreService.TrySubmitScore("CharlieB", 50150, 5);
+
+        Assert.AreEqual(50150L, HighscoreService.GetBestLocalScore(" CHARLIEB "));
+        Assert.AreEqual(0L, HighscoreService.GetBestLocalScore("Unknown"));
+    }
+
+    [TestMethod]
+    public void SaveLocalHighscores_NeverReplacesHigherScoreWithLowerScore()
+    {
+        HighscoreService.TrySubmitScore("CharlieB", 50150, 5);
+
+        HighscoreService.SaveLocalHighscores(new HighscoreList
+        {
+            Entries = new List<HighscoreEntry>
+            {
+                new() { PlayerName = "CharlieB", Score = 0, WaveReached = 1 }
+            }
+        });
+
+        Assert.AreEqual(50150L, HighscoreService.GetBestLocalScore("CharlieB"));
+    }
+
+    [TestMethod]
+    public void LoadLocalHighscores_UsesEncryptedBackupWhenPrimaryIsMissing()
+    {
+        HighscoreService.TrySubmitScore("CharlieB", 50150, 5);
+        File.Delete(PersistenceSetup.LocalHighscoreFilePath);
+
+        Assert.AreEqual(50150L, HighscoreService.GetBestLocalScore("CharlieB"));
+    }
 }

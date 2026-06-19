@@ -293,7 +293,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
             _lastMovementTime = now;
 
-            AnimateWeakSpot(theObject);
+            AnimateWeakSpot(theObject, (float)deltaSeconds);
             UpdateFlash(theObject);
 
             SyncMovement(theObject);
@@ -582,7 +582,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
         {
         }
 
-        private void AnimateWeakSpot(I3dObject theObject)
+        private void AnimateWeakSpot(I3dObject theObject, float deltaSeconds)
         {
             var weakSpot = theObject.ObjectParts.Find(p => p.PartName == "MotherShipWeakSpot");
             if (weakSpot?.Triangles == null || weakSpot.Triangles.Count == 0) return;
@@ -604,8 +604,9 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
                 }
             }
 
-            _weakSpotAngle += WeakSpotSpinSpeed;
-            _pulsatePhase += PulsateSpeed;
+            float frameScale = deltaSeconds * GameState.GameplayBaselineFps;
+            _weakSpotAngle += WeakSpotSpinSpeed * frameScale;
+            _pulsatePhase += PulsateSpeed * frameScale;
             float scale = 1f + PulsateAmplitude * MathF.Sin(_pulsatePhase);
 
             float rad = MathF.PI * _weakSpotAngle / 180f;
