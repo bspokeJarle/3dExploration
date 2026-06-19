@@ -1736,6 +1736,7 @@ namespace GameAiAndControls.Controls
                             _shipAiVoiceService.RequestGameplaySaveConfirmation();
                         }
                         catch { }
+                        try { HighscoreService.SubmitFromGamePlay(gameplay); } catch { }
                     }
 
                     if (_audio != null && _powerupSound != null)

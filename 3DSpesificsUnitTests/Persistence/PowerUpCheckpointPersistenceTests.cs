@@ -95,6 +95,11 @@ public class PowerUpCheckpointPersistenceTests
             "Saved game should retain collected powerups.");
         Assert.IsTrue(loaded.HasCheckpoint,
             "Saved game should retain checkpoint after powerup collection.");
+
+        var highscores = HighscoreService.LoadLocalHighscores();
+        Assert.AreEqual(1, highscores.Entries.Count,
+            "PowerUp checkpoints should persist the current highscore too.");
+        Assert.AreEqual(gps.Score, highscores.Entries[0].Score);
     }
 
     [TestMethod]

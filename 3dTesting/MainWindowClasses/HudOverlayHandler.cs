@@ -1,6 +1,5 @@
 ﻿using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonSetup;
-using CommonUtilities.Persistence;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -57,8 +56,6 @@ namespace _3dTesting.MainWindowClasses
         private readonly Image _speedPowerupIcon;
         private readonly BitmapImage? _speedLevel1IconSource;
         private readonly BitmapImage? _speedLevel2IconSource;
-        private string _cachedHighscorePlayer = string.Empty;
-        private long _cachedPlayerHighscore;
 
         // Enemy remaining: icon + percentage bar (same style as alt/thr/bio)
         private readonly Image _droneIcon;
@@ -398,7 +395,7 @@ namespace _3dTesting.MainWindowClasses
             SetBarFill(_droneBarFill, dronePct, EnemyBarW);
             SetBarFill(_seederBarFill, seederPct, EnemyBarW);
 
-            _highscoreValue.Text = GetDisplayedHighscore(gameplay).ToString("N0");
+            _highscoreValue.Text = gameplay.Score.ToString("N0");
 
             UpdateViewportRect();
         }
@@ -481,19 +478,6 @@ namespace _3dTesting.MainWindowClasses
                 ? _speedLevel2IconSource
                 : _speedLevel1IconSource;
             _speedPowerupIcon.Opacity = 1.0;
-        }
-
-        private long GetDisplayedHighscore(GamePlayState gameplay)
-        {
-            string playerName = gameplay.PlayerName?.Trim() ?? string.Empty;
-            if (!string.Equals(_cachedHighscorePlayer, playerName, StringComparison.OrdinalIgnoreCase))
-            {
-                _cachedHighscorePlayer = playerName;
-                _cachedPlayerHighscore = HighscoreService.GetBestLocalScore(playerName);
-            }
-
-            _cachedPlayerHighscore = Math.Max(_cachedPlayerHighscore, gameplay.Score);
-            return _cachedPlayerHighscore;
         }
 
         private static Image CreatePowerupIcon(double x, double y, double size)

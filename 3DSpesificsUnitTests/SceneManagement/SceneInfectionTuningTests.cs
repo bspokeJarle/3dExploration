@@ -34,9 +34,9 @@ public class SceneInfectionTuningTests
             (new Scene3(), 20, 5),
             (new Scene4(), 17, 6),
             (new Scene5(), 15, 7),
-            (new Scene6(), 13, 7),
-            (new Scene7(), 11, 9),
-            (new Scene8(), 10, 10)
+            (new Scene6(), 13, 6),
+            (new Scene7(), 11, 7),
+            (new Scene8(), 10, 8)
         ];
 
         foreach (var (scene, _, expectedRate) in tuning)
@@ -57,9 +57,9 @@ public class SceneInfectionTuningTests
             (new Scene3(), 13.0f),
             (new Scene4(), 12.5f),
             (new Scene5(), 12.0f),
-            (new Scene6(), 11.5f),
-            (new Scene7(), 11.0f),
-            (new Scene8(), 10.0f)
+            (new Scene6(), 15.0f),
+            (new Scene7(), 14.0f),
+            (new Scene8(), 13.0f)
         ];
 
         foreach (var (scene, expectedLimit) in limits)
@@ -79,9 +79,9 @@ public class SceneInfectionTuningTests
             (new Scene3(), "Twelve seeders", "13.0%", "4.5 seconds"),
             (new Scene4(), "Fifteen seeders", "12.5%", "3 seconds"),
             (new Scene5(), "Eighteen seeders", "12.0%", "2 seconds"),
-            (new Scene6(), "Twenty-one seeders", "11.5%", "1.8 seconds"),
-            (new Scene7(), "Twenty-three seeders", "11.0%", "1.5 seconds"),
-            (new Scene8(), "Twenty-five seeders", "10.0%", "1.2 seconds")
+            (new Scene6(), "Twenty-one seeders", "15.0%", "1.8 seconds"),
+            (new Scene7(), "Twenty-three seeders", "14.0%", "1.5 seconds"),
+            (new Scene8(), "Twenty-five seeders", "13.0%", "1.2 seconds")
         ];
 
         foreach (var (scene, enemyText, toleranceText, delayText) in scenes)
