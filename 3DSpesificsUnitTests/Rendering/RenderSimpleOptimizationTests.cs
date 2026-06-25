@@ -169,9 +169,9 @@ public class RenderSimpleOptimizationTests
                     {
                         new TriangleMeshWithColor
                         {
-                            vert1 = new Vector3 { x = 10f, y = 4f, z = 0f },
-                            vert2 = new Vector3 { x = 30f, y = 6f, z = 0f },
-                            vert3 = new Vector3 { x = 200f, y = 80f, z = 100f }
+                            vert1 = new Vector3 { x = 10f, y = 4f, z = 10f },
+                            vert2 = new Vector3 { x = 30f, y = 6f, z = 10f },
+                            vert3 = new Vector3 { x = 200f, y = 80f, z = 110f }
                         }
                     }
                 },
@@ -194,8 +194,8 @@ public class RenderSimpleOptimizationTests
             {
                 new()
                 {
-                    new Vector3 { x = 10f, y = 4f, z = 0f },
-                    new Vector3 { x = 30f, y = 6f, z = 10f }
+                    new Vector3 { x = 10f, y = 4f, z = 10f },
+                    new Vector3 { x = 30f, y = 6f, z = 20f }
                 }
             }
         };
@@ -216,6 +216,35 @@ public class RenderSimpleOptimizationTests
 
         Assert.AreEqual(-10f, obj.ObjectParts[1].Triangles[0].vert1.x, 0.001f);
         Assert.AreEqual(-1f, obj.ObjectParts[1].Triangles[0].vert1.y, 0.001f);
+        Assert.AreEqual(0f, obj.ObjectParts[1].Triangles[0].vert1.z, 0.001f,
+            "A custom shadow's ground-plane vertices must remain at z = 0.");
+        Assert.AreEqual(20f, obj.ObjectParts[1].Triangles[0].vert3.z, 0.001f,
+            "Footprint normalization must preserve the shadow silhouette's authored height.");
+    }
+
+    [TestMethod]
+    public void WinterSurfaceObjects_KeepShadowFootprintOnGroundAfterScalingAndNormalization()
+    {
+        var surface = new Surface();
+        var objects = new[]
+        {
+            Igloo.CreateSmallIgloo(surface),
+            Igloo.CreateLargeIgloo(surface),
+            PolarBear.CreatePolarBear(surface),
+            Seal.CreateSeal(surface),
+            SnowTower.CreateSnowTower(surface)
+        };
+
+        foreach (var obj in objects)
+        {
+            var shadow = obj.ObjectParts.Single(part => part.PartName == "Shadow");
+            float minShadowZ = shadow.Triangles
+                .SelectMany(triangle => new[] { triangle.vert1.z, triangle.vert2.z, triangle.vert3.z })
+                .Min();
+
+            Assert.AreEqual(0f, minShadowZ, 0.001f,
+                $"{obj.ObjectName} must keep its shadow footprint on the model-space ground plane.");
+        }
     }
 
     [TestMethod]

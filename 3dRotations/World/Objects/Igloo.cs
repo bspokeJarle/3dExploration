@@ -1,6 +1,7 @@
 ﻿using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
 using System;
@@ -44,7 +45,7 @@ namespace _3dRotations.World.Objects
             igloo.CrashBoxNames = new List<string?> { "IglooDome", "Entrance" };
 
             _3dObjectHelpers.AddCustomShadowPart(igloo, IglooShadow(15f, 12f));
-            _3dObjectHelpers.ApplyScaleToObject(igloo, SmallIglooScale);
+            _3dObjectHelpers.ApplyScaleToObject(igloo, SmallIglooScale * LandBasedObjectSetup.WinterSurfaceObjectScale);
             _3dObjectHelpers.NormalizeSurfaceFootprintPivot(igloo);
             igloo.Movement = new IglooControls();
 
@@ -74,7 +75,7 @@ namespace _3dRotations.World.Objects
             igloo.CrashBoxNames = new List<string?> { "IglooDome", "Entrance" };
 
             _3dObjectHelpers.AddCustomShadowPart(igloo, IglooShadow(25f, 20f));
-            _3dObjectHelpers.ApplyScaleToObject(igloo, LargeIglooScale);
+            _3dObjectHelpers.ApplyScaleToObject(igloo, LargeIglooScale * LandBasedObjectSetup.WinterSurfaceObjectScale);
             _3dObjectHelpers.NormalizeSurfaceFootprintPivot(igloo);
             igloo.Movement = new IglooControls();
 

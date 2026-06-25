@@ -1,4 +1,5 @@
 using CommonUtilities.CommonGlobalState;
+using Domain;
 using System;
 using System.IO;
 using System.Text.Json;
@@ -23,7 +24,7 @@ namespace CommonUtilities.Persistence
         /// When a checkpoint exists, the resumable state is the last checkpoint,
         /// not the volatile in-flight state at shutdown.
         /// </summary>
-        public static void SaveGameState()
+        public static void SaveGameState(bool allowScoreRollback = false)
         {
             var state = GameState.GamePlayState;
             if (string.IsNullOrWhiteSpace(state.PlayerName)) return;
@@ -31,6 +32,8 @@ namespace CommonUtilities.Persistence
             PlayerProgressService.ProtectAndApply(state);
 
             bool useCheckpoint = state.HasCheckpoint;
+            if (!allowScoreRollback)
+                ProtectScoreAgainstExistingSave(state, useCheckpoint);
 
             var saved = new SavedGameState
             {
@@ -110,13 +113,33 @@ namespace CommonUtilities.Persistence
                 PersistenceSetup.GetPlayerGameStateBackupFilePath(state.PlayerName),
                 json,
                 PersistenceSetup.LocalKeyFilePath);
+
+            try { HighscoreService.SubmitFromGamePlay(state); } catch { }
+        }
+
+        private static void ProtectScoreAgainstExistingSave(GamePlayState state, bool useCheckpoint)
+        {
+            var existing = LoadGameStateCore(state.PlayerName, repairHighscore: false);
+            if (existing == null)
+                return;
+
+            long resumableScore = useCheckpoint ? state.CheckpointScore : state.Score;
+            if (existing.Score <= resumableScore)
+                return;
+
+            state.Score = Math.Max(state.Score, existing.Score);
+            if (useCheckpoint)
+                state.CheckpointScore = existing.Score;
         }
 
         /// <summary>
         /// Loads the saved game state for a specific player from disk.
         /// Returns null if no save exists or if decryption fails.
         /// </summary>
-        public static SavedGameState? LoadGameState(string playerName)
+        public static SavedGameState? LoadGameState(string playerName) =>
+            LoadGameStateCore(playerName, repairHighscore: true);
+
+        private static SavedGameState? LoadGameStateCore(string playerName, bool repairHighscore)
         {
             try
             {
@@ -134,7 +157,23 @@ namespace CommonUtilities.Persistence
 
                 var saved = JsonSerializer.Deserialize<SavedGameState>(json, JsonOptions);
                 if (saved != null)
+                {
                     PlayerProgressService.ProtectAndApply(saved);
+                    if (repairHighscore)
+                    {
+                        float accuracy = saved.TotalShotsFired > 0
+                            ? (float)saved.TotalKills / saved.TotalShotsFired
+                            : 0f;
+                        HighscoreService.TrySubmitScore(
+                            saved.PlayerName,
+                            saved.Score,
+                            saved.SceneIndex,
+                            saved.TotalKills,
+                            saved.TotalShotsFired,
+                            saved.TotalDeaths,
+                            accuracy);
+                    }
+                }
                 return saved;
             }
             catch

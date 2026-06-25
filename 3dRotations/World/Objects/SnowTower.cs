@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using static Domain._3dSpecificsImplementations;
 
@@ -76,6 +77,7 @@ namespace _3dRotations.World.Objects
             tower.CrashBoxNames = new List<string?> { "IglooBase", "TowerShaft", "TowerHead" };
 
             _3dObjectHelpers.AddCustomShadowPart(tower, SnowTowerShadow());
+            _3dObjectHelpers.ApplyScaleToObject(tower, LandBasedObjectSetup.WinterSurfaceObjectScale);
             _3dObjectHelpers.NormalizeSurfaceFootprintPivot(tower);
 
             return tower;

@@ -34,9 +34,9 @@ public class SceneInfectionTuningTests
             (new Scene3(), 20, 5),
             (new Scene4(), 17, 6),
             (new Scene5(), 15, 7),
-            (new Scene6(), 13, 6),
-            (new Scene7(), 11, 7),
-            (new Scene8(), 10, 8)
+            (new Scene6(), 13, 7),
+            (new Scene7(), 11, 8),
+            (new Scene8(), 10, 9)
         ];
 
         foreach (var (scene, _, expectedRate) in tuning)

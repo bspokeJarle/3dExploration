@@ -26,7 +26,7 @@ namespace _3dRotations.Scene.Scene8
         public GameModes GameMode { get; } = GameModes.Playback;
 
         public float InfectionThresholdPercent { get; } = 13.0f;
-        public int InfectionSpreadRate { get; } = 8;
+        public int InfectionSpreadRate { get; } = 9;
         public int SeederOffscreenSpeedFactor { get; } = 22;
         public float LocalInfectionSpreadDelaySec { get; } = 1.2f;
         public float LocalInfectionSpreadRadius { get; } = 6500f;
@@ -310,6 +310,7 @@ namespace _3dRotations.Scene.Scene8
 
             int fishCount = Math.Min(100, fishJumpAreas.Count);
             int tileSize = Surface.TileSize();
+            var jumpStyleRandom = new Random();
             for (int i = 0; i < fishCount; i++)
             {
                 int areaIndex = (int)MathF.Floor(i * fishJumpAreas.Count / (float)fishCount);
@@ -318,6 +319,9 @@ namespace _3dRotations.Scene.Scene8
                 float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
                 float minPathOffsetX = baseOffsetX + ((area.StartTileX - area.CenterTileX) * tileSize);
                 float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
+                var jumpStyle = JumpStyleVariants.PickRandom(jumpStyleRandom);
+                int initialJumpDirection = JumpStyleVariants.PickAlternatingDirection(jumpStyleRandom, i);
+                var jumpTiming = JumpStyleVariants.PickSpawnTiming(jumpStyleRandom);
 
                 var jumpingFish = JumpingFish.CreateJumpingFish(Surface);
                 jumpingFish.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
@@ -330,7 +334,7 @@ namespace _3dRotations.Scene.Scene8
                     z = 400
                 };
                 jumpingFish.ObjectName = "JumpingFish";
-                jumpingFish.Movement = new JumpingFishControls(jumpSpan, minPathOffsetX, maxPathOffsetX);
+                jumpingFish.Movement = new JumpingFishControls(jumpSpan, minPathOffsetX, maxPathOffsetX, initialJumpDirection, jumpStyle, jumpTiming);
                 jumpingFish.ImpactStatus = new ImpactStatus { };
                 jumpingFish.CrashBoxDebugMode = false;
                 jumpingFish.CrashBoxes = new List<List<IVector3>>();

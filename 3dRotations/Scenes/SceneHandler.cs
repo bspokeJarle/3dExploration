@@ -38,6 +38,7 @@ namespace _3DWorld.Scene
         private bool _pendingNextScene = false;
         private bool _pendingTutorialStart = false;
         private SavedGameState? _pendingSavedState = null;
+        private SavedGameState? _tutorialResumeSavedState = null;
 
         // Snapshot of campaign progression captured the moment we enter the tutorial scene,
         // so leaving the tutorial restores exactly what the player had before training (and
@@ -248,7 +249,7 @@ namespace _3DWorld.Scene
 
             SyncGameplayEnemyCountsFromScene(resetInitialCounts: true);
             gps.SavePlanetStartSnapshot();
-            try { GameStatePersistence.SaveGameState(); } catch { }
+            try { GameStatePersistence.SaveGameState(allowScoreRollback: true); } catch { }
             InitializeDirector(newScene, world);
         }
 
@@ -262,6 +263,20 @@ namespace _3DWorld.Scene
             bool isOutro = currentScene.SceneType == SceneTypes.Outro;
             bool isSimulation = currentScene.SceneType == SceneTypes.Simulation;
             bool isTutorial = currentScene.SceneType == SceneTypes.Tutorial;
+
+            if (isTutorial && _tutorialResumeSavedState != null)
+            {
+                var saved = _tutorialResumeSavedState;
+                _tutorialResumeSavedState = null;
+                _tutorialEntrySnapshot = null;
+                _pendingSavedState = saved;
+                _targetSceneIndex = saved.SceneIndex;
+                _pendingNextScene = false;
+                _pendingSceneAdvance = true;
+                _pendingSceneAdvanceFramesLeft = 0;
+                UpdateFrame(world);
+                return;
+            }
 
             // Capture cumulative stats before reset
             long prevScore = gps.Score;
@@ -653,11 +668,15 @@ namespace _3DWorld.Scene
                 if (shouldStartTutorial)
                 {
                     _pendingTutorialStart = false;
+                    _tutorialResumeSavedState = saved != null && CanResumeSavedSceneAfterTutorial(saved)
+                        ? saved
+                        : null;
                     _pendingSavedState = null;
                     _targetSceneIndex = GetTutorialSceneIndex();
                 }
                 else if (saved != null)
                 {
+                    _tutorialResumeSavedState = null;
                     // Always restore score and stats so the player builds upon them
                     _pendingSavedState = saved;
 
@@ -845,6 +864,17 @@ namespace _3DWorld.Scene
                    sceneType == SceneTypes.Simulation;
         }
 
+        private bool CanResumeSavedSceneAfterTutorial(SavedGameState saved)
+        {
+            if (saved.SceneIndex < 0 || saved.SceneIndex >= scenes.Count)
+                return false;
+
+            var sceneType = scenes[saved.SceneIndex].SceneType;
+            return sceneType == SceneTypes.Game ||
+                   sceneType == SceneTypes.Outro ||
+                   sceneType == SceneTypes.Simulation;
+        }
+
         private int GetTutorialSceneIndex()
         {
             int tutorialIndex = scenes.FindIndex(s => s.SceneType == SceneTypes.Tutorial);
@@ -892,6 +922,8 @@ namespace _3DWorld.Scene
             if (returningFromTutorial)
             {
                 TutorialProgressService.MarkTutorialCompleted(gps.PlayerName);
+                _tutorialResumeSavedState = null;
+                _tutorialEntrySnapshot = null;
             }
 
             // Returning to intro is a menu transition only. Durable progress and

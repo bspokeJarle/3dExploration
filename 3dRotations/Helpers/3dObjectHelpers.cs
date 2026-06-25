@@ -137,11 +137,17 @@ namespace _3dTesting.Helpers
                 if (part.Triangles == null)
                     continue;
 
+                // Shadow silhouettes use z = 0 as an explicit ground-plane invariant.
+                // They still follow the footprint pivot laterally, but translating their
+                // Z together with raised model geometry pushes parts of the shadow below
+                // the surface after projection.
+                float partShiftZ = part.PartName == "Shadow" ? 0f : shiftZ;
+
                 foreach (var tri in part.Triangles)
                 {
-                    TranslateVertexOnce(translated, tri.vert1, shiftX, shiftY, shiftZ);
-                    TranslateVertexOnce(translated, tri.vert2, shiftX, shiftY, shiftZ);
-                    TranslateVertexOnce(translated, tri.vert3, shiftX, shiftY, shiftZ);
+                    TranslateVertexOnce(translated, tri.vert1, shiftX, shiftY, partShiftZ);
+                    TranslateVertexOnce(translated, tri.vert2, shiftX, shiftY, partShiftZ);
+                    TranslateVertexOnce(translated, tri.vert3, shiftX, shiftY, partShiftZ);
                 }
             }
 
@@ -373,12 +379,41 @@ namespace _3dTesting.Helpers
 
         private static void AddShadowPart(I3dObject obj, List<ITriangleMeshWithColor> tris)
         {
+            NormalizeShadowGroundPlane(tris);
             obj.ObjectParts.Add(new _3dObjectPart
             {
                 PartName = "Shadow",
                 Triangles = tris,
                 IsVisible = false
             });
+        }
+
+        private static void NormalizeShadowGroundPlane(List<ITriangleMeshWithColor> triangles)
+        {
+            float minZ = float.MaxValue;
+            foreach (var triangle in triangles)
+            {
+                minZ = Math.Min(minZ, triangle.vert1.z);
+                minZ = Math.Min(minZ, triangle.vert2.z);
+                minZ = Math.Min(minZ, triangle.vert3.z);
+            }
+
+            if (minZ == float.MaxValue || Math.Abs(minZ) <= 0.0001f)
+                return;
+
+            var normalized = new HashSet<IVector3>(ReferenceEqualityComparer.Instance);
+            foreach (var triangle in triangles)
+            {
+                NormalizeShadowVertexOnce(normalized, triangle.vert1, minZ);
+                NormalizeShadowVertexOnce(normalized, triangle.vert2, minZ);
+                NormalizeShadowVertexOnce(normalized, triangle.vert3, minZ);
+            }
+        }
+
+        private static void NormalizeShadowVertexOnce(HashSet<IVector3> normalized, IVector3 vertex, float minZ)
+        {
+            if (vertex != null && normalized.Add(vertex))
+                vertex.z -= minZ;
         }
 
         private static void AddVert(List<Vector3> sink, IVector3 v, ref float minZ, ref float maxZ)

@@ -19,7 +19,8 @@ namespace _3dRotations.Helpers
             float firstRingRadius = 8000f,
             float ringRadiusStep = 11500f,
             float radiusJitter = 1800f,
-            float angleJitterDegrees = 12f)
+            float angleJitterDegrees = 12f,
+            float? minSeederDistance = null)
         {
             var positions = new List<Vector3>(Math.Max(0, count));
             if (count <= 0)
@@ -29,7 +30,13 @@ namespace _3dRotations.Helpers
             int nearCount = Math.Min(count, Math.Max(1, nearSeederCount));
             int farCount = count - nearCount;
 
-            AddRing(positions, center, nearCount, firstRingRadius, random, radiusJitter, angleJitterDegrees, angleOffsetDegrees: -18f);
+            // Default ~"half a screen" between seeders, derived from the ring layout.
+            // firstRingRadius scales with the scene layout, so half of it is a good
+            // proxy for the on-screen footprint of two adjacent seeders.
+            float minDistanceUnscaled = minSeederDistance ?? (firstRingRadius * 0.5f);
+            float scaledMinDistance = Math.Max(0f, minDistanceUnscaled) * SurfaceSetup.WorldScale;
+
+            AddRing(positions, center, nearCount, firstRingRadius, random, radiusJitter, angleJitterDegrees, angleOffsetDegrees: -18f, scaledMinDistance: scaledMinDistance);
 
             const int farRingCapacity = 6;
             int placedFar = 0;
@@ -38,7 +45,7 @@ namespace _3dRotations.Helpers
             {
                 int ringCount = Math.Min(farRingCapacity + ringIndex, farCount - placedFar);
                 float radius = firstRingRadius + (ringRadiusStep * ringIndex);
-                AddRing(positions, center, ringCount, radius, random, radiusJitter, angleJitterDegrees, angleOffsetDegrees: ringIndex * 23f);
+                AddRing(positions, center, ringCount, radius, random, radiusJitter, angleJitterDegrees, angleOffsetDegrees: ringIndex * 23f, scaledMinDistance: scaledMinDistance);
                 placedFar += ringCount;
                 ringIndex++;
             }
@@ -131,7 +138,8 @@ namespace _3dRotations.Helpers
             int nearSeederCount,
             float firstRingRadius = 7500f,
             float ringRadiusStep = 11500f,
-            PowerUpType? firstKillPowerUpType = null)
+            PowerUpType? firstKillPowerUpType = null,
+            float? minSeederDistance = null)
         {
             int safeTotal = Math.Max(0, totalSeederCount);
             var positions = CreateRingSeederPositions(
@@ -140,7 +148,8 @@ namespace _3dRotations.Helpers
                 regularSeed,
                 nearSeederCount,
                 firstRingRadius,
-                ringRadiusStep);
+                ringRadiusStep,
+                minSeederDistance: minSeederDistance);
 
             foreach (var seederPosition in positions)
             {
@@ -175,7 +184,8 @@ namespace _3dRotations.Helpers
             Random random,
             float radiusJitter,
             float angleJitterDegrees,
-            float angleOffsetDegrees)
+            float angleOffsetDegrees,
+            float scaledMinDistance = 0f)
         {
             if (count <= 0)
                 return;
@@ -183,12 +193,30 @@ namespace _3dRotations.Helpers
             double angleOffset = angleOffsetDegrees * Math.PI / 180.0;
             double angleJitter = angleJitterDegrees * Math.PI / 180.0;
 
+            const int maxAttemptsPerPosition = 12;
+
             for (int i = 0; i < count; i++)
             {
                 double baseAngle = angleOffset + (Math.PI * 2.0 * i / count);
-                double angle = baseAngle + ((random.NextDouble() * 2.0 - 1.0) * angleJitter);
-                float jitteredRadius = radius + ((float)random.NextDouble() * 2f - 1f) * radiusJitter;
-                positions.Add(CreatePosition(center, Math.Max(1000f, jitteredRadius) * SurfaceSetup.WorldScale, angle));
+
+                Vector3 chosen = default;
+                bool hasChosen = false;
+
+                for (int attempt = 0; attempt < maxAttemptsPerPosition; attempt++)
+                {
+                    double angle = baseAngle + ((random.NextDouble() * 2.0 - 1.0) * angleJitter);
+                    float jitteredRadius = radius + ((float)random.NextDouble() * 2f - 1f) * radiusJitter;
+                    var candidate = CreatePosition(center, Math.Max(1000f, jitteredRadius) * SurfaceSetup.WorldScale, angle);
+
+                    chosen = candidate;
+                    hasChosen = true;
+
+                    if (!HasPositionWithinDistance(positions, candidate, scaledMinDistance))
+                        break;
+                }
+
+                if (hasChosen)
+                    positions.Add(chosen);
             }
         }
 

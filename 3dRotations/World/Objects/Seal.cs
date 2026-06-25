@@ -1,6 +1,7 @@
 using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using GameAiAndControls.Controls;
 using System;
@@ -67,7 +68,7 @@ namespace _3dRotations.World.Objects
             };
 
             AddShadow(seal);
-            _3dObjectHelpers.ApplyScaleToObject(seal, Scale);
+            _3dObjectHelpers.ApplyScaleToObject(seal, Scale * LandBasedObjectSetup.WinterSurfaceObjectScale);
             _3dObjectHelpers.NormalizeSurfaceFootprintPivot(seal);
             seal.Movement = new SealControls();
 

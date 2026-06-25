@@ -354,6 +354,47 @@ public class TutorialSceneTests
     }
 
     [TestMethod]
+    public void SceneHandler_ManualTrainingReturnsPlayerToSavedScene()
+    {
+        RunOnStaThread(() =>
+        {
+            var savedState = GameState.GamePlayState;
+            savedState.PlayerName = "Pilot";
+            savedState.SceneIndex = 6;
+            savedState.CurrentSceneType = SceneTypes.Game;
+            savedState.Score = 12500;
+            savedState.TotalKills = 42;
+            savedState.PowerUpsCollected = 2;
+            GameStatePersistence.SaveGameState();
+            TutorialProgressService.MarkTutorialCompleted("Pilot");
+
+            GameState.GamePlayState = new GamePlayState();
+            var handler = new SceneHandler();
+            var world = CreateRealWorld(handler);
+            GameState.ScreenOverlayState.SetIntroPreset("THE OMEGA STRAIN");
+            GameState.ScreenOverlayState.ShowOverlay = true;
+
+            HandleKeyPress(handler, world, Key.T);
+            GameState.ScreenOverlayState.NameEntryBuffer = "Pilot";
+            HandleKeyPress(handler, world, Key.Enter);
+            AdvancePendingScene(handler, world);
+
+            Assert.AreEqual(SceneTypes.Tutorial, handler.GetActiveScene().SceneType);
+
+            GameState.GamePlayState.Score = 99999;
+            GameState.GamePlayState.TotalKills = 999;
+            GameState.GamePlayState.PowerUpsCollected = 3;
+            handler.NextScene(world);
+
+            Assert.AreEqual("Scene6", handler.GetActiveScene().GetType().Name);
+            Assert.AreEqual(6, GameState.GamePlayState.SceneIndex);
+            Assert.AreEqual(12500L, GameState.GamePlayState.Score);
+            Assert.AreEqual(42, GameState.GamePlayState.TotalKills);
+            Assert.AreEqual(2, GameState.GamePlayState.PowerUpsCollected);
+        });
+    }
+
+    [TestMethod]
     public void SceneHandler_SkippingTutorialMarksLocalCompletionForPlayer()
     {
         RunOnStaThread(() =>

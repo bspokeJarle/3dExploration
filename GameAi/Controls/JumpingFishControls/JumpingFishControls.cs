@@ -9,6 +9,70 @@ using static Domain._3dSpecificsImplementations;
 
 namespace GameAiAndControls.Controls.JumpingFishControls
 {
+    public enum JumpStyle
+    {
+        Standard,
+        LowSkimmer,
+        HighArc
+    }
+
+    /// <summary>
+    /// Per-spawn timing variation: makes individual fish or seals run at slightly
+    /// different tempos, start at different points in the jump cycle, and rest in
+    /// the water for a random amount of time between jumps.
+    /// </summary>
+    public readonly record struct JumpSpawnTiming(float SpeedMultiplier, float WaterDwellSeconds, float PhaseOffsetSeconds);
+
+    public static class JumpStyleVariants
+    {
+        public static readonly IReadOnlyList<JumpStyle> All = new[]
+        {
+            JumpStyle.Standard,
+            JumpStyle.LowSkimmer,
+            JumpStyle.HighArc
+        };
+
+        private const float MinSpeedMultiplier = 0.85f;
+        private const float MaxSpeedMultiplier = 1.20f;
+        private const float MinWaterDwellSeconds = 0.4f;
+        private const float MaxWaterDwellSeconds = 3.0f;
+
+        public static JumpStyle PickRandom(Random random)
+        {
+            ArgumentNullException.ThrowIfNull(random);
+            return All[random.Next(All.Count)];
+        }
+
+        /// <summary>
+        /// Returns an alternating initial jump direction (-1 or +1) so that two consecutive
+        /// fish or seals spawned next to each other start at opposite ends of their area
+        /// instead of overlapping. The starting sign is randomized per spawn run so the
+        /// pattern is not visually identical across scenes.
+        /// </summary>
+        public static int PickAlternatingDirection(Random random, int spawnIndex)
+        {
+            ArgumentNullException.ThrowIfNull(random);
+            int startSign = random.Next(2) == 0 ? -1 : 1;
+            return (spawnIndex % 2 == 0) ? startSign : -startSign;
+        }
+
+        /// <summary>
+        /// Randomizes per-spawn tempo and water-dwell time so a group of fish or seals
+        /// does not move in lockstep. PhaseOffsetSeconds further desynchronizes
+        /// objects spawned together by starting them at different points in the cycle.
+        /// </summary>
+        public static JumpSpawnTiming PickSpawnTiming(Random random)
+        {
+            ArgumentNullException.ThrowIfNull(random);
+            float speedMultiplier = Lerp(MinSpeedMultiplier, MaxSpeedMultiplier, (float)random.NextDouble());
+            float waterDwellSeconds = Lerp(MinWaterDwellSeconds, MaxWaterDwellSeconds, (float)random.NextDouble());
+            float phaseOffsetSeconds = (float)random.NextDouble() * (waterDwellSeconds + 2.5f);
+            return new JumpSpawnTiming(speedMultiplier, waterDwellSeconds, phaseOffsetSeconds);
+        }
+
+        private static float Lerp(float min, float max, float t) => min + ((max - min) * t);
+    }
+
     public class JumpingFishControls : IObjectMovement
     {
         private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
@@ -16,13 +80,14 @@ namespace GameAiAndControls.Controls.JumpingFishControls
         private const int InitialJumpDirection = -1;
         private const float StartZRotation = -90f;
         private const float DefaultJumpHorizontalSpan = 260f;
-        private const float JumpRotationDegrees = 180f;
-        private const float JumpDurationSeconds = 2.0f;
-        private const float JumpHeight = 170f;
-        private const float JumpDepthPulse = 18f;
-        private const float TwistAmplitude = 24f;
-        private const float ApexXRotationLift = 8f;
+        private const float DefaultJumpRotationDegrees = 180f;
+        private const float DefaultJumpDurationSeconds = 2.0f;
+        private const float DefaultJumpHeight = 170f;
+        private const float DefaultJumpDepthPulse = 18f;
+        private const float DefaultTwistAmplitude = 24f;
+        private const float DefaultApexXRotationLift = 8f;
         private const float LandingSplashPhase = 0.94f;
+        private const float SubmergedDwellDepth = 100f;
         private const int SplashParticleThrust = 3;
         private const float SplashUpwardVelocityBoost = 4.5f;
         private const float SplashSurfaceLift = -12f;
@@ -42,6 +107,15 @@ namespace GameAiAndControls.Controls.JumpingFishControls
         private readonly float _minPathOffsetX;
         private readonly float _maxPathOffsetX;
         private readonly int _initialJumpDirection;
+        private readonly float _jumpRotationDegrees;
+        private readonly float _jumpDurationSeconds;
+        private readonly float _jumpHeight;
+        private readonly float _jumpDepthPulse;
+        private readonly float _twistAmplitude;
+        private readonly float _apexXRotationLift;
+        private readonly float _horizontalSpanMultiplier;
+        private readonly float _waterDwellSeconds;
+        private readonly float _initialPhaseOffsetSeconds;
 
         private DateTime _lastFrameTime = DateTime.MinValue;
         private float _jumpTimeSeconds;
@@ -65,29 +139,91 @@ namespace GameAiAndControls.Controls.JumpingFishControls
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
         public JumpingFishControls()
-            : this(DefaultJumpHorizontalSpan)
+            : this(DefaultJumpHorizontalSpan, JumpStyle.Standard)
+        {
+        }
+
+        public JumpingFishControls(JumpStyle style)
+            : this(DefaultJumpHorizontalSpan, style)
         {
         }
 
         public JumpingFishControls(float jumpHorizontalSpan)
-            : this(jumpHorizontalSpan, 0f, 0f, InitialJumpDirection, hasPathBounds: false)
+            : this(jumpHorizontalSpan, JumpStyle.Standard)
         {
         }
 
-        public JumpingFishControls(float jumpHorizontalSpan, float minPathOffsetX, float maxPathOffsetX, int initialJumpDirection = InitialJumpDirection)
-            : this(jumpHorizontalSpan, minPathOffsetX, maxPathOffsetX, initialJumpDirection, hasPathBounds: true)
+        public JumpingFishControls(float jumpHorizontalSpan, JumpStyle style)
+            : this(jumpHorizontalSpan, 0f, 0f, InitialJumpDirection, hasPathBounds: false, style, timing: null)
         {
         }
 
-        private JumpingFishControls(float jumpHorizontalSpan, float minPathOffsetX, float maxPathOffsetX, int initialJumpDirection, bool hasPathBounds)
+        public JumpingFishControls(float jumpHorizontalSpan, float minPathOffsetX, float maxPathOffsetX, int initialJumpDirection = InitialJumpDirection, JumpStyle style = JumpStyle.Standard)
+            : this(jumpHorizontalSpan, minPathOffsetX, maxPathOffsetX, initialJumpDirection, hasPathBounds: true, style, timing: null)
         {
-            _jumpHorizontalSpan = Math.Max(75f, jumpHorizontalSpan);
+        }
+
+        public JumpingFishControls(float jumpHorizontalSpan, float minPathOffsetX, float maxPathOffsetX, int initialJumpDirection, JumpStyle style, JumpSpawnTiming timing)
+            : this(jumpHorizontalSpan, minPathOffsetX, maxPathOffsetX, initialJumpDirection, hasPathBounds: true, style, timing)
+        {
+        }
+
+        private JumpingFishControls(float jumpHorizontalSpan, float minPathOffsetX, float maxPathOffsetX, int initialJumpDirection, bool hasPathBounds, JumpStyle style, JumpSpawnTiming? timing)
+        {
+            (_jumpRotationDegrees,
+             _jumpDurationSeconds,
+             _jumpHeight,
+             _jumpDepthPulse,
+             _twistAmplitude,
+             _apexXRotationLift,
+             _horizontalSpanMultiplier) = GetStyleValues(style);
+
+            float speedMultiplier = timing.HasValue ? Math.Max(0.1f, timing.Value.SpeedMultiplier) : 1.0f;
+            _jumpDurationSeconds = _jumpDurationSeconds / speedMultiplier;
+            _waterDwellSeconds = timing.HasValue ? Math.Max(0f, timing.Value.WaterDwellSeconds) : 0f;
+            _initialPhaseOffsetSeconds = timing.HasValue ? Math.Max(0f, timing.Value.PhaseOffsetSeconds) : 0f;
+
+            _jumpHorizontalSpan = Math.Max(75f, jumpHorizontalSpan) * _horizontalSpanMultiplier;
             _minPathOffsetX = Math.Min(minPathOffsetX, maxPathOffsetX);
             _maxPathOffsetX = Math.Max(minPathOffsetX, maxPathOffsetX);
             _initialJumpDirection = initialJumpDirection < 0 ? -1 : 1;
             _jumpDirection = _initialJumpDirection;
             _hasPathBounds = hasPathBounds && (_maxPathOffsetX - _minPathOffsetX) > _jumpHorizontalSpan;
         }
+
+        private static (float jumpRotationDegrees,
+                        float jumpDurationSeconds,
+                        float jumpHeight,
+                        float jumpDepthPulse,
+                        float twistAmplitude,
+                        float apexXRotationLift,
+                        float horizontalSpanMultiplier) GetStyleValues(JumpStyle style) => style switch
+        {
+            JumpStyle.LowSkimmer => (
+                jumpRotationDegrees: 120f,
+                jumpDurationSeconds: 2.5f,
+                jumpHeight: 95f,
+                jumpDepthPulse: 10f,
+                twistAmplitude: 14f,
+                apexXRotationLift: 5f,
+                horizontalSpanMultiplier: 1.35f),
+            JumpStyle.HighArc => (
+                jumpRotationDegrees: 220f,
+                jumpDurationSeconds: 2.15f,
+                jumpHeight: 215f,
+                jumpDepthPulse: 22f,
+                twistAmplitude: 0f,
+                apexXRotationLift: 12f,
+                horizontalSpanMultiplier: 0.8f),
+            _ => (
+                jumpRotationDegrees: DefaultJumpRotationDegrees,
+                jumpDurationSeconds: DefaultJumpDurationSeconds,
+                jumpHeight: DefaultJumpHeight,
+                jumpDepthPulse: DefaultJumpDepthPulse,
+                twistAmplitude: DefaultTwistAmplitude,
+                apexXRotationLift: DefaultApexXRotationLift,
+                horizontalSpanMultiplier: 1.0f)
+        };
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
@@ -111,7 +247,9 @@ namespace GameAiAndControls.Controls.JumpingFishControls
             else
             {
                 _firstPoseApplied = true;
-                _takeoffSplashReleased = false;
+                _jumpTimeSeconds = _initialPhaseOffsetSeconds;
+                bool startsMidJump = _jumpTimeSeconds > _waterDwellSeconds;
+                _takeoffSplashReleased = startsMidJump;
                 _landingSplashReleased = false;
             }
 
@@ -149,9 +287,10 @@ namespace GameAiAndControls.Controls.JumpingFishControls
         {
             _jumpTimeSeconds += deltaSeconds;
             bool wrapped = false;
-            while (_jumpTimeSeconds > JumpDurationSeconds)
+            float cycleSeconds = _jumpDurationSeconds + _waterDwellSeconds;
+            while (cycleSeconds > 0f && _jumpTimeSeconds > cycleSeconds)
             {
-                _jumpTimeSeconds -= JumpDurationSeconds;
+                _jumpTimeSeconds -= cycleSeconds;
                 wrapped = true;
             }
 
@@ -190,31 +329,38 @@ namespace GameAiAndControls.Controls.JumpingFishControls
             float phase = GetJumpPhase();
             float easedPhase = SmoothStep(phase);
             float arc = MathF.Sin(phase * MathF.PI);
+            bool isSubmergedDwell = _waterDwellSeconds > 0f && _jumpTimeSeconds < _waterDwellSeconds;
 
             if (theObject.ObjectOffsets != null)
             {
                 theObject.ObjectOffsets = new Vector3
                 {
                     x = _baseOffsetX + (_jumpDirection * _jumpHorizontalSpan * (easedPhase - 0.5f)),
-                    y = _baseOffsetY - (JumpHeight * arc),
-                    z = _baseOffsetZ + (JumpDepthPulse * arc)
+                    y = isSubmergedDwell
+                        ? _baseOffsetY + SubmergedDwellDepth
+                        : _baseOffsetY - (_jumpHeight * arc),
+                    z = _baseOffsetZ + (_jumpDepthPulse * arc)
                 };
             }
 
             if (theObject.Rotation != null)
             {
-                theObject.Rotation.x = BaseXRotation + (ApexXRotationLift * arc);
-                theObject.Rotation.y = BaseYRotation - (_jumpDirection * TwistAmplitude * arc);
-                theObject.Rotation.z = StartZRotation + (_jumpDirection * JumpRotationDegrees * easedPhase);
+                theObject.Rotation.x = BaseXRotation + (_apexXRotationLift * arc);
+                theObject.Rotation.y = BaseYRotation - (_jumpDirection * _twistAmplitude * arc);
+                theObject.Rotation.z = StartZRotation + (_jumpDirection * _jumpRotationDegrees * easedPhase);
             }
         }
 
         private float GetJumpPhase()
         {
-            if (JumpDurationSeconds <= 0f)
+            if (_jumpDurationSeconds <= 0f)
                 return 0f;
 
-            return Math.Clamp(_jumpTimeSeconds / JumpDurationSeconds, 0f, 1f);
+            float activeJumpTime = _jumpTimeSeconds - _waterDwellSeconds;
+            if (activeJumpTime <= 0f)
+                return 0f;
+
+            return Math.Clamp(activeJumpTime / _jumpDurationSeconds, 0f, 1f);
         }
 
         private static float SmoothStep(float value)
@@ -249,7 +395,8 @@ namespace GameAiAndControls.Controls.JumpingFishControls
         private void ReleaseSplashParticles(I3dObject theObject)
         {
             float phase = GetJumpPhase();
-            if (!_takeoffSplashReleased && phase <= 0.05f)
+            bool dwellComplete = _jumpTimeSeconds >= _waterDwellSeconds;
+            if (!_takeoffSplashReleased && dwellComplete && phase <= 0.05f)
             {
                 ReleaseBlueExplosionParticles(theObject, landingSplash: false);
                 _takeoffSplashReleased = true;

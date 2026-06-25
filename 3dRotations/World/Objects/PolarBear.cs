@@ -1,6 +1,7 @@
 using _3dTesting._3dWorld;
 using _3dTesting.Helpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonSetup;
 using Domain;
 using System;
 using System.Collections.Generic;
@@ -62,8 +63,10 @@ namespace _3dRotations.World.Objects
             ScalePartUniform(bear, "PolarBearEars", HeadScale);
             ScalePartUniform(bear, "PolarBearEyesNose", HeadScale);
 
-            _3dObjectHelpers.ApplyScaleToObject(bear, Scale);
-            _3dObjectHelpers.AddCustomShadowPart(bear, PolarBearShadow());
+            _3dObjectHelpers.ApplyScaleToObject(bear, Scale * LandBasedObjectSetup.WinterSurfaceObjectScale);
+            var shadow = PolarBearShadow();
+            _3dObjectHelpers.ApplyScaleToTriangles(shadow, LandBasedObjectSetup.WinterSurfaceObjectScale);
+            _3dObjectHelpers.AddCustomShadowPart(bear, shadow);
             _3dObjectHelpers.NormalizeSurfaceFootprintPivot(bear);
 
             return bear;

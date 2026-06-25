@@ -32,6 +32,33 @@ public class SeederPlacementHelpersTests
     }
 
     [TestMethod]
+    public void CreateRingSeederPositions_KeepsSeedersAtLeastHalfAScreenApart()
+    {
+        var center = new Vector3 { x = 95100f, y = 0, z = 95200f };
+
+        // Use the same defaults as Scene4/Scene7 (firstRingRadius 7500/8000) so the
+        // "~half a screen" default minSeederDistance kicks in (firstRingRadius * 0.5f).
+        const float firstRingRadius = 7500f;
+        float expectedMinDistance = firstRingRadius * 0.5f * SurfaceSetup.WorldScale;
+
+        // Try a handful of seeds to exercise the angle/radius jitter in different ways.
+        int[] seeds = { 11, 42, 1337, 4041, 7071 };
+        foreach (int seed in seeds)
+        {
+            var positions = SeederPlacementHelpers.CreateRingSeederPositions(
+                count: 23,
+                center: center,
+                seed: seed,
+                nearSeederCount: 7,
+                firstRingRadius: firstRingRadius,
+                ringRadiusStep: 11500f);
+
+            Assert.AreEqual(23, positions.Count, $"Seed {seed} should still place every requested seeder.");
+            AssertAllSeparated(positions, positions, expectedMinDistance);
+        }
+    }
+
+    [TestMethod]
     public void CreateRandomSeederPositions_UsesRequestedRadiusBand()
     {
         var center = new Vector3 { x = 95100f, y = 0, z = 95200f };

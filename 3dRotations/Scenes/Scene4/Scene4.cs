@@ -6,6 +6,7 @@ using CommonUtilities.CommonSetup;
 using CommonUtilities.GamePlayHelpers;
 using Domain;
 using GameAiAndControls.Controls;
+using GameAiAndControls.Controls.JumpingFishControls;
 using GameAiAndControls.Controls.ZeppelinBomberControls;
 using GameAiAndControls.Controls.KamikazeDroneControls;
 using GameAiAndControls.Controls.MotherShipMediumControls;
@@ -184,7 +185,7 @@ namespace _3dRotations.Scene.Scene4
                 tower.WorldPosition = new Vector3 { };
                 tower.SurfaceBasedId = GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[towerPlacement.y, towerPlacement.x].hasLandbasedObject = true;
-                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled, z = 400 };
+                tower.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.WinterSurfaceFootprintOffsetYScaled, z = 400 };
                 tower.ObjectName = "SnowTower";
                 tower.Movement = new TowerControls();
                 tower.CrashBoxDebugMode = false;
@@ -220,7 +221,7 @@ namespace _3dRotations.Scene.Scene4
                 igloo.Rotation = new Vector3 { x = 0, y = 0, z = rotationZ };
                 igloo.SurfaceBasedId = GameState.SurfaceState.Global2DMap[iglooPlacement.y, iglooPlacement.x].mapId;
                 GameState.SurfaceState.Global2DMap[iglooPlacement.y, iglooPlacement.x].hasLandbasedObject = true;
-                igloo.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.SurfaceFootprintOffsetYScaled, z = 400 };
+                igloo.ObjectOffsets = new Vector3 { x = 75 * ScreenSetup.ScreenScaleX, y = LandBasedObjectSetup.WinterSurfaceFootprintOffsetYScaled, z = 400 };
                 igloo.ImpactStatus = new ImpactStatus { };
                 igloo.CrashBoxDebugMode = false;
                 if (igloo.SurfaceBasedId > 0) world.WorldInhabitants.Add(igloo);
@@ -385,7 +386,7 @@ namespace _3dRotations.Scene.Scene4
                 }
 
                 polarBear.SurfaceBasedId = fallbackMapId;
-                polarBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled, z = 400 };
+                polarBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = LandBasedObjectSetup.WinterSurfaceFootprintOffsetYScaled, z = 400 };
                 polarBear.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
                 polarBear.ObjectName = "PolarBear";
                 polarBear.Movement = new PolarBearControls(minPathOffsetX, maxPathOffsetX);
@@ -446,7 +447,7 @@ namespace _3dRotations.Scene.Scene4
             var guaranteedBear = PolarBear.CreatePolarBear(Surface);
             guaranteedBear.WorldPosition = new Vector3 { };
             guaranteedBear.SurfaceBasedId = mapId;
-            guaranteedBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = LandBasedObjectSetup.NudgedSurfaceFootprintOffsetYScaled, z = 400 };
+            guaranteedBear.ObjectOffsets = new Vector3 { x = baseOffsetX, y = LandBasedObjectSetup.WinterSurfaceFootprintOffsetYScaled, z = 400 };
             guaranteedBear.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
             guaranteedBear.ObjectName = "PolarBear";
             guaranteedBear.Movement = new PolarBearControls(minPathOffsetX, maxPathOffsetX);
@@ -574,6 +575,7 @@ namespace _3dRotations.Scene.Scene4
 
             int sealCount = Math.Min(80, fishJumpAreas.Count);
             int tileSize = Surface.TileSize();
+            var jumpStyleRandom = new Random();
             for (int i = 0; i < sealCount; i++)
             {
                 int areaIndex = (int)MathF.Floor(i * fishJumpAreas.Count / (float)sealCount);
@@ -582,6 +584,9 @@ namespace _3dRotations.Scene.Scene4
                 float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
                 float minPathOffsetX = baseOffsetX + ((area.StartTileX - area.CenterTileX) * tileSize);
                 float maxPathOffsetX = baseOffsetX + ((area.EndTileX - area.CenterTileX) * tileSize);
+                var jumpStyle = JumpStyleVariants.PickRandom(jumpStyleRandom);
+                int initialJumpDirection = JumpStyleVariants.PickAlternatingDirection(jumpStyleRandom, i);
+                var jumpTiming = JumpStyleVariants.PickSpawnTiming(jumpStyleRandom);
 
                 var seal = Seal.CreateSeal(Surface);
                 seal.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
@@ -590,11 +595,11 @@ namespace _3dRotations.Scene.Scene4
                 seal.ObjectOffsets = new Vector3
                 {
                     x = baseOffsetX,
-                    y = 500 * ScreenSetup.ScreenScaleY,
+                    y = LandBasedObjectSetup.WinterSurfaceFootprintOffsetYScaled,
                     z = 400
                 };
                 seal.ObjectName = "Seal";
-                seal.Movement = new GameAiAndControls.Controls.JumpingFishControls.JumpingFishControls(jumpSpan, minPathOffsetX, maxPathOffsetX);
+                seal.Movement = new JumpingFishControls(jumpSpan, minPathOffsetX, maxPathOffsetX, initialJumpDirection, jumpStyle, jumpTiming);
                 seal.ImpactStatus = new ImpactStatus { };
                 seal.CrashBoxDebugMode = false;
                 seal.CrashBoxes = new List<List<IVector3>>();

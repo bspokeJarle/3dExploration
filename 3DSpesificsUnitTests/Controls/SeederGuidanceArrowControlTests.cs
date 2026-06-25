@@ -103,6 +103,97 @@ public class SeederGuidanceArrowControlTests
             "Guidance arrow should keep the scene's preferred placement when it is already below the HUD.");
     }
 
+    [TestMethod]
+    public void MoveObject_WhenSeederIsBeyondFourScreens_SnapsTargetToFourScreensInSameDirection()
+    {
+        var control = new SeederGuidanceArrowControl();
+        var arrow = CreateArrow();
+
+        // Ship is at world origin; seeder WorldPosition.x = 8250 means the
+        // guidance target lands at x = 8250 + screenSizeX/2 = 9000 (= 6 screens
+        // away on a 1500-wide screen), which exceeds the 4-screen pacing cap.
+        var seeder = CreateAi("Seeder", 8250f, 0f, 0f, isActive: true);
+        GameState.SurfaceState.AiObjects.Add(seeder);
+
+        control.MoveObject(arrow, null, null);
+
+        // After snap the guidance target should sit at exactly 4 screens (= 6000)
+        // along the same +X direction, so WorldPosition.x = 6000 - 750 = 5250.
+        Assert.AreEqual(5250f, seeder.WorldPosition!.x, 0.1f,
+            "Seeder beyond four screens should be snapped to four screens along the ship->seeder direction.");
+        Assert.AreEqual(0f, seeder.WorldPosition.z, 0.1f,
+            "Snap must preserve the original direction; z should not drift when seeder is on the +X axis.");
+    }
+
+    [TestMethod]
+    public void MoveObject_WhenSeederIsWithinFourScreens_DoesNotMoveSeeder()
+    {
+        var control = new SeederGuidanceArrowControl();
+        var arrow = CreateArrow();
+
+        // Seeder at WorldPosition.x = 2000 gives a guidance target at 2750
+        // (~1.83 screens), well inside the 4-screen cap. WorldPosition must
+        // remain untouched.
+        var seeder = CreateAi("Seeder", 2000f, 0f, 0f, isActive: true);
+        GameState.SurfaceState.AiObjects.Add(seeder);
+
+        control.MoveObject(arrow, null, null);
+
+        Assert.AreEqual(2000f, seeder.WorldPosition!.x, 0.1f,
+            "Seeder within four screens should not be snapped.");
+        Assert.AreEqual(0f, seeder.WorldPosition.z, 0.1f,
+            "Seeder within four screens should not be snapped on z either.");
+    }
+
+    [TestMethod]
+    public void MoveObject_SnapsEachTargetOnlyOnce()
+    {
+        var control = new SeederGuidanceArrowControl();
+        var arrow = CreateArrow();
+
+        // First lock-on: seeder is six screens away and gets snapped to four.
+        var seeder = CreateAi("Seeder", 8250f, 0f, 0f, isActive: true);
+        GameState.SurfaceState.AiObjects.Add(seeder);
+        control.MoveObject(arrow, null, null);
+        Assert.AreEqual(5250f, seeder.WorldPosition!.x, 0.1f,
+            "First lock-on should snap the seeder to four screens.");
+
+        // Simulate something external moving the seeder back out beyond four
+        // screens (e.g., AI movement). The arrow should no longer snap it
+        // because the snap is a one-shot per ObjectId.
+        seeder.WorldPosition.x = 8250f;
+        control.MoveObject(arrow, null, null);
+
+        Assert.AreEqual(8250f, seeder.WorldPosition.x, 0.1f,
+            "Once snapped, the same target must not be snapped again even if it drifts beyond four screens.");
+    }
+
+    [TestMethod]
+    public void MoveObject_SnapsAlongDiagonalDirection_WhenSeederIsBeyondFourScreensDiagonally()
+    {
+        var control = new SeederGuidanceArrowControl();
+        var arrow = CreateArrow();
+
+        // Place a seeder along a +X/+Z diagonal so guidance target = (5300+750, 0, 5300) = (6050, 0, 5300).
+        // Distance from origin = sqrt(6050^2 + 5300^2) = ~8042 (~5.36 screens), beyond the four-screen cap.
+        var seeder = CreateAi("Seeder", 5300f, 0f, 5300f, isActive: true);
+        GameState.SurfaceState.AiObjects.Add(seeder);
+
+        control.MoveObject(arrow, null, null);
+
+        // The guidance position should now sit at exactly 6000 (= 4 screens) from origin along the same direction.
+        float guidanceX = seeder.WorldPosition!.x + ScreenSetup.screenSizeX / 2f;
+        float guidanceZ = seeder.WorldPosition.z;
+        float distance = MathF.Sqrt(guidanceX * guidanceX + guidanceZ * guidanceZ);
+        Assert.AreEqual(6000f, distance, 1.0f,
+            "After snap the guidance target should sit at exactly four screens from the ship.");
+
+        // Direction must be preserved: original guidance was (6050, 5300) with ratio x/z = 6050/5300 ~= 1.1415.
+        // Snapped guidance must keep that same ratio.
+        Assert.AreEqual(6050f / 5300f, guidanceX / guidanceZ, 0.001f,
+            "Snap must preserve the original ship->seeder direction.");
+    }
+
     private static _3dObject CreateArrow()
     {
         return new _3dObject

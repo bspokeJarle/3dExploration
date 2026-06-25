@@ -289,6 +289,63 @@ public class GameStatePersistenceIsolationTests
     }
 
     [TestMethod]
+    public void SaveGameState_NeverReplacesHigherScoreWithZero()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "CharlieB";
+        gps.SceneIndex = 6;
+        gps.Score = 5000;
+        GameStatePersistence.SaveGameState();
+
+        gps.Score = 0;
+        GameStatePersistence.SaveGameState();
+
+        var loaded = GameStatePersistence.LoadGameState("CharlieB");
+        Assert.IsNotNull(loaded);
+        Assert.AreEqual(5000L, loaded!.Score);
+        Assert.AreEqual(5000L, gps.Score,
+            "A stale runtime state must be repaired before it can overwrite the save.");
+    }
+
+    [TestMethod]
+    public void SaveGameState_AllowsExplicitPlanetStartScoreRollback()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "CharlieB";
+        gps.SceneIndex = 6;
+        gps.Score = 5000;
+        GameStatePersistence.SaveGameState();
+
+        gps.Score = 3000;
+        GameStatePersistence.SaveGameState(allowScoreRollback: true);
+
+        var loaded = GameStatePersistence.LoadGameState("CharlieB");
+        Assert.IsNotNull(loaded);
+        Assert.AreEqual(3000L, loaded!.Score);
+        Assert.AreEqual(5000L, HighscoreService.GetBestLocalScore("CharlieB"),
+            "An intentional campaign rollback must never lower the player's highscore.");
+    }
+
+    [TestMethod]
+    public void LoadGameState_RepairsMissingLocalHighscoreFromSave()
+    {
+        var gps = GameState.GamePlayState;
+        gps.PlayerName = "CharlieB";
+        gps.SceneIndex = 6;
+        gps.Score = 50150;
+        gps.TotalKills = 25;
+        GameStatePersistence.SaveGameState();
+
+        File.Delete(PersistenceSetup.LocalHighscoreFilePath);
+        File.Delete(PersistenceSetup.LocalHighscoreBackupFilePath);
+
+        var loaded = GameStatePersistence.LoadGameState("CharlieB");
+
+        Assert.IsNotNull(loaded);
+        Assert.AreEqual(50150L, HighscoreService.GetBestLocalScore("CharlieB"));
+    }
+
+    [TestMethod]
     public void DeleteSave_RemovesRunButKeepsDurableProgressForNextRun()
     {
         var gps = GameState.GamePlayState;
