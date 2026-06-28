@@ -323,7 +323,7 @@ namespace _3dTesting
             world.SceneHandler.HandleKeyPress(e,world);
             SyncLocalPauseFromWorld();
 
-            if (overlayWasShowing)
+            if (overlayWasShowing || GameState.ScreenOverlayState.BlocksGameplayInput)
                 e.Handled = true;
         }
 
@@ -340,6 +340,9 @@ namespace _3dTesting
         {
             var overlay = GameState.ScreenOverlayState;
             if (overlay.Type == ScreenOverlayType.NameEntry && overlay.ShowOverlay)
+                return false;
+
+            if (overlay.Type == ScreenOverlayType.Settings && overlay.ShowOverlay)
                 return false;
 
             if (world?.SceneHandler?.GetActiveScene().SceneType != SceneTypes.Intro)

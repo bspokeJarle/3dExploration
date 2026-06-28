@@ -129,6 +129,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
 
             if (theObject.ImpactStatus.ObjectHealth > 0)
             {
+                HitSparkEffects.ReleaseHitSparks(theObject, this, theObject.ImpactStatus.ObjectName);
                 theObject.ImpactStatus.HasCrashed = false;
                 return;
             }
@@ -480,6 +481,7 @@ namespace GameAiAndControls.Controls.KamikazeDroneControls
             }
 
             TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, (float)deltaSeconds);
+            HitSparkEffects.MoveHitSparks(theObject);
             _storedWorldPosition = KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition);
             _storedWorldPositionInitialized = theObject.WorldPosition != null;
             KamikazeDroneAi.SyncAuthoritativeDroneState(theObject);

@@ -16,6 +16,8 @@ public class SandDriftControlsTests
     public void Setup()
     {
         GameState.SurfaceState = new SurfaceState();
+        GameState.SettingsState = new GameSettingsState();
+        GameState.DeltaTime = GameState.GameplayBaselineDeltaTime;
         GameState.ObjectIdCounter = 0;
         SandDriftControls.GlobalSandOpacity = 1f;
     }
@@ -151,5 +153,24 @@ public class SandDriftControlsTests
             40f * SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY,
             emitter.ObjectOffsets.y,
             0.001f);
+    }
+
+    [TestMethod]
+    public void MoveObject_HighParticleDensityCreatesMoreDust()
+    {
+        GameState.SettingsState = new GameSettingsState
+        {
+            GraphicsQuality = GraphicsQualityPreset.High,
+            ParticleDensityPercent = 130,
+            EnhancedWeatherEnabled = true
+        };
+
+        var emitter = SandEmitter.CreateSandEmitter(null);
+
+        emitter.Movement!.MoveObject(emitter, null, null);
+
+        var dustPart = emitter.ObjectParts.Single(p => p.PartName == "SandDust");
+        Assert.AreEqual(SandDriftControls.CurrentTargetDustCount, dustPart.Triangles.Count);
+        Assert.IsTrue(dustPart.Triangles.Count > SandDriftControls.TargetDustCount);
     }
 }

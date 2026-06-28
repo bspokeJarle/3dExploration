@@ -16,6 +16,8 @@ public class LeafDriftControlsTests
     public void Setup()
     {
         GameState.SurfaceState = new SurfaceState();
+        GameState.SettingsState = new GameSettingsState();
+        GameState.DeltaTime = GameState.GameplayBaselineDeltaTime;
         GameState.ObjectIdCounter = 0;
         LeafDriftControls.GlobalLeafOpacity = 1f;
     }
@@ -89,5 +91,24 @@ public class LeafDriftControlsTests
             40f * SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY,
             emitter.ObjectOffsets.y,
             0.001f);
+    }
+
+    [TestMethod]
+    public void MoveObject_HighParticleDensityCreatesMoreLeaves()
+    {
+        GameState.SettingsState = new GameSettingsState
+        {
+            GraphicsQuality = GraphicsQualityPreset.High,
+            ParticleDensityPercent = 130,
+            EnhancedWeatherEnabled = true
+        };
+
+        var emitter = LeafEmitter.CreateLeafEmitter(null);
+
+        emitter.Movement!.MoveObject(emitter, null, null);
+
+        var leafPart = emitter.ObjectParts.Single(p => p.PartName == "Leaves");
+        Assert.AreEqual(LeafDriftControls.CurrentTargetLeafCount, leafPart.Triangles.Count);
+        Assert.IsTrue(leafPart.Triangles.Count > LeafDriftControls.TargetLeafCount);
     }
 }

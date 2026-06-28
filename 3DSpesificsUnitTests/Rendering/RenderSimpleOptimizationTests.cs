@@ -22,6 +22,7 @@ public class RenderSimpleOptimizationTests
         {
             GlobalMapPosition = new Vector3()
         };
+        GameState.SettingsState = new GameSettingsState();
     }
 
     [TestMethod]
@@ -438,6 +439,8 @@ public class RenderSimpleOptimizationTests
             "Particle bursts should not be merged into one StreamGeometry batch.");
         Assert.IsTrue(WorldRenderer.ShouldRenderAsSeparateTriangle("ParticleShadow"),
             "Particle shadows are dynamic effects and should not share batched geometry.");
+        Assert.IsTrue(WorldRenderer.ShouldRenderAsSeparateTriangle("MuzzleFlash"),
+            "Muzzle flashes blink on/off and should stay out of stable geometry batches.");
         Assert.IsFalse(WorldRenderer.ShouldRenderAsSeparateTriangle("EarthGlobe"),
             "Stable world geometry should keep batching enabled.");
 
@@ -446,6 +449,61 @@ public class RenderSimpleOptimizationTests
             PartName = "Surface",
             UseEffectRenderingPipeline = true
         }), "The explicit 2D marker must force the effect pipeline even without a special part name.");
+    }
+
+    [TestMethod]
+    public void GlowCandidates_UseEffectPipelineWhenGlowIsEnabledAndParticlesStayDynamic()
+    {
+        var lazer = new _2dTriangleMesh { PartName = "Lazer_Beam" };
+        var powerUp = new _2dTriangleMesh { PartName = "TravelSpeedPowerUpBody" };
+        var bullet = new _2dTriangleMesh { PartName = "BulletBody" };
+        var particle = new _2dTriangleMesh { PartName = "Particle" };
+        var stableWorldPart = new _2dTriangleMesh { PartName = "HouseWalls" };
+
+        GameState.SettingsState.GlowEffectsEnabled = false;
+        Assert.IsFalse(WorldRenderer.ShouldUseEffectRenderingPipeline(lazer));
+        Assert.IsFalse(WorldRenderer.ShouldUseEffectRenderingPipeline(powerUp));
+        Assert.IsFalse(WorldRenderer.ShouldUseEffectRenderingPipeline(bullet));
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(particle),
+            "Particles already use the dynamic effect pipeline even when glow is disabled.");
+        Assert.IsFalse(WorldRenderer.ShouldUseEffectRenderingPipeline(stableWorldPart));
+
+        GameState.SettingsState.GlowEffectsEnabled = true;
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(lazer));
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(powerUp));
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(bullet));
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(particle));
+        Assert.IsFalse(WorldRenderer.ShouldUseEffectRenderingPipeline(stableWorldPart),
+            "Normal world geometry should keep the optimized batching path even on high graphics.");
+    }
+
+    [TestMethod]
+    public void HighGraphics_RendersShadowsThroughEffectPipeline()
+    {
+        var shadow = new _2dTriangleMesh { PartName = "Shadow" };
+
+        GameState.SettingsState.GraphicsQuality = GraphicsQualityPreset.Balanced;
+        GameState.SettingsState.EnhancedShadowsEnabled = true;
+        Assert.IsFalse(WorldRenderer.ShouldUseEffectRenderingPipeline(shadow));
+
+        GameState.SettingsState.GraphicsQuality = GraphicsQualityPreset.High;
+        GameState.SettingsState.EnhancedShadowsEnabled = true;
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(shadow));
+    }
+
+    [TestMethod]
+    public void DynamicEffects_KeepEffectPipelineWhenGlowIsDisabled()
+    {
+        GameState.SettingsState.GlowEffectsEnabled = false;
+
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(new _2dTriangleMesh
+        {
+            PartName = "ExplodingPart"
+        }), "Explosion fragments already use the dynamic effect path and should not depend on glow settings.");
+        Assert.IsTrue(WorldRenderer.ShouldUseEffectRenderingPipeline(new _2dTriangleMesh
+        {
+            PartName = "MuzzleFlash"
+        }), "Muzzle flashes are short-lived dynamic effects and should not depend on glow settings.");
     }
 
     private static void AssertDebugCoordinateIsClamped(int x, int y)

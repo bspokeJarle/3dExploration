@@ -50,6 +50,8 @@ namespace GameAiAndControls.Controls
             OutsideSpawnChance: 0.75d);
 
         public static float GlobalSandOpacity { get; set; } = 1f;
+        public static int CurrentVisibleDustTarget => GameState.SettingsState.ScaleParticleCount(VisibleDustTarget);
+        public static int CurrentTargetDustCount => GameState.SettingsState.ScaleParticleCount(TargetDustCount);
 
         private readonly Random _random = new();
         private readonly WorldWeatherField _weatherField;
@@ -100,12 +102,18 @@ namespace GameAiAndControls.Controls
 
         private void EnsureMotes(IVector3 mapPosition, float endOffsetY)
         {
-            if (_motes.Count == TargetDustCount)
+            int visibleTarget = CurrentVisibleDustTarget;
+            int targetCount = CurrentTargetDustCount;
+
+            if (_motes.Count == targetCount)
                 return;
 
             _motes.Clear();
+            if (targetCount <= 0)
+                return;
+
             float halfVisibleSpread = _weatherField.HalfVisibleSpread;
-            for (int i = 0; i < VisibleDustTarget; i++)
+            for (int i = 0; i < visibleTarget; i++)
             {
                 _motes.Add(CreateVisibleMote(
                     mapPosition,
@@ -113,18 +121,19 @@ namespace GameAiAndControls.Controls
                     RandomRange(StartGuideYOffset, endOffsetY)));
             }
 
-            for (int i = VisibleDustTarget; i < TargetDustCount; i++)
+            for (int i = visibleTarget; i < targetCount; i++)
                 _motes.Add(CreateReserveMote(mapPosition));
         }
 
         private void EnsureTriangleBuffer(I3dObject theObject)
         {
             var part = GetDustPart(theObject);
-            if (part.Triangles.Count == TargetDustCount)
+            int targetCount = _motes.Count;
+            if (part.Triangles.Count == targetCount)
                 return;
 
             part.Triangles.Clear();
-            for (int i = 0; i < TargetDustCount; i++)
+            for (int i = 0; i < targetCount; i++)
                 part.Triangles.Add(CreateDustTriangle());
         }
 

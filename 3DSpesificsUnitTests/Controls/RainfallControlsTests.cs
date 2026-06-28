@@ -19,8 +19,29 @@ public class RainfallControlsTests
     {
         GameState.GamePlayState = new GamePlayState();
         GameState.SurfaceState = new SurfaceState();
+        GameState.SettingsState = new GameSettingsState();
+        GameState.DeltaTime = GameState.GameplayBaselineDeltaTime;
         GameState.ObjectIdCounter = 0;
         RainfallControls.GlobalRainOpacity = 1f;
+    }
+
+    [TestMethod]
+    public void MoveObject_HighParticleDensityCreatesMoreRainDrops()
+    {
+        GameState.SettingsState = new GameSettingsState
+        {
+            GraphicsQuality = GraphicsQualityPreset.High,
+            ParticleDensityPercent = 130,
+            EnhancedWeatherEnabled = true
+        };
+
+        var emitter = RainEmitter.CreateRainEmitter(null);
+
+        emitter.Movement!.MoveObject(emitter, null, null);
+
+        var rainPart = emitter.ObjectParts.Single(p => p.PartName == "Raindrops");
+        Assert.AreEqual(RainfallControls.CurrentTargetDropCount, rainPart.Triangles.Count);
+        Assert.IsTrue(rainPart.Triangles.Count > RainfallControls.TargetDropCount);
     }
 
     [TestMethod]

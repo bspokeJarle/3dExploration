@@ -19,6 +19,7 @@ namespace CommonUtilities.CommonGlobalState
         public static WorldFadeState WorldFade = new WorldFadeState();
         public static WeatherVisualState WeatherVisualState = new WeatherVisualState();
         public static GamePlayState GamePlayState = new GamePlayState();
+        public static GameSettingsState SettingsState = new GameSettingsState();
         public static TutorialRuntimeState TutorialState = new TutorialRuntimeState();
         public static List<_3dSpecificsImplementations._3dObject> PendingWorldObjects { get; } = new();
         public static long FrameCount { get; set; } = 0;

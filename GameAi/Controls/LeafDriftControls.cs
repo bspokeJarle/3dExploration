@@ -56,6 +56,8 @@ namespace GameAiAndControls.Controls
             OutsideSpawnChance: 0.70d);
 
         public static float GlobalLeafOpacity { get; set; } = 1f;
+        public static int CurrentVisibleLeafTarget => GameState.SettingsState.ScaleParticleCount(VisibleLeafTarget);
+        public static int CurrentTargetLeafCount => GameState.SettingsState.ScaleParticleCount(TargetLeafCount);
 
         private readonly Random _random = new();
         private readonly WorldWeatherField _weatherField;
@@ -105,12 +107,18 @@ namespace GameAiAndControls.Controls
 
         private void EnsureLeaves(IVector3 mapPosition, float endOffsetY)
         {
-            if (_leaves.Count == TargetLeafCount)
+            int visibleTarget = CurrentVisibleLeafTarget;
+            int targetCount = CurrentTargetLeafCount;
+
+            if (_leaves.Count == targetCount)
                 return;
 
             _leaves.Clear();
+            if (targetCount <= 0)
+                return;
+
             float halfVisibleSpread = _weatherField.HalfVisibleSpread;
-            for (int i = 0; i < VisibleLeafTarget; i++)
+            for (int i = 0; i < visibleTarget; i++)
             {
                 _leaves.Add(CreateVisibleLeaf(
                     mapPosition,
@@ -118,18 +126,19 @@ namespace GameAiAndControls.Controls
                     RandomRange(StartGuideYOffset, endOffsetY)));
             }
 
-            for (int i = VisibleLeafTarget; i < TargetLeafCount; i++)
+            for (int i = visibleTarget; i < targetCount; i++)
                 _leaves.Add(CreateReserveLeaf(mapPosition));
         }
 
         private void EnsureTriangleBuffer(I3dObject theObject)
         {
             var part = GetLeafPart(theObject);
-            if (part.Triangles.Count == TargetLeafCount)
+            int targetCount = _leaves.Count;
+            if (part.Triangles.Count == targetCount)
                 return;
 
             part.Triangles.Clear();
-            for (int i = 0; i < TargetLeafCount; i++)
+            for (int i = 0; i < targetCount; i++)
                 part.Triangles.Add(CreateLeafTriangle(i));
         }
 

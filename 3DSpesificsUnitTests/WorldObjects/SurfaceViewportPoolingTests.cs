@@ -177,7 +177,7 @@ public class SurfaceViewportPoolingTests
         var viewport = surface.GetSurfaceViewPort();
         var mainSurfaceCrashBox = viewport.CrashBoxes.Last();
 
-        Assert.AreEqual(-65f, mainSurfaceCrashBox.Min(point => point.y), 0.001f,
+        Assert.AreEqual(-33f, mainSurfaceCrashBox.Min(point => point.y), 0.001f,
             "MainSurface crashbox top should sit slightly above the visible surface while following surface altitude.");
         Assert.AreEqual(1075f, mainSurfaceCrashBox.Max(point => point.y), 0.001f,
             "MainSurface crashbox bottom should keep following the surface altitude.");

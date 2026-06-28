@@ -183,6 +183,7 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
 
             AnimatePropeller(deltaSeconds);
             AnimateHatch(deltaSeconds);
+            HitSparkEffects.MoveHitSparks(theObject);
 
             UpdatePropellerAudio(theObject);
 
@@ -212,6 +213,7 @@ namespace GameAiAndControls.Controls.ZeppelinBomberControls
 
             if (theObject.ImpactStatus.ObjectHealth > 0)
             {
+                HitSparkEffects.ReleaseHitSparks(theObject, this, theObject.ImpactStatus.ObjectName);
                 theObject.ImpactStatus.HasCrashed = false;
                 return;
             }

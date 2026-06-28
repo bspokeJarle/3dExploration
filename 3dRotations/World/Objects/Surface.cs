@@ -15,7 +15,7 @@ namespace _3dRotations.World.Objects
 {
     public class Surface : ISurface
     {
-        private const float MainSurfaceLandingLeadY = 40f;
+        private const float MainSurfaceLandingLeadY = 8f;
 
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 };
         public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
@@ -24,16 +24,6 @@ namespace _3dRotations.World.Objects
         private readonly List<ITriangleMeshWithColor> _surfaceTriangles = new();
         private readonly List<List<IVector3>> _viewPortCrashBoxes = new();
         private readonly List<string?> _viewPortCrashBoxNames = new();
-
-        // Pre-parsed crater colors (R, G, B) to avoid per-tile string allocation
-        private static readonly (int r, int g, int b)[] CraterColorsRgb =
-        [
-            (0x2B, 0x1D, 0x0E),
-            (0x1A, 0x1A, 0x1A),
-            (0x3A, 0x3A, 0x3A),
-            (0x2E, 0x2E, 0x2E),
-            (0x3D, 0x2B, 0x1D)
-        ];
 
         private const bool enableLogging = false;
         const bool debugSurfaceBasedObjects = false; // Set to true to debug surface based objects
@@ -105,18 +95,22 @@ namespace _3dRotations.World.Objects
                     var ZPostition4 = global2DMap[nextMapY, currentMapX].mapDepth;
 
                     // Work with RGB ints to avoid hex string parse/format roundtrips
-                    GetTileColorGradientRgb((ZPostition1 + ZPostition2) / 2, maxHeight, out int cr, out int cg, out int cb);
+                    TerrainPaletteHelpers.GetTerrainColorRgb(
+                        (ZPostition1 + ZPostition2) / 2,
+                        maxHeight,
+                        GameState.SurfaceState.SceneBiome,
+                        out int cr,
+                        out int cg,
+                        out int cb);
 
-                    if (currentTile.isCratered)
-                    {
-                        var cc = CraterColorsRgb[(currentMapY * 7 + currentMapX * 13) % CraterColorsRgb.Length];
-                        cr = cc.r; cg = cc.g; cb = cc.b;
-                    }
-
-                    if (currentTile.isInfected && IsInfectableTerrain(currentTile.mapDepth, maxHeight))
-                    {
-                        cr = 255; cg = 0; cb = 0;
-                    }
+                    TerrainPaletteHelpers.ApplyTileColorOverrides(
+                        currentTile,
+                        currentMapX,
+                        currentMapY,
+                        maxHeight,
+                        ref cr,
+                        ref cg,
+                        ref cb);
 
                     if (currentTile.hasLandbasedObject && debugSurfaceBasedObjects)
                     {
@@ -299,169 +293,18 @@ namespace _3dRotations.World.Objects
 
         private static bool IsInfectableTerrain(int height, int maxHeight)
         {
-            var terrain = GamePlayHelpers.GetTerrainType(height, maxHeight);
-            return terrain == GamePlayHelpers.TerrainType.Grassland ||
-                   terrain == GamePlayHelpers.TerrainType.Highlands;
+            return TerrainPaletteHelpers.IsInfectableTerrain(height, maxHeight);
         }
 
         private static void GetTileColorGradientRgb(int height, int maxHeight, out int red, out int green, out int blue)
         {
-            var biome = GameState.SurfaceState.SceneBiome;
-
-            if (biome == SceneBiomeTypes.Winter)
-            {
-                if (height < maxHeight * 0.05)
-                {
-                    red = 25;
-                    green = 55;
-                    blue = 165;
-                }
-                else if (height < maxHeight * 0.15)
-                {
-                    red = 60;
-                    green = 110;
-                    blue = 210;
-                }
-                else if (height < maxHeight * 0.4)
-                {
-                    float t = (height - (maxHeight * 0.15f)) / (maxHeight * 0.25f);
-                    t = Math.Clamp(t, 0f, 1f);
-                    red = 95 + (int)(t * 120);
-                    green = 145 + (int)(t * 85);
-                    blue = 215 + (int)(t * 25);
-                }
-                else if (height < maxHeight * 0.7)
-                {
-                    red = 195;
-                    green = 210;
-                    blue = 225;
-                }
-                else
-                {
-                    red = 235;
-                    green = 240;
-                    blue = 245;
-                }
-
-                red = Math.Clamp(red, 0, 255);
-                green = Math.Clamp(green, 0, 255);
-                blue = Math.Clamp(blue, 0, 255);
-                return;
-            }
-
-            if (biome == SceneBiomeTypes.Rainforrest)
-            {
-                if (height < maxHeight * 0.05)
-                {
-                    red = 0;
-                    green = 24;
-                    blue = 170;
-                }
-                else if (height < maxHeight * 0.15)
-                {
-                    red = 0;
-                    green = 95;
-                    blue = 235;
-                }
-                else if (height < maxHeight * 0.4)
-                {
-                    red = 20;
-                    green = 190;
-                    blue = 45;
-                }
-                else if (height < maxHeight * 0.7)
-                {
-                    red = 120;
-                    green = 95;
-                    blue = 35;
-                }
-                else
-                {
-                    red = 125;
-                    green = 145;
-                    blue = 130;
-                }
-
-                red = Math.Clamp(red, 0, 255);
-                green = Math.Clamp(green, 0, 255);
-                blue = Math.Clamp(blue, 0, 255);
-                return;
-            }
-
-            if (biome == SceneBiomeTypes.Desert)
-            {
-                if (height < maxHeight * 0.05)
-                {
-                    red = 20;
-                    green = 55;
-                    blue = 165;
-                }
-                else if (height < maxHeight * 0.15)
-                {
-                    red = 60;
-                    green = 125;
-                    blue = 220;
-                }
-                else if (height < maxHeight * 0.4)
-                {
-                    red = 205;
-                    green = 175;
-                    blue = 95;
-                }
-                else if (height < maxHeight * 0.7)
-                {
-                    red = 185;
-                    green = 145;
-                    blue = 80;
-                }
-                else
-                {
-                    red = 170;
-                    green = 155;
-                    blue = 135;
-                }
-
-                red = Math.Clamp(red, 0, 255);
-                green = Math.Clamp(green, 0, 255);
-                blue = Math.Clamp(blue, 0, 255);
-                return;
-            }
-
-
-            if (height < maxHeight * 0.05) // Deep Ocean (Very Dark Blue)
-            {
-                red = 0;
-                green = 0;
-                blue = 180 + (int)((height / (maxHeight * 0.05)) * 75); // Darker blue in deeper water
-            }
-            else if (height < maxHeight * 0.15) // Coastal Water (Medium Blue)
-            {
-                red = 0;
-                green = (int)((height / (maxHeight * 0.2)) * 100);
-                blue = 255;
-            }
-            else if (height < maxHeight * 0.4) // Grassland (Green Gradient)
-            {
-                red = 0;
-                green = 150 + ((height - (int)(maxHeight * 0.2)) * 3);
-                blue = 0;
-            }
-            else if (height < maxHeight * 0.7) // Highlands (Brown Gradient)
-            {
-                red = 139 + ((height - (int)(maxHeight * 0.4)) * 3);
-                green = 69 + ((height - (int)(maxHeight * 0.4)) * 2);
-                blue = 19;
-            }
-            else // Mountains (Gray Gradient)
-            {
-                red = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
-                green = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
-                blue = 120 + ((height - (int)(maxHeight * 0.7)) * 3);
-            }
-
-            red = Math.Clamp(red, 0, 255);
-            green = Math.Clamp(green, 0, 255);
-            blue = Math.Clamp(blue, 0, 255);
+            TerrainPaletteHelpers.GetTerrainColorRgb(
+                height,
+                maxHeight,
+                GameState.SurfaceState.SceneBiome,
+                out red,
+                out green,
+                out blue);
         }
 
         public void Create2DMap(int? maxTrees, int? maxHouses, GameModes gameMode,string? surfaceFile)

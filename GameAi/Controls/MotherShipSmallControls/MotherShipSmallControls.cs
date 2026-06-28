@@ -295,6 +295,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
             AnimateWeakSpot(theObject, (float)deltaSeconds);
             UpdateFlash(theObject);
+            HitSparkEffects.MoveHitSparks(theObject);
 
             SyncMovement(theObject);
             TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, (float)deltaSeconds);
@@ -441,6 +442,7 @@ namespace GameAiAndControls.Controls.MotherShipSmallControls
 
             if (theObject.ImpactStatus.ObjectHealth > 0)
             {
+                HitSparkEffects.ReleaseHitSparks(theObject, this, theObject.ImpactStatus.ObjectName);
                 PlayThudSound(theObject);
                 StartFlash(theObject, theObject.ImpactStatus.CrashBoxName == "WeakSpot");
                 theObject.ImpactStatus.HasCrashed = false;

@@ -57,14 +57,17 @@ namespace _3dTesting.Helpers
                         var max = new Vector3(oMaxX, oMaxY, oMaxZ);
 
                         var direction = EstimateDirectionFromSurface(center, min, max);
+                        var particleDirection = EstimateParticleDirectionFromVelocity(
+                            particle.ImpactStatus.SourceParticle,
+                            direction);
 
                         particle.ImpactStatus.HasCrashed = true;
-                        particle.ImpactStatus.ImpactDirection = direction;
+                        particle.ImpactStatus.ImpactDirection = particleDirection;
 
                         if (particle.ImpactStatus.SourceParticle?.ImpactStatus != null)
                         {
                             particle.ImpactStatus.SourceParticle.ImpactStatus.HasCrashed = true;
-                            particle.ImpactStatus.SourceParticle.ImpactStatus.ImpactDirection = direction;
+                            particle.ImpactStatus.SourceParticle.ImpactStatus.ImpactDirection = particleDirection;
                             // Tell the source what it hit (the other object's name)
                             particle.ImpactStatus.SourceParticle.ImpactStatus.ObjectName = other.ObjectName;
                         }
@@ -82,7 +85,7 @@ namespace _3dTesting.Helpers
                         if (!SkipParticleLogging)
                         {
                             LogCollision(a, b,
-                                $"[FRAME:{numFrame}] [PARTICLE COLLISION] {particle.ObjectName} <-> {other.ObjectName} | Dir:{direction} | ParticleBox:{pb} OtherBox:{ob}");
+                                $"[FRAME:{numFrame}] [PARTICLE COLLISION] {particle.ObjectName} <-> {other.ObjectName} | Dir:{direction} ParticleDir:{particleDirection} | ParticleBox:{pb} OtherBox:{ob}");
                         }
 
                         if (LogCollisionDetails)
@@ -401,6 +404,36 @@ namespace _3dTesting.Helpers
                 return dx > 0 ? ImpactDirection.Right : ImpactDirection.Left;
             else
                 return ImpactDirection.Center;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ImpactDirection EstimateParticleDirectionFromVelocity(
+            IParticle? sourceParticle,
+            ImpactDirection fallback)
+        {
+            var velocity = sourceParticle?.Physics?.Velocity;
+            if (velocity == null)
+                return fallback;
+
+            // Particle physics renders position movement as position -= velocity * frameScale.
+            // Use that visible movement direction instead of the already-penetrated AABB center.
+            float moveX = -velocity.x;
+            float moveY = -velocity.y;
+            float moveZ = -velocity.z;
+            float absX = Math.Abs(moveX);
+            float absY = Math.Abs(moveY);
+            float absZ = Math.Abs(moveZ);
+
+            if (absX < 0.001f && absY < 0.001f && absZ < 0.001f)
+                return fallback;
+
+            if (absY >= absX && absY >= absZ)
+                return moveY >= 0f ? ImpactDirection.Top : ImpactDirection.Bottom;
+
+            if (absX >= absZ)
+                return moveX >= 0f ? ImpactDirection.Left : ImpactDirection.Right;
+
+            return fallback;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

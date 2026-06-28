@@ -20,6 +20,7 @@ public class SeederAiMovementTests
     [TestInitialize]
     public void Setup()
     {
+        GameState.DeltaTime = GameState.GameplayBaselineDeltaTime;
         GameState.GamePlayState = new GamePlayState();
         GameState.SurfaceState = new SurfaceState
         {
@@ -213,7 +214,7 @@ public class SeederAiMovementTests
 
         return (Vector3)MoveMethod.Invoke(
             null,
-            new object[] { isOnScreen, seeder, state, 77, nowTicks ?? DateTime.Now.Ticks, 1f / 60f, 1f, step, offscreenStepFactor, current })!;
+            new object[] { isOnScreen, seeder, state, 77, nowTicks ?? DateTime.Now.Ticks, GameState.GameplayBaselineDeltaTime, 1f, step, offscreenStepFactor, current })!;
     }
 
     private static void SetMapTile(int tileX, int tileZ, int mapDepth, bool isInfected)

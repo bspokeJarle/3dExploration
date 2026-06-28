@@ -54,6 +54,8 @@ namespace GameAiAndControls.Controls
             OutsideSpawnChance: 0.72d);
 
         public static float GlobalRainOpacity { get; set; } = 1f;
+        public static int CurrentVisibleDropTarget => GameState.SettingsState.ScaleParticleCount(VisibleDropTarget);
+        public static int CurrentTargetDropCount => GameState.SettingsState.ScaleParticleCount(TargetDropCount);
 
         private readonly Random _random = new();
         private readonly WorldWeatherField _weatherField;
@@ -110,12 +112,18 @@ namespace GameAiAndControls.Controls
 
         private void EnsureDrops(IVector3 mapPosition, float endOffsetY)
         {
-            if (_drops.Count == TargetDropCount)
+            int visibleTarget = CurrentVisibleDropTarget;
+            int targetCount = CurrentTargetDropCount;
+
+            if (_drops.Count == targetCount)
                 return;
 
             _drops.Clear();
+            if (targetCount <= 0)
+                return;
+
             float halfVisibleSpread = _weatherField.HalfVisibleSpread;
-            for (int i = 0; i < VisibleDropTarget; i++)
+            for (int i = 0; i < visibleTarget; i++)
             {
                 _drops.Add(CreateVisibleDrop(
                     mapPosition,
@@ -123,18 +131,19 @@ namespace GameAiAndControls.Controls
                     RandomRange(StartGuideYOffset, endOffsetY)));
             }
 
-            for (int i = VisibleDropTarget; i < TargetDropCount; i++)
+            for (int i = visibleTarget; i < targetCount; i++)
                 _drops.Add(CreateReserveDrop(mapPosition));
         }
 
         private void EnsureTriangleBuffer(I3dObject theObject)
         {
             var rainPart = GetRaindropPart(theObject);
-            if (rainPart.Triangles.Count == TargetDropCount)
+            int targetCount = _drops.Count;
+            if (rainPart.Triangles.Count == targetCount)
                 return;
 
             rainPart.Triangles.Clear();
-            for (int i = 0; i < TargetDropCount; i++)
+            for (int i = 0; i < targetCount; i++)
                 rainPart.Triangles.Add(CreateRainTriangle());
         }
 

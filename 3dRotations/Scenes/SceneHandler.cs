@@ -39,6 +39,7 @@ namespace _3DWorld.Scene
         private bool _pendingTutorialStart = false;
         private SavedGameState? _pendingSavedState = null;
         private SavedGameState? _tutorialResumeSavedState = null;
+        private int _settingsReturnIntroPage = 0;
 
         // Snapshot of campaign progression captured the moment we enter the tutorial scene,
         // so leaving the tutorial restores exactly what the player had before training (and
@@ -79,6 +80,7 @@ namespace _3DWorld.Scene
         public void SetupActiveScene(I3dWorld world)
         {
             PersistenceSetup.Initialize();
+            GameSettingsPersistence.LoadIntoGameState();
             ApplySceneIndexOverrideFromGameState();
             ResetSurfaceState();
             var scene = GetActiveScene();
@@ -520,9 +522,20 @@ namespace _3DWorld.Scene
                 return;
             }
 
+            if (overlay.Type == ScreenOverlayType.Settings && overlay.ShowOverlay)
+            {
+                HandleSettingsOverlayKey(k, scene, overlay);
+                return;
+            }
+
             if (overlay.ShowOverlay && overlay.ChoiceAction == ScreenOverlayChoiceAction.PlanetLostRecovery)
             {
                 HandlePlanetLostRecoveryChoice(k, world, overlay);
+                return;
+            }
+
+            if (CanOpenSettingsOverlay(scene, overlay) && TryOpenSettingsOverlay(k.Key, scene, overlay))
+            {
                 return;
             }
 
@@ -722,6 +735,125 @@ namespace _3DWorld.Scene
             }
         }
 
+        private void HandleSettingsOverlayKey(KeyEventArgs k, IScene scene, ScreenOverlayState overlay)
+        {
+            if (k.Key == Key.Escape || k.Key == Key.Return || k.Key == Key.Enter)
+            {
+                CloseSettingsOverlay(scene, overlay);
+                return;
+            }
+
+            if (TryOpenSettingsOverlay(k.Key, scene, overlay))
+                return;
+
+            if (k.Key == Key.Up)
+            {
+                overlay.MoveSettingsSelection(-1, GetSettingsOptionCount(overlay.SettingsPanel));
+                RefreshSettingsOverlayBody(overlay);
+                return;
+            }
+
+            if (k.Key == Key.Down)
+            {
+                overlay.MoveSettingsSelection(1, GetSettingsOptionCount(overlay.SettingsPanel));
+                RefreshSettingsOverlayBody(overlay);
+                return;
+            }
+
+            if (k.Key == Key.Left)
+            {
+                AdjustSelectedSetting(overlay, -1);
+                return;
+            }
+
+            if (k.Key == Key.Right)
+            {
+                AdjustSelectedSetting(overlay, 1);
+            }
+        }
+
+        private bool TryOpenSettingsOverlay(Key key, IScene scene, ScreenOverlayState overlay)
+        {
+            if (key == Key.S)
+            {
+                ShowSettingsOverlay(scene, overlay, ScreenOverlaySettingsPanel.Audio);
+                return true;
+            }
+
+            if (key == Key.G)
+            {
+                ShowSettingsOverlay(scene, overlay, ScreenOverlaySettingsPanel.Graphics);
+                return true;
+            }
+
+            return false;
+        }
+
+        private void ShowSettingsOverlay(IScene scene, ScreenOverlayState overlay, ScreenOverlaySettingsPanel panel)
+        {
+            if (scene.SceneType == SceneTypes.Intro && overlay.Type == ScreenOverlayType.Intro)
+                _settingsReturnIntroPage = overlay.CurrentPage;
+
+            GameState.SettingsState.Normalize();
+            overlay.SetSettingsPreset(
+                panel,
+                panel == ScreenOverlaySettingsPanel.Audio ? "SOUND SETTINGS" : "GRAPHICS SETTINGS",
+                BuildSettingsOverlayBody(panel, selectedIndex: 0),
+                GameSettingsOverlayFormatter.Footer);
+        }
+
+        private void CloseSettingsOverlay(IScene scene, ScreenOverlayState overlay)
+        {
+            GameSettingsPersistence.SaveSettings(GameState.SettingsState);
+            overlay.HardHide();
+            overlay.SettingsPanel = ScreenOverlaySettingsPanel.None;
+
+            if (scene.SceneType == SceneTypes.Intro)
+            {
+                scene.SetupSceneOverlay();
+                overlay.CurrentPage = Math.Clamp(_settingsReturnIntroPage, 0, overlay.TotalPages - 1);
+                overlay.ApplyPageContent();
+                overlay.ShowOverlay = true;
+                return;
+            }
+
+            scene.SetupGameOverlay();
+        }
+
+        private static void AdjustSelectedSetting(ScreenOverlayState overlay, int direction)
+        {
+            if (overlay.SettingsPanel == ScreenOverlaySettingsPanel.Audio)
+            {
+                GameState.SettingsState.AdjustAudio((AudioSettingsField)overlay.SelectedSettingsIndex, direction);
+            }
+            else if (overlay.SettingsPanel == ScreenOverlaySettingsPanel.Graphics)
+            {
+                GameState.SettingsState.AdjustGraphics((GraphicsSettingsField)overlay.SelectedSettingsIndex, direction);
+            }
+
+            GameSettingsPersistence.SaveSettings(GameState.SettingsState);
+            RefreshSettingsOverlayBody(overlay);
+        }
+
+        private static void RefreshSettingsOverlayBody(ScreenOverlayState overlay)
+        {
+            overlay.Body = BuildSettingsOverlayBody(overlay.SettingsPanel, overlay.SelectedSettingsIndex);
+        }
+
+        private static string BuildSettingsOverlayBody(ScreenOverlaySettingsPanel panel, int selectedIndex)
+        {
+            return panel == ScreenOverlaySettingsPanel.Audio
+                ? GameSettingsOverlayFormatter.BuildAudioBody(GameState.SettingsState, selectedIndex)
+                : GameSettingsOverlayFormatter.BuildGraphicsBody(GameState.SettingsState, selectedIndex);
+        }
+
+        private static int GetSettingsOptionCount(ScreenOverlaySettingsPanel panel)
+        {
+            return panel == ScreenOverlaySettingsPanel.Audio
+                ? Enum.GetValues<AudioSettingsField>().Length
+                : Enum.GetValues<GraphicsSettingsField>().Length;
+        }
+
         private static void StartPlanetLostRecoveryFade(I3dWorld world, bool resetToPlanetStart)
         {
             var overlay = GameState.ScreenOverlayState;
@@ -801,6 +933,14 @@ namespace _3DWorld.Scene
 
         private static bool IsMenuExitKey(Key key) => key == Key.X || key == Key.Escape;
         private static bool IsTutorialStartKey(Key key) => key == Key.T;
+        private static bool CanOpenSettingsOverlay(IScene scene, ScreenOverlayState overlay)
+        {
+            if (scene.SceneType == SceneTypes.Intro && overlay.ShowOverlay && overlay.Type == ScreenOverlayType.Intro)
+                return true;
+
+            return (scene.SceneType == SceneTypes.Game || scene.SceneType == SceneTypes.Simulation) &&
+                   GameState.GamePlayState.IsPaused;
+        }
 
         // -----------------------------------------------------------------
         // Shared helpers

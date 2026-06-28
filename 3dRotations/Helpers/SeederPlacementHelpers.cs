@@ -30,10 +30,10 @@ namespace _3dRotations.Helpers
             int nearCount = Math.Min(count, Math.Max(1, nearSeederCount));
             int farCount = count - nearCount;
 
-            // Default ~"half a screen" between seeders, derived from the ring layout.
+            // Default a little over half a screen between seeders, derived from the ring layout.
             // firstRingRadius scales with the scene layout, so half of it is a good
             // proxy for the on-screen footprint of two adjacent seeders.
-            float minDistanceUnscaled = minSeederDistance ?? (firstRingRadius * 0.5f);
+            float minDistanceUnscaled = minSeederDistance ?? (firstRingRadius * 0.6f);
             float scaledMinDistance = Math.Max(0f, minDistanceUnscaled) * SurfaceSetup.WorldScale;
 
             AddRing(positions, center, nearCount, firstRingRadius, random, radiusJitter, angleJitterDegrees, angleOffsetDegrees: -18f, scaledMinDistance: scaledMinDistance);
@@ -199,8 +199,7 @@ namespace _3dRotations.Helpers
             {
                 double baseAngle = angleOffset + (Math.PI * 2.0 * i / count);
 
-                Vector3 chosen = default;
-                bool hasChosen = false;
+                Vector3? chosen = null;
 
                 for (int attempt = 0; attempt < maxAttemptsPerPosition; attempt++)
                 {
@@ -208,16 +207,60 @@ namespace _3dRotations.Helpers
                     float jitteredRadius = radius + ((float)random.NextDouble() * 2f - 1f) * radiusJitter;
                     var candidate = CreatePosition(center, Math.Max(1000f, jitteredRadius) * SurfaceSetup.WorldScale, angle);
 
-                    chosen = candidate;
-                    hasChosen = true;
-
                     if (!HasPositionWithinDistance(positions, candidate, scaledMinDistance))
+                    {
+                        chosen = candidate;
                         break;
+                    }
                 }
 
-                if (hasChosen)
-                    positions.Add(chosen);
+                if (chosen == null)
+                    chosen = FindFallbackRingPosition(
+                        positions,
+                        center,
+                        radius,
+                        radiusJitter,
+                        angleOffset,
+                        i,
+                        count,
+                        scaledMinDistance);
+
+                positions.Add(chosen);
             }
+        }
+
+        private static Vector3 FindFallbackRingPosition(
+            List<Vector3> positions,
+            Vector3 center,
+            float radius,
+            float radiusJitter,
+            double angleOffset,
+            int positionIndex,
+            int ringCount,
+            float scaledMinDistance)
+        {
+            float scaledRadius = Math.Max(1000f, radius + Math.Max(0f, radiusJitter)) * SurfaceSetup.WorldScale;
+            float ringStep = Math.Max(scaledMinDistance, SurfaceSetup.tileSize * 2f);
+
+            for (int fallbackRing = 0; fallbackRing < 96; fallbackRing++)
+            {
+                int slots = Math.Max(12, ringCount * 3 + fallbackRing);
+                float fallbackRadius = scaledRadius + (fallbackRing * ringStep);
+                double ringPhase = fallbackRing * 0.173;
+
+                for (int slotOffset = 0; slotOffset < slots; slotOffset++)
+                {
+                    int slot = (positionIndex + slotOffset) % slots;
+                    double angle = angleOffset + ringPhase + (Math.PI * 2.0 * slot / slots);
+                    var candidate = CreatePosition(center, fallbackRadius, angle);
+                    if (!HasPositionWithinDistance(positions, candidate, scaledMinDistance))
+                        return candidate;
+                }
+            }
+
+            double finalAngle = angleOffset + (positionIndex * 1.61803398875);
+            float finalRadius = scaledRadius + (96 * ringStep);
+            return CreatePosition(center, finalRadius, finalAngle);
         }
 
         private static Vector3 CreatePosition(Vector3 center, float radius, double angle)

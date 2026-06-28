@@ -29,6 +29,7 @@ public class ShipWeaponAudioTests
             GlobalMapPosition = new Vector3 { x = 0f, y = 0f, z = 0f }
         };
         GameState.ShipState = new ShipState();
+        GameState.SettingsState = new GameSettingsState();
     }
 
     [TestMethod]
@@ -43,6 +44,8 @@ public class ShipWeaponAudioTests
             "Bullet audio should not start when cooldown prevents an actual shot.");
         Assert.AreEqual(0, fixture.Weapons.ActiveWeapons.Count,
             "Cooldown should prevent projectile activation.");
+        Assert.IsFalse(GetPart(fixture.Ship, "MuzzleFlash").IsVisible,
+            "Muzzle flash should only appear when a projectile is actually activated.");
     }
 
     [TestMethod]
@@ -73,6 +76,22 @@ public class ShipWeaponAudioTests
         Assert.AreEqual(AudioPlayMode.OneShot, fixture.Audio.LastMode);
         Assert.AreEqual(1, fixture.Weapons.ActiveWeapons.Count);
         Assert.AreEqual(1, GameState.GamePlayState.TotalShotsFired);
+        Assert.IsTrue(GetPart(fixture.Ship, "MuzzleFlash").IsVisible);
+        AssertPartColor(fixture.Ship, "MuzzleFlash", "fff8c8");
+    }
+
+    [TestMethod]
+    public void RightShift_WhenLowGraphics_BulletStillFiresButMuzzleFlashStaysHidden()
+    {
+        GameState.SettingsState.GraphicsQuality = GraphicsQualityPreset.Low;
+        using var fixture = CreateReadyShip(withWeaponGuides: true);
+
+        InvokeKeyDown(fixture.Controls, Keys.RShiftKey);
+
+        Assert.AreEqual(1, fixture.Audio.PlayCount);
+        Assert.AreEqual(1, fixture.Weapons.ActiveWeapons.Count);
+        Assert.AreEqual(1, GameState.GamePlayState.TotalShotsFired);
+        Assert.IsFalse(GetPart(fixture.Ship, "MuzzleFlash").IsVisible);
     }
 
     [TestMethod]
@@ -105,6 +124,8 @@ public class ShipWeaponAudioTests
         Assert.AreEqual(AudioPlayMode.OneShot, fixture.Audio.LastMode);
         Assert.AreEqual(1, fixture.Weapons.ActiveWeapons.Count);
         Assert.AreEqual(1, GameState.GamePlayState.TotalShotsFired);
+        Assert.IsTrue(GetPart(fixture.Ship, "MuzzleFlash").IsVisible);
+        AssertPartColor(fixture.Ship, "MuzzleFlash", "bfffff");
     }
 
     [TestMethod]
@@ -291,7 +312,15 @@ public class ShipWeaponAudioTests
             Rotation = new Vector3 { x = 70f, y = 0f, z = 0f },
             ImpactStatus = new ImpactStatus { ObjectName = "Ship", ObjectHealth = 100 },
             CrashBoxes = new List<List<IVector3>>(),
-            ObjectParts = new List<I3dObjectPart>(),
+            ObjectParts = new List<I3dObjectPart>
+            {
+                new _3dObjectPart
+                {
+                    PartName = "MuzzleFlash",
+                    IsVisible = false,
+                    Triangles = new List<ITriangleMeshWithColor> { CreateGuideVertex(0f, -50f, 28f) }
+                }
+            },
             Movement = controls
         };
 
@@ -316,6 +345,26 @@ public class ShipWeaponAudioTests
         }
 
         return new ShipFixture(ship, controls, weapons, audio);
+    }
+
+    private static I3dObjectPart GetPart(I3dObject ship, string partName)
+    {
+        foreach (var part in ship.ObjectParts)
+        {
+            if (part.PartName == partName)
+                return part;
+        }
+
+        Assert.Fail($"Expected part '{partName}' on ship.");
+        throw new InvalidOperationException();
+    }
+
+    private static void AssertPartColor(I3dObject ship, string partName, string color)
+    {
+        foreach (var triangle in GetPart(ship, partName).Triangles)
+        {
+            Assert.AreEqual(color, triangle.Color);
+        }
     }
 
     private static TriangleMeshWithColor CreateGuideVertex(float x, float y, float z)

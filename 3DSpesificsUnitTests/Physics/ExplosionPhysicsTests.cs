@@ -1,5 +1,7 @@
 using Domain;
 using CommonUtilities._3DHelpers;
+using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
 using GameAiAndControls.Physics;
 using static Domain._3dSpecificsImplementations;
 
@@ -8,6 +10,13 @@ namespace _3DSpesificsUnitTests.Physics;
 [TestClass]
 public class ExplosionPhysicsTests
 {
+    [TestInitialize]
+    public void Setup()
+    {
+        GameState.SettingsState = new GameSettingsState();
+        GameState.WeatherVisualState = new WeatherVisualState();
+    }
+
     [TestMethod]
     public void ExplodeObject_MarksOriginalPartsAsExplodingParts()
     {
@@ -94,6 +103,60 @@ public class ExplosionPhysicsTests
             "Render-loop rotation must not mutate the physics-owned explosion triangle between frames.");
         Assert.AreEqual(0f, v.y, 0.001f,
             "Render-loop rotation must stay isolated to the current frame copy.");
+    }
+
+    [TestMethod]
+    public void ExplodeObject_RaisesImpactFlashWhenGlowIsEnabled()
+    {
+        GameState.SettingsState.GlowEffectsEnabled = true;
+        var physics = new GameAiAndControls.Physics.Physics();
+        var obj = CreateTwoPartObject();
+
+        physics.ExplodeObject(obj, explosionForce: 260f);
+
+        Assert.IsTrue(GameState.WeatherVisualState.ImpactFlashIntensity > 0f);
+    }
+
+    [TestMethod]
+    public void ExplodeObject_DoesNotRaiseImpactFlashWhenGlowIsDisabled()
+    {
+        GameState.SettingsState.GlowEffectsEnabled = false;
+        var physics = new GameAiAndControls.Physics.Physics();
+        var obj = CreateTwoPartObject();
+
+        physics.ExplodeObject(obj, explosionForce: 260f);
+
+        Assert.AreEqual(0f, GameState.WeatherVisualState.ImpactFlashIntensity);
+    }
+
+    [TestMethod]
+    public void UpdateExplosion_AddsDebrisShimmerOutsideLowGraphics()
+    {
+        GameState.SettingsState.GraphicsQuality = GraphicsQualityPreset.Balanced;
+        var physics = new GameAiAndControls.Physics.Physics();
+        var obj = CreateTwoPartObject();
+
+        physics.ExplodeObject(obj, explosionForce: 0f);
+        physics.UpdateExplosion(obj, DateTime.Now.AddMilliseconds(-100));
+
+        var color = obj.ObjectParts[0].Triangles[0].Color;
+        Assert.IsFalse(string.Equals("ff0000", color, StringComparison.OrdinalIgnoreCase),
+            "Balanced graphics should add a subtle warm shimmer to debris while it is still exploding.");
+    }
+
+    [TestMethod]
+    public void UpdateExplosion_DisablesDebrisShimmerOnLowGraphics()
+    {
+        GameState.SettingsState.GraphicsQuality = GraphicsQualityPreset.Low;
+        var physics = new GameAiAndControls.Physics.Physics();
+        var obj = CreateTwoPartObject();
+
+        physics.ExplodeObject(obj, explosionForce: 0f);
+        physics.UpdateExplosion(obj, DateTime.Now.AddMilliseconds(-100));
+
+        var color = obj.ObjectParts[0].Triangles[0].Color;
+        Assert.IsTrue(string.Equals("ff0000", color, StringComparison.OrdinalIgnoreCase),
+            "Low graphics should keep the previous explosion color path without debris shimmer.");
     }
 
     private static _3dObject CreateTwoPartObject()

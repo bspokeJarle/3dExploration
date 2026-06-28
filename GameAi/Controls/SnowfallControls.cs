@@ -48,6 +48,8 @@ namespace GameAiAndControls.Controls
         /// Set each frame from outside based on star field opacity.
         /// </summary>
         public static float GlobalSnowOpacity { get; set; } = 1f;
+        public static int CurrentVisibleFlakeTarget => GameState.SettingsState.ScaleParticleCount(VisibleFlakeTarget);
+        public static int CurrentTargetFlakeCount => GameState.SettingsState.ScaleParticleCount(TargetFlakeCount);
 
         private readonly Random _random = new();
         private readonly WorldWeatherField _weatherField;
@@ -93,12 +95,18 @@ namespace GameAiAndControls.Controls
 
         private void EnsureFlakes(IVector3 mapPosition, float endOffsetY)
         {
-            if (_flakes.Count == TargetFlakeCount)
+            int visibleTarget = CurrentVisibleFlakeTarget;
+            int targetCount = CurrentTargetFlakeCount;
+
+            if (_flakes.Count == targetCount)
                 return;
 
             _flakes.Clear();
+            if (targetCount <= 0)
+                return;
+
             float halfVisibleSpread = _weatherField.HalfVisibleSpread;
-            for (int i = 0; i < VisibleFlakeTarget; i++)
+            for (int i = 0; i < visibleTarget; i++)
             {
                 _flakes.Add(CreateVisibleFlake(
                     mapPosition,
@@ -106,18 +114,19 @@ namespace GameAiAndControls.Controls
                     RandomRange(StartGuideYOffset, endOffsetY)));
             }
 
-            for (int i = VisibleFlakeTarget; i < TargetFlakeCount; i++)
+            for (int i = visibleTarget; i < targetCount; i++)
                 _flakes.Add(CreateReserveFlake(mapPosition));
         }
 
         private void EnsureTriangleBuffer(I3dObject theObject)
         {
             var snowflakePart = GetSnowflakePart(theObject);
-            if (snowflakePart.Triangles.Count == TargetFlakeCount)
+            int targetCount = _flakes.Count;
+            if (snowflakePart.Triangles.Count == targetCount)
                 return;
 
             snowflakePart.Triangles.Clear();
-            for (int i = 0; i < TargetFlakeCount; i++)
+            for (int i = 0; i < targetCount; i++)
                 snowflakePart.Triangles.Add(CreateSnowTriangle());
         }
 

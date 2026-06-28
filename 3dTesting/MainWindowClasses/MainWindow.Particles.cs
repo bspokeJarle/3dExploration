@@ -81,6 +81,9 @@ namespace _3dTesting.MainWindowClasses
             {
                 var particleTriangle = RotateParticle(particle.ParticleTriangle, particle.Rotation as Vector3);
 
+                if (inhabitant.ObjectOffsets == null)
+                    continue;
+
                 float particleOffsetX = inhabitant.ObjectOffsets.x + particle.Position.x;
                 float particleOffsetY = inhabitant.ObjectOffsets.y + particle.Position.y;
                 float particleOffsetZ = inhabitant.ObjectOffsets.z + particle.Position.z;
@@ -152,7 +155,7 @@ namespace _3dTesting.MainWindowClasses
 
                 if (rotatedTiles != null && rotatedTiles.Count > 0)
                 {
-                    grounded = ObjectShadowManager.TryGetSurfaceGroundPoint(
+                    grounded = SurfaceGroundProjectionHelpers.TryGetSurfaceGroundPoint(
                         rotatedTiles,
                         targetX,
                         targetZ,

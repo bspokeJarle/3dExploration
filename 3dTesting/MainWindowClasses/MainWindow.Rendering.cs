@@ -1,5 +1,6 @@
 ﻿using _3dTesting._Coordinates;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using System;
 using System.Collections.Generic;
@@ -25,10 +26,11 @@ namespace _3dTesting.Rendering
         private double averageSortMs = 0;
         private double averageDrawMs = 0;
 
-        private readonly Dictionary<(float, string), Color> colorCache = new();
+        private readonly Dictionary<(float ShadeKey, string BaseColor, GraphicsQualityPreset Quality), Color> colorCache = new();
         private readonly Dictionary<Color, SolidColorBrush> brushCache = new();
         private readonly Dictionary<Color, Pen> penCache = new();
         private readonly Dictionary<int, SolidColorBrush> backgroundBrushCache = new();
+        private readonly Dictionary<(Color Color, byte Alpha), SolidColorBrush> alphaBrushCache = new();
         private readonly Dictionary<string, string> _normalizedColorCache = new();
 
         private readonly List<StreamGeometry> geometryPool = new();
@@ -87,39 +89,43 @@ namespace _3dTesting.Rendering
                 {
                     string normalized = baseColor.ToLowerInvariant();
 
-                    var cacheKey = (roundedFactor01, normalized);
-                    if (colorCache.ContainsKey(cacheKey))
-                        continue;
-
-                    try
+                    foreach (var quality in new[] { GraphicsQualityPreset.Balanced, GraphicsQualityPreset.High, GraphicsQualityPreset.Low })
                     {
-                        // NOTE: We keep the call signature the same for now,
-                        // since you said you're aligned with renaming later.
-                        Color color = (Color)ColorConverter.ConvertFromString(
-                            Helpers.Colors.getShadeOfColorFromNormal(roundedFactor01, normalized));
+                        var cacheKey = (roundedFactor01, normalized, quality);
+                        if (colorCache.ContainsKey(cacheKey))
+                            continue;
 
-                        colorCache[cacheKey] = color;
-
-                        if (!brushCache.ContainsKey(color))
+                        try
                         {
-                            SolidColorBrush brush = new SolidColorBrush(color);
-                            brush.Freeze();
-                            brushCache[color] = brush;
-                        }
+                            // NOTE: We keep the call signature the same for now,
+                            // since you said you're aligned with renaming later.
+                            Color color = (Color)ColorConverter.ConvertFromString(
+                                Helpers.Colors.getShadeOfColorFromNormal(roundedFactor01, normalized));
+                            color = ApplyGraphicsQualityColor(color, roundedFactor01, quality);
 
-                        if (!penCache.ContainsKey(color))
+                            colorCache[cacheKey] = color;
+
+                            if (!brushCache.ContainsKey(color))
+                            {
+                                SolidColorBrush brush = new SolidColorBrush(color);
+                                brush.Freeze();
+                                brushCache[color] = brush;
+                            }
+
+                            if (!penCache.ContainsKey(color))
+                            {
+                                Pen pen = new Pen(brushCache[color], 1);
+                                pen.Freeze();
+                                penCache[color] = pen;
+                            }
+
+                            generatedCount++;
+                        }
+                        catch (Exception ex)
                         {
-                            Pen pen = new Pen(brushCache[color], 1);
-                            pen.Freeze();
-                            penCache[color] = pen;
+                            if (ShouldLog())
+                                Logger.Log($"[WorldRenderer] ⚠️ Failed to prewarm color (factor={roundedFactor01:0.00}, baseColor={baseColor}, calcZ={calculatedZ:0.00}): {ex.Message}");
                         }
-
-                        generatedCount++;
-                    }
-                    catch (Exception ex)
-                    {
-                        if (ShouldLog())
-                            Logger.Log($"[WorldRenderer] ⚠️ Failed to prewarm color (factor={roundedFactor01:0.00}, baseColor={baseColor}, calcZ={calculatedZ:0.00}): {ex.Message}");
                     }
                 }
             }
@@ -194,8 +200,7 @@ namespace _3dTesting.Rendering
                     if (ShouldUseEffectRenderingPipeline(triangle))
                     {
                         FlushBatch();
-                        DrawEffectTriangle(dc, triangle);
-                        drawCalls++;
+                        drawCalls += DrawEffectTriangle(dc, triangle);
                         batchGeometry = null;
                         batchContext = null;
                         batchBrush = null;
@@ -205,15 +210,17 @@ namespace _3dTesting.Rendering
 
                     float shadeKey = GetTriangleShadeKey(triangle);
                     string baseColor = NormalizeColorCached(triangle.Color);
+                    var quality = GetRenderQuality();
+                    var colorCacheKey = (shadeKey, baseColor, quality);
 
-                    if (!colorCache.TryGetValue((shadeKey, baseColor), out Color color))
+                    if (!colorCache.TryGetValue(colorCacheKey, out Color color))
                     {
                         if (ShouldLog()) Logger.Log($"[WorldRenderer] ⚠️ Color cache miss for key ({shadeKey}, {baseColor}). CalculatedZ:{triangle.CalculatedZ} Angle:{triangle.TriangleAngle:0.00}");
 
                         string hex = Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor);
 
-                        color = HexToColor(hex);
-                        colorCache[(shadeKey, baseColor)] = color;
+                        color = ApplyGraphicsQualityColor(HexToColor(hex), shadeKey, quality);
+                        colorCache[colorCacheKey] = color;
                         if (trackStats) colorMisses++;
                     }
                     else if (trackStats)
@@ -389,7 +396,10 @@ namespace _3dTesting.Rendering
 
         public static bool ShouldUseEffectRenderingPipeline(_2dTriangleMesh triangle)
         {
-            return triangle.UseEffectRenderingPipeline || IsDynamicEffectPartName(triangle.PartName);
+            return triangle.UseEffectRenderingPipeline ||
+                   IsDynamicEffectPartName(triangle.PartName) ||
+                   ShouldRenderEnhancedShadow(triangle.PartName) ||
+                   (GameState.SettingsState?.GlowEffectsEnabled == true && IsGlowCandidatePartName(triangle.PartName));
         }
 
         public static bool IsExplodingPartName(string? partName)
@@ -400,6 +410,31 @@ namespace _3dTesting.Rendering
         public static bool IsDynamicEffectPartName(string? partName)
         {
             return TriangleRenderPipelineMarkers.IsDynamicEffectPartName(partName);
+        }
+
+        public static bool IsGlowCandidatePartName(string? partName)
+        {
+            if (string.IsNullOrWhiteSpace(partName))
+                return false;
+
+            return partName.StartsWith("Lazer_", StringComparison.Ordinal) ||
+                   string.Equals(partName, "PowerUpBody", StringComparison.Ordinal) ||
+                   string.Equals(partName, "TravelSpeedPowerUpBody", StringComparison.Ordinal) ||
+                   string.Equals(partName, "BulletBody", StringComparison.Ordinal) ||
+                   string.Equals(partName, "MotherShipWeakSpot", StringComparison.Ordinal) ||
+                   string.Equals(partName, "FrontCannonMuzzle", StringComparison.Ordinal) ||
+                   string.Equals(partName, "MuzzleFlash", StringComparison.Ordinal) ||
+                   string.Equals(partName, "DecoyFrontPulsePanel", StringComparison.Ordinal) ||
+                   partName.StartsWith("CannonChargeRing", StringComparison.Ordinal) ||
+                   string.Equals(partName, "Particle", StringComparison.Ordinal) ||
+                   string.Equals(partName, "LightningBolts", StringComparison.Ordinal) ||
+                   string.Equals(partName, "ExplodingPart", StringComparison.Ordinal);
+        }
+
+        public static bool IsEnhancedShadowCandidatePartName(string? partName)
+        {
+            return string.Equals(partName, "Shadow", StringComparison.Ordinal) ||
+                   string.Equals(partName, "ParticleShadow", StringComparison.Ordinal);
         }
 
         public static int CountCrashBoxParts(string[] partNames)
@@ -437,22 +472,37 @@ namespace _3dTesting.Rendering
 
         private SolidColorBrush GetBackgroundBrush()
         {
-            float intensity = GameState.WeatherVisualState?.LightningFlashIntensity ?? 0f;
+            var weather = GameState.WeatherVisualState;
+            float lightning = weather?.LightningFlashIntensity ?? 0f;
+            float impact = weather?.ImpactFlashIntensity ?? 0f;
+            float intensity = Math.Max(lightning, impact);
             if (intensity <= 0.005f)
                 return Brushes.Black;
 
             int key = Math.Clamp((int)MathF.Round(intensity * 16f), 0, 16);
-            if (backgroundBrushCache.TryGetValue(key, out var brush))
+            int warmthKey = Math.Clamp((int)MathF.Round(CalculateImpactWarmth(lightning, impact) * 16f), 0, 16);
+            int cacheKey = key * 100 + warmthKey;
+            if (backgroundBrushCache.TryGetValue(cacheKey, out var brush))
                 return brush;
 
             float t = key / 16f;
-            byte red = (byte)(2 + 38 * t);
-            byte green = (byte)(4 + 56 * t);
-            byte blue = (byte)(9 + 92 * t);
+            float warmth = warmthKey / 16f;
+
+            byte lightningRed = (byte)(2 + 38 * t);
+            byte lightningGreen = (byte)(4 + 56 * t);
+            byte lightningBlue = (byte)(9 + 92 * t);
+
+            byte impactRed = (byte)(12 + 120 * t);
+            byte impactGreen = (byte)(4 + 54 * t);
+            byte impactBlue = (byte)(2 + 20 * t);
+
+            byte red = Mix(lightningRed, impactRed, warmth);
+            byte green = Mix(lightningGreen, impactGreen, warmth);
+            byte blue = Mix(lightningBlue, impactBlue, warmth);
 
             brush = new SolidColorBrush(Color.FromRgb(red, green, blue));
             brush.Freeze();
-            backgroundBrushCache[key] = brush;
+            backgroundBrushCache[cacheKey] = brush;
             return brush;
         }
 
@@ -471,9 +521,21 @@ namespace _3dTesting.Rendering
             return ReferenceEquals(currentBrush, nextBrush) && ReferenceEquals(currentPen, nextPen);
         }
 
-        private void DrawEffectTriangle(DrawingContext dc, _2dTriangleMesh triangle)
+        private int DrawEffectTriangle(DrawingContext dc, _2dTriangleMesh triangle)
         {
             Color color = GetCachedTriangleColor(triangle);
+            int drawCalls = 0;
+
+            if (ShouldRenderEnhancedShadow(triangle.PartName))
+            {
+                drawCalls += DrawSoftShadow(dc, triangle);
+            }
+
+            if (GameState.SettingsState?.GlowEffectsEnabled == true && IsGlowCandidatePartName(triangle.PartName))
+            {
+                drawCalls += DrawGlow(dc, triangle, color);
+            }
+
             SolidColorBrush brush = GetCachedBrush(color);
             Pen pen = GetCachedPen(color, brush);
             StreamGeometry geometry = GetNextGeometry();
@@ -484,19 +546,66 @@ namespace _3dTesting.Rendering
             }
 
             dc.DrawGeometry(brush, pen, geometry);
+            return drawCalls + 1;
+        }
+
+        private int DrawSoftShadow(DrawingContext dc, _2dTriangleMesh triangle)
+        {
+            DrawScaledTriangle(dc, triangle, Colors.Black, alpha: 70, scale: 1.28f);
+            return 1;
+        }
+
+        private int DrawGlow(DrawingContext dc, _2dTriangleMesh triangle, Color color)
+        {
+            Color glowColor = BoostGlowColor(color, triangle.PartName);
+            float outerScale = GetGlowScale(triangle.PartName, outer: true);
+            float innerScale = GetGlowScale(triangle.PartName, outer: false);
+
+            DrawScaledTriangle(dc, triangle, glowColor, GetGlowAlpha(triangle.PartName, outer: true), outerScale);
+            DrawScaledTriangle(dc, triangle, glowColor, GetGlowAlpha(triangle.PartName, outer: false), innerScale);
+            return 2;
+        }
+
+        private void DrawScaledTriangle(DrawingContext dc, _2dTriangleMesh triangle, Color color, byte alpha, float scale)
+        {
+            SolidColorBrush brush = GetCachedAlphaBrush(color, alpha);
+            StreamGeometry geometry = GetNextGeometry();
+
+            using (var ctx = geometry.Open())
+            {
+                AddScaledTriangleFigure(ctx, triangle, scale);
+            }
+
+            dc.DrawGeometry(brush, null, geometry);
+        }
+
+        private SolidColorBrush GetCachedAlphaBrush(Color color, byte alpha)
+        {
+            var key = (color, alpha);
+            if (alphaBrushCache.TryGetValue(key, out var brush))
+            {
+                return brush;
+            }
+
+            brush = new SolidColorBrush(Color.FromArgb(alpha, color.R, color.G, color.B));
+            brush.Freeze();
+            alphaBrushCache[key] = brush;
+            return brush;
         }
 
         private Color GetCachedTriangleColor(_2dTriangleMesh triangle)
         {
             float shadeKey = GetTriangleShadeKey(triangle);
             string baseColor = NormalizeColor(triangle.Color);
-            if (colorCache.TryGetValue((shadeKey, baseColor), out Color color))
+            var quality = GetRenderQuality();
+            var cacheKey = (shadeKey, baseColor, quality);
+            if (colorCache.TryGetValue(cacheKey, out Color color))
             {
                 return color;
             }
 
-            color = HexToColor(Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor));
-            colorCache[(shadeKey, baseColor)] = color;
+            color = ApplyGraphicsQualityColor(HexToColor(Helpers.Colors.getShadeOfColorFromNormal(shadeKey, baseColor)), shadeKey, quality);
+            colorCache[cacheKey] = color;
             return color;
         }
 
@@ -551,6 +660,27 @@ namespace _3dTesting.Rendering
             ctx.LineTo(p3, true, false);
         }
 
+        private static void AddScaledTriangleFigure(StreamGeometryContext ctx, _2dTriangleMesh triangle, float scale)
+        {
+            double centerX = (triangle.X1 + triangle.X2 + triangle.X3) / 3.0;
+            double centerY = (triangle.Y1 + triangle.Y2 + triangle.Y3) / 3.0;
+
+            var p1 = ScalePoint(triangle.X1, triangle.Y1, centerX, centerY, scale);
+            var p2 = ScalePoint(triangle.X2, triangle.Y2, centerX, centerY, scale);
+            var p3 = ScalePoint(triangle.X3, triangle.Y3, centerX, centerY, scale);
+
+            ctx.BeginFigure(p1, true, true);
+            ctx.LineTo(p2, true, false);
+            ctx.LineTo(p3, true, false);
+        }
+
+        private static Point ScalePoint(double x, double y, double centerX, double centerY, float scale)
+        {
+            return new Point(
+                centerX + (x - centerX) * scale,
+                centerY + (y - centerY) * scale);
+        }
+
         private string NormalizeColorCached(string? raw)
         {
             if (string.IsNullOrWhiteSpace(raw))
@@ -571,6 +701,115 @@ namespace _3dTesting.Rendering
             if (normalized.Length > 0 && normalized[0] == '#')
                 normalized = normalized.Substring(1);
             return normalized.ToLowerInvariant();
+        }
+
+        private static Color BoostGlowColor(Color color, string? partName)
+        {
+            float boost = string.Equals(partName, "ExplodingPart", StringComparison.Ordinal) ? 1.35f : 1.6f;
+            return Color.FromRgb(
+                ClampByte(color.R * boost + 22f),
+                ClampByte(color.G * boost + 22f),
+                ClampByte(color.B * boost + 22f));
+        }
+
+        private static byte GetGlowAlpha(string? partName, bool outer)
+        {
+            if (partName != null && partName.StartsWith("Lazer_", StringComparison.Ordinal))
+                return outer ? (byte)86 : (byte)145;
+
+            if (string.Equals(partName, "ExplodingPart", StringComparison.Ordinal))
+                return outer ? (byte)72 : (byte)122;
+
+            if (string.Equals(partName, "Particle", StringComparison.Ordinal))
+                return outer ? (byte)58 : (byte)96;
+
+            if (string.Equals(partName, "MuzzleFlash", StringComparison.Ordinal))
+                return outer ? (byte)92 : (byte)158;
+
+            if (string.Equals(partName, "LightningBolts", StringComparison.Ordinal))
+                return outer ? (byte)78 : (byte)132;
+
+            return outer ? (byte)76 : (byte)128;
+        }
+
+        private static float GetGlowScale(string? partName, bool outer)
+        {
+            if (partName != null && partName.StartsWith("Lazer_", StringComparison.Ordinal))
+                return outer ? 2.9f : 1.85f;
+
+            if (string.Equals(partName, "LightningBolts", StringComparison.Ordinal))
+                return outer ? 2.4f : 1.65f;
+
+            if (string.Equals(partName, "ExplodingPart", StringComparison.Ordinal))
+                return outer ? 1.45f : 1.22f;
+
+            if (string.Equals(partName, "Particle", StringComparison.Ordinal))
+                return outer ? 2.0f : 1.42f;
+
+            if (string.Equals(partName, "MuzzleFlash", StringComparison.Ordinal))
+                return outer ? 2.35f : 1.55f;
+
+            return outer ? 2.1f : 1.45f;
+        }
+
+        private static bool ShouldRenderEnhancedShadow(string? partName)
+        {
+            var settings = GameState.SettingsState;
+            return settings != null &&
+                   settings.GraphicsQuality == GraphicsQualityPreset.High &&
+                   settings.EnhancedShadowsEnabled &&
+                   IsEnhancedShadowCandidatePartName(partName);
+        }
+
+        private static GraphicsQualityPreset GetRenderQuality()
+        {
+            return GameState.SettingsState?.GraphicsQuality ?? GraphicsQualityPreset.Balanced;
+        }
+
+        private static Color ApplyGraphicsQualityColor(Color color, float shadeKey, GraphicsQualityPreset quality)
+        {
+            return quality switch
+            {
+                GraphicsQualityPreset.High => AdjustColor(color, brightness: 10f + shadeKey * 16f, contrast: 1.12f, saturation: 1.14f),
+                GraphicsQualityPreset.Low => AdjustColor(color, brightness: -8f, contrast: 0.9f, saturation: 0.82f),
+                _ => color
+            };
+        }
+
+        private static Color AdjustColor(Color color, float brightness, float contrast, float saturation)
+        {
+            float r = color.R;
+            float g = color.G;
+            float b = color.B;
+            float gray = r * 0.299f + g * 0.587f + b * 0.114f;
+
+            r = gray + (r - gray) * saturation;
+            g = gray + (g - gray) * saturation;
+            b = gray + (b - gray) * saturation;
+
+            r = ((r - 128f) * contrast) + 128f + brightness;
+            g = ((g - 128f) * contrast) + 128f + brightness;
+            b = ((b - 128f) * contrast) + 128f + brightness;
+
+            return Color.FromRgb(ClampByte(r), ClampByte(g), ClampByte(b));
+        }
+
+        private static float CalculateImpactWarmth(float lightning, float impact)
+        {
+            float total = lightning + impact;
+            return total <= 0.001f ? 0f : Math.Clamp(impact / total, 0f, 1f);
+        }
+
+        private static byte Mix(byte a, byte b, float t)
+        {
+            return ClampByte(a + (b - a) * Math.Clamp(t, 0f, 1f));
+        }
+
+        private static byte ClampByte(float value)
+        {
+            if (value <= 0f) return 0;
+            if (value >= 255f) return 255;
+            return (byte)value;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

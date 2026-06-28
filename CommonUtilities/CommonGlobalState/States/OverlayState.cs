@@ -11,7 +11,15 @@ namespace Domain
         Outro = 2,
         Game = 3,
         NameEntry = 4,
-        Tutorial = 5
+        Tutorial = 5,
+        Settings = 6
+    }
+
+    public enum ScreenOverlaySettingsPanel
+    {
+        None = 0,
+        Audio = 1,
+        Graphics = 2
     }
 
     public enum ScreenOverlayAnchor
@@ -71,6 +79,12 @@ namespace Domain
         public string Title { get; set; } = "";    // main heading (big)
         public string Body { get; set; } = "";     // multi-line
         public string Footer { get; set; } = "";   // CTA (press any key)
+
+        // -----------------------------
+        // Settings overlays
+        // -----------------------------
+        public ScreenOverlaySettingsPanel SettingsPanel { get; set; } = ScreenOverlaySettingsPanel.None;
+        public int SelectedSettingsIndex { get; private set; } = 0;
 
         // -----------------------------
         // Choice overlays
@@ -282,6 +296,8 @@ namespace Domain
             Title = "";
             Body = "";
             Footer = "";
+            SettingsPanel = ScreenOverlaySettingsPanel.None;
+            SelectedSettingsIndex = 0;
             ClearChoiceOptions();
 
             ShowVideoOverlay = false;
@@ -621,6 +637,57 @@ namespace Domain
             }
 
             return false;
+        }
+
+        public void SetSettingsPreset(ScreenOverlaySettingsPanel panel, string title, string body, string footer)
+        {
+            Type = ScreenOverlayType.Settings;
+            SettingsPanel = panel;
+            SelectedSettingsIndex = 0;
+            Anchor = ScreenOverlayAnchor.Center;
+            IsModal = true;
+
+            Pages.Clear();
+            CurrentPage = 0;
+            ClearChoiceOptions();
+
+            Header = panel == ScreenOverlaySettingsPanel.Audio
+                ? "RETROMESH // AUDIO CONFIG"
+                : "RETROMESH // GRAPHICS CONFIG";
+            Title = title ?? "";
+            Body = body ?? "";
+            Footer = footer ?? "";
+
+            DimStrength = 0.60f;
+            PanelFillStrength = 0.78f;
+            BorderStrength = 0.90f;
+            PanelWidthRatio = 0.68f;
+            PanelHeightRatio = 0.38f;
+            PanelYOffsetRatio = 0.00f;
+            CenterText = false;
+
+            AutoHide = false;
+            AutoHideSeconds = 0f;
+            AutoPageSeconds = 0f;
+            ShowOverlay = true;
+        }
+
+        public bool MoveSettingsSelection(int delta, int optionCount)
+        {
+            if (optionCount <= 0 || delta == 0)
+                return false;
+
+            int next = SelectedSettingsIndex + delta;
+            if (next < 0)
+                next = optionCount - 1;
+            else if (next >= optionCount)
+                next = 0;
+
+            if (next == SelectedSettingsIndex)
+                return false;
+
+            SelectedSettingsIndex = next;
+            return true;
         }
     }
 }

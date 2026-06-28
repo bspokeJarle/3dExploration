@@ -10,7 +10,8 @@ namespace _3dTesting._Coordinates
         {
             return string.Equals(partName, "ExplodingPart", StringComparison.Ordinal)
                 || string.Equals(partName, "Particle", StringComparison.Ordinal)
-                || string.Equals(partName, "ParticleShadow", StringComparison.Ordinal);
+                || string.Equals(partName, "ParticleShadow", StringComparison.Ordinal)
+                || string.Equals(partName, "MuzzleFlash", StringComparison.Ordinal);
         }
     }
 
