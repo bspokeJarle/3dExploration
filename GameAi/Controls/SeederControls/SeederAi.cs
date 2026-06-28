@@ -49,6 +49,10 @@ namespace GameAiAndControls.Controls.SeederControls
         private const int SmellRadiusScreens = 5;
         private const int RoamTiles = 10;
         private const float TargetArrivalDistance = 0.25f;
+        private const double InitialGlobalDecisionDesyncSeconds = 0.45;
+        private const double GlobalDecisionDesyncSeconds = 0.30;
+        private const double LocalRetargetDesyncSeconds = 0.22;
+        private const double StallDesyncSeconds = 0.35;
 
         // -------------------------
         // AI State (per object)
@@ -97,6 +101,9 @@ namespace GameAiAndControls.Controls.SeederControls
             if (!_aiStates.TryGetValue(objectId, out var s))
             {
                 s = new AiState();
+                long nowTicks = DateTime.Now.Ticks;
+                s.NextGlobalDecisionTicks = nowTicks + GetObjectOffsetTicks(objectId, InitialGlobalDecisionDesyncSeconds, salt: 17);
+                s.NextLocalRetargetTicks = nowTicks + GetObjectOffsetTicks(objectId, LocalRetargetDesyncSeconds, salt: 29);
                 _aiStates[objectId] = s;
             }
             return s;
@@ -125,6 +132,16 @@ namespace GameAiAndControls.Controls.SeederControls
         }
 
         private static string V2(Vector3 v) => $"({(int)v.x},{(int)v.z})";
+
+        private static long GetObjectOffsetTicks(int objectId, double maxSeconds, int salt)
+        {
+            if (maxSeconds <= 0)
+                return 0;
+
+            uint hash = unchecked((uint)((objectId * 1103515245) + (salt * 12345)));
+            double normalized = (hash % 1000) / 1000.0;
+            return (long)(normalized * maxSeconds * TimeSpan.TicksPerSecond);
+        }
 
         // -------------------------
         // New AI movement (per object state)
@@ -549,7 +566,9 @@ namespace GameAiAndControls.Controls.SeederControls
                 else
                 {
                     s.SeededAtCurrentStall = false;
-                    s.NextLocalRetargetTicks = nowTicks + (long)(SeedingStallSeconds * TimeSpan.TicksPerSecond);
+                    s.NextLocalRetargetTicks = nowTicks +
+                                               (long)(SeedingStallSeconds * TimeSpan.TicksPerSecond) +
+                                               GetObjectOffsetTicks(id, StallDesyncSeconds, salt: 67);
                     s.ParticleEmitUntilTicks = nowTicks + (long)(ParticleBurstSeconds * TimeSpan.TicksPerSecond);
                     SafeLog($"AI:LOCAL_COOLDOWN set={SeedingStallSeconds:0.00}s particles={ParticleBurstSeconds:0.00}s onScreen={isOnScreen} ObjectId:{id}");
 
@@ -586,7 +605,9 @@ namespace GameAiAndControls.Controls.SeederControls
                 return s.AuthWorldPos;
             }
 
-            s.NextGlobalDecisionTicks = nowTicks + (TimeSpan.TicksPerSecond / 2);
+            s.NextGlobalDecisionTicks = nowTicks +
+                                        (TimeSpan.TicksPerSecond / 2) +
+                                        GetObjectOffsetTicks(id, GlobalDecisionDesyncSeconds, salt: 41);
 
             // Screen indices use raw world coordinates to match the meta map.
             SeederMovementHelpers.GetScreenIndexFromWorldXZ(current, out int curSY, out int curSX);
@@ -663,7 +684,9 @@ namespace GameAiAndControls.Controls.SeederControls
                 return s.AuthWorldPos;
             }
 
-            s.NextLocalRetargetTicks = nowTicks + (long)(LocalRetargetSeconds * TimeSpan.TicksPerSecond);
+            s.NextLocalRetargetTicks = nowTicks +
+                                       (long)(LocalRetargetSeconds * TimeSpan.TicksPerSecond) +
+                                       GetObjectOffsetTicks(id, LocalRetargetDesyncSeconds, salt: 53);
 
             TerrainType GetTerrainTypeFromSurfaceData(SurfaceData sd) =>
                 GamePlayHelpers.GetTerrainType(sd.mapDepth, MapSetup.maxHeight);

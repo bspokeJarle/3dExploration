@@ -37,9 +37,9 @@ public class SeederPlacementHelpersTests
         var center = new Vector3 { x = 95100f, y = 0, z = 95200f };
 
         // Use the same defaults as Scene4/Scene7 (firstRingRadius 7500/8000) so the
-        // "~half a screen" default minSeederDistance kicks in (firstRingRadius * 0.5f).
+        // default minSeederDistance kicks in.
         const float firstRingRadius = 7500f;
-        float expectedMinDistance = firstRingRadius * 0.5f * SurfaceSetup.WorldScale;
+        float expectedMinDistance = firstRingRadius * 0.6f * SurfaceSetup.WorldScale;
 
         // Try a handful of seeds to exercise the angle/radius jitter in different ways.
         int[] seeds = { 11, 42, 1337, 4041, 7071 };
@@ -56,6 +56,29 @@ public class SeederPlacementHelpersTests
             Assert.AreEqual(23, positions.Count, $"Seed {seed} should still place every requested seeder.");
             AssertAllSeparated(positions, positions, expectedMinDistance);
         }
+    }
+
+    [TestMethod]
+    public void CreateRingSeederPositions_ExpandsDenseRingsInsteadOfAcceptingTooCloseFallbacks()
+    {
+        var center = new Vector3 { x = 95100f, y = 0, z = 95200f };
+        const float minSeederDistance = 4200f;
+
+        var positions = SeederPlacementHelpers.CreateRingSeederPositions(
+            count: 8,
+            center: center,
+            seed: 9191,
+            nearSeederCount: 8,
+            firstRingRadius: 3000f,
+            ringRadiusStep: 6000f,
+            radiusJitter: 2800f,
+            angleJitterDegrees: 45f,
+            minSeederDistance: minSeederDistance);
+
+        Assert.AreEqual(8, positions.Count);
+        AssertAllSeparated(positions, positions, minSeederDistance * SurfaceSetup.WorldScale);
+        Assert.IsTrue(positions.Any(p => DistanceXZ(center, p) > 6000f * SurfaceSetup.WorldScale),
+            "Dense rings should expand outward instead of accepting a too-close final jitter attempt.");
     }
 
     [TestMethod]

@@ -52,6 +52,7 @@ namespace GameAiAndControls.Controls.SeederControls
         private float _syncY = 0;
         private bool enableLogging = false;
         private bool isExploding = false;
+        private bool _visualPhaseInitialized = false;
         private DateTime ExplosionDeltaTime;
         private Vector3? explosionWorldPosition;
         private Vector3? explosionObjectOffsets;
@@ -114,6 +115,7 @@ namespace GameAiAndControls.Controls.SeederControls
       
             //Set parent object
             ParentObject = theObject;
+            EnsureVisualPhase(theObject);
             if (isExploding && explosionRotation != null)
             {
                 theObject.Rotation = CopyVector(explosionRotation);
@@ -342,6 +344,7 @@ namespace GameAiAndControls.Controls.SeederControls
             }
             else
             {
+                HitSparkEffects.ReleaseHitSparks(theObject, this, theObject.ImpactStatus.ObjectName);
                 theObject.ImpactStatus.HasCrashed = false;
             }
 
@@ -357,6 +360,15 @@ namespace GameAiAndControls.Controls.SeederControls
             }
 
             theObject.ObjectOffsets = CommonUtilities._3DHelpers.SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY, SyncFactorY);
+        }
+
+        private void EnsureVisualPhase(I3dObject theObject)
+        {
+            if (_visualPhaseInitialized)
+                return;
+
+            Zrotation = (theObject.ObjectId * 47) % 360;
+            _visualPhaseInitialized = true;
         }
 
         private void EnsureExplosionSyncAnchor(IVector3 syncedObjectOffsets)
@@ -414,6 +426,8 @@ namespace GameAiAndControls.Controls.SeederControls
             }
 
             isExploding = false;
+            _visualPhaseInitialized = false;
+            Zrotation = 0;
             _syncInitialized = false;
             _syncY = 0;
             _audioConfigured = false;

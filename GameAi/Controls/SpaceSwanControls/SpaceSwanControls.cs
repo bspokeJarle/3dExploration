@@ -215,6 +215,7 @@ namespace GameAiAndControls.Controls.SpaceSwanControls
                     z = theObject.WorldPosition.z
                 };
             }
+            HitSparkEffects.MoveHitSparks(theObject);
             SyncToOriginal(theObject);
 
             return theObject;
@@ -231,6 +232,7 @@ namespace GameAiAndControls.Controls.SpaceSwanControls
 
             if (theObject.ImpactStatus.ObjectHealth > 0)
             {
+                HitSparkEffects.ReleaseHitSparks(theObject, this, theObject.ImpactStatus.ObjectName);
                 theObject.ImpactStatus.HasCrashed = false;
                 return;
             }

@@ -1,5 +1,6 @@
 ﻿using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using CommonUtilities.GamePlayHelpers;
 using CommonUtilities.Persistence;
@@ -45,12 +46,28 @@ namespace GameAiAndControls.Controls
         private static readonly Random _flickerRng = new();
         private static readonly Random _emitterRng = new();
         private const float EngineFlickerAmount = 0.10f;
+        private const float BalancedThrustParticleCapMultiplier = 1.2f;
+        private const int HighThrustParticleCap = 145;
+        private const int HighThrustParticleMaxCap = 220;
+        private const long DefaultThrustParticleVariedStartMaxTicks = 500_000;
+        private const int HighThrustBurstMaxParticlesPerEmission = 14;
+        private const long HighThrustParticleVariedStartMaxTicks = 1_250_000;
+        private const float ThrustBurstTravelBoostAmount = 0.06f;
+        private const float ThrustBurstTravelBoostSeconds = 0.28f;
 
         // Cannon recoil animation state
         private float _cannonRecoilOffset = 0f;
         private float _cannonRecoilReturnSpeed = 0f;
+        private float _muzzleFlashSecondsLeft = 0f;
+        private float _thrustBurstBoostSecondsLeft = 0f;
+        private bool _thrustBurstBoostArmed = true;
+        private string _muzzleFlashColor = BulletMuzzleFlashColor;
         private const float CannonRecoilDistance = 20f;
         private const float CannonRecoilReturnFraction = 0.6f;
+        private const string MuzzleFlashPartName = "MuzzleFlash";
+        private const float MuzzleFlashDurationSeconds = 0.08f;
+        private const string BulletMuzzleFlashColor = "fff8c8";
+        private const string LazerMuzzleFlashColor = "bfffff";
 
         // Audio references are initialized lazily from ConfigureAudio.
         private IAudioPlayer? _audio;
@@ -313,6 +330,8 @@ namespace GameAiAndControls.Controls
                 Thrust = 0;
                 Physics.ThrustEffect = 0f;
                 Physics.VerticalLiftFactor = 0f;
+                ResetThrustParticleStyle();
+                ResetThrustBurstBoost();
 
                 // Stop the rocket loop if it is still playing.
                 if (_rocketInstance != null)
@@ -410,6 +429,8 @@ namespace GameAiAndControls.Controls
                 Thrust = 0;
                 Physics.ThrustEffect = 0f;
                 Physics.VerticalLiftFactor = 0f;
+                ResetThrustParticleStyle();
+                ResetThrustBurstBoost();
 
                 if (_rocketInstance != null)
                 {
@@ -548,6 +569,9 @@ namespace GameAiAndControls.Controls
             Thrust = 0f;
             Physics.ThrustEffect = 0f;
             Physics.VerticalLiftFactor = 0f;
+            ResetThrustParticleStyle();
+            ResetThrustBurstBoost();
+            HideMuzzleFlash(ParentObject);
 
             if (_rocketInstance != null)
             {
@@ -649,6 +673,8 @@ namespace GameAiAndControls.Controls
             bool weaponWasActivated = ParentObject.WeaponSystems.ActiveWeapons.Count > activeWeaponsBefore;
             if (!weaponWasActivated)
                 return false;
+
+            TriggerMuzzleFlash(selectedWeapon);
 
             if (selectedWeapon == WeaponType.Bullet)
                 PlayBulletOneShot();
@@ -786,6 +812,7 @@ namespace GameAiAndControls.Controls
 
             if (totalThrust == 0)
             {
+                _thrustBurstBoostArmed = true;
                 ParentObject?.Particles?.ReleaseParticles(
                     GuideCoordinates,
                     StartCoordinates,
@@ -793,8 +820,11 @@ namespace GameAiAndControls.Controls
                     this,
                     0,
                     false);
+                ResetThrustParticleStyle();
                 return;
             }
+
+            StartThrustBurstBoostIfNeeded();
 
             var (vertical, forward) = GetThrustComponents();
             bool hasRear = forward > 0.01f && RearStartCoordinates != null && RearGuideCoordinates != null;
@@ -815,6 +845,8 @@ namespace GameAiAndControls.Controls
                 }
             }
 
+            ConfigureThrustParticleStyle();
+
             ParentObject?.Particles?.ReleaseParticles(
                 emitGuide,
                 emitStart,
@@ -822,6 +854,99 @@ namespace GameAiAndControls.Controls
                 this,
                 totalThrust,
                 false);
+        }
+
+        private void ConfigureThrustParticleStyle()
+        {
+            if (ParentObject?.Particles is not ParticlesAI particles)
+                return;
+
+            if (!ShouldUseEnhancedThrustParticles())
+            {
+                ResetThrustParticleStyle();
+                if (ShouldUseBalancedThrustParticleBoost())
+                    particles.DynamicCapMultiplier = BalancedThrustParticleCapMultiplier;
+                return;
+            }
+
+            particles.DynamicCapMultiplier = 1.0f;
+            particles.MaxParticlesOverride = GetThrustParticleCap();
+            particles.BurstMaxParticlesPerEmission = HighThrustBurstMaxParticlesPerEmission;
+            particles.VariedStartMaxTicks = HighThrustParticleVariedStartMaxTicks;
+            particles.LifeMultiplier = 0.72f;
+            particles.SizeMultiplier = 1.55f;
+            particles.ThrottleDurationFactor = 0.2f;
+            particles.GravityStrength = 34f;
+            particles.ColorStartOverride = "fff8c8";
+            particles.ColorMidOverride = "ff8a20";
+            particles.ColorEndOverride = "5a1800";
+        }
+
+        private void ResetThrustParticleStyle()
+        {
+            if (ParentObject?.Particles is not ParticlesAI particles)
+                return;
+
+            particles.MaxParticlesOverride = 0;
+            particles.DynamicCapMultiplier = 1.0f;
+            particles.BurstMaxParticlesPerEmission = 0;
+            particles.VariedStartMaxTicks = DefaultThrustParticleVariedStartMaxTicks;
+            particles.LifeMultiplier = 1.0f;
+            particles.SizeMultiplier = 1.0f;
+            particles.ThrottleDurationFactor = 0.3f;
+            particles.GravityStrength = 50f;
+            particles.ColorStartOverride = null;
+            particles.ColorMidOverride = null;
+            particles.ColorEndOverride = null;
+        }
+
+        private void StartThrustBurstBoostIfNeeded()
+        {
+            if (!_thrustBurstBoostArmed)
+                return;
+
+            _thrustBurstBoostSecondsLeft = ThrustBurstTravelBoostSeconds;
+            _thrustBurstBoostArmed = false;
+        }
+
+        private void ResetThrustBurstBoost()
+        {
+            _thrustBurstBoostSecondsLeft = 0f;
+            _thrustBurstBoostArmed = true;
+        }
+
+        private float ConsumeThrustBurstTravelBoost(float deltaTime)
+        {
+            if (_thrustBurstBoostSecondsLeft <= 0f)
+                return 1f;
+
+            float progress = Math.Clamp(_thrustBurstBoostSecondsLeft / ThrustBurstTravelBoostSeconds, 0f, 1f);
+            float multiplier = 1f + ThrustBurstTravelBoostAmount * progress;
+            _thrustBurstBoostSecondsLeft = MathF.Max(0f, _thrustBurstBoostSecondsLeft - MathF.Max(0f, deltaTime));
+            return multiplier;
+        }
+
+        private static int GetThrustParticleCap()
+        {
+            var settings = GameState.SettingsState;
+            if (settings?.GraphicsQuality != GraphicsQualityPreset.High)
+                return 0;
+
+            return Math.Clamp(
+                (int)MathF.Round(HighThrustParticleCap * MathF.Max(1f, settings.ParticleDensityMultiplier)),
+                HighThrustParticleCap,
+                HighThrustParticleMaxCap);
+        }
+
+        private static bool ShouldUseEnhancedThrustParticles()
+        {
+            return GameState.SettingsState?.GraphicsQuality == GraphicsQualityPreset.High;
+        }
+
+        private static bool ShouldUseBalancedThrustParticleBoost()
+        {
+            var quality = GameState.SettingsState?.GraphicsQuality ?? GraphicsQualityPreset.Balanced;
+            return quality == GraphicsQualityPreset.Balanced;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -989,6 +1114,7 @@ namespace GameAiAndControls.Controls
             {
                 ApplyLocalTiltToMesh(tilt, theObject);
                 ApplyCannonRecoil(theObject);
+                UpdateMuzzleFlash(theObject, deltaTime);
                 UpdateEngineColors(theObject);
             }
 
@@ -1238,6 +1364,7 @@ namespace GameAiAndControls.Controls
 
             // Release some particles at the explosion, set fixed thrust level.
             const int explosionParticleThrust = (int)MaxThrust;
+            ResetThrustParticleStyle();
             ParentObject?.Particles?.ReleaseParticles(
                 GuideCoordinates,
                 StartCoordinates,
@@ -1382,6 +1509,9 @@ namespace GameAiAndControls.Controls
             Physics.FallVelocity = 0f;
             Physics.ThrustEffect = 0f;
             Physics.VerticalLiftFactor = 0f;
+            ResetThrustParticleStyle();
+            ResetThrustBurstBoost();
+            HideMuzzleFlash(ParentObject);
         }
 
         private void ResetSurfaceBounceState()
@@ -1461,11 +1591,74 @@ namespace GameAiAndControls.Controls
             }
         }
 
+        private void TriggerMuzzleFlash(WeaponType selectedWeapon)
+        {
+            if (ParentObject == null)
+                return;
+
+            if (selectedWeapon != WeaponType.Bullet && selectedWeapon != WeaponType.Lazer)
+                return;
+
+            if (!ShouldUseMuzzleFlash())
+            {
+                HideMuzzleFlash(ParentObject);
+                return;
+            }
+
+            _muzzleFlashSecondsLeft = selectedWeapon == WeaponType.Lazer
+                ? MuzzleFlashDurationSeconds * 1.25f
+                : MuzzleFlashDurationSeconds;
+
+            _muzzleFlashColor = selectedWeapon == WeaponType.Lazer
+                ? LazerMuzzleFlashColor
+                : BulletMuzzleFlashColor;
+
+            SetPartColor(ParentObject, MuzzleFlashPartName, _muzzleFlashColor);
+            SetPartVisibility(ParentObject, MuzzleFlashPartName, true);
+        }
+
+        private void UpdateMuzzleFlash(I3dObject theObject, float deltaTime)
+        {
+            if (!ShouldUseMuzzleFlash())
+            {
+                HideMuzzleFlash(theObject);
+                return;
+            }
+
+            if (_muzzleFlashSecondsLeft <= 0f)
+            {
+                SetPartVisibility(theObject, MuzzleFlashPartName, false);
+                return;
+            }
+
+            _muzzleFlashSecondsLeft -= MathF.Max(0f, deltaTime);
+            if (_muzzleFlashSecondsLeft <= 0f)
+            {
+                HideMuzzleFlash(theObject);
+                return;
+            }
+
+            SetPartColor(theObject, MuzzleFlashPartName, _muzzleFlashColor);
+            SetPartVisibility(theObject, MuzzleFlashPartName, true);
+        }
+
+        private void HideMuzzleFlash(I3dObject? theObject)
+        {
+            _muzzleFlashSecondsLeft = 0f;
+            SetPartVisibility(theObject, MuzzleFlashPartName, false);
+        }
+
+        private static bool ShouldUseMuzzleFlash()
+        {
+            return GameState.SettingsState?.GraphicsQuality != GraphicsQualityPreset.Low;
+        }
+
         public void HandleThrust(float deltaTime)
         {
             float verticalInertia = Physics.CalculateThrustForces(Thrust, tilt, rotationZ, deltaTime);
             float frameScale = GameState.FrameScale90;
-            float travelSpeedMultiplier = GameState.GamePlayState.TravelSpeedMultiplier;
+            float travelSpeedMultiplier = GameState.GamePlayState.TravelSpeedMultiplier *
+                                          ConsumeThrustBurstTravelBoost(deltaTime);
 
             float maxX = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
                          (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
@@ -1615,6 +1808,21 @@ namespace GameAiAndControls.Controls
                     tri.Color = color;
                     part.Triangles[i] = tri;
                 }
+                break;
+            }
+        }
+
+        private static void SetPartVisibility(I3dObject? theObject, string partName, bool isVisible)
+        {
+            if (theObject == null)
+                return;
+
+            foreach (var part in theObject.ObjectParts)
+            {
+                if (part.PartName != partName)
+                    continue;
+
+                part.IsVisible = isVisible;
                 break;
             }
         }

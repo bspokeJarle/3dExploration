@@ -2,6 +2,9 @@ using CommonUtilities.CommonGlobalState;
 using CommonUtilities.CommonGlobalState.States;
 using CommonUtilities.CommonSetup;
 using Domain;
+using GameAiAndControls.Controls;
+using System.Reflection;
+using _3dTesting.Helpers;
 using static Domain._3dSpecificsImplementations;
 
 namespace _3DSpesificsUnitTests.Physics;
@@ -69,11 +72,12 @@ public class ParticleSurfaceBounceTests
             {
                 if (applyPenetrationCorrection)
                 {
-                    // Mirror the production fix: undo the last frame's downward step
-                    float preBounceVelY = physics.Velocity.y;
-                    posY += preBounceVelY;
+                    // Mirror production: undo the actual frame-scaled movement
+                    // that pushed the particle into the box.
+                    float frameScale = dt * GameState.GameplayBaselineFps;
+                    posY += physics.Velocity.y * frameScale;
                 }
-                float penetration = posY - boxTopY;
+                float penetration = Math.Max(0f, posY - boxTopY);
                 return (posY, penetration, frame);
             }
         }
@@ -207,8 +211,8 @@ public class ParticleSurfaceBounceTests
             if (wentAbove && posY >= boxMinY && posY <= boxMaxY)
             {
                 // Apply penetration correction (mirror production fix)
-                float preBounceVelY = physics.Velocity.y;
-                posY += preBounceVelY;
+                float frameScale = dt * GameState.GameplayBaselineFps;
+                posY += physics.Velocity.y * frameScale;
 
                 float penetration = posY - boxMinY;
                 if (penetration < 0) penetration = 0;
@@ -284,8 +288,8 @@ public class ParticleSurfaceBounceTests
             if (aboveBox && posY >= boxMinY && posY <= boxMaxY)
             {
                 // Apply penetration correction (mirror production fix)
-                float preBounceVelY = physics.Velocity.y;
-                posY += preBounceVelY;
+                float frameScale = dt * GameState.GameplayBaselineFps;
+                posY += physics.Velocity.y * frameScale;
 
                 float penetration = posY - boxMinY;
                 if (penetration < 0) penetration = 0;
@@ -336,5 +340,105 @@ public class ParticleSurfaceBounceTests
 
         Assert.IsTrue(correctedPen < 5f,
             $"Corrected penetration ({correctedPen:F2}) should be under 5 units for realistic bounce");
+    }
+
+    [TestMethod]
+    public void ParticleCollisionRewind_UsesFrameScaledVelocityOnAllAxes()
+    {
+        var particle = new Particle
+        {
+            Position = new Vector3 { x = 10f, y = 400f, z = 20f },
+            Physics = new GameAiAndControls.Physics.Physics
+            {
+                Velocity = new Vector3 { x = 2f, y = -8f, z = 3f },
+                BounceCooldownFrames = 0
+            }
+        };
+
+        InvokeRewindParticleAlongLastMove(particle, deltaTime: 1f / 60f, frameScale: 1.5f);
+
+        Assert.AreEqual(13f, particle.Position.x, 0.001f);
+        Assert.AreEqual(388f, particle.Position.y, 0.001f);
+        Assert.AreEqual(24.5f, particle.Position.z, 0.001f);
+    }
+
+    [TestMethod]
+    public void ParticleImpactDirection_UsesVisibleParticleMotionBeforeAabbFallback()
+    {
+        var fallingParticle = new Particle
+        {
+            Physics = new GameAiAndControls.Physics.Physics
+            {
+                Velocity = new Vector3 { x = 0.2f, y = -8f, z = 0.1f }
+            }
+        };
+
+        var upwardParticle = new Particle
+        {
+            Physics = new GameAiAndControls.Physics.Physics
+            {
+                Velocity = new Vector3 { x = 0.2f, y = 8f, z = 0.1f }
+            }
+        };
+
+        Assert.AreEqual(
+            ImpactDirection.Top,
+            InvokeEstimateParticleDirectionFromVelocity(fallingParticle, ImpactDirection.Left),
+            "A visibly falling particle should bounce from the top even if AABB penetration estimates a side.");
+
+        Assert.AreEqual(
+            ImpactDirection.Bottom,
+            InvokeEstimateParticleDirectionFromVelocity(upwardParticle, ImpactDirection.Left),
+            "A visibly upward particle should bounce from the underside.");
+    }
+
+    [TestMethod]
+    public void ParticleBounceDirection_SurfaceHitUsesTopEvenWithSidePenetration()
+    {
+        var particle = new Particle
+        {
+            ImpactStatus = new ImpactStatus
+            {
+                ObjectName = "Surface",
+                ImpactDirection = ImpactDirection.Left
+            }
+        };
+
+        Assert.AreEqual(
+            ImpactDirection.Top,
+            InvokeResolveParticleBounceDirection(particle),
+            "Surface particles should bounce upward instead of reversing sideways because of AABB side penetration.");
+    }
+
+    private static void InvokeRewindParticleAlongLastMove(Particle particle, float deltaTime, float frameScale)
+    {
+        var method = typeof(ParticlesAI).GetMethod(
+            "RewindParticleAlongLastMove",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.IsNotNull(method);
+        method!.Invoke(null, new object[] { particle, deltaTime, frameScale });
+    }
+
+    private static ImpactDirection InvokeEstimateParticleDirectionFromVelocity(
+        Particle particle,
+        ImpactDirection fallback)
+    {
+        var method = typeof(CrashDetection).GetMethod(
+            "EstimateParticleDirectionFromVelocity",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.IsNotNull(method);
+        return (ImpactDirection)method!.Invoke(null, new object[] { particle, fallback })!;
+    }
+
+    private static ImpactDirection? InvokeResolveParticleBounceDirection(Particle particle)
+    {
+        var method = typeof(ParticlesAI).GetMethod(
+            "ResolveParticleBounceDirection",
+            BindingFlags.NonPublic | BindingFlags.Static);
+
+        Assert.IsNotNull(method);
+        return (ImpactDirection?)method!.Invoke(null, new object[] { particle });
     }
 }

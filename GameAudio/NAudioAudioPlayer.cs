@@ -1,4 +1,5 @@
 ﻿using CommonUtilities.CommonSetup;
+using CommonUtilities.CommonGlobalState;
 using Domain;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
@@ -102,6 +103,7 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
         float baseVolume = definition.Settings.Volume;
         if (options?.VolumeOverride is { } volOverride)
             baseVolume = volOverride;
+        baseVolume = ApplyUserSettingsVolume(definition, baseVolume);
 
         var volumeProvider = new VolumeSampleProvider(sample)
         {
@@ -205,6 +207,30 @@ public sealed class NAudioAudioPlayer : IAudioPlayer, IDisposable
         // The current implementation always returns NAudioAudioInstance.
         _musicInstance = instance as NAudioAudioInstance;
     }
+
+    private static float ApplyUserSettingsVolume(SoundDefinition definition, float baseVolume)
+    {
+        var settings = GameState.SettingsState;
+        if (settings == null)
+            return baseVolume;
+
+        if (IsMusicSound(definition))
+            return baseVolume;
+
+        return settings.IsVoiceSound(definition.Id, definition.Usage)
+            ? settings.ApplyVoiceVolume(baseVolume)
+            : settings.ApplyEffectsVolume(baseVolume);
+    }
+
+    private static bool IsMusicSound(SoundDefinition definition)
+    {
+        return StartsWithIgnoreCase(definition.Id, "music_") ||
+               StartsWithIgnoreCase(definition.Usage, "Music");
+    }
+
+    private static bool StartsWithIgnoreCase(string? value, string prefix) =>
+        !string.IsNullOrWhiteSpace(value) &&
+        value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Stops the currently playing music, if any.

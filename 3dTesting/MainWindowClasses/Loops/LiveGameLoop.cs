@@ -67,6 +67,7 @@ namespace _3dTesting.MainWindowClasses.Loops
         private SoundDefinition MusicDef { get; set; } = null;
         private bool MusicIsPlaying { get; set; } = false;
         private string CurrentSceneMusicId { get; set; } = string.Empty;
+        private long AppliedAudioSettingsVersion { get; set; } = -1;
         private const string BiomassCriticalWarningSoundId = "biomass_critical_warning";
         private const string BiomassAbortWarningSoundId = "biomass_abort_warning";
         private bool _biomassCriticalWarningPlayed = false;
@@ -119,6 +120,7 @@ namespace _3dTesting.MainWindowClasses.Loops
         {
             frameTimer.Restart();
             FrameCounter++;
+            GameState.WeatherVisualState.DecayImpactFlash(3.2f * GameState.ClampedDeltaTime);
             EnsureExplosionCleanupSubscription(world.EventBus);
             bool logPhaseTiming = Logger.ShouldLog(EnableCpuHeadroomLogging) && (FrameCounter % PerfLogInterval == 0);
             long phaseTicks = logPhaseTiming ? Stopwatch.GetTimestamp() : 0;
@@ -187,7 +189,7 @@ namespace _3dTesting.MainWindowClasses.Loops
             {
                 StarFieldHandler.GenerateStarfield();
                 if (StarFieldHandler.HasStars()) deepCopiedWorld.AddRange(StarFieldHandler.GetStars());
-                float weatherOpacity = 1f - StarFieldHandler.PoolOpacity;
+                float weatherOpacity = GetWeatherEffectsOpacity(1f - StarFieldHandler.PoolOpacity);
                 SnowfallControls.GlobalSnowOpacity = weatherOpacity;
                 RainfallControls.GlobalRainOpacity = weatherOpacity;
                 SandDriftControls.GlobalSandOpacity = weatherOpacity;
@@ -273,7 +275,8 @@ namespace _3dTesting.MainWindowClasses.Loops
 
                 particleManager.HandleParticles(inhabitant, particleObjectList);
                 weaponsManager.HandleWeapons(inhabitant, weaponObjectList);
-                objectShadowManager.HandleObjectShadow(inhabitant, shadowObjectList);
+                if (GameState.SettingsState.EnhancedShadowsEnabled)
+                    objectShadowManager.HandleObjectShadow(inhabitant, shadowObjectList);
                 renderedList.Add(inhabitant);
 
             }
@@ -332,10 +335,11 @@ namespace _3dTesting.MainWindowClasses.Loops
                 publishedExplosionIds.Clear();
                 StarFieldHandler.ClearStars();
                 StarFieldHandler = null;
-                SnowfallControls.GlobalSnowOpacity = 1f;
-                RainfallControls.GlobalRainOpacity = 1f;
-                SandDriftControls.GlobalSandOpacity = 1f;
-                LeafDriftControls.GlobalLeafOpacity = 1f;
+                float weatherOpacity = GetWeatherEffectsOpacity(1f);
+                SnowfallControls.GlobalSnowOpacity = weatherOpacity;
+                RainfallControls.GlobalRainOpacity = weatherOpacity;
+                SandDriftControls.GlobalSandOpacity = weatherOpacity;
+                LeafDriftControls.GlobalLeafOpacity = weatherOpacity;
 
                 if (_victorySequenceStarted && !_deathSequenceStarted)
                     world.SceneHandler.NextScene(world);
@@ -1025,9 +1029,24 @@ namespace _3dTesting.MainWindowClasses.Loops
 
             if (!MusicIsPlaying && MusicDef != null)
             {
-                audioPlayer.PlayMusic(MusicDef, DefaultMusicVolume);
+                audioPlayer.PlayMusic(MusicDef, GameState.SettingsState.ApplyMusicVolume(DefaultMusicVolume));
                 MusicIsPlaying = true;
+                AppliedAudioSettingsVersion = GameState.SettingsState.Version;
             }
+            else if (MusicIsPlaying && AppliedAudioSettingsVersion != GameState.SettingsState.Version)
+            {
+                audioPlayer.SetMusicVolume(GameState.SettingsState.ApplyMusicVolume(DefaultMusicVolume));
+                AppliedAudioSettingsVersion = GameState.SettingsState.Version;
+            }
+        }
+
+        private static float GetWeatherEffectsOpacity(float baseOpacity)
+        {
+            var settings = GameState.SettingsState;
+            if (settings == null || !settings.EnhancedWeatherEnabled)
+                return 0f;
+
+            return Math.Clamp(baseOpacity * settings.ParticleDensityMultiplier, 0f, 1f);
         }
 
         private void HandleBiomassWarnings()

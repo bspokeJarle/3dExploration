@@ -393,6 +393,7 @@ namespace GameAiAndControls.Controls.MotherShipMediumControls
 
             if (theObject.ImpactStatus.ObjectHealth > 0)
             {
+                HitSparkEffects.ReleaseHitSparks(theObject, this, theObject.ImpactStatus.ObjectName);
                 PlayThudSound(theObject);
                 StartFlash(theObject);
                 theObject.ImpactStatus.HasCrashed = false;

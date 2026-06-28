@@ -34,14 +34,14 @@ namespace _3dTesting.MainWindowClasses
         // =====================================================================
         public static string ShadowColor = "000000";
 
-        public static float StaticOffsetX = -30f;
-        public static float StaticOffsetY = -40f;
-        public static float StaticOffsetZ = 0f;
+        public static float StaticOffsetX = SurfaceGroundProjectionHelpers.DefaultShadowStaticOffsetX;
+        public static float StaticOffsetY = SurfaceGroundProjectionHelpers.DefaultShadowStaticOffsetY;
+        public static float StaticOffsetZ = SurfaceGroundProjectionHelpers.DefaultShadowStaticOffsetZ;
 
-        public static float BaseScale = 1.0f;
+        public static float BaseScale = SurfaceGroundProjectionHelpers.DefaultShadowBaseScale;
         public static float FreeFlyingShadowScale = 1.8f;
-        public static float AltitudeShrinkFactor = 0.002f;
-        public static float MinScale = 0.2f;
+        public static float AltitudeShrinkFactor = SurfaceGroundProjectionHelpers.DefaultShadowAltitudeShrinkFactor;
+        public static float MinScale = SurfaceGroundProjectionHelpers.DefaultShadowMinScale;
 
         public static float TowerShadowSurfaceLift = 10f;
         public static float UniversalShadowLift = 10f;
@@ -56,7 +56,7 @@ namespace _3dTesting.MainWindowClasses
         // Per-vertex projection stretch. Base silhouette verts (z=0) stay put;
         // upper verts (z>0) are displaced along the light direction by
         // slope * boost. Larger = longer cast shadow.
-        public static float VertexStretchBoost = 1.2f;
+        public static float VertexStretchBoost = SurfaceGroundProjectionHelpers.DefaultShadowVertexStretchBoost;
 
         // Global directional light (a "sun") used for proper planar projection of the
         // pre-built Shadow silhouette onto the ground plane (surface-local z = 0).
@@ -87,8 +87,8 @@ namespace _3dTesting.MainWindowClasses
         // We want the tip of a tall object's shadow to fall BEHIND and slightly to
         // one side — i.e. negative Y and a small X component. That means the light
         // source is above, behind the camera's shoulder, shining forward and down.
-        public static float ShadowSlopeX = -0.15f; // shadow leans slightly to the left
-        public static float ShadowSlopeY = -0.55f; // shadow falls behind (away from camera)
+        public static float ShadowSlopeX = SurfaceGroundProjectionHelpers.DefaultShadowSlopeX; // shadow leans slightly to the left
+        public static float ShadowSlopeY = SurfaceGroundProjectionHelpers.DefaultShadowSlopeY; // shadow falls behind (away from camera)
 
         // Surface tilt. The ground plane is rotated X=70° (so tiles lean toward the
         // camera). Shadow triangles are built in surface-local space using tile
@@ -171,24 +171,13 @@ namespace _3dTesting.MainWindowClasses
 
             if (isShip)
             {
-                // Frontmost tile (smallest |tileCenterY|)
-                float platformFrontTileY = 0f;
-                float platformFrontTileZ = 0f;
-                float minAbsY = float.MaxValue;
-                for (int i = 0; i < rotatedTiles.Count; i++)
-                {
-                    var tile = rotatedTiles[i];
-                    float tileCenterY = (tile.vert1.y + tile.vert2.y + tile.vert3.y) / 3f;
-                    float absY = MathF.Abs(tileCenterY);
-                    if (absY < minAbsY)
-                    {
-                        minAbsY = absY;
-                        platformFrontTileY = tileCenterY;
-                        platformFrontTileZ = (tile.vert1.z + tile.vert2.z + tile.vert3.z) / 3f;
-                    }
-                }
-                shadowBaseY = platformFrontTileY;
-                shadowBaseZ = platformFrontTileZ;
+                if (!SurfaceGroundProjectionHelpers.TryGetFrontmostSurfaceGroundPoint(
+                        rotatedTiles,
+                        targetX,
+                        out shadowBaseX,
+                        out shadowBaseY,
+                        out shadowBaseZ))
+                    return;
             }
             else if (isTowerLike)
             {
@@ -418,77 +407,13 @@ namespace _3dTesting.MainWindowClasses
             out float groundY,
             out float groundZ)
         {
-            groundX = targetX;
-            groundY = 0f;
-            groundZ = targetZ;
-
-            if (rotatedTiles == null || rotatedTiles.Count == 0)
-                return false;
-
-            float fallbackY = 0f;
-            float bestDistSq = float.MaxValue;
-            bool hasFallback = false;
-
-            for (int i = 0; i < rotatedTiles.Count; i++)
-            {
-                var tile = rotatedTiles[i];
-                if (TryInterpolateTriangleY(tile, targetX, targetZ, out float interpolatedY))
-                {
-                    groundY = interpolatedY;
-                    return true;
-                }
-
-                float tileCenterX = (tile.vert1.x + tile.vert2.x + tile.vert3.x) / 3f;
-                float tileCenterZ = (tile.vert1.z + tile.vert2.z + tile.vert3.z) / 3f;
-                float dx = tileCenterX - targetX;
-                float dz = tileCenterZ - targetZ;
-                float d2 = dx * dx + dz * dz;
-                if (d2 < bestDistSq)
-                {
-                    bestDistSq = d2;
-                    fallbackY = (tile.vert1.y + tile.vert2.y + tile.vert3.y) / 3f;
-                    hasFallback = true;
-                }
-            }
-
-            if (!hasFallback)
-                return false;
-
-            groundY = fallbackY;
-            return true;
-        }
-
-        private static bool TryInterpolateTriangleY(
-            ITriangleMeshWithColor triangle,
-            float targetX,
-            float targetZ,
-            out float groundY)
-        {
-            groundY = 0f;
-            const float epsilon = 0.001f;
-
-            float x1 = triangle.vert1.x;
-            float z1 = triangle.vert1.z;
-            float x2 = triangle.vert2.x;
-            float z2 = triangle.vert2.z;
-            float x3 = triangle.vert3.x;
-            float z3 = triangle.vert3.z;
-
-            float denominator = ((z2 - z3) * (x1 - x3)) + ((x3 - x2) * (z1 - z3));
-            if (MathF.Abs(denominator) < 0.0001f)
-                return false;
-
-            float weight1 = (((z2 - z3) * (targetX - x3)) + ((x3 - x2) * (targetZ - z3))) / denominator;
-            float weight2 = (((z3 - z1) * (targetX - x3)) + ((x1 - x3) * (targetZ - z3))) / denominator;
-            float weight3 = 1f - weight1 - weight2;
-
-            if (weight1 < -epsilon || weight2 < -epsilon || weight3 < -epsilon)
-                return false;
-
-            groundY = (weight1 * triangle.vert1.y)
-                + (weight2 * triangle.vert2.y)
-                + (weight3 * triangle.vert3.y);
-            return true;
+            return SurfaceGroundProjectionHelpers.TryGetSurfaceGroundPoint(
+                rotatedTiles,
+                targetX,
+                targetZ,
+                out groundX,
+                out groundY,
+                out groundZ);
         }
     }
 }

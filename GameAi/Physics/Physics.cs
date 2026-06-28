@@ -4,6 +4,7 @@ using System.Runtime.CompilerServices;
 using System.Linq;
 using CommonUtilities._3DHelpers;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
 using Domain;
 using GameAiAndControls.Helpers;
 using static Domain._3dSpecificsImplementations;
@@ -16,6 +17,9 @@ namespace GameAiAndControls.Physics
     {
         private bool LocalEnableLogging = false;
         private const float DEG2RAD = MathF.PI / 180f;
+        private const string DebrisShimmerColor = "fff2b8";
+        private const float BalancedDebrisShimmerStrength = 0.16f;
+        private const float HighDebrisShimmerStrength = 0.30f;
 
         // ── General physics ──────────────────────────────────────────
         public float Mass { get; set; } = 1.0f;
@@ -389,6 +393,7 @@ namespace GameAiAndControls.Physics
         {
             _explodingTriangles.Clear();
             _isExploding = true;
+            RaiseExplosionFlash(explosionForce);
 
             var explodingObject = Common3dObjectHelpers.DeepCopySingleObject(originalObject);
             var center = CalculateTriangleGeometryCenter(explodingObject);
@@ -444,6 +449,15 @@ namespace GameAiAndControls.Physics
             return originalObject;
         }
 
+        private static void RaiseExplosionFlash(float explosionForce)
+        {
+            if (GameState.SettingsState?.GlowEffectsEnabled != true)
+                return;
+
+            float intensity = Math.Clamp(explosionForce / 650f, 0.18f, 0.55f);
+            GameState.WeatherVisualState.RaiseImpactFlash(intensity);
+        }
+
 
 
         public I3dObject UpdateExplosion(I3dObject explodingObject, DateTime deltaTime)
@@ -471,7 +485,8 @@ namespace GameAiAndControls.Physics
                 float progress = Clamp(exploding.ElapsedTime / exploding.Duration, 0f, 1f);
 
                 // Apply color transition based on progress
-                exploding.Triangle.Color = GetExplosionColor(progress, exploding.OriginalColor);
+                string explosionColor = GetExplosionColor(progress, exploding.OriginalColor);
+                exploding.Triangle.Color = ApplyDebrisShimmer(explosionColor, exploding, progress);
 
                 if (Logger.ShouldLog(LocalEnableLogging))
                 {
@@ -585,6 +600,39 @@ namespace GameAiAndControls.Physics
                 return LerpColorHex("ff0000", "330000", (progress - 0.35f) / 0.35f); // red → dark red
             else
                 return LerpColorHex("330000", "000000", (progress - 0.7f) / 0.3f); // dark red → black
+        }
+
+        private static string ApplyDebrisShimmer(string baseColor, ExplodingTriangle exploding, float progress)
+        {
+            float maxStrength = GetDebrisShimmerStrength();
+            if (maxStrength <= 0f)
+                return baseColor;
+
+            float phase = exploding.ElapsedTime * 34f
+                          + exploding.PartIndex * 1.73f
+                          + exploding.TriangleIndex * 2.41f
+                          + exploding.Speed * 0.027f
+                          + exploding.RotationSpeed * 0.013f;
+
+            float pulse = 0.5f + 0.5f * MathF.Sin(phase);
+            float glint = MathF.Pow(pulse, 3.5f);
+            float fade = MathF.Max(0f, 1f - progress);
+            float amount = maxStrength * (0.18f + 0.82f * glint) * fade;
+
+            return LerpColorHex(baseColor, DebrisShimmerColor, amount);
+        }
+
+        private static float GetDebrisShimmerStrength()
+        {
+            var settings = GameState.SettingsState;
+            return (settings?.GraphicsQuality ?? GraphicsQualityPreset.Balanced) switch
+            {
+                GraphicsQualityPreset.Low => 0f,
+                GraphicsQualityPreset.High => settings?.GlowEffectsEnabled == true
+                    ? MathF.Min(0.36f, HighDebrisShimmerStrength + 0.06f)
+                    : HighDebrisShimmerStrength,
+                _ => BalancedDebrisShimmerStrength
+            };
         }
     }
 }

@@ -43,6 +43,7 @@ namespace CommonUtilities.Persistence
         public static string LocalKeyFilePath => Path.Combine(LocalFolder, KeyFileName);
         public static string LocalHighscoreFilePath => Path.Combine(LocalFolder, HighscoreFileName);
         public static string LocalHighscoreBackupFilePath => LocalHighscoreFilePath + ".bak";
+        public static string LocalSettingsFilePath => Path.Combine(LocalFolder, "settings.json");
 
         /// <summary>
         /// Returns the per-player save file path for the given player name.

@@ -8,6 +8,7 @@ using GameAiAndControls.Physics;
 using GameAiAndControls.Helpers;
 using System.Dynamic;
 using CommonUtilities.CommonGlobalState;
+using CommonUtilities.CommonGlobalState.States;
 
 public class ParticlesAI : IParticles
 {
@@ -27,20 +28,31 @@ public class ParticlesAI : IParticles
     private const float FadeFactor = 0.03f;
     private const float InitialThrottleFactor = 5f;
     private const int MaxParticlesPerEmission = 3;
+    private const float DefaultExplosionParticleMultiplier = 2.0f;
+    private const float HighExplosionParticleMultiplier = 3.0f;
     private const int SteadyStateRetirePerFrame = 1;
     private const int BurstBuffer = 15;
     private const float MinRetireAgeSeconds = 1.5f;
+    private const long DefaultVariedStartMaxTicks = 500_000;
 
     public float ThrottleDurationFactor { get; set; } = 0.3f;
+    public float DynamicCapMultiplier { get; set; } = 1.0f;
+    public int BurstMaxParticlesPerEmission { get; set; } = 0;
+    public long VariedStartMaxTicks { get; set; } = DefaultVariedStartMaxTicks;
+    public bool LastEmissionWasBurst { get; private set; }
+    public int LastEmissionParticleCount { get; private set; }
     public List<IParticle> Particles { get; set; } = new();
     public IObjectMovement? ParentShip { get; set; }
     public bool Visible { get; set; }
     public bool EnableParticleLogging { get; set; } = false;
     public float LifeMultiplier { get; set; } = 1.0f;
+    public float SizeMultiplier { get; set; } = 1.0f;
+    public float GravityStrength { get; set; } = 50f;
     public int MaxParticlesOverride { get; set; } = 0;
     public string? ColorStartOverride { get; set; }
     public string? ColorMidOverride { get; set; }
     public string? ColorEndOverride { get; set; }
+    public float? ExplosionParticleMultiplierOverride { get; set; }
     public float ExplosionStartYOffset { get; set; } = -150f;
 
     private DateTime _lastUpdateTime = DateTime.UtcNow;
@@ -93,25 +105,19 @@ public class ParticlesAI : IParticles
                             Logger.Log($"   Velocity Before    : x={particle.Physics.Velocity.x:F2}, y={particle.Physics.Velocity.y:F2}, z={particle.Physics.Velocity.z:F2}");
                         }
 
-                        // Capture pre-bounce velocity for position correction
-                        float preBounceVelY = particle.Physics.Velocity.y;
+                        RewindParticleAlongLastMove(particle, deltaTime, frameScale);
 
-                        particle.Physics.Bounce(new Vector3(0, 0, 0), particle.ImpactStatus.ImpactDirection);
+                        var bounceDirection = ResolveParticleBounceDirection(particle);
+                        particle.Physics.Bounce(new Vector3(0, 0, 0), bounceDirection);
 
                         // Surface hits must always bounce upward (+Y position = down, -Y = up;
                         // but position -= velocity, so positive velocity.y decreases position.y = moves up)
                         if (particle.Physics.Velocity.y < 0)
                             particle.Physics.Velocity.y = -particle.Physics.Velocity.y;
 
-                        // Correct penetration: undo the last frame's downward movement that
-                        // pushed the particle inside the crashbox. The previous frame moved
-                        // position.y -= preBounceVelY, which was negative (downward), so
-                        // position increased. Undo by adding the pre-bounce velocity back.
-                        if (particle.Position != null)
-                            particle.Position.y += preBounceVelY;
-
                         particle.Life *= 0.8f;
                         particle.ImpactStatus.HasCrashed = false;
+                        particle.ImpactStatus.ImpactDirection = null;
 
                         if (Logger.ShouldLog(EnableParticleLogging))
                         {
@@ -271,6 +277,9 @@ public class ParticlesAI : IParticles
 
     public void ReleaseParticles(ITriangleMeshWithColor trajectory, ITriangleMeshWithColor startPosition, IVector3 worldPosition, IObjectMovement parentShip, int thrust, bool? explosion, float upwardVelocityBoost = 0f)
     {
+        LastEmissionWasBurst = false;
+        LastEmissionParticleCount = 0;
+
         if (thrust == 0)
         {
             Particles.Clear();
@@ -289,56 +298,42 @@ public class ParticlesAI : IParticles
             return p.BirthTime.Ticks + life + p.VariedStart <= pruneTicks;
         });
 
-        int dynamicMaxParticles = MaxParticlesOverride > 0
-            ? MaxParticlesOverride
-            : Math.Min(MaxDynamicParticles, thrust * 2 + MaxParticlesBase);
+        int dynamicMaxParticles = GetDynamicMaxParticles(thrust);
+        if (_burstActive && Particles.Count >= dynamicMaxParticles)
+            _burstActive = false;
 
         // During the initial burst the cap is raised so the jet ignition looks punchy.
         // Once the normal steady-state cap has been reached, the burst ends and the
         // extra particles die off naturally without being replaced.
         int currentCap = _burstActive ? dynamicMaxParticles + BurstBuffer : dynamicMaxParticles;
+        int recycledSteadySlots = 0;
 
-        // After the burst, retire 1 particle per frame so a fresh one can
-        // always be emitted — keeping the stream visually continuous.
-        // Prefer mature particles (past MinRetireAgeSeconds) so they get their
-        // full arc and bounce. If none are old enough, retire the oldest particle
-        // anyway (it has had the most time to bounce) to guarantee the slot.
+        // After the burst, recycle old particles for a smaller continuous stream.
+        // If the burst left us above the steady cap, drain one extra particle per frame.
         if (!_burstActive && explosion != true && Particles.Count >= currentCap)
         {
-            long nowRetire = DateTime.UtcNow.Ticks;
-            long minAgeTicks = (long)(MinRetireAgeSeconds * TimeSpan.TicksPerSecond);
-            bool retired = false;
-            for (int i = 0; i < Particles.Count; i++)
-            {
-                long age = nowRetire - Particles[i].BirthTime.Ticks - Particles[i].VariedStart;
-                if (age >= minAgeTicks)
-                {
-                    Particles.RemoveAt(i);
-                    retired = true;
-                    break;
-                }
-            }
+            int steadyEmission = GetSteadyEmissionCount(thrust);
+            int overflowDrain = Particles.Count > currentCap ? SteadyStateRetirePerFrame : 0;
+            recycledSteadySlots = RetireParticlesForEmission(steadyEmission + overflowDrain);
 
-            // Fallback: no mature particle available — retire the oldest one
-            // (index 0, since particles are appended chronologically).
-            if (!retired && Particles.Count >= currentCap && Particles.Count > 0)
-            {
-                Particles.RemoveAt(0);
-            }
         }
 
-        if (Particles.Count >= currentCap) return;
+        if (Particles.Count >= currentCap && recycledSteadySlots <= 0) return;
         if (startPosition == null || trajectory == null) return;
-
-        if (_burstActive && Particles.Count >= dynamicMaxParticles)
-            _burstActive = false;
 
         ParentShip = parentShip;
         int particleCount = Math.Min(thrust * MaxThrustMultiplier, currentCap - Particles.Count);
         //More particles when exploding
-        if (explosion == true) particleCount *= 2;
-        else if (!_burstActive) particleCount = Math.Min(particleCount, MaxParticlesPerEmission);
+        if (explosion == true) particleCount = (int)MathF.Round(particleCount * GetExplosionParticleMultiplier());
+        else if (_burstActive && BurstMaxParticlesPerEmission > 0) particleCount = Math.Min(particleCount, BurstMaxParticlesPerEmission);
+        else if (!_burstActive)
+        {
+            int availableSlots = Math.Max(currentCap - Particles.Count, recycledSteadySlots);
+            particleCount = Math.Min(GetSteadyEmissionCount(thrust), availableSlots);
+        }
 
+        LastEmissionWasBurst = particleCount > 0 && _burstActive && explosion != true;
+        LastEmissionParticleCount = particleCount;
 
         var startPos = new Vector3(
             (startPosition.vert1.x + startPosition.vert2.x + startPosition.vert3.x) / 3,
@@ -362,7 +357,7 @@ public class ParticlesAI : IParticles
         for (int i = 0; i < particleCount; i++)
         {
             float life = (float)(random.NextDouble() * (MaxLife - MinLife) + MinLife) * LifeMultiplier;
-            float size = (float)(random.NextDouble() * (MaxSize - MinSize) + MinSize);
+            float size = (float)(random.NextDouble() * (MaxSize - MinSize) + MinSize) * SizeMultiplier;
             float spread = SpreadIntensity * (float)(random.NextDouble() + 0.5);
             //When exploding have a much bigger spread
             if (explosion != null && explosion == true) spread = spread * 2.5f;
@@ -408,7 +403,9 @@ public class ParticlesAI : IParticles
                 z = (float)(random.NextDouble() - 0.5) * AccelerationRandomFactor
             };
 
-            var variedStart = random.NextInt64(0, 500_000);
+            var variedStart = VariedStartMaxTicks > 0
+                ? random.NextInt64(0, VariedStartMaxTicks)
+                : 0;
             //Explosion particles should start at the same time
             if (explosion!=null && explosion == true) variedStart = 0;
 
@@ -446,13 +443,104 @@ public class ParticlesAI : IParticles
                     Velocity = new Vector3 { x = velocity.x, y = velocity.y, z = velocity.z },
                     Acceleration = new Vector3 { x = acceleration.x, y = acceleration.y, z = acceleration.z },
                     Mass = 1f,
-                    GravityStrength = 50f,
+                    GravityStrength = GravityStrength,
                     Friction = 0.02f,
                     EnergyLossFactor = 0.28f,
                 },
                 ImpactStatus = new ImpactStatus { HasCrashed = false, HasExploded = false }
             });
         }
+    }
+
+    private int GetDynamicMaxParticles(int thrust)
+    {
+        if (MaxParticlesOverride > 0)
+            return MaxParticlesOverride;
+
+        float multiplier = Clamp(DynamicCapMultiplier, 0.25f, 4.0f);
+        int thrustCap = Math.Max(0, (int)MathF.Round((thrust * 2 + MaxParticlesBase) * multiplier));
+        int maxCap = Math.Max(0, (int)MathF.Round(MaxDynamicParticles * multiplier));
+        return Math.Min(maxCap, thrustCap);
+    }
+
+    private static int GetSteadyEmissionCount(int thrust)
+    {
+        return Math.Min(thrust * MaxThrustMultiplier, MaxParticlesPerEmission);
+    }
+
+    private float GetExplosionParticleMultiplier()
+    {
+        if (ExplosionParticleMultiplierOverride.HasValue)
+            return Clamp(ExplosionParticleMultiplierOverride.Value, 0.25f, 4.0f);
+
+        return GameState.SettingsState?.GraphicsQuality == GraphicsQualityPreset.High
+            ? HighExplosionParticleMultiplier
+            : DefaultExplosionParticleMultiplier;
+    }
+
+    private int RetireParticlesForEmission(int targetCount)
+    {
+        if (targetCount <= 0)
+            return 0;
+
+        int retired = 0;
+        long nowRetire = DateTime.UtcNow.Ticks;
+        long minAgeTicks = (long)(MinRetireAgeSeconds * TimeSpan.TicksPerSecond);
+
+        while (retired < targetCount && Particles.Count > 0)
+        {
+            int removeIndex = FindMatureParticleIndex(nowRetire, minAgeTicks);
+            if (removeIndex < 0)
+                removeIndex = 0;
+
+            Particles.RemoveAt(removeIndex);
+            retired++;
+        }
+
+        return retired;
+    }
+
+    private int FindMatureParticleIndex(long nowTicks, long minAgeTicks)
+    {
+        for (int i = 0; i < Particles.Count; i++)
+        {
+            long age = nowTicks - Particles[i].BirthTime.Ticks - Particles[i].VariedStart;
+            if (age >= minAgeTicks)
+                return i;
+        }
+
+        return -1;
+    }
+
+    private static void RewindParticleAlongLastMove(IParticle particle, float deltaTime, float frameScale)
+    {
+        if (particle.Position == null || particle.Physics?.Velocity == null)
+            return;
+
+        var velocity = particle.Physics.Velocity;
+
+        if (particle.Physics.BounceCooldownFrames > 0)
+        {
+            particle.Position.x -= velocity.x * deltaTime;
+            particle.Position.y -= velocity.y * deltaTime;
+            particle.Position.z -= velocity.z * deltaTime;
+            return;
+        }
+
+        particle.Position.x += velocity.x * frameScale;
+        particle.Position.y += velocity.y * frameScale;
+        particle.Position.z += velocity.z * frameScale;
+    }
+
+    private static ImpactDirection? ResolveParticleBounceDirection(IParticle particle)
+    {
+        if (particle.ImpactStatus == null)
+            return null;
+
+        if (string.Equals(particle.ImpactStatus.ObjectName, "Surface", StringComparison.Ordinal))
+            return ImpactDirection.Top;
+
+        return particle.ImpactStatus.ImpactDirection;
     }
 }
 

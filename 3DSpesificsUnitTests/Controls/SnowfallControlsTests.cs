@@ -16,6 +16,8 @@ public class SnowfallControlsTests
     public void Setup()
     {
         GameState.SurfaceState = new SurfaceState();
+        GameState.SettingsState = new GameSettingsState();
+        GameState.DeltaTime = GameState.GameplayBaselineDeltaTime;
         GameState.ObjectIdCounter = 0;
     }
 
@@ -120,5 +122,24 @@ public class SnowfallControlsTests
             40f * SurfacePositionSyncHelpers.DefaultEnemySurfaceSyncFactorY,
             emitter.ObjectOffsets.y,
             0.001f);
+    }
+
+    [TestMethod]
+    public void MoveObject_HighParticleDensityCreatesMoreSnowflakes()
+    {
+        GameState.SettingsState = new GameSettingsState
+        {
+            GraphicsQuality = GraphicsQualityPreset.High,
+            ParticleDensityPercent = 130,
+            EnhancedWeatherEnabled = true
+        };
+
+        var emitter = SnowEmitter.CreateSnowEmitter(null);
+
+        emitter.Movement!.MoveObject(emitter, null, null);
+
+        var snowflakePart = emitter.ObjectParts.Single(p => p.PartName == "Snowflakes");
+        Assert.AreEqual(SnowfallControls.CurrentTargetFlakeCount, snowflakePart.Triangles.Count);
+        Assert.IsTrue(snowflakePart.Triangles.Count > SnowfallControls.TargetFlakeCount);
     }
 }

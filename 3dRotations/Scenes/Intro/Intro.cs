@@ -14,7 +14,7 @@ namespace _3dRotations.Scenes.Intro
 {
     public class Intro : IScene
     {
-        private const string StartFooter = "PRESS ANY KEY TO INITIATE PROTOCOL  //  [T] TRAINING";
+        private const string StartFooter = "PRESS ANY KEY TO INITIATE PROTOCOL  //  [T] TRAINING  //  [S] SOUND  //  [G] GRAPHICS";
 
         public bool SkipLogoCube { get; set; } = false;
 

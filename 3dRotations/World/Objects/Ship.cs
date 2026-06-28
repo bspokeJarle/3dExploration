@@ -28,6 +28,7 @@ namespace _3dRotations.World.Objects
             var rearEngineDirectionGuide = RearEngineDirectionGuide();
             var cannon = TopCannonTriangles();
             var topCannonDirectionGuide = CannonDirectionGuide();
+            var muzzleFlash = MuzzleFlashTriangles();
             var winglets = WingletTriangles();
 
 
@@ -44,6 +45,7 @@ namespace _3dRotations.World.Objects
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "TopCannon", Triangles = cannon!, IsVisible = true });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "WeaponDirectionGuide", Triangles = topCannonDirectionGuide!, IsVisible = false });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "WeaponStartGuide", Triangles = CannonStartGuide()!, IsVisible = false });
+            ship.ObjectParts.Add(new _3dObjectPart { PartName = "MuzzleFlash", Triangles = muzzleFlash!, IsVisible = false });
             ship.ObjectParts.Add(new _3dObjectPart { PartName = "Winglets", Triangles = winglets!, IsVisible = true });
 
             var crashBoxes = new List<List<IVector3>>();
@@ -394,6 +396,24 @@ namespace _3dRotations.World.Objects
                 }
             };
             return guide;
+        }
+
+        public static List<ITriangleMeshWithColor>? MuzzleFlashTriangles()
+        {
+            var center = new Vector3 { x = 0f, y = -48f, z = 28f };
+            var front = new Vector3 { x = 0f, y = -72f, z = 28f };
+            var left = new Vector3 { x = -9f, y = -58f, z = 29f };
+            var right = new Vector3 { x = 9f, y = -58f, z = 29f };
+            var top = new Vector3 { x = 0f, y = -58f, z = 39f };
+            var bottom = new Vector3 { x = 0f, y = -58f, z = 17f };
+
+            return new List<ITriangleMeshWithColor>
+            {
+                new TriangleMeshWithColor { Color = "fff8c8", vert1 = center, vert2 = left, vert3 = front, noHidden = true },
+                new TriangleMeshWithColor { Color = "ffb020", vert1 = center, vert2 = front, vert3 = right, noHidden = true },
+                new TriangleMeshWithColor { Color = "fff8c8", vert1 = center, vert2 = front, vert3 = top, noHidden = true },
+                new TriangleMeshWithColor { Color = "ff7a12", vert1 = center, vert2 = bottom, vert3 = front, noHidden = true },
+            };
         }
 
         public static List<ITriangleMeshWithColor>? RearTriangles()
