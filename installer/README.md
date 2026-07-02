@@ -21,13 +21,13 @@ The installer uses `onlyifdoesntexist`, so an existing local secrets file is not
 From the repository root:
 
 ```powershell
-.\installer\Build-Installer.ps1 -Version 0.1.0
+.\installer\Build-Installer.ps1 -Version 1.0.0
 ```
 
 To publish and stage files without compiling the Inno installer:
 
 ```powershell
-.\installer\Build-Installer.ps1 -Version 0.1.0 -SkipInno
+.\installer\Build-Installer.ps1 -Version 1.0.0 -SkipInno
 ```
 
 Output is written under:

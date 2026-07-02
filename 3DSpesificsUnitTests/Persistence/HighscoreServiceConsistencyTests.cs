@@ -1,6 +1,7 @@
 using CommonUtilities.Persistence;
 using System;
 using System.IO;
+using System.Linq;
 
 namespace _3DSpesificsUnitTests.Persistence;
 
@@ -93,6 +94,110 @@ public class HighscoreServiceConsistencyTests
         });
 
         Assert.AreEqual(50150L, HighscoreService.GetBestLocalScore("CharlieB"));
+    }
+
+    [TestMethod]
+    public void TrySubmitScore_DoesNotResetExistingKillsWhenLegacyCallOmitsStats()
+    {
+        HighscoreService.TrySubmitScore(
+            "CharlieB",
+            50150,
+            5,
+            totalKills: 104,
+            totalShotsFired: 391,
+            totalDeaths: 47,
+            accuracy: 104f / 391f);
+
+        HighscoreService.TrySubmitScore("CharlieB", 52000, 6);
+
+        var entry = HighscoreService.LoadLocalHighscores().Entries.Single(e => e.PlayerName == "CharlieB");
+
+        Assert.AreEqual(52000L, entry.Score);
+        Assert.AreEqual(104, entry.TotalKills,
+            "A higher score submitted through the legacy overload must not wipe stored kill stats.");
+        Assert.AreEqual(391, entry.TotalShotsFired);
+        Assert.AreEqual(47, entry.TotalDeaths);
+        Assert.IsTrue(entry.Accuracy > 0f);
+    }
+
+    [TestMethod]
+    public void SaveLocalHighscores_DoesNotResetKillsWhenIncomingDuplicateHasDefaultStats()
+    {
+        HighscoreService.TrySubmitScore(
+            "CharlieB",
+            50150,
+            5,
+            totalKills: 104,
+            totalShotsFired: 391,
+            totalDeaths: 47,
+            accuracy: 104f / 391f);
+
+        HighscoreService.SaveLocalHighscores(new HighscoreList
+        {
+            Entries = new List<HighscoreEntry>
+            {
+                new()
+                {
+                    PlayerName = "CharlieB",
+                    Score = 50150,
+                    WaveReached = 5,
+                    TotalKills = 0,
+                    TotalShotsFired = 0,
+                    TotalDeaths = 0,
+                    Accuracy = 0f,
+                    DateUtc = DateTime.UtcNow.AddMinutes(1).ToString("o")
+                }
+            }
+        });
+
+        var entry = HighscoreService.LoadLocalHighscores().Entries.Single(e => e.PlayerName == "CharlieB");
+
+        Assert.AreEqual(50150L, entry.Score);
+        Assert.AreEqual(104, entry.TotalKills,
+            "Remote/local merges must not prefer a newer duplicate when it only contributes default stat values.");
+        Assert.AreEqual(391, entry.TotalShotsFired);
+        Assert.AreEqual(47, entry.TotalDeaths);
+        Assert.IsTrue(entry.Accuracy > 0f);
+    }
+
+    [TestMethod]
+    public void TrySubmitScore_RepairsExistingZeroKillsWhenSameScoreProvidesStats()
+    {
+        HighscoreService.SaveLocalHighscores(new HighscoreList
+        {
+            Entries = new List<HighscoreEntry>
+            {
+                new()
+                {
+                    PlayerName = "CharlieB",
+                    Score = 50150,
+                    WaveReached = 5,
+                    TotalKills = 0,
+                    TotalShotsFired = 0,
+                    TotalDeaths = 0,
+                    Accuracy = 0f,
+                    DateUtc = DateTime.UtcNow.ToString("o")
+                }
+            }
+        });
+
+        bool repaired = HighscoreService.TrySubmitScore(
+            "CharlieB",
+            50150,
+            5,
+            totalKills: 104,
+            totalShotsFired: 391,
+            totalDeaths: 47,
+            accuracy: 104f / 391f);
+
+        var entry = HighscoreService.LoadLocalHighscores().Entries.Single(e => e.PlayerName == "CharlieB");
+
+        Assert.IsTrue(repaired,
+            "A same-score stat repair should be treated as a successful submit so remote sync can heal too.");
+        Assert.AreEqual(104, entry.TotalKills);
+        Assert.AreEqual(391, entry.TotalShotsFired);
+        Assert.AreEqual(47, entry.TotalDeaths);
+        Assert.IsTrue(entry.Accuracy > 0f);
     }
 
     [TestMethod]

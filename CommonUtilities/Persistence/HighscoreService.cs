@@ -181,8 +181,17 @@ namespace CommonUtilities.Persistence
                 if (existing != null)
                 {
                     if (entry.Score <= existing.Score)
-                        return false;
+                    {
+                        if (entry.Score == existing.Score && PreserveNonZeroStats(existing, entry))
+                        {
+                            SaveLocalHighscores(list);
+                            return true;
+                        }
 
+                        return false;
+                    }
+
+                    PreserveNonZeroStats(entry, existing);
                     existing.Score = entry.Score;
                     existing.WaveReached = entry.WaveReached;
                     existing.TotalKills = entry.TotalKills;
@@ -307,7 +316,14 @@ namespace CommonUtilities.Persistence
                 }
 
                 if (replace)
+                {
+                    PreserveNonZeroStats(entry, existing);
                     byPlayer[key] = entry;
+                }
+                else if (entry.Score == existing.Score)
+                {
+                    PreserveNonZeroStats(existing, entry);
+                }
             }
 
             var merged = byPlayer.Values.ToList();
@@ -354,12 +370,56 @@ namespace CommonUtilities.Persistence
                 }
 
                 if (replace)
+                {
+                    PreserveNonZeroStats(e, existing);
                     byPlayer[key] = e;
+                }
+                else if (e.Score == existing.Score)
+                {
+                    PreserveNonZeroStats(existing, e);
+                }
             }
 
             var normalized = byPlayer.Values.ToList();
             normalized.Sort((a, b) => b.Score.CompareTo(a.Score));
             return normalized;
+        }
+
+        private static bool PreserveNonZeroStats(HighscoreEntry target, HighscoreEntry fallback)
+        {
+            bool changed = false;
+
+            if (target.WaveReached <= 0 && fallback.WaveReached > 0)
+            {
+                target.WaveReached = fallback.WaveReached;
+                changed = true;
+            }
+
+            if (target.TotalKills <= 0 && fallback.TotalKills > 0)
+            {
+                target.TotalKills = fallback.TotalKills;
+                changed = true;
+            }
+
+            if (target.TotalShotsFired <= 0 && fallback.TotalShotsFired > 0)
+            {
+                target.TotalShotsFired = fallback.TotalShotsFired;
+                changed = true;
+            }
+
+            if (target.TotalDeaths <= 0 && fallback.TotalDeaths > 0)
+            {
+                target.TotalDeaths = fallback.TotalDeaths;
+                changed = true;
+            }
+
+            if (target.Accuracy <= 0f && fallback.Accuracy > 0f)
+            {
+                target.Accuracy = fallback.Accuracy;
+                changed = true;
+            }
+
+            return changed;
         }
 
         internal static void ResetRemoteFetchStateForTests()
