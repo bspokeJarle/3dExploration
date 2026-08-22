@@ -11,8 +11,8 @@ namespace TheOmegaStrain.Gameplay.Controls
     /// </summary>
     public class AsteroidControls : IObjectMovement
     {
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject? ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -254,9 +254,9 @@ namespace TheOmegaStrain.Gameplay.Controls
             };
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor s, ITriangleMeshWithColor g) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor s, ITriangleMeshWithColor g) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor s, ITriangleMeshWithColor g) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture s, ITriangleMeshWithColorAndTexture g) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture s, ITriangleMeshWithColorAndTexture g) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture s, ITriangleMeshWithColorAndTexture g) { }
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry) { }
         public void ReleaseParticles(I3dObject theObject) { }
 

@@ -54,8 +54,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private readonly WorldWeatherField _weatherField;
         private readonly List<Snowflake> _flakes = new(TargetFlakeCount);
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject? ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -197,7 +197,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             return flake;
         }
 
-        private static void WriteTriangle(ITriangleMeshWithColor triangle, Snowflake flake, IVector3 mapPosition, float objectZ)
+        private static void WriteTriangle(ITriangleMeshWithColorAndTexture triangle, Snowflake flake, IVector3 mapPosition, float objectZ)
         {
             float opacity = GlobalSnowOpacity;
             if (opacity <= 0.01f)
@@ -235,7 +235,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             triangle.vert3.z = relativeZ;
         }
 
-        private static ITriangleMeshWithColor CreateSnowTriangle()
+        private static ITriangleMeshWithColorAndTexture CreateSnowTriangle()
         {
             return new TriangleMeshWithColor
             {
@@ -269,9 +269,9 @@ namespace TheOmegaStrain.Gameplay.Controls
             _weatherField.Reset();
         }
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
         private sealed class Snowflake
         {

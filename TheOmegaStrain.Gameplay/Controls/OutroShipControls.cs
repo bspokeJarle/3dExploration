@@ -49,10 +49,10 @@ namespace TheOmegaStrain.Gameplay.Controls
         private Vector3 _baselineCenter;
 
         public I3dObject? ParentObject { get; set; }
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
-        public ITriangleMeshWithColor? RearStartCoordinates { get; set; }
-        public ITriangleMeshWithColor? RearGuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? RearStartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? RearGuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
         public bool HasReachedEarth => _elapsedSeconds >= JourneySeconds;
         public bool IsFinished => _finished;
@@ -174,19 +174,19 @@ namespace TheOmegaStrain.Gameplay.Controls
             theObject.Particles.MoveParticles();
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) RearStartCoordinates = StartCoord;
             if (GuideCoord != null) RearGuideCoordinates = GuideCoord;
         }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
         public void Dispose()
         {

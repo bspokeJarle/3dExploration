@@ -46,9 +46,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return starField;
         }
 
-        private static List<ITriangleMeshWithColor> CreateStars()
+        private static List<ITriangleMeshWithColorAndTexture> CreateStars()
         {
-            var tris = new List<ITriangleMeshWithColor>(StarCount * 4);
+            var tris = new List<ITriangleMeshWithColorAndTexture>(StarCount * 4);
             for (int i = 0; i < Stars.Length; i++)
             {
                 var (x, y, size) = Stars[i];
@@ -59,7 +59,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddDiamond(List<ITriangleMeshWithColor> tris, float x, float y, float size, string color)
+        private static void AddDiamond(List<ITriangleMeshWithColorAndTexture> tris, float x, float y, float size, string color)
         {
             var top = new Vector3(x, y - size, 0f);
             var right = new Vector3(x + size, y, 0f);

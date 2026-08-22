@@ -141,7 +141,7 @@ public class TutorialSeederControlsTests
                 {
                     PartName = "Body",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {

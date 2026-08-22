@@ -9,8 +9,8 @@ namespace TheOmegaStrain.Gameplay.Controls
 {
     public class TowerControls : IObjectMovement
     {
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -24,7 +24,7 @@ namespace TheOmegaStrain.Gameplay.Controls
         private float _baseOffsetY;
 
         private readonly OmegaMeshRotation _rotate = new(); // Rotation fra OmegaEngineAdapters
-        private readonly Dictionary<string, List<ITriangleMeshWithColor>> _originalTopPartMeshes = new();
+        private readonly Dictionary<string, List<ITriangleMeshWithColorAndTexture>> _originalTopPartMeshes = new();
 
         // Shared XY pivots for the rotating head clusters. The whole tower is shifted by
         // NormalizeSurfaceFootprintPivot during construction (the bottom-band centroid is
@@ -230,7 +230,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             any = true;
         }
 
-        private static void TranslateMeshInPlace(List<ITriangleMeshWithColor> mesh, float shiftX, float shiftY, float shiftZ)
+        private static void TranslateMeshInPlace(List<ITriangleMeshWithColorAndTexture> mesh, float shiftX, float shiftY, float shiftZ)
         {
             for (int i = 0; i < mesh.Count; i++)
             {
@@ -255,10 +255,10 @@ namespace TheOmegaStrain.Gameplay.Controls
         {
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
         public void Dispose()
         {
@@ -273,7 +273,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             _snowTowerHeadPivot = null;
         }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 

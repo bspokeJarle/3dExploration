@@ -72,7 +72,7 @@ public class PowerUpControlsTests
                 {
                     PartName = "PowerUpBody",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {

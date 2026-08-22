@@ -12,7 +12,7 @@ public class DeepCopySingleObjectBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        var triangles = new List<ITriangleMeshWithColor>(32);
+        var triangles = new List<ITriangleMeshWithColorAndTexture>(32);
         for (int i = 0; i < 32; i++)
         {
             float offset = i * 0.5f;

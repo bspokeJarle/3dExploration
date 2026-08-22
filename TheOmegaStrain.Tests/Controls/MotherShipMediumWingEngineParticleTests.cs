@@ -40,9 +40,9 @@ public class MotherShipMediumWingEngineParticleTests
         public float LifeMultiplier { get; set; } = 1f;
         public int MaxParticlesOverride { get; set; }
 
-        public readonly List<(ITriangleMeshWithColor trajectory, ITriangleMeshWithColor start)> Calls = new();
+        public readonly List<(ITriangleMeshWithColorAndTexture trajectory, ITriangleMeshWithColorAndTexture start)> Calls = new();
 
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion, float upwardVelocityBoost = 0f)
+        public void ReleaseParticles(ITriangleMeshWithColorAndTexture Trajectory, ITriangleMeshWithColorAndTexture StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion, float upwardVelocityBoost = 0f)
         {
             Calls.Add((Trajectory, StartPosition));
         }
@@ -58,8 +58,8 @@ public class MotherShipMediumWingEngineParticleTests
     }
 
     // Replicates ApplyPivotedRotation: translate to origin, RotateY by angle, translate back.
-    private static List<ITriangleMeshWithColor> ApplyPivotedRotation(
-        List<ITriangleMeshWithColor> tris, Vector3 pivot, float angle)
+    private static List<ITriangleMeshWithColorAndTexture> ApplyPivotedRotation(
+        List<ITriangleMeshWithColorAndTexture> tris, Vector3 pivot, float angle)
     {
         var atOrigin = Translate(tris, new Vector3 { x = -pivot.x, y = -pivot.y, z = -pivot.z });
         var rotated  = Rotate.RotateYMesh(atOrigin, angle);
@@ -67,8 +67,8 @@ public class MotherShipMediumWingEngineParticleTests
     }
 
     // Replicates LiveGameLoop.RotateMesh for a single axis sequence (z then x — ship default x=WorldViewSetup.CameraPitchDegrees, y=0, z=90).
-    private static List<ITriangleMeshWithColor> ApplyShipRotation(
-        List<ITriangleMeshWithColor> tris, float rotX = WorldViewSetup.CameraPitchDegrees, float rotY = 0f, float rotZ = 90f)
+    private static List<ITriangleMeshWithColorAndTexture> ApplyShipRotation(
+        List<ITriangleMeshWithColorAndTexture> tris, float rotX = WorldViewSetup.CameraPitchDegrees, float rotY = 0f, float rotZ = 90f)
     {
         var r = Rotate.RotateZMesh(tris, rotZ);
         r = Rotate.RotateYMesh(r, rotY);
@@ -76,13 +76,13 @@ public class MotherShipMediumWingEngineParticleTests
         return r;
     }
 
-    private static List<ITriangleMeshWithColor> ApplyShipRotation(
-        List<ITriangleMeshWithColor> tris, Vector3 rotation)
+    private static List<ITriangleMeshWithColorAndTexture> ApplyShipRotation(
+        List<ITriangleMeshWithColorAndTexture> tris, Vector3 rotation)
         => ApplyShipRotation(tris, rotation.x, rotation.y, rotation.z);
 
-    private static List<ITriangleMeshWithColor> Translate(List<ITriangleMeshWithColor> tris, Vector3 offset)
+    private static List<ITriangleMeshWithColorAndTexture> Translate(List<ITriangleMeshWithColorAndTexture> tris, Vector3 offset)
     {
-        var result = new List<ITriangleMeshWithColor>(tris.Count);
+        var result = new List<ITriangleMeshWithColorAndTexture>(tris.Count);
         foreach (var tri in tris)
             result.Add(new TriangleMeshWithColor
             {
@@ -94,14 +94,14 @@ public class MotherShipMediumWingEngineParticleTests
         return result;
     }
 
-    private static Vector3 Centroid(ITriangleMeshWithColor tri) => new Vector3
+    private static Vector3 Centroid(ITriangleMeshWithColorAndTexture tri) => new Vector3
     {
         x = (tri.vert1.x + tri.vert2.x + tri.vert3.x) / 3f,
         y = (tri.vert1.y + tri.vert2.y + tri.vert3.y) / 3f,
         z = (tri.vert1.z + tri.vert2.z + tri.vert3.z) / 3f,
     };
 
-    private static Vector3 GetPartCenter(List<ITriangleMeshWithColor> tris)
+    private static Vector3 GetPartCenter(List<ITriangleMeshWithColorAndTexture> tris)
     {
         float minX = float.MaxValue, minY = float.MaxValue, minZ = float.MaxValue;
         float maxX = float.MinValue, maxY = float.MinValue, maxZ = float.MinValue;
@@ -287,8 +287,8 @@ public class MotherShipMediumWingEngineParticleTests
         var podTris   = ship.ObjectParts.Find(p => p.PartName == podPartName)!.Triangles;
         var pivot     = GetPartCenter(podTris);
 
-        var startTris = new List<ITriangleMeshWithColor>(ship.ObjectParts.Find(p => p.PartName == startPartName)!.Triangles);
-        var guideTris = new List<ITriangleMeshWithColor>(ship.ObjectParts.Find(p => p.PartName == guidPartName)!.Triangles);
+        var startTris = new List<ITriangleMeshWithColorAndTexture>(ship.ObjectParts.Find(p => p.PartName == startPartName)!.Triangles);
+        var guideTris = new List<ITriangleMeshWithColorAndTexture>(ship.ObjectParts.Find(p => p.PartName == guidPartName)!.Triangles);
 
         // Step 1: ApplyPivotedRotation
         startTris = ApplyPivotedRotation(startTris, pivot, tiltAngle);
@@ -313,7 +313,7 @@ public class MotherShipMediumWingEngineParticleTests
 
     private static Vector3 RotateVectorThroughPipeline(Vector3 vector, float tiltAngle)
     {
-        var tri = new List<ITriangleMeshWithColor>
+        var tri = new List<ITriangleMeshWithColorAndTexture>
         {
             new TriangleMeshWithColor
             {
@@ -392,8 +392,8 @@ public class MotherShipMediumWingEngineParticleTests
         var leftStartPart = ship.ObjectParts.Find(p => p.PartName == "LeftWingEngineStart")!;
         var rightStartPart = ship.ObjectParts.Find(p => p.PartName == "RightWingEngineStart")!;
 
-        var leftRot = ApplyShipRotation(new List<ITriangleMeshWithColor>(leftStartPart.Triangles), (Vector3)ship.Rotation);
-        var rightRot = ApplyShipRotation(new List<ITriangleMeshWithColor>(rightStartPart.Triangles), (Vector3)ship.Rotation);
+        var leftRot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture>(leftStartPart.Triangles), (Vector3)ship.Rotation);
+        var rightRot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture>(rightStartPart.Triangles), (Vector3)ship.Rotation);
 
         var left = Centroid(leftRot[0]);
         var right = Centroid(rightRot[0]);
@@ -464,16 +464,16 @@ public class MotherShipMediumWingEngineParticleTests
         var leftStartA = ship.ObjectParts.Find(p => p.PartName == "LeftWingEngineStart")!.Triangles[0];
         var leftGuideA = ship.ObjectParts.Find(p => p.PartName == "LeftWingEngineGuide")!.Triangles[0];
         var rotA = (Vector3)ship.Rotation;
-        var leftStartARot = ApplyShipRotation(new List<ITriangleMeshWithColor> { leftStartA }, rotA)[0];
-        var leftGuideARot = ApplyShipRotation(new List<ITriangleMeshWithColor> { leftGuideA }, rotA)[0];
+        var leftStartARot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture> { leftStartA }, rotA)[0];
+        var leftGuideARot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture> { leftGuideA }, rotA)[0];
         ctrl.SetParticleGuideCoordinates(leftStartARot, null!);
         ctrl.SetParticleGuideCoordinates(null!, leftGuideARot);
 
         // Also wire right side so MoveObject does normal dual-engine release.
         var rightStartA = ship.ObjectParts.Find(p => p.PartName == "RightWingEngineStart")!.Triangles[0];
         var rightGuideA = ship.ObjectParts.Find(p => p.PartName == "RightWingEngineGuide")!.Triangles[0];
-        var rightStartARot = ApplyShipRotation(new List<ITriangleMeshWithColor> { rightStartA }, rotA)[0];
-        var rightGuideARot = ApplyShipRotation(new List<ITriangleMeshWithColor> { rightGuideA }, rotA)[0];
+        var rightStartARot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture> { rightStartA }, rotA)[0];
+        var rightGuideARot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture> { rightGuideA }, rotA)[0];
         ctrl.SetRearEngineGuideCoordinates(rightStartARot, null!);
         ctrl.SetRearEngineGuideCoordinates(null!, rightGuideARot);
 
@@ -490,7 +490,7 @@ public class MotherShipMediumWingEngineParticleTests
         // Expected if using CURRENT frame B start guide.
         var leftStartB = ship.ObjectParts.Find(p => p.PartName == "LeftWingEngineStart")!.Triangles[0];
         var rotB = (Vector3)ship.Rotation;
-        var leftStartBRot = ApplyShipRotation(new List<ITriangleMeshWithColor> { leftStartB }, rotB)[0];
+        var leftStartBRot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture> { leftStartB }, rotB)[0];
         var expectedSpawn = Centroid(leftStartBRot);
 
         Assert.AreEqual(expectedSpawn.x, actualSpawn.x, 0.01f,
@@ -519,7 +519,7 @@ public class MotherShipMediumWingEngineParticleTests
         {
             var podTris   = ship.ObjectParts.Find(p => p.PartName == "RightPod")!.Triangles;
             var pivot     = GetPartCenter(podTris);
-            var startTris = new List<ITriangleMeshWithColor>(ship.ObjectParts.Find(p => p.PartName == "RightWingEngineStart")!.Triangles);
+            var startTris = new List<ITriangleMeshWithColorAndTexture>(ship.ObjectParts.Find(p => p.PartName == "RightWingEngineStart")!.Triangles);
             var rotated   = ApplyPivotedRotation(startTris, pivot, tilt);
             ship.ObjectParts.Find(p => p.PartName == "RightWingEngineStart")!.Triangles = rotated;
         }
@@ -553,8 +553,8 @@ public class MotherShipMediumWingEngineParticleTests
         var guideName = isRight ? "RightWingEngineGuide" : "LeftWingEngineGuide";
 
         var pivot     = GetPartCenter(ship.ObjectParts.Find(p => p.PartName == podName)!.Triangles);
-        var startTris = ApplyPivotedRotation(new List<ITriangleMeshWithColor>(ship.ObjectParts.Find(p => p.PartName == startName)!.Triangles), pivot, tiltAngle);
-        var guideTris = ApplyPivotedRotation(new List<ITriangleMeshWithColor>(ship.ObjectParts.Find(p => p.PartName == guideName)!.Triangles), pivot, tiltAngle);
+        var startTris = ApplyPivotedRotation(new List<ITriangleMeshWithColorAndTexture>(ship.ObjectParts.Find(p => p.PartName == startName)!.Triangles), pivot, tiltAngle);
+        var guideTris = ApplyPivotedRotation(new List<ITriangleMeshWithColorAndTexture>(ship.ObjectParts.Find(p => p.PartName == guideName)!.Triangles), pivot, tiltAngle);
 
         return Distance(Centroid(startTris[0]), Centroid(guideTris[0]));
     }

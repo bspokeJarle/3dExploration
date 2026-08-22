@@ -86,9 +86,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  IGLOO BASE
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? IglooBase()
+        public static List<ITriangleMeshWithColorAndTexture>? IglooBase()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             var rings = new List<List<Vector3>>();
 
             for (int r = 0; r <= domeRings; r++)
@@ -123,9 +123,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? IglooEntrance()
+        public static List<ITriangleMeshWithColorAndTexture>? IglooEntrance()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float x1 = -entranceWidth / 2f;
             float x2 = entranceWidth / 2f;
@@ -162,9 +162,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? IglooBlockLines()
+        public static List<ITriangleMeshWithColorAndTexture>? IglooBlockLines()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             for (int r = 1; r <= domeRings; r++)
             {
@@ -192,7 +192,7 @@ namespace TheOmegaStrain.Game.World.Objects
         //  TOWER
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? TowerShaft()
+        public static List<ITriangleMeshWithColorAndTexture>? TowerShaft()
         {
             float z0 = iglooHeight - 1f;
             float z1 = z0 + shaftHeight;
@@ -211,7 +211,7 @@ namespace TheOmegaStrain.Game.World.Objects
                 capTop: false);
         }
 
-        public static List<ITriangleMeshWithColor>? TowerHeadFrame()
+        public static List<ITriangleMeshWithColorAndTexture>? TowerHeadFrame()
         {
             float z0 = iglooHeight - 1f + shaftHeight;
             float z1 = z0 + headHeight;
@@ -230,7 +230,7 @@ namespace TheOmegaStrain.Game.World.Objects
                 capTop: false);
         }
 
-        public static List<ITriangleMeshWithColor>? TowerGlass()
+        public static List<ITriangleMeshWithColorAndTexture>? TowerGlass()
         {
             float headBaseZ = iglooHeight - 1f + shaftHeight;
             float z0 = headBaseZ + (headHeight - glassHeight) * 0.5f;
@@ -254,9 +254,9 @@ namespace TheOmegaStrain.Game.World.Objects
                 flatColor: true);
         }
 
-        public static List<ITriangleMeshWithColor>? SnowLid()
+        public static List<ITriangleMeshWithColorAndTexture>? SnowLid()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float z0 = iglooHeight - 1f + shaftHeight + headHeight;
             float z1 = z0 + snowLidHeight;
@@ -293,9 +293,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? Antenna()
+        public static List<ITriangleMeshWithColorAndTexture>? Antenna()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float roofTopZ = iglooHeight - 1f + shaftHeight + headHeight + snowLidHeight;
 
@@ -341,9 +341,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return boxes;
         }
 
-        private static List<ITriangleMeshWithColor> SnowTowerShadow()
+        private static List<ITriangleMeshWithColorAndTexture> SnowTowerShadow()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             const string sc = OmegaObject3DHelpers.ShadowColorHex;
 
             var center = new Vector3 { x = 0f, y = 0f, z = 0f };
@@ -374,9 +374,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  GEOMETRY HELPERS
         // ----------------------------------------------------
 
-        private static List<ITriangleMeshWithColor> CreateBox(Vector3 min, Vector3 max, Vector3 center, string color)
+        private static List<ITriangleMeshWithColorAndTexture> CreateBox(Vector3 min, Vector3 max, Vector3 center, string color)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var p000 = new Vector3 { x = min.x, y = min.y, z = min.z };
             var p001 = new Vector3 { x = min.x, y = min.y, z = max.z };
@@ -397,7 +397,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static List<ITriangleMeshWithColor> CreateFrustum(
+        private static List<ITriangleMeshWithColorAndTexture> CreateFrustum(
             int segments,
             float radiusBottom,
             float radiusTop,
@@ -409,7 +409,7 @@ namespace TheOmegaStrain.Game.World.Objects
             bool capTop,
             bool flatColor = false)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var bottom = CreateRing(0f, 0f, zBottom, radiusBottom, segments);
             var top = CreateRing(0f, 0f, zTop, radiusTop, segments);
@@ -484,7 +484,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return towerIceDark;
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 
@@ -497,7 +497,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddQuadOutward(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 v1,
             Vector3 v2,
             Vector3 v3,

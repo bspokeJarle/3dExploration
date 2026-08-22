@@ -169,11 +169,11 @@ public class PolarBearControlsTests
         };
         var surface = new Surface
         {
-            RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>
+            RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>
             {
                 rotatedTile
             },
-            RotatedSurfaceTriangleByLandId = new Dictionary<long, ITriangleMeshWithColor>
+            RotatedSurfaceTriangleByLandId = new Dictionary<long, ITriangleMeshWithColorAndTexture>
             {
                 [bearTileId] = cachedTile
             }

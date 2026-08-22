@@ -236,7 +236,7 @@ public class TerrainAvoidanceTests
                 {
                     PartName = "Body",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {
@@ -279,7 +279,7 @@ public class TerrainAvoidanceTests
                 {
                     PartName = "Body",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {

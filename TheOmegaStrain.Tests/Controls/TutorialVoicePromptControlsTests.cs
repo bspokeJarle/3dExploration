@@ -208,7 +208,7 @@ public class TutorialVoicePromptControlsTests
                 {
                     PartName = "PowerUpBody",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>()
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>()
                 }
             }
         };

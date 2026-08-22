@@ -24,8 +24,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private float _timeSeconds;
         private float _revealElapsedSeconds;
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = null!;
 
         public OutroAstronautControls(string wavingArmPartName)
@@ -87,9 +87,9 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
         }
 
-        private List<ITriangleMeshWithColor> TransformTrianglesForReveal(List<ITriangleMeshWithColor> source, float scale, float yScale)
+        private List<ITriangleMeshWithColorAndTexture> TransformTrianglesForReveal(List<ITriangleMeshWithColorAndTexture> source, float scale, float yScale)
         {
-            var transformed = new List<ITriangleMeshWithColor>(source.Count);
+            var transformed = new List<ITriangleMeshWithColorAndTexture>(source.Count);
             foreach (var triangle in source)
             {
                 transformed.Add(new TriangleMeshWithColor
@@ -120,7 +120,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             };
         }
 
-        private static List<ITriangleMeshWithColor> RotateAroundPivotY(List<ITriangleMeshWithColor> source, Vector3 pivot, float angleDegrees)
+        private static List<ITriangleMeshWithColorAndTexture> RotateAroundPivotY(List<ITriangleMeshWithColorAndTexture> source, Vector3 pivot, float angleDegrees)
         {
             var result = OmegaObjectHelpers.CopyTriangles(source);
             float radians = angleDegrees * MathF.PI / 180f;
@@ -212,21 +212,21 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry) { }
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
         public void Dispose() => _baseParts = null;
 
         private sealed class PartBasePose
         {
-            public PartBasePose(I3dObjectPart part, List<ITriangleMeshWithColor> triangles)
+            public PartBasePose(I3dObjectPart part, List<ITriangleMeshWithColorAndTexture> triangles)
             {
                 Part = part;
                 Triangles = triangles;
             }
 
             public I3dObjectPart Part { get; }
-            public List<ITriangleMeshWithColor> Triangles { get; }
+            public List<ITriangleMeshWithColorAndTexture> Triangles { get; }
         }
     }
 }

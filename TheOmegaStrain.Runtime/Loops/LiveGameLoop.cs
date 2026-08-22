@@ -1143,7 +1143,7 @@ namespace TheOmegaStrain.Runtime.Loops
             GameState.GamePlayState.Phase = GamePhase.Paused;
         }
 
-        private void SetMovementGuides(OmegaObject3D inhabitant, I3dObjectPart part, List<ITriangleMeshWithColor> rotatedMesh)
+        private void SetMovementGuides(OmegaObject3D inhabitant, I3dObjectPart part, List<ITriangleMeshWithColorAndTexture> rotatedMesh)
         {
             switch (part.PartName)
             {

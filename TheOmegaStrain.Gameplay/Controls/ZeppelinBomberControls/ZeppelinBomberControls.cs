@@ -20,7 +20,7 @@ namespace TheOmegaStrain.Gameplay.Controls.ZeppelinBomberControls
         // Propeller animation
         private const float PropellerDegreesPerSecond = 720f;
         private float _propellerRotation = 0f;
-        private List<ITriangleMeshWithColor>? _propellerOriginalTriangles;
+        private List<ITriangleMeshWithColorAndTexture>? _propellerOriginalTriangles;
         private Vector3? _propellerPivot;
 
         // Bomb bay hatch animation
@@ -35,8 +35,8 @@ namespace TheOmegaStrain.Gameplay.Controls.ZeppelinBomberControls
         private float _hatchHoldTimer = 0f;
 
         // Bomb spawning
-        private ITriangleMeshWithColor? _bombDropStartGuide;
-        private ITriangleMeshWithColor? _bombDropEndGuide;
+        private ITriangleMeshWithColorAndTexture? _bombDropStartGuide;
+        private ITriangleMeshWithColorAndTexture? _bombDropEndGuide;
         private bool _bombSpawnedThisCycle = false;
 
         // Surface sync
@@ -73,8 +73,8 @@ namespace TheOmegaStrain.Gameplay.Controls.ZeppelinBomberControls
 
         private readonly OmegaMeshRotation _rotate = new();
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -348,7 +348,7 @@ namespace TheOmegaStrain.Gameplay.Controls.ZeppelinBomberControls
             return angle;
         }
 
-        private static Vector3 GetPartCenter(List<ITriangleMeshWithColor> triangles)
+        private static Vector3 GetPartCenter(List<ITriangleMeshWithColorAndTexture> triangles)
         {
             if (triangles == null || triangles.Count == 0)
                 return new Vector3();
@@ -378,7 +378,7 @@ namespace TheOmegaStrain.Gameplay.Controls.ZeppelinBomberControls
             };
         }
 
-        private static Vector3 GetFrontFaceCenter(List<ITriangleMeshWithColor> triangles)
+        private static Vector3 GetFrontFaceCenter(List<ITriangleMeshWithColorAndTexture> triangles)
         {
             if (triangles == null || triangles.Count == 0)
                 return new Vector3();
@@ -425,9 +425,9 @@ namespace TheOmegaStrain.Gameplay.Controls.ZeppelinBomberControls
             }
         }
 
-        private static List<ITriangleMeshWithColor> TranslateMesh(List<ITriangleMeshWithColor> triangles, Vector3 offset)
+        private static List<ITriangleMeshWithColorAndTexture> TranslateMesh(List<ITriangleMeshWithColorAndTexture> triangles, Vector3 offset)
         {
-            var translated = new List<ITriangleMeshWithColor>(triangles.Count);
+            var translated = new List<ITriangleMeshWithColorAndTexture>(triangles.Count);
 
             foreach (var triangle in triangles)
             {
@@ -574,15 +574,15 @@ namespace TheOmegaStrain.Gameplay.Controls.ZeppelinBomberControls
 
         public void ReleaseParticles(I3dObject theObject) { }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) _bombDropStartGuide = StartCoord;
             if (GuideCoord != null) _bombDropEndGuide = GuideCoord;

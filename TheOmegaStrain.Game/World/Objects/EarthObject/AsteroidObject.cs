@@ -34,7 +34,7 @@ namespace TheOmegaStrain.Game.World.Objects.EarthObject
             return obj;
         }
 
-        private static List<ITriangleMeshWithColor> BuildAsteroidGeometry(string[] palette, float size, Random rng)
+        private static List<ITriangleMeshWithColorAndTexture> BuildAsteroidGeometry(string[] palette, float size, Random rng)
         {
             // Force greyscale regardless of the supplied palette — asteroids
             // should read as dirty rocks, not coloured candy. We still take
@@ -94,7 +94,7 @@ namespace TheOmegaStrain.Game.World.Objects.EarthObject
                 rRearRing[i]  = Ring(rear,  rRear,  i);
             }
 
-            var tris = new List<ITriangleMeshWithColor>(Sides * 8);
+            var tris = new List<ITriangleMeshWithColorAndTexture>(Sides * 8);
 
             // Nose cone: noseTip -> rFrontRing
             for (int i = 0; i < Sides; i++)

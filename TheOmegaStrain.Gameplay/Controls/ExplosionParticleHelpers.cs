@@ -30,7 +30,7 @@ namespace TheOmegaStrain.Gameplay.Helpers
                 theObject.Particles.MoveParticles();
         }
 
-        private static bool TryCreateExplosionGuides(I3dObject theObject, out ITriangleMeshWithColor start, out ITriangleMeshWithColor guide)
+        private static bool TryCreateExplosionGuides(I3dObject theObject, out ITriangleMeshWithColorAndTexture start, out ITriangleMeshWithColorAndTexture guide)
         {
             start = null!;
             guide = null!;
@@ -84,7 +84,7 @@ namespace TheOmegaStrain.Gameplay.Helpers
             return new Vector3 { x = x / count, y = y / count, z = z / count };
         }
 
-        private static ITriangleMeshWithColor CreatePointTriangle(Vector3 point)
+        private static ITriangleMeshWithColorAndTexture CreatePointTriangle(Vector3 point)
         {
             return new TriangleMeshWithColor
             {

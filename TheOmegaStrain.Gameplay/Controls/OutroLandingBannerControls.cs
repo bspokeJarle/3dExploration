@@ -14,12 +14,12 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float WaveAmplitudeY = 9f;
         private const float WaveAmplitudeZ = 13f;
 
-        private readonly Dictionary<string, List<ITriangleMeshWithColor>> _baseTrianglesByPart = new();
+        private readonly Dictionary<string, List<ITriangleMeshWithColorAndTexture>> _baseTrianglesByPart = new();
         private bool _baseInitialized;
         private float _timeSeconds;
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = null!;
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -45,9 +45,9 @@ namespace TheOmegaStrain.Gameplay.Controls
             return theObject;
         }
 
-        private List<ITriangleMeshWithColor> CreateWaveTriangles(List<ITriangleMeshWithColor> baseTriangles, float minX, float width)
+        private List<ITriangleMeshWithColorAndTexture> CreateWaveTriangles(List<ITriangleMeshWithColorAndTexture> baseTriangles, float minX, float width)
         {
-            var animated = new List<ITriangleMeshWithColor>(baseTriangles.Count);
+            var animated = new List<ITriangleMeshWithColorAndTexture>(baseTriangles.Count);
             foreach (var triangle in baseTriangles)
             {
                 animated.Add(new TriangleMeshWithColor
@@ -104,7 +104,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             return maxX == float.MinValue ? 1f : maxX;
         }
 
-        private static void UpdateMinX(List<ITriangleMeshWithColor> triangles, ref float minX)
+        private static void UpdateMinX(List<ITriangleMeshWithColorAndTexture> triangles, ref float minX)
         {
             foreach (var triangle in triangles)
             {
@@ -114,7 +114,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
         }
 
-        private static void UpdateMaxX(List<ITriangleMeshWithColor> triangles, ref float maxX)
+        private static void UpdateMaxX(List<ITriangleMeshWithColorAndTexture> triangles, ref float maxX)
         {
             foreach (var triangle in triangles)
             {
@@ -155,9 +155,9 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry) { }
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
         public void Dispose() => _baseTrianglesByPart.Clear();
     }
 }

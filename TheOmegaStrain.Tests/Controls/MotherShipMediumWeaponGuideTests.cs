@@ -94,8 +94,8 @@ public class MotherShipMediumWeaponGuideTests
         Assert.IsNotNull(startField, "_weaponStartGuide field missing.");
         Assert.IsNotNull(dirField,   "_weaponDirectionGuide field missing.");
 
-        var storedStart = startField!.GetValue(ctrl) as ITriangleMeshWithColor;
-        var storedDir   = dirField!.GetValue(ctrl)   as ITriangleMeshWithColor;
+        var storedStart = startField!.GetValue(ctrl) as ITriangleMeshWithColorAndTexture;
+        var storedDir   = dirField!.GetValue(ctrl)   as ITriangleMeshWithColorAndTexture;
 
         Assert.IsNotNull(storedStart, "WeaponStartGuide was not stored — second call with null start must not clobber it.");
         Assert.IsNotNull(storedDir,   "WeaponDirectionGuide was not stored.");

@@ -100,7 +100,7 @@ public class StarFieldHandlerTests
     {
         return new Surface
         {
-            RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>()
+            RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>()
         };
     }
 

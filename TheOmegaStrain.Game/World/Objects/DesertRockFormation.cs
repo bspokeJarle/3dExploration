@@ -42,7 +42,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return rocks;
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? triangles, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? triangles, bool visible)
         {
             if (triangles == null) return;
 
@@ -54,9 +54,9 @@ namespace TheOmegaStrain.Game.World.Objects
             });
         }
 
-        private static List<ITriangleMeshWithColor> CreateRock(float centerX, float centerY, float radiusX, float radiusY, float height, int colorOffset)
+        private static List<ITriangleMeshWithColorAndTexture> CreateRock(float centerX, float centerY, float radiusX, float radiusY, float height, int colorOffset)
         {
-            var triangles = new List<ITriangleMeshWithColor>();
+            var triangles = new List<ITriangleMeshWithColorAndTexture>();
             const int segments = 7;
             var bottom = new List<Vector3>(segments);
             var top = new List<Vector3>(segments);
@@ -95,12 +95,12 @@ namespace TheOmegaStrain.Game.World.Objects
             return triangles;
         }
 
-        private static List<ITriangleMeshWithColor> RotateTriangles(List<ITriangleMeshWithColor> triangles, float degrees)
+        private static List<ITriangleMeshWithColorAndTexture> RotateTriangles(List<ITriangleMeshWithColorAndTexture> triangles, float degrees)
         {
             float radians = degrees * MathF.PI / 180f;
             float cos = MathF.Cos(radians);
             float sin = MathF.Sin(radians);
-            var rotated = new List<ITriangleMeshWithColor>(triangles.Count);
+            var rotated = new List<ITriangleMeshWithColorAndTexture>(triangles.Count);
 
             foreach (var triangle in triangles)
             {
@@ -141,10 +141,10 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> DesertRockShadow(float rotationZ)
+        private static List<ITriangleMeshWithColorAndTexture> DesertRockShadow(float rotationZ)
         {
             const string sc = OmegaObject3DHelpers.ShadowColorHex;
-            var triangles = new List<ITriangleMeshWithColor>();
+            var triangles = new List<ITriangleMeshWithColorAndTexture>();
 
             AddShadowRock(triangles, 0f, 0f, 23f, 16f, 18f, sc);
             AddShadowRock(triangles, -23f, -4f, 14f, 10f, 10f, sc);
@@ -155,7 +155,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddShadowRock(
-            List<ITriangleMeshWithColor> triangles,
+            List<ITriangleMeshWithColorAndTexture> triangles,
             float centerX,
             float centerY,
             float radiusX,

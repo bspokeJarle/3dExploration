@@ -63,8 +63,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         }
 
         public int ActiveBoltCount => _bolts.Count;
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject? ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -331,8 +331,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         }
 
         private static void WriteSegment(
-            ITriangleMeshWithColor first,
-            ITriangleMeshWithColor second,
+            ITriangleMeshWithColorAndTexture first,
+            ITriangleMeshWithColorAndTexture second,
             LightningSegment segment,
             float relativeX,
             float relativeZ,
@@ -370,7 +370,7 @@ namespace TheOmegaStrain.Gameplay.Controls
         }
 
         private static void WriteTriangle(
-            ITriangleMeshWithColor triangle,
+            ITriangleMeshWithColorAndTexture triangle,
             float x1,
             float y1,
             float x2,
@@ -397,7 +397,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             triangle.vert3.z = z;
         }
 
-        private static void CollapseTriangle(ITriangleMeshWithColor triangle)
+        private static void CollapseTriangle(ITriangleMeshWithColorAndTexture triangle)
         {
             triangle.Color = "000000";
             triangle.angle = 0f;
@@ -429,7 +429,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             GameState.WeatherVisualState.RaiseLightningFlash(activeOpacity * 0.18f);
         }
 
-        private static ITriangleMeshWithColor CreateLightningTriangle()
+        private static ITriangleMeshWithColorAndTexture CreateLightningTriangle()
         {
             return new TriangleMeshWithColor
             {
@@ -586,9 +586,9 @@ namespace TheOmegaStrain.Gameplay.Controls
         }
 
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
         private readonly record struct LightningPoint(float X, float Y);
 

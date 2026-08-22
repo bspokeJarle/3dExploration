@@ -16,10 +16,10 @@ namespace TheOmegaStrain.Game.World.Objects
         private const float MainSurfaceLandingLeadY = 8f;
 
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 };
-        public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
-        public Dictionary<long, ITriangleMeshWithColor> RotatedSurfaceTriangleByLandId { get; set; } = new();
+        public List<ITriangleMeshWithColorAndTexture> RotatedSurfaceTriangles  { get; set; }
+        public Dictionary<long, ITriangleMeshWithColorAndTexture> RotatedSurfaceTriangleByLandId { get; set; } = new();
         public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();
-        private readonly List<ITriangleMeshWithColor> _surfaceTriangles = new();
+        private readonly List<ITriangleMeshWithColorAndTexture> _surfaceTriangles = new();
         private readonly List<List<IVector3>> _viewPortCrashBoxes = new();
         private readonly List<string?> _viewPortCrashBoxNames = new();
 

@@ -23,7 +23,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene3
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Rainforrest;
         public ISceneDirector Director { get; } = new Scene3Director();
-        public GameModes GameMode { get; } = GameModes.Playback;
+        public GameModes GameMode { get; } = GameModes.Live;
         public float InfectionThresholdPercent { get; } = 13.0f;
         public int InfectionSpreadRate { get; } = 5;
         public int SeederOffscreenSpeedFactor { get; } = 14;

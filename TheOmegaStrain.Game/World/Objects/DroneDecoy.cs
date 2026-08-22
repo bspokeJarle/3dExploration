@@ -96,9 +96,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  CORE
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? DecoyCore()
+        public static List<ITriangleMeshWithColorAndTexture>? DecoyCore()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var front = new Vector3 { x = coreHalfDepth, y = 0, z = 0 };
             var back = new Vector3 { x = -coreHalfDepth, y = 0, z = 0 };
@@ -126,9 +126,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  FRONT PULSE PANEL
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? DecoyFrontPulsePanel()
+        public static List<ITriangleMeshWithColorAndTexture>? DecoyFrontPulsePanel()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float x = coreHalfDepth + pulseInset;
 
@@ -155,9 +155,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  FINS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? DecoyFins()
+        public static List<ITriangleMeshWithColorAndTexture>? DecoyFins()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Left fin
             AddFin(
@@ -211,7 +211,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddFin(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 root,
             Vector3 outward,
             Vector3 forward,
@@ -243,9 +243,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  ANTENNA
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? DecoyAntenna()
+        public static List<ITriangleMeshWithColorAndTexture>? DecoyAntenna()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float baseZ = coreHalfHeight;
             float topZ = coreHalfHeight + antennaHeight;
@@ -283,9 +283,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  PARTICLE GUIDES
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? ParticlesDirectionGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? ParticlesDirectionGuide()
         {
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = -14f, y =  4f, z = 0f },
@@ -297,9 +297,9 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        public static List<ITriangleMeshWithColor>? ParticlesStartGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? ParticlesStartGuide()
         {
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = -6f, y =  3f, z = 0f },
@@ -342,7 +342,7 @@ namespace TheOmegaStrain.Game.World.Objects
         //  HELPERS
         // ----------------------------------------------------
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null)
                 return;

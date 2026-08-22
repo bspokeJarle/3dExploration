@@ -5,7 +5,7 @@ namespace TheOmegaStrain.Common.CommonSetup
     //TODO: Expand this as needed, common map properties can go here
     public static class SurfaceSetup
     {
-        public const int DefaultViewPortSize = 18;
+        public const int DefaultViewPortSize = 36;
         private const float OriginalTileSize = 75f;
         private const float SurfaceScreenRatio = 1.05f;
 

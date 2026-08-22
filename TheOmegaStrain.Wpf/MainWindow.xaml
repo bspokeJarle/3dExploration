@@ -1,11 +1,14 @@
 <Window x:Class="TheOmegaStrain.Wpf.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
         Title="3D Game Renderer"
         Height="1024" Width="1280"
         Background="Black"
         WindowStyle="None" WindowState="Maximized" Cursor="None">
     <Grid Name="MainGrid">
+        <wfi:WindowsFormsHost x:Name="Direct3DHost"
+                              Visibility="Collapsed" />
         <!-- Rendered 3D Scene -->
         <Image Name="RenderImage" Stretch="Uniform"/>
 

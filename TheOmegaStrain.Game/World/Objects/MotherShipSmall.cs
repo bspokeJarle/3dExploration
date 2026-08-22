@@ -212,9 +212,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  HULL
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? MotherShipHullTop()
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipHullTop()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var front = GetFrontRing();
             var midFront = GetMidFrontRing();
@@ -258,9 +258,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? MotherShipHullBottom()
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipHullBottom()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var front = GetFrontRing();
             var midFront = GetMidFrontRing();
@@ -297,9 +297,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? MotherShipHullSides()
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipHullSides()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var front = GetFrontRing();
             var midFront = GetMidFrontRing();
@@ -329,9 +329,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  WINGS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? MotherShipWingsTop()
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipWingsTop()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Left
             {
@@ -377,9 +377,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? MotherShipWingsBottom()
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipWingsBottom()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Left
             {
@@ -412,9 +412,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? MotherShipWingSides()
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipWingSides()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Left wing edges
             {
@@ -457,9 +457,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  ACCENT PANELS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? MotherShipTopAccentPanels()
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipTopAccentPanels()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Center top teal panel - raised well above hull ridge
             var a = new Vector3 { x = 20f, y = -10f, z = 26.0f };
@@ -490,9 +490,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  SIDE VENTS + REAR
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? MotherShipSideVents()
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipSideVents()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             AddSideVent(tris, midBackX + 4f, -midBackHalfWidth + 2.2f, false);
             AddSideVent(tris, midBackX + 4f, midBackHalfWidth - 2.2f, true);
@@ -500,7 +500,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddSideVent(List<ITriangleMeshWithColor> tris, float x, float yOuter, bool rightSide)
+        private static void AddSideVent(List<ITriangleMeshWithColorAndTexture> tris, float x, float yOuter, bool rightSide)
         {
             float yInner = rightSide ? yOuter - ventDepth : yOuter + ventDepth;
 
@@ -519,9 +519,9 @@ namespace TheOmegaStrain.Game.World.Objects
             AddQuadOutward(tris, topInner2, topInner, botInner, botInner2, BodyCenter, ventGlowColorDark);
         }
 
-        public static List<ITriangleMeshWithColor>? MotherShipRearFace()
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipRearFace()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var topLeft = new Vector3 { x = backX, y = -backHalfWidth, z = topBack };
             var topRight = new Vector3 { x = backX, y = backHalfWidth, z = topBack };
@@ -538,7 +538,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddRearGlow(List<ITriangleMeshWithColor> tris, float yMin, float yMax, string? color = null)
+        private static void AddRearGlow(List<ITriangleMeshWithColorAndTexture> tris, float yMin, float yMax, string? color = null)
         {
             var tl = new Vector3 { x = backX - 0.2f, y = yMin, z = 3.6f };
             var tr = new Vector3 { x = backX - 0.2f, y = yMax, z = 3.6f };
@@ -552,9 +552,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  TOWER + WEAK SPOT
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? MotherShipTower()
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipTower()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var fl = new Vector3 { x = towerFrontX, y = -towerHalfWidthFront, z = towerBaseZ };
             var fr = new Vector3 { x = towerFrontX, y = towerHalfWidthFront, z = towerBaseZ };
@@ -585,9 +585,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? MotherShipWeakSpot()
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipWeakSpot()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             const int latBands = 6;
             const int lonSlices = 8;
@@ -710,7 +710,7 @@ namespace TheOmegaStrain.Game.World.Objects
         //  HELPERS
         // ----------------------------------------------------
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 

@@ -120,9 +120,9 @@ public class PalmControlsTests
         return part;
     }
 
-    private static List<ITriangleMeshWithColor> CloneTriangles(List<ITriangleMeshWithColor> source)
+    private static List<ITriangleMeshWithColorAndTexture> CloneTriangles(List<ITriangleMeshWithColorAndTexture> source)
     {
-        var clone = new List<ITriangleMeshWithColor>(source.Count);
+        var clone = new List<ITriangleMeshWithColorAndTexture>(source.Count);
         foreach (var triangle in source)
         {
             clone.Add(new TriangleMeshWithColor
@@ -144,8 +144,8 @@ public class PalmControlsTests
     }
 
     private static float MaxSpatialDisplacement(
-        List<ITriangleMeshWithColor> expected,
-        List<ITriangleMeshWithColor> actual)
+        List<ITriangleMeshWithColorAndTexture> expected,
+        List<ITriangleMeshWithColorAndTexture> actual)
     {
         Assert.AreEqual(expected.Count, actual.Count, "Animated leaves should preserve the original triangle count.");
 
@@ -174,8 +174,8 @@ public class PalmControlsTests
     }
 
     private static void AssertTrianglesEqual(
-        List<ITriangleMeshWithColor> expected,
-        List<ITriangleMeshWithColor> actual,
+        List<ITriangleMeshWithColorAndTexture> expected,
+        List<ITriangleMeshWithColorAndTexture> actual,
         string message)
     {
         Assert.AreEqual(expected.Count, actual.Count, message);

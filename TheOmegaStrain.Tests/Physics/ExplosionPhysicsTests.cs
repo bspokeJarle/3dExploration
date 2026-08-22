@@ -175,7 +175,7 @@ public class ExplosionPhysicsTests
                 {
                     PartName = "Hull",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         CreateTriangle(-10f)
                     }
@@ -184,7 +184,7 @@ public class ExplosionPhysicsTests
                 {
                     PartName = "Wing",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         CreateTriangle(10f)
                     }

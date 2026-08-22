@@ -4,6 +4,7 @@
     <TargetFramework>net10.0-windows7.0</TargetFramework>
     <RootNamespace>TheOmegaStrain.Wpf</RootNamespace>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>TheOmegaStrain</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>GameGraphics\OmegaStrain.ico</ApplicationIcon>
@@ -11,9 +12,22 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="GameGraphics\OmegaStrain.ico" />
+    <None Include="C:\Users\JarleAdolfsen\Repositories\RetroMesh\RetroMesh.Rendering.Direct3D11\Shaders\ProjectedTriangle.hlsl">
+      <Link>Shaders\ProjectedTriangle.hlsl</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="RetroMesh.Engine" Version="$(RetroMeshEnginePackageVersion)" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <Reference Include="RetroMesh.Engine">
+      <HintPath>$(RetroMeshEnginePath)</HintPath>
+    </Reference>
+    <Reference Include="RetroMesh.Rendering.Direct3D11">
+      <HintPath>C:\Users\JarleAdolfsen\Repositories\RetroMesh\RetroMesh.Rendering.Direct3D11\bin\Release\net10.0-windows7.0\RetroMesh.Rendering.Direct3D11.dll</HintPath>
+    </Reference>
+    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TheOmegaStrain.Runtime\TheOmegaStrain.Runtime.csproj" />

@@ -77,9 +77,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  STILTS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? Stilts()
+        public static List<ITriangleMeshWithColorAndTexture>? Stilts()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float x = hutWidth / 2 - 4f;
             float y = hutDepth / 2 - 4f;
@@ -109,9 +109,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  FLOOR
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? Floor()
+        public static List<ITriangleMeshWithColorAndTexture>? Floor()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float x = hutWidth / 2;
             float y = hutDepth / 2;
@@ -151,9 +151,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  WALLS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? Walls()
+        public static List<ITriangleMeshWithColorAndTexture>? Walls()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float x = hutWidth / 2;
             float y = hutDepth / 2;
@@ -217,7 +217,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddWallPanel(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 a,
             Vector3 b,
             Vector3 c,
@@ -240,9 +240,9 @@ namespace TheOmegaStrain.Game.World.Objects
             }
         }
 
-        public static List<ITriangleMeshWithColor>? DoorOpening()
+        public static List<ITriangleMeshWithColorAndTexture>? DoorOpening()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float y = -hutDepth / 2 - 0.35f;
             float z0 = floorHeight;
@@ -266,9 +266,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  ROOF
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? PalmLeafRoof()
+        public static List<ITriangleMeshWithColorAndTexture>? PalmLeafRoof()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float x = hutWidth / 2 + roofOverhang;
             float y = hutDepth / 2 + roofOverhang;
@@ -341,9 +341,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  DETAILS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BambooDetails()
+        public static List<ITriangleMeshWithColorAndTexture>? BambooDetails()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float x = hutWidth / 2;
             float y = hutDepth / 2;
@@ -371,9 +371,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? Lantern()
+        public static List<ITriangleMeshWithColorAndTexture>? Lantern()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float y = -hutDepth / 2 - 1.2f;
             float z = floorHeight + 11f;
@@ -413,9 +413,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  SHADOW
         // ----------------------------------------------------
 
-        private static List<ITriangleMeshWithColor> BambooHutShadow()
+        private static List<ITriangleMeshWithColorAndTexture> BambooHutShadow()
         {
-            var tris = new List<ITriangleMeshWithColor>(10);
+            var tris = new List<ITriangleMeshWithColorAndTexture>(10);
             const string sc = OmegaObject3DHelpers.ShadowColorHex;
 
             // Body
@@ -450,7 +450,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddShadowRect(List<ITriangleMeshWithColor> tris, float x1, float x2, float z1, float z2, string color)
+        private static void AddShadowRect(List<ITriangleMeshWithColorAndTexture> tris, float x1, float x2, float z1, float z2, string color)
         {
             var a = new Vector3 { x = x1, y = 0f, z = z1 };
             var b = new Vector3 { x = x2, y = 0f, z = z1 };
@@ -466,7 +466,7 @@ namespace TheOmegaStrain.Game.World.Objects
         // ----------------------------------------------------
 
         private static void AddBambooPole(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 baseCenter,
             float height,
             float radius,
@@ -504,7 +504,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddBeam(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 start,
             Vector3 end,
             float thickness,
@@ -532,7 +532,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddFlatBeam(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 start,
             Vector3 end,
             float thickness,
@@ -568,7 +568,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return a + (b - a) * t;
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 
@@ -581,7 +581,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddQuadOutward(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 v1,
             Vector3 v2,
             Vector3 v3,

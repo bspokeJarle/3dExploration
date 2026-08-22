@@ -101,9 +101,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  NOSE
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BombNose()
+        public static List<ITriangleMeshWithColorAndTexture>? BombNose()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var baseRing = GenerateEllipseRing(bodySegments, noseBaseX, bodyRadiusY, bodyRadiusZ);
             var tip = new Vector3 { x = noseTipX, y = 0f, z = 0f };
@@ -123,9 +123,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  BODY
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BombBody()
+        public static List<ITriangleMeshWithColorAndTexture>? BombBody()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var frontRing = GenerateEllipseRing(bodySegments, bodyFrontX, bodyRadiusY, bodyRadiusZ);
             var backRing = GenerateEllipseRing(bodySegments, bodyBackX, bodyRadiusY * 0.98f, bodyRadiusZ * 0.98f);
@@ -158,9 +158,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  TAIL TRANSITION
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BombTailTransition()
+        public static List<ITriangleMeshWithColorAndTexture>? BombTailTransition()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var bodyRing = GenerateEllipseRing(bodySegments, tailBaseX, bodyRadiusY * 0.98f, bodyRadiusZ * 0.98f);
             var tailRing = GenerateEllipseRing(bodySegments, tailEndX, tailRingRadiusY, tailRingRadiusZ);
@@ -187,9 +187,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  TAIL FINS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BombTailFins()
+        public static List<ITriangleMeshWithColorAndTexture>? BombTailFins()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             AddVerticalTopFin(tris);
             AddVerticalBottomFin(tris);
@@ -199,7 +199,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddVerticalTopFin(List<ITriangleMeshWithColor> tris)
+        private static void AddVerticalTopFin(List<ITriangleMeshWithColorAndTexture> tris)
         {
             var a = new Vector3 { x = finRootX, y = -finThickness, z = finRootOffset };
             var b = new Vector3 { x = finRootX, y = finThickness, z = finRootOffset };
@@ -218,7 +218,7 @@ namespace TheOmegaStrain.Game.World.Objects
             AddQuadOutward(tris, a, a2, b2, b, BodyCenter, finDark);
         }
 
-        private static void AddVerticalBottomFin(List<ITriangleMeshWithColor> tris)
+        private static void AddVerticalBottomFin(List<ITriangleMeshWithColorAndTexture> tris)
         {
             var a = new Vector3 { x = finRootX, y = -finThickness, z = -finRootOffset };
             var b = new Vector3 { x = finRootX, y = finThickness, z = -finRootOffset };
@@ -237,7 +237,7 @@ namespace TheOmegaStrain.Game.World.Objects
             AddQuadOutward(tris, a, b, b2, a2, BodyCenter, finDark);
         }
 
-        private static void AddHorizontalRightFin(List<ITriangleMeshWithColor> tris)
+        private static void AddHorizontalRightFin(List<ITriangleMeshWithColorAndTexture> tris)
         {
             var a = new Vector3 { x = finRootX, y = finRootOffset, z = -finThickness };
             var b = new Vector3 { x = finRootX, y = finRootOffset, z = finThickness };
@@ -256,7 +256,7 @@ namespace TheOmegaStrain.Game.World.Objects
             AddQuadOutward(tris, a, a2, b2, b, BodyCenter, finDark);
         }
 
-        private static void AddHorizontalLeftFin(List<ITriangleMeshWithColor> tris)
+        private static void AddHorizontalLeftFin(List<ITriangleMeshWithColorAndTexture> tris)
         {
             var a = new Vector3 { x = finRootX, y = -finRootOffset, z = -finThickness };
             var b = new Vector3 { x = finRootX, y = -finRootOffset, z = finThickness };
@@ -333,7 +333,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return midColor;
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 
@@ -378,7 +378,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddQuadOutward(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 v1,
             Vector3 v2,
             Vector3 v3,

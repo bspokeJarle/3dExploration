@@ -47,8 +47,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private float _elapsedSeconds;
         private int _nextSoundIndex;
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = null!;
 
         public OutroFireworksControls()
@@ -70,9 +70,9 @@ namespace TheOmegaStrain.Gameplay.Controls
             return theObject;
         }
 
-        private List<ITriangleMeshWithColor> CreateFrameTriangles()
+        private List<ITriangleMeshWithColorAndTexture> CreateFrameTriangles()
         {
-            var triangles = new List<ITriangleMeshWithColor>(ExplosionParticleCount * _bursts.Length * 4);
+            var triangles = new List<ITriangleMeshWithColorAndTexture>(ExplosionParticleCount * _bursts.Length * 4);
             int cycleIndex = (int)(_elapsedSeconds / CycleSeconds);
             float cycleTime = _elapsedSeconds - (cycleIndex * CycleSeconds);
 
@@ -82,7 +82,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             return triangles;
         }
 
-        private void AddBurstFrame(List<ITriangleMeshWithColor> triangles, FireworkBurst burst, float burstTime, int cycleIndex)
+        private void AddBurstFrame(List<ITriangleMeshWithColorAndTexture> triangles, FireworkBurst burst, float burstTime, int cycleIndex)
         {
             if (burstTime < 0f || burstTime > RiseSeconds + ExplosionSeconds)
                 return;
@@ -102,7 +102,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             AddExplosion(triangles, burst, (burstTime - RiseSeconds) / ExplosionSeconds);
         }
 
-        private static void AddLaunchTrail(List<ITriangleMeshWithColor> triangles, FireworkBurst burst, float progress)
+        private static void AddLaunchTrail(List<ITriangleMeshWithColorAndTexture> triangles, FireworkBurst burst, float progress)
         {
             float eased = SmoothStep(progress);
             float x = Lerp(burst.StartX, burst.PeakX, eased);
@@ -122,7 +122,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
         }
 
-        private static void AddExplosion(List<ITriangleMeshWithColor> triangles, FireworkBurst burst, float progress)
+        private static void AddExplosion(List<ITriangleMeshWithColorAndTexture> triangles, FireworkBurst burst, float progress)
         {
             progress = Math.Clamp(progress, 0f, 1f);
             float expansion = SmoothStep(progress);
@@ -185,7 +185,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             return particles;
         }
 
-        private static void AddDiamond(List<ITriangleMeshWithColor> tris, float x, float y, float z, float size, string color)
+        private static void AddDiamond(List<ITriangleMeshWithColorAndTexture> tris, float x, float y, float z, float size, string color)
         {
             var top = new Vector3(x, y - size, z);
             var right = new Vector3(x + size, y, z);
@@ -253,9 +253,9 @@ namespace TheOmegaStrain.Gameplay.Controls
         }
 
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
         public void Dispose() { }
 
         private sealed class FireworkBurst

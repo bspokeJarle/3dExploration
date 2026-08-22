@@ -28,7 +28,7 @@ namespace TheOmegaStrain.Game.World.Objects
             fireworks.ObjectParts.Add(new OmegaObjectPart3D
             {
                 PartName = ParticlePartName,
-                Triangles = new List<ITriangleMeshWithColor>(),
+                Triangles = new List<ITriangleMeshWithColorAndTexture>(),
                 IsVisible = true
             });
 

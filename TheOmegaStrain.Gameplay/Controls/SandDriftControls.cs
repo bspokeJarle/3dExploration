@@ -59,8 +59,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private float _windX = BaseWindX;
         private float _windZ = BaseWindZ;
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject? ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -217,7 +217,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             return mote;
         }
 
-        private static void WriteTriangle(ITriangleMeshWithColor triangle, DustMote mote, IVector3 mapPosition, float objectZ)
+        private static void WriteTriangle(ITriangleMeshWithColorAndTexture triangle, DustMote mote, IVector3 mapPosition, float objectZ)
         {
             float opacity = mote.Opacity * GlobalSandOpacity;
             if (opacity <= 0.015f)
@@ -251,7 +251,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             triangle.vert3.z = relativeZ;
         }
 
-        private static void CollapseTriangle(ITriangleMeshWithColor triangle)
+        private static void CollapseTriangle(ITriangleMeshWithColorAndTexture triangle)
         {
             triangle.Color = "000000";
             triangle.angle = 0f;
@@ -261,7 +261,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             triangle.vert1.z = triangle.vert2.z = triangle.vert3.z = 0f;
         }
 
-        private static ITriangleMeshWithColor CreateDustTriangle()
+        private static ITriangleMeshWithColorAndTexture CreateDustTriangle()
         {
             return new TriangleMeshWithColor
             {
@@ -316,9 +316,9 @@ namespace TheOmegaStrain.Gameplay.Controls
         }
 
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
         private sealed class DustMote
         {

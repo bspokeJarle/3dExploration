@@ -42,10 +42,10 @@ namespace TheOmegaStrain.Game.World.Objects
             AddPart(banner, "BannerPoleLeft", CreatePole(-BannerWidth / 2f - PoleWidth, 0f));
             AddPart(banner, "BannerPoleRight", CreatePole(BannerWidth / 2f, 0f));
 
-            var segmentTriangles = new List<ITriangleMeshWithColor>[SegmentCount];
+            var segmentTriangles = new List<ITriangleMeshWithColorAndTexture>[SegmentCount];
             for (int i = 0; i < SegmentCount; i++)
             {
-                segmentTriangles[i] = new List<ITriangleMeshWithColor>();
+                segmentTriangles[i] = new List<ITriangleMeshWithColorAndTexture>();
                 AddBannerSegment(segmentTriangles[i], i);
             }
 
@@ -60,7 +60,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return banner;
         }
 
-        private static void AddBannerSegment(List<ITriangleMeshWithColor> triangles, int segmentIndex)
+        private static void AddBannerSegment(List<ITriangleMeshWithColorAndTexture> triangles, int segmentIndex)
         {
             float segmentWidth = BannerWidth / SegmentCount;
             float left = (-BannerWidth / 2f) + (segmentIndex * segmentWidth);
@@ -70,15 +70,15 @@ namespace TheOmegaStrain.Game.World.Objects
             AddRect(triangles, left, BannerTop, right, BannerTop + BannerHeight, BannerZ, color);
         }
 
-        private static List<ITriangleMeshWithColor> CreatePole(float x, float y)
+        private static List<ITriangleMeshWithColorAndTexture> CreatePole(float x, float y)
         {
-            var triangles = new List<ITriangleMeshWithColor>();
+            var triangles = new List<ITriangleMeshWithColorAndTexture>();
             AddRect(triangles, x, y - PoleHeight, x + PoleWidth, y, BannerZ - 2f, PoleColor);
             AddRect(triangles, x - 8f, y - PoleHeight - 5f, x + PoleWidth + 8f, y - PoleHeight + 7f, BannerZ - 1f, PoleColor);
             return triangles;
         }
 
-        private static void AddText(List<ITriangleMeshWithColor>[] segmentTriangles, string text, float y, float glyphHeight)
+        private static void AddText(List<ITriangleMeshWithColorAndTexture>[] segmentTriangles, string text, float y, float glyphHeight)
         {
             string upper = text.ToUpperInvariant();
             const int glyphWidthUnits = 5;
@@ -124,7 +124,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return width;
         }
 
-        private static void AddGlyph(List<ITriangleMeshWithColor>[] segmentTriangles, string[] pattern, float x, float y, float cell)
+        private static void AddGlyph(List<ITriangleMeshWithColorAndTexture>[] segmentTriangles, string[] pattern, float x, float y, float cell)
         {
             for (int row = 0; row < pattern.Length; row++)
             {
@@ -175,7 +175,7 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static void AddPart(OmegaObject3D obj, string partName, List<ITriangleMeshWithColor> triangles)
+        private static void AddPart(OmegaObject3D obj, string partName, List<ITriangleMeshWithColorAndTexture> triangles)
         {
             obj.ObjectParts.Add(new OmegaObjectPart3D
             {
@@ -185,7 +185,7 @@ namespace TheOmegaStrain.Game.World.Objects
             });
         }
 
-        private static void AddRect(List<ITriangleMeshWithColor> triangles, float left, float top, float right, float bottom, float z, string color)
+        private static void AddRect(List<ITriangleMeshWithColorAndTexture> triangles, float left, float top, float right, float bottom, float z, string color)
         {
             var topLeft = new Vector3(left, top, z);
             var topRight = new Vector3(right, top, z);

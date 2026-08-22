@@ -97,9 +97,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  BASE
         // ----------------------------------------------------
 
-        private static List<ITriangleMeshWithColor>? CreateBase(float radius, float height, Vector3 center)
+        private static List<ITriangleMeshWithColorAndTexture>? CreateBase(float radius, float height, Vector3 center)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             int segments = 8;
 
             var bottom = CreateRing(0f, 0f, 0f, radius, segments);
@@ -128,14 +128,14 @@ namespace TheOmegaStrain.Game.World.Objects
         //  OUTER LEAVES
         // ----------------------------------------------------
 
-        private static List<ITriangleMeshWithColor>? CreateOuterLeaves(
+        private static List<ITriangleMeshWithColorAndTexture>? CreateOuterLeaves(
             int count,
             float length,
             float width,
             float crownZ,
             Vector3 center)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             for (int i = 0; i < count; i++)
             {
@@ -199,13 +199,13 @@ namespace TheOmegaStrain.Game.World.Objects
         //  INNER PETALS
         // ----------------------------------------------------
 
-        private static List<ITriangleMeshWithColor>? CreateInnerPetals(
+        private static List<ITriangleMeshWithColorAndTexture>? CreateInnerPetals(
             int count,
             float radius,
             float height,
             Vector3 center)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             for (int i = 0; i < count; i++)
             {
@@ -266,9 +266,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  STAMENS / GLOWING TIPS
         // ----------------------------------------------------
 
-        private static List<ITriangleMeshWithColor>? CreateStamens(int count, float height, Vector3 center)
+        private static List<ITriangleMeshWithColorAndTexture>? CreateStamens(int count, float height, Vector3 center)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             for (int i = 0; i < count; i++)
             {
@@ -302,7 +302,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddStem(List<ITriangleMeshWithColor> tris, Vector3 start, Vector3 end, float thickness, Vector3 center)
+        private static void AddStem(List<ITriangleMeshWithColorAndTexture> tris, Vector3 start, Vector3 end, float thickness, Vector3 center)
         {
             float dx = end.x - start.x;
             float dy = end.y - start.y;
@@ -324,7 +324,7 @@ namespace TheOmegaStrain.Game.World.Objects
             AddQuadOutward(tris, a2, d2, c, b, center, stemDark);
         }
 
-        private static void AddGlowBud(List<ITriangleMeshWithColor> tris, Vector3 c, float r, Vector3 center)
+        private static void AddGlowBud(List<ITriangleMeshWithColorAndTexture> tris, Vector3 c, float r, Vector3 center)
         {
             var top = new Vector3 { x = c.x, y = c.y, z = c.z + r };
             var bottom = new Vector3 { x = c.x, y = c.y, z = c.z - r };
@@ -363,9 +363,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  SHADOW
         // ----------------------------------------------------
 
-        private static List<ITriangleMeshWithColor> AlienPlantShadow(float radius, float height)
+        private static List<ITriangleMeshWithColorAndTexture> AlienPlantShadow(float radius, float height)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             const string sc = OmegaObject3DHelpers.ShadowColorHex;
 
             // Base shadow
@@ -390,7 +390,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddShadowTri(List<ITriangleMeshWithColor> tris, float x1, float x2, float z1, float z2, string color)
+        private static void AddShadowTri(List<ITriangleMeshWithColorAndTexture> tris, float x1, float x2, float z1, float z2, string color)
         {
             tris.Add(new TriangleMeshWithColor
             {
@@ -425,7 +425,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return points;
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 
@@ -438,7 +438,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddQuadOutward(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 v1,
             Vector3 v2,
             Vector3 v3,

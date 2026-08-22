@@ -8,8 +8,8 @@ namespace TheOmegaStrain.Gameplay.Controls
 {
     public class TreeControls : IObjectMovement
     {
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
         public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
@@ -22,7 +22,7 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float SecondarySwayScale = 0.45f;
         private const float HeightWeightPower = 1.35f;
 
-        private readonly Dictionary<string, List<ITriangleMeshWithColor>> _baseTrianglesByPart = new();
+        private readonly Dictionary<string, List<ITriangleMeshWithColorAndTexture>> _baseTrianglesByPart = new();
         private DateTime _lastFrameTime = DateTime.MinValue;
         private float _windTime;
         private float _minTreeZ;
@@ -73,12 +73,12 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
         }
 
-        private List<ITriangleMeshWithColor> CreateWindTriangles(
-            List<ITriangleMeshWithColor> baseTriangles,
+        private List<ITriangleMeshWithColorAndTexture> CreateWindTriangles(
+            List<ITriangleMeshWithColorAndTexture> baseTriangles,
             float amplitude,
             float phase)
         {
-            var animated = new List<ITriangleMeshWithColor>(baseTriangles.Count);
+            var animated = new List<ITriangleMeshWithColorAndTexture>(baseTriangles.Count);
             float treeHeight = Math.Max(1f, _maxTreeZ - _minTreeZ);
             float mainSway = MathF.Sin((_windTime * WindRadiansPerSecond) + phase);
             float secondarySway = MathF.Sin((_windTime * WindRadiansPerSecond * 0.72f) + phase + 0.65f);
@@ -163,11 +163,11 @@ namespace TheOmegaStrain.Gameplay.Controls
         {
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 
@@ -176,7 +176,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             _baseTrianglesByPart.Clear();
         }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 

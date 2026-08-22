@@ -9,8 +9,8 @@ namespace TheOmegaStrain.Gameplay.Controls
 {
     public class GroundControls : IObjectMovement
     {
-        public ITriangleMeshWithColor? StartCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public ITriangleMeshWithColor? GuideCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public I3dObject ParentObject { get; set; }
 
@@ -394,14 +394,14 @@ namespace TheOmegaStrain.Gameplay.Controls
             return (int)Math.Ceiling(MapSetup.maxHeight * 0.15f);
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             throw new NotImplementedException();
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             throw new NotImplementedException();
         }

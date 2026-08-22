@@ -87,9 +87,9 @@ namespace TheOmegaStrain.Game.World.Objects
         // Centered around X=0, Z=28
         //
 
-        public static List<ITriangleMeshWithColor>? BulletBody()
+        public static List<ITriangleMeshWithColorAndTexture>? BulletBody()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Forward direction is -Y
             float yFrontTip = -28f;

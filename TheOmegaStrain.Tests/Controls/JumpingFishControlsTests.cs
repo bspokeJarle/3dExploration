@@ -284,8 +284,8 @@ public class JumpingFishControlsTests
         public float LastUpwardVelocityBoost { get; private set; }
 
         public void ReleaseParticles(
-            ITriangleMeshWithColor Trajectory,
-            ITriangleMeshWithColor StartPosition,
+            ITriangleMeshWithColorAndTexture Trajectory,
+            ITriangleMeshWithColorAndTexture StartPosition,
             IVector3 WorldPosition,
             IObjectMovement ParentShip,
             int Thrust,
@@ -314,7 +314,7 @@ public class JumpingFishControlsTests
         {
         }
 
-        private static Vector3 GetTriangleCenter(ITriangleMeshWithColor triangle)
+        private static Vector3 GetTriangleCenter(ITriangleMeshWithColorAndTexture triangle)
         {
             return new Vector3
             {
@@ -327,7 +327,7 @@ public class JumpingFishControlsTests
 
     private sealed class CapturedParticle : IParticle
     {
-        public ITriangleMeshWithColor ParticleTriangle { get; set; } = null!;
+        public ITriangleMeshWithColorAndTexture ParticleTriangle { get; set; } = null!;
         public IVector3 Velocity { get; set; } = new Vector3();
         public IVector3 Acceleration { get; set; } = new Vector3();
         public long VariedStart { get; set; }

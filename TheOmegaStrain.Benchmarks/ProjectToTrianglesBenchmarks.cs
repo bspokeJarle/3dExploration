@@ -54,7 +54,7 @@ public class ProjectToTrianglesBenchmarks
                 Color = "FFFFFF",
                 noHidden = true
             };
-            _objects.Add(new OmegaObject3D { ObjectId = i, ObjectName = "BenchmarkObject", WorldPosition = new Vector3 { x = 0, y = 0, z = 0 }, ObjectOffsets = new Vector3 { x = 0, y = 0, z = 0 }, Rotation = new Vector3 { x = 0, y = 0, z = 0 }, ObjectParts = new List<I3dObjectPart> { new OmegaObjectPart3D { PartName = "Main", IsVisible = true, Triangles = new List<ITriangleMeshWithColor> { triangle } } }, CrashBoxes = new List<List<IVector3>>() });
+            _objects.Add(new OmegaObject3D { ObjectId = i, ObjectName = "BenchmarkObject", WorldPosition = new Vector3 { x = 0, y = 0, z = 0 }, ObjectOffsets = new Vector3 { x = 0, y = 0, z = 0 }, Rotation = new Vector3 { x = 0, y = 0, z = 0 }, ObjectParts = new List<I3dObjectPart> { new OmegaObjectPart3D { PartName = "Main", IsVisible = true, Triangles = new List<ITriangleMeshWithColorAndTexture> { triangle } } }, CrashBoxes = new List<List<IVector3>>() });
         }
     }
 

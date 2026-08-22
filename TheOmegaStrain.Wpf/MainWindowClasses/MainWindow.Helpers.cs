@@ -19,7 +19,7 @@ namespace TheOmegaStrain.Wpf.Helpers
         /// <summary>
         /// Applies the rotation offset to prevent flipping when rotating.
         /// </summary>
-        public static void ApplyRotationOffset(ref ITriangleMeshWithColor triangle, int? offsetX, int? offsetY, int? offsetZ)
+        public static void ApplyRotationOffset(ref ITriangleMeshWithColorAndTexture triangle, int? offsetX, int? offsetY, int? offsetZ)
         {
             MeshGeometryOperations.ApplyPositiveRotationOffsetToTriangle(triangle, offsetX, offsetY, offsetZ);
         }

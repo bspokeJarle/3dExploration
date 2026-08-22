@@ -92,9 +92,9 @@ namespace TheOmegaStrain.Game.World.Objects
         /// Builds a small 3D "spark" / star shape using a few triangles around origin.
         /// This keeps the triangle count low (well below 10) and is cheap to render.
         /// </summary>
-        private static List<ITriangleMeshWithColor> BuildStarGeometry(float size, string colorHex)
+        private static List<ITriangleMeshWithColorAndTexture> BuildStarGeometry(float size, string colorHex)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Three / four crossing “arms” as long, thin triangles in the XY-plane
             int armCount = 4;          // set to 3 if you want to test a 3-armed star

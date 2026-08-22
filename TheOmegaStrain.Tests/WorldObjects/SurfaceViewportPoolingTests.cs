@@ -43,7 +43,7 @@ public class SurfaceViewportPoolingTests
         var firstPart = GetSurfacePart(firstViewport);
         var firstTriangle = firstPart.Triangles[0];
 
-        firstPart.Triangles = new List<ITriangleMeshWithColor>();
+        firstPart.Triangles = new List<ITriangleMeshWithColorAndTexture>();
 
         var secondViewport = surface.GetSurfaceViewPort();
         var secondPart = GetSurfacePart(secondViewport);

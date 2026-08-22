@@ -28,7 +28,7 @@ public class RenderSimpleOptimizationTests
     {
         var surface = new Surface
         {
-            RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>()
+            RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>()
         };
         surface.RotatedSurfaceTriangleByLandId[42] = new TriangleMeshWithColor
         {
@@ -66,7 +66,7 @@ public class RenderSimpleOptimizationTests
                 {
                     IsVisible = true,
                     PartName = "Main",
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {
@@ -91,7 +91,7 @@ public class RenderSimpleOptimizationTests
     {
         var surface = new Surface
         {
-            RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>()
+            RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>()
         };
         var target = new Vector3 { x = 25f, y = 15f, z = 5f };
         surface.RotatedSurfaceTriangleByLandId[42] = new TriangleMeshWithColor
@@ -118,7 +118,7 @@ public class RenderSimpleOptimizationTests
                 {
                     IsVisible = true,
                     PartName = "Main",
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {
@@ -164,7 +164,7 @@ public class RenderSimpleOptimizationTests
                 {
                     IsVisible = true,
                     PartName = "Main",
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {
@@ -178,7 +178,7 @@ public class RenderSimpleOptimizationTests
                 {
                     IsVisible = false,
                     PartName = "Shadow",
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {
@@ -611,7 +611,7 @@ public class RenderSimpleOptimizationTests
                 {
                     PartName = partName,
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {

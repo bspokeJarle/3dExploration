@@ -40,7 +40,7 @@ namespace TheOmegaStrain.Game.World.Objects
             }
         }
 
-        private static void SetColor(List<ITriangleMeshWithColor> triangles, string color)
+        private static void SetColor(List<ITriangleMeshWithColorAndTexture> triangles, string color)
         {
             foreach (var triangle in triangles)
                 triangle.Color = color;

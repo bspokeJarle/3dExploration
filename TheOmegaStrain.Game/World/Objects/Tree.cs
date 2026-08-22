@@ -43,7 +43,7 @@ namespace TheOmegaStrain.Game.World.Objects
             // skews along the ground. Use as many triangles as needed to make
             // the outline read — no hard limit. Tree here = 8 tris: a narrow
             // trunk + a rounded, slightly asymmetric crown.
-            var shadowTris = new List<ITriangleMeshWithColor>(8);
+            var shadowTris = new List<ITriangleMeshWithColorAndTexture>(8);
             const string sc = OmegaObject3DHelpers.ShadowColorHex;
 
             // --- Trunk (2 tris) ---
@@ -93,9 +93,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tree;
         }
 
-        public static List<ITriangleMeshWithColor>? TrunkTriangles()
+        public static List<ITriangleMeshWithColorAndTexture>? TrunkTriangles()
         {
-            var trunk = new List<ITriangleMeshWithColor>();
+            var trunk = new List<ITriangleMeshWithColorAndTexture>();
             int trunkSegments = 10;
             float radius = 5;
             float height = 15;
@@ -118,9 +118,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return trunk;
         }
 
-        public static List<ITriangleMeshWithColor>? FoliageTriangles()
+        public static List<ITriangleMeshWithColorAndTexture>? FoliageTriangles()
         {
-            var foliage = new List<ITriangleMeshWithColor>();
+            var foliage = new List<ITriangleMeshWithColorAndTexture>();
             int foliageLayers = 4;
             float baseRadius = 24;
             float heightStep = 8;

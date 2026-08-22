@@ -173,9 +173,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  NOSE
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BomberNose()
+        public static List<ITriangleMeshWithColorAndTexture>? BomberNose()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var frontRing = GenerateHullRing(frontRingX, frontRadiusY, frontRadiusZ);
 
@@ -200,9 +200,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  MAIN HULL
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BomberHullBody()
+        public static List<ITriangleMeshWithColorAndTexture>? BomberHullBody()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var ring1 = GenerateHullRing(frontRingX, frontRadiusY, frontRadiusZ);
             var ring2 = GenerateHullRing(upperMidFrontX, upperMidFrontRadiusY, upperMidFrontRadiusZ);
@@ -218,9 +218,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? BomberTailClosure()
+        public static List<ITriangleMeshWithColorAndTexture>? BomberTailClosure()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var tailRing = GenerateHullRing(tailRingX, tailRadiusY, tailRadiusZ);
             var tailTip = new Vector3 { x = tailTipX, y = 0f, z = 0f };
@@ -239,9 +239,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  BOMB BAY
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BomberBombBay()
+        public static List<ITriangleMeshWithColorAndTexture>? BomberBombBay()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Outer lip
             var fl = new Vector3 { x = bayFrontX, y = -bayHalfWidth, z = bayLipZ };
@@ -279,9 +279,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  COCKPIT / SENSOR BUMP
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BomberCockpit()
+        public static List<ITriangleMeshWithColorAndTexture>? BomberCockpit()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float baseFrontZ = GetTopAtX(cockpitFrontX) + cockpitBaseLiftFront;
             float baseMidZ = GetTopAtX(cockpitMidX) + cockpitBaseLiftMid;
@@ -323,9 +323,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  REAR MOUNT + PROPELLER
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BomberRearMount()
+        public static List<ITriangleMeshWithColorAndTexture>? BomberRearMount()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var ftl = new Vector3 { x = propHubFrontX, y = -2.4f, z = 2.1f };
             var ftr = new Vector3 { x = propHubFrontX, y = 2.4f, z = 2.1f };
@@ -346,9 +346,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? BomberPropeller()
+        public static List<ITriangleMeshWithColorAndTexture>? BomberPropeller()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Hub
             float xFront = propHubBackX + 1.2f;
@@ -398,9 +398,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  FINS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BomberFins()
+        public static List<ITriangleMeshWithColorAndTexture>? BomberFins()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Top fin
             {
@@ -469,9 +469,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  GUIDES / COLLISION
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? ParticlesDirectionGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? ParticlesDirectionGuide()
         {
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = propHubBackX - 2f, y =  5f, z =  1.5f },
@@ -483,9 +483,9 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        public static List<ITriangleMeshWithColor>? ParticlesStartGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? ParticlesStartGuide()
         {
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = tailRingX + 2f, y =  4f, z =  1.0f },
@@ -497,11 +497,11 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        public static List<ITriangleMeshWithColor>? BombDropStartGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? BombDropStartGuide()
         {
             float centerX = (bayFrontX + bayBackX) * 0.5f;
             float centerZ = bayInsetZ;
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = centerX + 2f, y =  2f, z = centerZ },
@@ -513,12 +513,12 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        public static List<ITriangleMeshWithColor>? BombDropEndGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? BombDropEndGuide()
         {
             float centerX = (bayFrontX + bayBackX) * 0.5f;
             float endY = 30f;
             float endZ = bayInsetZ - 55f;
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = centerX + 8f, y = endY + 8f, z = endZ },
@@ -588,7 +588,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return points;
         }
 
-        private static void StitchRings(List<ITriangleMeshWithColor> tris, List<Vector3> ringA, List<Vector3> ringB)
+        private static void StitchRings(List<ITriangleMeshWithColorAndTexture> tris, List<Vector3> ringA, List<Vector3> ringB)
         {
             for (int i = 0; i < ringA.Count; i++)
             {
@@ -636,7 +636,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddBlade(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 center,
             Vector3 tip,
             float width,
@@ -681,7 +681,7 @@ namespace TheOmegaStrain.Game.World.Objects
             AddQuadOutward(tris, d, c, c2, d2, BodyCenter, color);
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 
@@ -726,7 +726,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddQuadOutward(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 v1,
             Vector3 v2,
             Vector3 v3,

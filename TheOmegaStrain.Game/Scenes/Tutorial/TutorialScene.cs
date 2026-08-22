@@ -169,7 +169,7 @@ namespace TheOmegaStrain.Game.Scenes.Tutorial
                     {
                         PartName = "TutorialVoicePromptMarker",
                         IsVisible = true,
-                        Triangles = new List<ITriangleMeshWithColor>
+                        Triangles = new List<ITriangleMeshWithColorAndTexture>
                         {
                             new TriangleMeshWithColor
                             {

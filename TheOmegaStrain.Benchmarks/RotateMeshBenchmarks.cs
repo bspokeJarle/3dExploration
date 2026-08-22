@@ -10,11 +10,11 @@ public class RotateMeshBenchmarks
 {
     private const int TriangleCount = 2048;
     private readonly OmegaMeshRotation _rotation = new();
-    private List<ITriangleMeshWithColor> _mesh = new();
+    private List<ITriangleMeshWithColorAndTexture> _mesh = new();
     [GlobalSetup]
     public void Setup()
     {
-        _mesh = new List<ITriangleMeshWithColor>(TriangleCount);
+        _mesh = new List<ITriangleMeshWithColorAndTexture>(TriangleCount);
         for (int i = 0; i < TriangleCount; i++)
         {
             float offset = i * 0.1f;
@@ -23,7 +23,7 @@ public class RotateMeshBenchmarks
     }
 
     [Benchmark]
-    public List<ITriangleMeshWithColor> RotateMesh()
+    public List<ITriangleMeshWithColorAndTexture> RotateMesh()
     {
         return _rotation.RotateMesh(_mesh, 30.0, 'Y');
     }

@@ -103,7 +103,7 @@ public class TreeControlsTests
                 {
                     PartName = "TreeTrunk",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {
@@ -118,7 +118,7 @@ public class TreeControlsTests
                 {
                     PartName = "TreeFoliage",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {
@@ -133,7 +133,7 @@ public class TreeControlsTests
                 {
                     PartName = "Shadow",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {
@@ -167,9 +167,9 @@ public class TreeControlsTests
         return MathF.Sqrt(dx * dx + dy * dy);
     }
 
-    private static List<ITriangleMeshWithColor> CloneTriangles(List<ITriangleMeshWithColor> source)
+    private static List<ITriangleMeshWithColorAndTexture> CloneTriangles(List<ITriangleMeshWithColorAndTexture> source)
     {
-        var clone = new List<ITriangleMeshWithColor>(source.Count);
+        var clone = new List<ITriangleMeshWithColorAndTexture>(source.Count);
         foreach (var triangle in source)
         {
             clone.Add(new TriangleMeshWithColor
@@ -185,8 +185,8 @@ public class TreeControlsTests
     }
 
     private static float MaxPlanarDisplacement(
-        List<ITriangleMeshWithColor> expected,
-        List<ITriangleMeshWithColor> actual)
+        List<ITriangleMeshWithColorAndTexture> expected,
+        List<ITriangleMeshWithColorAndTexture> actual)
     {
         Assert.AreEqual(expected.Count, actual.Count, "Animated foliage should preserve the original triangle count.");
 

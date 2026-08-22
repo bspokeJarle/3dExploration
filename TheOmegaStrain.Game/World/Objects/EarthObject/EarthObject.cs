@@ -207,7 +207,7 @@ namespace TheOmegaStrain.Game.World.Objects.EarthObject
             float yaw = (float)(rng.NextDouble() * MathF.PI * 2f);
             float cosY = MathF.Cos(yaw), sinY = MathF.Sin(yaw);
 
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             foreach (var part in obj.ObjectParts)
             {
@@ -296,9 +296,9 @@ namespace TheOmegaStrain.Game.World.Objects.EarthObject
             };
         }
 
-        private static List<ITriangleMeshWithColor> BuildStarTriangles(float cx, float cy, float cz, float size, string color, float rotationRadians)
+        private static List<ITriangleMeshWithColorAndTexture> BuildStarTriangles(float cx, float cy, float cz, float size, string color, float rotationRadians)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             float h = size * 0.5f;
             float w = size * 0.12f;
             float cos = MathF.Cos(rotationRadians);
@@ -342,9 +342,9 @@ namespace TheOmegaStrain.Game.World.Objects.EarthObject
             };
         }
 
-        private static List<ITriangleMeshWithColor> ParseTriangles(string data)
+        private static List<ITriangleMeshWithColorAndTexture> ParseTriangles(string data)
         {
-            var result = new List<ITriangleMeshWithColor>(EarthModelData.TriangleCount);
+            var result = new List<ITriangleMeshWithColorAndTexture>(EarthModelData.TriangleCount);
             var lines = data.Split(
                 ['\r', '\n'],
                 StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -383,7 +383,7 @@ namespace TheOmegaStrain.Game.World.Objects.EarthObject
             };
         }
 
-        private static void AddTriangle(List<ITriangleMeshWithColor> result, Vector3 v1, Vector3 v2, Vector3 v3)
+        private static void AddTriangle(List<ITriangleMeshWithColorAndTexture> result, Vector3 v1, Vector3 v2, Vector3 v3)
         {
             var normal = CalculateNormal(v1, v2, v3);
             var center = new Vector3
@@ -600,7 +600,7 @@ namespace TheOmegaStrain.Game.World.Objects.EarthObject
             return new List<List<IVector3>> { box };
         }
 
-        private static OmegaObjectPart3D CreatePart(string name, List<ITriangleMeshWithColor> triangles)
+        private static OmegaObjectPart3D CreatePart(string name, List<ITriangleMeshWithColorAndTexture> triangles)
         {
             return new OmegaObjectPart3D
             {

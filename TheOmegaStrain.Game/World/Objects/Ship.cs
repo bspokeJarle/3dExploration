@@ -78,7 +78,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static List<IVector3> CreateCrashBoxFromTriangles(
-            IEnumerable<ITriangleMeshWithColor> triangles,
+            IEnumerable<ITriangleMeshWithColorAndTexture> triangles,
             float sizeMultiplier,
             Vector3 padding)
         {
@@ -116,9 +116,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return OmegaObject3DHelpers.GenerateCrashBoxCorners(min, max);
         }
 
-        public static List<ITriangleMeshWithColor>? TopCannonTriangles()
+        public static List<ITriangleMeshWithColorAndTexture>? TopCannonTriangles()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var back = new Vector3 { x = 0f, y = 20f, z = 28f };   // thick end
             var mid = new Vector3 { x = 0f, y = -10f, z = 28f };   // mid ring
@@ -253,7 +253,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? UpperTriangles()
+        public static List<ITriangleMeshWithColorAndTexture>? UpperTriangles()
         {
             var noseLeft = new Vector3 { x = -50, y = -50, z = 0 };
             var noseRight = new Vector3 { x = 50, y = -50, z = 0 };
@@ -270,7 +270,7 @@ namespace TheOmegaStrain.Game.World.Objects
             var leftRearWing = new Vector3 { x = -35, y = 48, z = 15 };
             var rightRearWing = new Vector3 { x = 35, y = 48, z = 15 };
 
-            var upper = new List<ITriangleMeshWithColor>
+            var upper = new List<ITriangleMeshWithColorAndTexture>
             {
                 // Center panels
                 new TriangleMeshWithColor { Color = "00cc00", vert1 = noseLeft, vert2 = noseFront, vert3 = leftInner },
@@ -290,7 +290,7 @@ namespace TheOmegaStrain.Game.World.Objects
             };
             return upper;
         }
-        public static List<ITriangleMeshWithColor>? LowerTriangles()
+        public static List<ITriangleMeshWithColorAndTexture>? LowerTriangles()
         {
             var noseLeft = new Vector3 { x = -50, y = -50, z = 0 };
             var noseRight = new Vector3 { x = 50, y = -50, z = 0 };
@@ -309,7 +309,7 @@ namespace TheOmegaStrain.Game.World.Objects
             var rightLowerInner = new Vector3 { x = 27, y = 0, z = -15 };
             var rightLowerRear = new Vector3 { x = 35, y = 48, z = -15 };
 
-            var lower = new List<ITriangleMeshWithColor>
+            var lower = new List<ITriangleMeshWithColorAndTexture>
             {
                 // Left lower wing panels
                 new TriangleMeshWithColor { Color = "006688", vert1 = wingTipLeft, vert2 = leftLowerRear, vert3 = leftLowerWingEdge },
@@ -332,9 +332,9 @@ namespace TheOmegaStrain.Game.World.Objects
             };
             return lower;
         }
-        public static List<ITriangleMeshWithColor>? JetMotorTriangle()
+        public static List<ITriangleMeshWithColorAndTexture>? JetMotorTriangle()
         {
-            var jet = new List<ITriangleMeshWithColor>
+            var jet = new List<ITriangleMeshWithColorAndTexture>
             {
                 // Main engine triangle
                 new TriangleMeshWithColor { Color = "ffff00", vert1 = { x = 25, y = 0, z = -12 }, vert2 = { x = -25, y = 0, z = -12 }, vert3 = { x = 0, y = 50, z = -25 } },
@@ -346,16 +346,16 @@ namespace TheOmegaStrain.Game.World.Objects
             return jet;
         }
 
-        public static List<ITriangleMeshWithColor>? JetMotorDirectionGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? JetMotorDirectionGuide()
         {
-            var jet = new List<ITriangleMeshWithColor>
+            var jet = new List<ITriangleMeshWithColorAndTexture>
             {
                 new TriangleMeshWithColor { Color = "ffffff", vert1 = { x = 12, y = 0, z = -100 }, vert2 = { x = -12, y = 0, z = -100 }, vert3 = { x = 0, y = 50, z = -100 } },
             };
             return jet;
         }
 
-        public static List<ITriangleMeshWithColor>? CannonStartGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? CannonStartGuide()
         {
             // 30 units *inside* the cannon tip: front (muzzle) is at y = -45 → -45 + 30 = -15
             const float yInside = 40f;   // inside the barrel (toward +Y)
@@ -363,7 +363,7 @@ namespace TheOmegaStrain.Game.World.Objects
             const float zBase = 14f;    // cannon height
             const float zTipUp = 50f;    // vertical tip for visibility
 
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 new TriangleMeshWithColor
                 {
@@ -376,14 +376,14 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        public static List<ITriangleMeshWithColor>? CannonDirectionGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? CannonDirectionGuide()
         {
             const float yFar = -200f; // far ahead of the muzzle along -Y
             const float widthX = 12f;   // half-width in X
             const float zBase = 14f;   // cannon height
             const float zTipUp = 58f;   // tip offset in Z to form a tall triangle
 
-            var guide = new List<ITriangleMeshWithColor>
+            var guide = new List<ITriangleMeshWithColorAndTexture>
             {
                 new TriangleMeshWithColor
                 {
@@ -397,7 +397,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return guide;
         }
 
-        public static List<ITriangleMeshWithColor>? MuzzleFlashTriangles()
+        public static List<ITriangleMeshWithColorAndTexture>? MuzzleFlashTriangles()
         {
             var center = new Vector3 { x = 0f, y = -48f, z = 28f };
             var front = new Vector3 { x = 0f, y = -72f, z = 28f };
@@ -406,7 +406,7 @@ namespace TheOmegaStrain.Game.World.Objects
             var top = new Vector3 { x = 0f, y = -58f, z = 39f };
             var bottom = new Vector3 { x = 0f, y = -58f, z = 17f };
 
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 new TriangleMeshWithColor { Color = "fff8c8", vert1 = center, vert2 = left, vert3 = front, noHidden = true },
                 new TriangleMeshWithColor { Color = "ffb020", vert1 = center, vert2 = front, vert3 = right, noHidden = true },
@@ -415,7 +415,7 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        public static List<ITriangleMeshWithColor>? RearTriangles()
+        public static List<ITriangleMeshWithColorAndTexture>? RearTriangles()
         {
             var bottomPeak = new Vector3 { x = 0, y = 50, z = -25 };
             var topPeak = new Vector3 { x = 0, y = 50, z = 25 };
@@ -432,7 +432,7 @@ namespace TheOmegaStrain.Game.World.Objects
             var leftLowerRear = new Vector3 { x = -35, y = 48, z = -15 };
             var rightLowerRear = new Vector3 { x = 35, y = 48, z = -15 };
 
-            var rear = new List<ITriangleMeshWithColor>
+            var rear = new List<ITriangleMeshWithColorAndTexture>
             {
                 // Lower-right rear (center engine triangles in separate RearEngine part)
                 new TriangleMeshWithColor { Color = "ff0000", vert1 = bottomPeak, vert2 = rightRearMid, vert3 = rightLowerRear },
@@ -450,7 +450,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return rear;
         }
 
-        public static List<ITriangleMeshWithColor>? RearEngineTriangles()
+        public static List<ITriangleMeshWithColorAndTexture>? RearEngineTriangles()
         {
             var bottomPeak = new Vector3 { x = 0, y = 50, z = -25 };
             var topPeak = new Vector3 { x = 0, y = 50, z = 25 };
@@ -458,7 +458,7 @@ namespace TheOmegaStrain.Game.World.Objects
             var leftRearMid = new Vector3 { x = -38, y = 60, z = 0 };
             var rightRearMid = new Vector3 { x = 38, y = 60, z = 0 };
 
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 // Lower rear engine
                 new TriangleMeshWithColor { Color = "ffff00", vert1 = bottomPeak, vert2 = tail, vert3 = rightRearMid },
@@ -469,16 +469,16 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        public static List<ITriangleMeshWithColor>? RearEngineDirectionGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? RearEngineDirectionGuide()
         {
-            var guide = new List<ITriangleMeshWithColor>
+            var guide = new List<ITriangleMeshWithColorAndTexture>
             {
                 new TriangleMeshWithColor { Color = "ffffff", vert1 = { x = 12, y = 200, z = 0 }, vert2 = { x = -12, y = 200, z = 0 }, vert3 = { x = 0, y = 200, z = 25 } },
             };
             return guide;
         }
 
-        public static List<ITriangleMeshWithColor>? WingletTriangles()
+        public static List<ITriangleMeshWithColorAndTexture>? WingletTriangles()
         {
             var lBase1 = new Vector3 { x = -58, y = 35, z = 0 };
             var lBase2 = new Vector3 { x = -65, y = 45, z = 0 };
@@ -488,7 +488,7 @@ namespace TheOmegaStrain.Game.World.Objects
             var rBase2 = new Vector3 { x = 65, y = 45, z = 0 };
             var rTop = new Vector3 { x = 62, y = 42, z = 15 };
 
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 new TriangleMeshWithColor { Color = "005522", vert1 = lBase1, vert2 = lBase2, vert3 = lTop },
                 new TriangleMeshWithColor { Color = "007733", vert1 = lBase2, vert2 = lBase1, vert3 = lTop },

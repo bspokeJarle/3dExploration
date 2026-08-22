@@ -47,8 +47,8 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipSmallControls
         private const string WeakSpotFlashColor = "FF2200";
         private const float FlashDurationSeconds = 0.15f;
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -68,7 +68,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipSmallControls
 
         private float _weakSpotAngle = 0f;
         private float _pulsatePhase = 0f;
-        private List<ITriangleMeshWithColor>? _weakSpotOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _weakSpotOriginalTris;
 
         private bool _audioConfigured = false;
         private bool _isExploding = false;
@@ -571,15 +571,15 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipSmallControls
         {
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 
@@ -590,7 +590,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipSmallControls
 
             if (_weakSpotOriginalTris == null)
             {
-                _weakSpotOriginalTris = new List<ITriangleMeshWithColor>(weakSpot.Triangles.Count);
+                _weakSpotOriginalTris = new List<ITriangleMeshWithColorAndTexture>(weakSpot.Triangles.Count);
                 foreach (var tri in weakSpot.Triangles)
                 {
                     _weakSpotOriginalTris.Add(new TriangleMeshWithColor
@@ -614,7 +614,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipSmallControls
             float cos = MathF.Cos(rad);
             float sin = MathF.Sin(rad);
 
-            var result = new List<ITriangleMeshWithColor>(_weakSpotOriginalTris.Count);
+            var result = new List<ITriangleMeshWithColorAndTexture>(_weakSpotOriginalTris.Count);
             foreach (var src in _weakSpotOriginalTris)
             {
                 var tri = new TriangleMeshWithColor

@@ -200,8 +200,8 @@ public class SeederControlsParticleGuideTests
         public Vector3? WorldPosition { get; private set; }
 
         public void ReleaseParticles(
-            ITriangleMeshWithColor Trajectory,
-            ITriangleMeshWithColor StartPosition,
+            ITriangleMeshWithColorAndTexture Trajectory,
+            ITriangleMeshWithColorAndTexture StartPosition,
             IVector3 WorldPosition,
             IObjectMovement ParentShip,
             int Thrust,

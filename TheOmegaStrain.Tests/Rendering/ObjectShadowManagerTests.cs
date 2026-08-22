@@ -37,7 +37,7 @@ public class ObjectShadowManagerTests
 
             var surface = new Surface
             {
-                RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>
+                RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>
                 {
                     new TriangleMeshWithColor
                     {
@@ -85,7 +85,7 @@ public class ObjectShadowManagerTests
                 {
                     PartName = "Shadow",
                     IsVisible = false,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {

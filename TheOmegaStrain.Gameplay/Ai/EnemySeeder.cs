@@ -10,8 +10,8 @@ namespace TheOmegaStrain.Gameplay.Ai
 {
     public class EnemySeeder : IObjectMovement
     {
-        public ITriangleMeshWithColor? StartCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public ITriangleMeshWithColor? GuideCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
         public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -34,13 +34,13 @@ namespace TheOmegaStrain.Gameplay.Ai
             throw new NotImplementedException();
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             throw new NotImplementedException();
         }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             throw new NotImplementedException();
         }

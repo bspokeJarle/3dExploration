@@ -56,9 +56,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tree;
         }
 
-        private static List<ITriangleMeshWithColor> TrunkTriangles()
+        private static List<ITriangleMeshWithColorAndTexture> TrunkTriangles()
         {
-            var trunk = new List<ITriangleMeshWithColor>();
+            var trunk = new List<ITriangleMeshWithColorAndTexture>();
             const int segments = 9;
 
             for (int i = 0; i < segments; i++)
@@ -79,9 +79,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return trunk;
         }
 
-        private static List<ITriangleMeshWithColor> BranchTriangles()
+        private static List<ITriangleMeshWithColorAndTexture> BranchTriangles()
         {
-            var branches = new List<ITriangleMeshWithColor>();
+            var branches = new List<ITriangleMeshWithColorAndTexture>();
 
             AddBranch(branches, V(0f, 0f, 11f), V(-24f, -8f, 31f), 3.3f, 1.2f, 0);
             AddBranch(branches, V(0f, 0f, 13f), V(22f, -12f, 34f), 3.1f, 1.1f, 1);
@@ -95,9 +95,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return branches;
         }
 
-        private static List<ITriangleMeshWithColor> LeafTriangles()
+        private static List<ITriangleMeshWithColorAndTexture> LeafTriangles()
         {
-            var leaves = new List<ITriangleMeshWithColor>();
+            var leaves = new List<ITriangleMeshWithColorAndTexture>();
 
             AddLeafCluster(leaves, V(-24f, -8f, 31f), 0);
             AddLeafCluster(leaves, V(22f, -12f, 34f), 1);
@@ -113,7 +113,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddBranch(
-            List<ITriangleMeshWithColor> branches,
+            List<ITriangleMeshWithColorAndTexture> branches,
             Vector3 start,
             Vector3 end,
             float startWidth,
@@ -141,7 +141,7 @@ namespace TheOmegaStrain.Game.World.Objects
             branches.Add(new TriangleMeshWithColor { Color = color, noHidden = true, vert1 = s2, vert2 = e2, vert3 = e1 });
         }
 
-        private static void AddLeafCluster(List<ITriangleMeshWithColor> leaves, Vector3 anchor, int seed)
+        private static void AddLeafCluster(List<ITriangleMeshWithColorAndTexture> leaves, Vector3 anchor, int seed)
         {
             AddLeaf(leaves, Offset(anchor, -4f, -2f, -1f), 7.5f, 11f, -0.45f + seed * 0.07f, seed);
             AddLeaf(leaves, Offset(anchor, 4f, -1f, 2f), 6.6f, 10f, 0.35f + seed * 0.05f, seed + 1);
@@ -150,7 +150,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddLeaf(
-            List<ITriangleMeshWithColor> leaves,
+            List<ITriangleMeshWithColorAndTexture> leaves,
             Vector3 center,
             float width,
             float height,
@@ -202,9 +202,9 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> LeafTreeShadow()
+        private static List<ITriangleMeshWithColorAndTexture> LeafTreeShadow()
         {
-            var shadow = new List<ITriangleMeshWithColor>();
+            var shadow = new List<ITriangleMeshWithColorAndTexture>();
             const string sc = OmegaObject3DHelpers.ShadowColorHex;
 
             AddShadowQuad(shadow, V(-4f, 0f, 0f), V(4f, 0f, 0f), V(4f, 0f, 18f), V(-4f, 0f, 18f), sc);
@@ -223,7 +223,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddShadowQuad(
-            List<ITriangleMeshWithColor> shadow,
+            List<ITriangleMeshWithColorAndTexture> shadow,
             Vector3 a,
             Vector3 b,
             Vector3 c,
@@ -234,7 +234,7 @@ namespace TheOmegaStrain.Game.World.Objects
             shadow.Add(new TriangleMeshWithColor { Color = color, vert1 = a, vert2 = c, vert3 = d });
         }
 
-        private static void AddShadowBranch(List<ITriangleMeshWithColor> shadow, Vector3 start, Vector3 end, string color)
+        private static void AddShadowBranch(List<ITriangleMeshWithColorAndTexture> shadow, Vector3 start, Vector3 end, string color)
         {
             shadow.Add(new TriangleMeshWithColor
             {
