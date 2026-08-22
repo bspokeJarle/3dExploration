@@ -13,6 +13,7 @@ using TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls;
 using TheOmegaStrain.Gameplay.Controls.JumpingFishControls;
 using TheOmegaStrain.Gameplay.Controls.SpaceSwanControls;
 using System;
+using System.Linq;
 
 namespace TheOmegaStrain.Game.Scenes.Scene6
 {
@@ -36,7 +37,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene6
         private const int DesertRockPlacementMax = 12000;
         private const int DesertCactusPlacementMax = 16000;
         private const int DesertTentPlacementMax = 30000;
-        private const int DesertTentPlacementSpacingTiles = 20;
+        private static int DesertTentPlacementSpacingTiles => SurfaceSetup.ScaleTileCount(20);
         private static readonly float[] BedouinTentRotationVariants = { -32f, -19f, -7f, 6f, 18f, 31f };
 
         public void SetupScene(I3dWorld world)
@@ -329,7 +330,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene6
 
             int maxHeight = Surface.MaxHeight();
             int coastCutoff = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.15));
-            const int startTentTargetDistanceTiles = 100;
+            int startTentTargetDistanceTiles = SurfaceSetup.ScaleTileCount(100);
             var used = new HashSet<(int x, int y)>();
             foreach (var placement in tentPlacements)
                 used.Add((placement.x, placement.y));
@@ -341,7 +342,9 @@ namespace TheOmegaStrain.Game.Scenes.Scene6
                     nearStartTentCount++;
             }
 
-            int[] targetDistances = { 90, 105, 120, 135, 150, 165, 180, 195, 210, 225 };
+            int[] targetDistances = new[] { 90, 105, 120, 135, 150, 165, 180, 195, 210, 225 }
+                .Select(SurfaceSetup.ScaleTileCount)
+                .ToArray();
             for (int i = 0; nearStartTentCount < GuaranteedStartTentCount && i < targetDistances.Length; i++)
             {
                 if (TryAddTentPlacementNearTargetDistance(targetDistances[i]))
@@ -355,7 +358,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene6
                     if (radius <= LandingPlatformHelpers.LandingPlatformSizeTiles)
                         return false;
 
-                    for (int tolerance = 0; tolerance <= 4; tolerance++)
+                    for (int tolerance = 0; tolerance <= SurfaceSetup.ScaleTileCount(4); tolerance++)
                     {
                         int searchRadius = radius + tolerance;
                         for (int oy = -searchRadius; oy <= searchRadius; oy++)
@@ -377,7 +380,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene6
                     return false;
                 }
 
-                for (int delta = 0; delta <= 35; delta++)
+                for (int delta = 0; delta <= SurfaceSetup.ScaleTileCount(35); delta++)
                 {
                     if (TryAddTentPlacementOnRing(targetDistance - delta))
                         return true;
@@ -415,7 +418,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene6
                 int dx = x - startX;
                 int dy = y - startY;
                 double distance = Math.Sqrt((dx * dx) + (dy * dy));
-                if (Math.Abs(distance - startTentTargetDistanceTiles) > 35)
+                if (Math.Abs(distance - startTentTargetDistanceTiles) > SurfaceSetup.ScaleTileCount(35))
                     return false;
                 if (IsOnStartPlatform(x, y))
                     return false;

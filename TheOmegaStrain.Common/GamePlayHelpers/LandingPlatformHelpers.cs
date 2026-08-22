@@ -1,11 +1,13 @@
 using RetroMesh.Engine;
+using TheOmegaStrain.Common.CommonSetup;
 using TheOmegaStrain.Domain;
 
 namespace TheOmegaStrain.Common.GamePlayHelpers
 {
     public static class LandingPlatformHelpers
     {
-        public const int LandingPlatformSizeTiles = 8;
+        private const int OriginalLandingPlatformSizeTiles = 8;
+        public static int LandingPlatformSizeTiles => SurfaceSetup.ScaleTileCount(OriginalLandingPlatformSizeTiles);
 
         public static TileRect GetLandingPlatformRect(SurfaceData[,] map, int bufferTiles = 0)
         {

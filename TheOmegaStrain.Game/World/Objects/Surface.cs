@@ -376,6 +376,9 @@ namespace TheOmegaStrain.Game.World.Objects
                 GameState.SurfaceState.SurfaceFilePath = recordPath;
                 GameState.SurfaceState.SurfaceHash = hash;
             }
+
+            CenterViewportOnLandingPlatform(GameState.SurfaceState.Global2DMap);
+
             // ------------------------------------------------------------
             // Always build bitmap from surface
             // ------------------------------------------------------------
@@ -415,6 +418,19 @@ namespace TheOmegaStrain.Game.World.Objects
                 mapSize,
                 MapSetup.maxHeight,
                 enableLogging);
+        }
+
+        private void CenterViewportOnLandingPlatform(SurfaceData[,] map)
+        {
+            int viewportCenterOffset = (ViewPortSize() * TileSize()) / 2;
+            var platformCenter = LandingPlatformHelpers.GetLandingPlatformCenterTile(map);
+
+            GameState.SurfaceState.GlobalMapPosition = new Vector3
+            {
+                x = (platformCenter.x * TileSize()) - viewportCenterOffset,
+                y = 0,
+                z = (platformCenter.z * TileSize()) - viewportCenterOffset
+            };
         }
 
         private static int GetActualMaxHeight(SurfaceData[,] map)

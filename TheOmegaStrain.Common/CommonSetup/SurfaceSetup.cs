@@ -5,6 +5,7 @@ namespace TheOmegaStrain.Common.CommonSetup
     //TODO: Expand this as needed, common map properties can go here
     public static class SurfaceSetup
     {
+        public const int OriginalViewPortSize = 18;
         public const int DefaultViewPortSize = 36;
         private const float OriginalTileSize = 75f;
         private const float SurfaceScreenRatio = 1.05f;
@@ -13,6 +14,11 @@ namespace TheOmegaStrain.Common.CommonSetup
         public static int surfaceWidth => DefaultViewPortSize * tileSize;
         public static int viewPortSize => DefaultViewPortSize;
         public static float WorldScale => tileSize / OriginalTileSize;
+
+        public static int ScaleTileCount(int originalTileCount)
+        {
+            return Math.Max(1, (int)Math.Round(originalTileCount * (DefaultViewPortSize / (float)OriginalViewPortSize)));
+        }
 
         public static Vector3 DefaultMapPosition => new()
         {

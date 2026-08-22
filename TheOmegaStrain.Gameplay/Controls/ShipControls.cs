@@ -2106,7 +2106,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             float maxZ = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
                          (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
 
-            GameState.SurfaceState.GlobalMapPosition.x = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.x, Physics.InertiaX * frameScale * travelSpeedMultiplier, 75, maxX);
+            GameState.SurfaceState.GlobalMapPosition.x = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.x, Physics.InertiaX * frameScale * travelSpeedMultiplier, SurfaceSetup.tileSize, maxX);
             GameState.SurfaceState.GlobalMapPosition.z = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.z, Physics.InertiaZ * frameScale * travelSpeedMultiplier, 0, maxZ);
 
             // Apply vertical inertia to screen position (positive InertiaY = up = ObjectOffsets.y decreases)

@@ -21,8 +21,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private readonly HashSet<int> _processedBombCraters = new();
         private DateTime _lastWaterWaveFrame = DateTime.MinValue;
         private float _waterWaveTimeSeconds;
-        private const int BombCraterRadiusTiles = 2;
-        private const int WaterWaveEdgePaddingTiles = 1;
+        private static int BombCraterRadiusTiles => SurfaceSetup.ScaleTileCount(2);
+        private static int WaterWaveEdgePaddingTiles => SurfaceSetup.ScaleTileCount(1);
         private const float WaterWaveTilePhaseJitterRadians = 0.20944f; // about 12 degrees
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -143,7 +143,7 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         private int CalculateAnimatedWaterDepth(int originalDepth, int tileX, int tileZ, int maxAnimatedWaterDepth)
         {
-            float waveLength = Math.Max(0.25f, SurfaceAnimationSetup.WaterWaveLengthInTiles);
+            float waveLength = Math.Max(0.25f, SurfaceSetup.ScaleTileCount((int)Math.Ceiling(SurfaceAnimationSetup.WaterWaveLengthInTiles)));
             float speed = SurfaceAnimationSetup.WaterWaveSpeedRadiansPerSecond;
             float phaseA = ((tileX + tileZ) / waveLength) * (2f * MathF.PI);
             float phaseB = ((tileX - tileZ) / (waveLength * 1.7f)) * (2f * MathF.PI);

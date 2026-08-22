@@ -353,18 +353,18 @@ namespace TheOmegaStrain.Game.Scenes.Scene7
 
             int sizeZ = map.GetLength(0);
             int sizeX = map.GetLength(1);
-            int patrolWidthTiles = 8;
-            int patrolHeightTiles = 2;
+            int patrolWidthTiles = SurfaceSetup.ScaleTileCount(8);
+            int patrolHeightTiles = SurfaceSetup.ScaleTileCount(2);
             int maxHeightDelta = 10;
-            int landingAreaSize = 8;
-            int landingBufferTiles = 6;
+            int landingAreaSize = LandingPlatformHelpers.LandingPlatformSizeTiles;
+            int landingBufferTiles = SurfaceSetup.ScaleTileCount(6);
 
             int mapCenterX = sizeX / 2;
             int mapCenterZ = sizeZ / 2;
             int landingTopLeftX = Math.Max(0, mapCenterX - (landingAreaSize / 2));
             int landingTopLeftZ = Math.Max(0, mapCenterZ - (landingAreaSize / 2));
             int guaranteedCenterX = mapCenterX;
-            int guaranteedCenterZ = Math.Clamp(mapCenterZ + landingAreaSize + landingBufferTiles + 6, 1, sizeZ - 2);
+            int guaranteedCenterZ = Math.Clamp(mapCenterZ + landingAreaSize + landingBufferTiles + SurfaceSetup.ScaleTileCount(6), 1, sizeZ - 2);
 
             int maxHeight = 0;
             for (int z = 0; z < sizeZ; z++)

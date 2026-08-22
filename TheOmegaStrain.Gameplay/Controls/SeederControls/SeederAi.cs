@@ -30,7 +30,7 @@ namespace TheOmegaStrain.Gameplay.Controls.SeederControls
         // - OffscreenStepFactor: Per-scene multiplier for offscreen seeder speed (tunable in IScene).
         // - MaxLocalSteps: Upper bound on steps allowed to reach a local target (caps how far local hunts can go).
         private static int OffscreenStepFactor => GameState.GamePlayState.SeederOffscreenSpeedFactor;
-        private const int MaxLocalSteps = 300;
+        private static int MaxLocalSteps => SurfaceSetup.ScaleTileCount(300);
 
         // Targeting & infection cadence:
         // - SeedingStallSeconds: How long the seeder visibly pauses after infecting a tile (player can shoot it).
@@ -46,7 +46,7 @@ namespace TheOmegaStrain.Gameplay.Controls.SeederControls
         // - SmellRadiusScreens: Radius in screens to evaluate BioTileCount for global decisions.
         // - RoamTiles: Random roam distance in tiles when no good screen is found.
         private const int SmellRadiusScreens = 5;
-        private const int RoamTiles = 10;
+        private static int RoamTiles => SurfaceSetup.ScaleTileCount(10);
         private const float TargetArrivalDistance = 0.25f;
         private const double InitialGlobalDecisionDesyncSeconds = 0.45;
         private const double GlobalDecisionDesyncSeconds = 0.30;

@@ -13,7 +13,7 @@ namespace TheOmegaStrain.Game.Scenes.Outro
     public class OutroLandingSceneBuilder
     {
         public const int ScreenSpan = 3;
-        public const int LandingPlatformSizeTiles = 8;
+        public static int LandingPlatformSizeTiles => SurfaceSetup.ScaleTileCount(8);
         public const int OutroMapMaxHeight = 75;
         public const int LandingPlatformDepth = 28;
         public const int BannerOffsetAbovePlatform = 250;

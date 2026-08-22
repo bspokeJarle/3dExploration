@@ -709,14 +709,14 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
             float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
             int mapCenterX = sizeX / 2;
             int mapCenterZ = sizeZ / 2;
-            int landingAreaSize = 8;
-            int landingBufferTiles = 6;
+            int landingAreaSize = LandingPlatformHelpers.LandingPlatformSizeTiles;
+            int landingBufferTiles = SurfaceSetup.ScaleTileCount(6);
             int landingTopLeftX = Math.Max(0, mapCenterX - (landingAreaSize / 2));
             int landingTopLeftZ = Math.Max(0, mapCenterZ - (landingAreaSize / 2));
 
             var patrolTiles = new List<(int tileX, int tileZ, int startX, int endX)>();
-            int patrolWidthTiles = 8;
-            int patrolHeightTiles = 2;
+            int patrolWidthTiles = SurfaceSetup.ScaleTileCount(8);
+            int patrolHeightTiles = SurfaceSetup.ScaleTileCount(2);
 
             for (int z = 1; z < sizeZ - patrolHeightTiles - 1; z += patrolHeightTiles)
             {
