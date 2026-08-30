@@ -808,7 +808,7 @@ namespace TheOmegaStrain.Game.Helpers
             // === Tunables ===
             int screenSize = SurfaceSetup.ScaleTileCount(18);
             int waterBufferRadius = SurfaceSetup.ScaleTileCount(1);
-            int minTreeSpacing = SurfaceSetup.ScaleTileCount(1);
+            int minTreeSpacing = SurfaceSetup.ScaleTileCount(3);
 
             if (overrideMaxTrees.HasValue)
             {
@@ -1060,7 +1060,9 @@ namespace TheOmegaStrain.Game.Helpers
                 return true;
             }
 
-            int spacing = Math.Max(8, placementSpacing ?? 40);
+            int spacing = Math.Max(
+                SurfaceSetup.ScaleTileCount(8),
+                placementSpacing ?? SurfaceSetup.ScaleTileCount(40));
             int start = spacing / 2;
             int endX = mapSize - spacing / 2 - 1;
             int endY = mapSize - spacing / 2 - 1;

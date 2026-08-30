@@ -25,7 +25,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene6
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Desert;
         public ISceneDirector Director { get; } = new Scene6Director();
-        public GameModes GameMode { get; } = GameModes.Playback;
+        public GameModes GameMode { get; } = GameModes.Record;
 
         public float InfectionThresholdPercent { get; } = 15.0f;
         public int InfectionSpreadRate { get; } = 7;
@@ -645,14 +645,14 @@ namespace TheOmegaStrain.Game.Scenes.Scene6
 
             foreach (var (dx, dy) in nearStartOffsets)
             {
-                int x = (startX + dx) % sizeX;
-                int y = (startY + dy) % sizeY;
+                int x = (startX + SurfaceSetup.ScaleTileCount(dx)) % sizeX;
+                int y = (startY + SurfaceSetup.ScaleTileCount(dy)) % sizeY;
                 TryAddRockPlacementNear(x, y);
             }
 
             void TryAddRockPlacementNear(int targetX, int targetY)
             {
-                const int searchRadius = 4;
+                int searchRadius = SurfaceSetup.ScaleTileCount(4);
                 for (int radius = 0; radius <= searchRadius; radius++)
                 {
                     for (int oy = -radius; oy <= radius; oy++)
@@ -716,14 +716,14 @@ namespace TheOmegaStrain.Game.Scenes.Scene6
 
             foreach (var (dx, dy) in nearStartOffsets)
             {
-                int x = (startX + dx) % sizeX;
-                int y = (startY + dy) % sizeY;
+                int x = (startX + SurfaceSetup.ScaleTileCount(dx)) % sizeX;
+                int y = (startY + SurfaceSetup.ScaleTileCount(dy)) % sizeY;
                 TryAddTowerPlacementNear(x, y);
             }
 
             void TryAddTowerPlacementNear(int targetX, int targetY)
             {
-                const int searchRadius = 4;
+                int searchRadius = SurfaceSetup.ScaleTileCount(4);
                 for (int radius = 0; radius <= searchRadius; radius++)
                 {
                     for (int oy = -radius; oy <= radius; oy++)
@@ -789,14 +789,14 @@ namespace TheOmegaStrain.Game.Scenes.Scene6
 
             foreach (var (dx, dy) in nearStartOffsets)
             {
-                int x = (startX + dx) % sizeX;
-                int y = (startY + dy) % sizeY;
+                int x = (startX + SurfaceSetup.ScaleTileCount(dx)) % sizeX;
+                int y = (startY + SurfaceSetup.ScaleTileCount(dy)) % sizeY;
                 TryAddCactusPlacementNear(x, y);
             }
 
             void TryAddCactusPlacementNear(int targetX, int targetY)
             {
-                const int searchRadius = 3;
+                int searchRadius = SurfaceSetup.ScaleTileCount(3);
                 for (int radius = 0; radius <= searchRadius; radius++)
                 {
                     for (int oy = -radius; oy <= radius; oy++)

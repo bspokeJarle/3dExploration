@@ -51,7 +51,7 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
         public string SceneMusic { get; private set; } = "music_flight";
         public SceneTypes SceneType { get; } = SceneTypes.Simulation;
         public SceneBiomeTypes SceneBiome { get; }
-        public GameModes GameMode { get; } = GameModes.Live;
+        public GameModes GameMode { get; } = GameModes.Record;
         public ISceneDirector Director { get; }
 
         // IScene infection/difficulty properties driven by simulation round
@@ -121,7 +121,7 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
             var ws = SurfaceSetup.WorldScale;
 
             var ship = Ship.CreateShip(Surface);
-            Surface.Create2DMap(30000, 15000, GameMode, null);
+            Surface.Create2DMap(30000, 15000, GameMode, "SceneSimulationSurfaceRecording.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };

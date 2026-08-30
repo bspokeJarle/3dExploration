@@ -1,4 +1,5 @@
 using TheOmegaStrain.Common.GamePlayHelpers;
+using TheOmegaStrain.Common.CommonSetup;
 
 namespace TheOmegaStrain.Tests.CommonHelpers;
 
@@ -25,5 +26,12 @@ public class MapCoordinateHelpersTests
     {
         Assert.AreEqual(2, MapCoordinateHelpers.GetWrappedRelativeIndex(1, -1, 10));
         Assert.AreEqual(1, MapCoordinateHelpers.GetWrappedRelativeIndex(0, 9, 10));
+    }
+
+    [TestMethod]
+    public void BitmapCropOffsets_CenterTheMapPositionInTheCrop()
+    {
+        Assert.AreEqual(MapSetup.bitmapSize * MapSetup.tileSize, MapSetup.bitmapMapCenterOffsetX);
+        Assert.AreEqual((MapSetup.bitmapSize / 2) * MapSetup.tileSize, MapSetup.bitmapMapCenterOffsetY);
     }
 }

@@ -10,8 +10,8 @@ namespace TheOmegaStrain.Gameplay.Controls
 {
     public sealed class RainfallControls : IObjectMovement
     {
-        public const int VisibleDropTarget = 144;
-        private const int OffscreenDropReserve = 208;
+        public const int VisibleDropTarget = 101;
+        private const int OffscreenDropReserve = 146;
         public const int TargetDropCount = VisibleDropTarget + OffscreenDropReserve;
         public const float StartGuideYOffset = -1050f;
         public const float DepthSpread = 1200f;
@@ -22,10 +22,10 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float DepthAheadSpread = 3800f;
         private const float MinFallSpeed = 14f;
         private const float MaxFallSpeed = 25f;
-        private const float MinLength = 18f;
-        private const float MaxLength = 44f;
-        private const float MinWidth = 0.55f;
-        private const float MaxWidth = 1.3f;
+        private const float MinLength = 10.8f;
+        private const float MaxLength = 26.4f;
+        private const float MinWidth = 0.33f;
+        private const float MaxWidth = 0.78f;
         private const float BaseWindX = -1.7f;
         private const float BaseWindZ = 0.08f;
         private const float WindPulseX = 0.65f;

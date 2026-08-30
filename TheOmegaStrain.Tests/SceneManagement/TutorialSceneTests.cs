@@ -18,6 +18,7 @@ public class TutorialSceneTests
 {
     private string _originalLocalFolder = string.Empty;
     private string _testLocalFolder = string.Empty;
+    private int _originalDevStartSceneIndex;
 
     [TestInitialize]
     public void Setup()
@@ -26,6 +27,10 @@ public class TutorialSceneTests
         _testLocalFolder = Path.Combine(Path.GetTempPath(), "OmegaStrainTutorialTests", Guid.NewGuid().ToString("N"));
         PersistenceSetup.LocalFolder = _testLocalFolder;
         PersistenceSetup.Initialize();
+
+        // The dev scene switch must never influence the training tests.
+        _originalDevStartSceneIndex = SceneHandler.DevStartSceneIndex;
+        SceneHandler.DevStartSceneIndex = 0;
 
         GameState.GamePlayState = new GamePlayState();
         GameState.SurfaceState = new SurfaceState();
@@ -40,6 +45,7 @@ public class TutorialSceneTests
     [TestCleanup]
     public void Cleanup()
     {
+        SceneHandler.DevStartSceneIndex = _originalDevStartSceneIndex;
         PersistenceSetup.LocalFolder = _originalLocalFolder;
         try
         {

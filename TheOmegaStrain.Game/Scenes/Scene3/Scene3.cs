@@ -23,7 +23,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene3
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Rainforrest;
         public ISceneDirector Director { get; } = new Scene3Director();
-        public GameModes GameMode { get; } = GameModes.Live;
+        public GameModes GameMode { get; } = GameModes.Playback;
         public float InfectionThresholdPercent { get; } = 13.0f;
         public int InfectionSpreadRate { get; } = 5;
         public int SeederOffscreenSpeedFactor { get; } = 14;
@@ -48,7 +48,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene3
             var ws = SurfaceSetup.WorldScale;
 
             var ship = Ship.CreateShip(Surface);
-            Surface.Create2DMap(30000, 15000, GameMode, "Scene3SurfaceRecording_20260526_193216.retro");
+            Surface.Create2DMap(30000, 15000, GameMode, "Scene3SurfaceRecording_20260823_185258.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };
@@ -353,8 +353,8 @@ namespace TheOmegaStrain.Game.Scenes.Scene3
                 if (visibleCount >= MinimumVisibleBambooHuts)
                     break;
 
-                int targetX = centerX + offset.x;
-                int targetY = centerY + offset.y;
+                int targetX = centerX + SurfaceSetup.ScaleTileCount(offset.x);
+                int targetY = centerY + SurfaceSetup.ScaleTileCount(offset.y);
                 if (TryFindBambooHutPlacementNear(map, targetX, targetY, used, out var placement))
                 {
                     housePlacements.Add(placement);
@@ -379,7 +379,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene3
             HashSet<(int x, int y)> used,
             out (int x, int y, int height) placement)
         {
-            const int searchRadius = 8;
+            int searchRadius = SurfaceSetup.ScaleTileCount(8);
             placement = default;
 
             int sizeY = map.GetLength(0);

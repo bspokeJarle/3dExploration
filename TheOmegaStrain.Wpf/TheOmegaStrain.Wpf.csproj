@@ -21,6 +21,9 @@
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
     <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <!-- Required at runtime by RetroMesh.Engine (XboxControllerInput). RetroMesh.Engine is
+         referenced as a raw DLL, so its NuGet dependencies are not resolved transitively. -->
+    <PackageReference Include="SharpDX.DirectInput" Version="4.2.0" />
     <Reference Include="RetroMesh.Engine">
       <HintPath>$(RetroMeshEnginePath)</HintPath>
     </Reference>

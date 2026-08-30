@@ -47,7 +47,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene1
             //Add ship as first inhabitant
             var ship = Ship.CreateShip(Surface);
             //Generate 2D map for the surface, maxtrees and maxhouses set
-            Surface.Create2DMap(30000,15000, GameMode, "Scene1SurfaceRecording.retro");
+            Surface.Create2DMap(30000,15000, GameMode, "Scene1SurfaceRecording_20260830_205856.retro");
             var weapons = new List<I3dObject> { Lazer.CreateLazer(Surface), Bullet.CreateBullet(Surface) };
             ship.Rotation = new Vector3 { };
             ship.WorldPosition = new Vector3 { };

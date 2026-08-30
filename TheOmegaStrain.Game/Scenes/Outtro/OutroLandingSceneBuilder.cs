@@ -22,6 +22,11 @@ namespace TheOmegaStrain.Game.Scenes.Outro
         public const int LandingShipStartDepthAbovePlatform = 92;
         public const int LandingShipFinalDepthAbovePlatform = 68;
 
+        private static int ScaleTileOffset(int originalOffset)
+        {
+            return Math.Sign(originalOffset) * SurfaceSetup.ScaleTileCount(Math.Abs(originalOffset));
+        }
+
         public void Build(I3dWorld world)
         {
             ArgumentNullException.ThrowIfNull(world);
@@ -339,36 +344,36 @@ namespace TheOmegaStrain.Game.Scenes.Outro
             int centerX = map.GetLength(1) / 2;
             var placements = new (int x, int z)[]
             {
-                (centerX - 8, centerZ - 6),
-                (centerX - 6, centerZ - 6),
-                (centerX - 4, centerZ - 6),
-                (centerX + 5, centerZ - 6),
-                (centerX + 7, centerZ - 6),
-                (centerX - 8, centerZ - 5),
-                (centerX - 6, centerZ - 5),
-                (centerX - 7, centerZ + 5),
-                (centerX - 3, centerZ + 6),
-                (centerX + 4, centerZ - 6),
-                (centerX + 7, centerZ - 4),
-                (centerX + 7, centerZ + 5),
-                (centerX - 8, centerZ + 1),
-                (centerX + 3, centerZ + 6),
-                (centerX - 8, centerZ + 6),
-                (centerX - 6, centerZ + 6),
-                (centerX - 4, centerZ + 6),
-                (centerX + 5, centerZ + 6),
-                (centerX + 7, centerZ + 6),
-                (centerX - 8, centerZ + 3),
-                (centerX + 7, centerZ + 3),
-                (centerX - 8, centerZ - 2),
-                (centerX + 7, centerZ - 2),
-                (centerX - 3, centerZ - 6),
-                (centerX + 3, centerZ - 6)
+                (centerX + ScaleTileOffset(-8), centerZ + ScaleTileOffset(-6)),
+                (centerX + ScaleTileOffset(-6), centerZ + ScaleTileOffset(-6)),
+                (centerX + ScaleTileOffset(-4), centerZ + ScaleTileOffset(-6)),
+                (centerX + ScaleTileOffset(5), centerZ + ScaleTileOffset(-6)),
+                (centerX + ScaleTileOffset(7), centerZ + ScaleTileOffset(-6)),
+                (centerX + ScaleTileOffset(-8), centerZ + ScaleTileOffset(-5)),
+                (centerX + ScaleTileOffset(-6), centerZ + ScaleTileOffset(-5)),
+                (centerX + ScaleTileOffset(-7), centerZ + ScaleTileOffset(5)),
+                (centerX + ScaleTileOffset(-3), centerZ + ScaleTileOffset(6)),
+                (centerX + ScaleTileOffset(4), centerZ + ScaleTileOffset(-6)),
+                (centerX + ScaleTileOffset(7), centerZ + ScaleTileOffset(-4)),
+                (centerX + ScaleTileOffset(7), centerZ + ScaleTileOffset(5)),
+                (centerX + ScaleTileOffset(-8), centerZ + ScaleTileOffset(1)),
+                (centerX + ScaleTileOffset(3), centerZ + ScaleTileOffset(6)),
+                (centerX + ScaleTileOffset(-8), centerZ + ScaleTileOffset(6)),
+                (centerX + ScaleTileOffset(-6), centerZ + ScaleTileOffset(6)),
+                (centerX + ScaleTileOffset(-4), centerZ + ScaleTileOffset(6)),
+                (centerX + ScaleTileOffset(5), centerZ + ScaleTileOffset(6)),
+                (centerX + ScaleTileOffset(7), centerZ + ScaleTileOffset(6)),
+                (centerX + ScaleTileOffset(-8), centerZ + ScaleTileOffset(3)),
+                (centerX + ScaleTileOffset(7), centerZ + ScaleTileOffset(3)),
+                (centerX + ScaleTileOffset(-8), centerZ + ScaleTileOffset(-2)),
+                (centerX + ScaleTileOffset(7), centerZ + ScaleTileOffset(-2)),
+                (centerX + ScaleTileOffset(-3), centerZ + ScaleTileOffset(-6)),
+                (centerX + ScaleTileOffset(3), centerZ + ScaleTileOffset(-6))
             };
 
             foreach (var placement in placements)
             {
-                FlattenPlacement(map, placement.x, placement.z, radius: 1, depth: 24);
+                FlattenPlacement(map, placement.x, placement.z, radius: SurfaceSetup.ScaleTileCount(1), depth: 24);
                 var tree = Tree.CreateTree(surface);
                 tree.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 tree.SurfaceBasedId = map[placement.z, placement.x].mapId;
@@ -388,15 +393,15 @@ namespace TheOmegaStrain.Game.Scenes.Outro
             int centerX = map.GetLength(1) / 2;
             var placements = new (int x, int z)[]
             {
-                (centerX - 7, centerZ + 4),
-                (centerX + 6, centerZ - 4),
-                (centerX - 7, centerZ - 4),
-                (centerX + 6, centerZ + 4)
+                (centerX + ScaleTileOffset(-7), centerZ + ScaleTileOffset(4)),
+                (centerX + ScaleTileOffset(6), centerZ + ScaleTileOffset(-4)),
+                (centerX + ScaleTileOffset(-7), centerZ + ScaleTileOffset(-4)),
+                (centerX + ScaleTileOffset(6), centerZ + ScaleTileOffset(4))
             };
 
             foreach (var placement in placements)
             {
-                FlattenPlacement(map, placement.x, placement.z, radius: 1, depth: 25);
+                FlattenPlacement(map, placement.x, placement.z, radius: SurfaceSetup.ScaleTileCount(1), depth: 25);
                 var house = House.CreateHouse(surface);
                 house.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
                 house.SurfaceBasedId = map[placement.z, placement.x].mapId;
@@ -415,7 +420,7 @@ namespace TheOmegaStrain.Game.Scenes.Outro
             int centerZ = map.GetLength(0) / 2;
             int centerX = map.GetLength(1) / 2;
 
-            FlattenPlacement(map, centerX, centerZ, radius: 1, depth: LandingPlatformDepth);
+            FlattenPlacement(map, centerX, centerZ, radius: SurfaceSetup.ScaleTileCount(1), depth: LandingPlatformDepth);
 
             var banner = OutroLandingBanner.CreateBanner(surface);
             banner.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };

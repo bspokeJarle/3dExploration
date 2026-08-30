@@ -38,7 +38,7 @@ namespace TheOmegaStrain.Game.Helpers
                 map,
                 maxHeight,
                 nearPlatformTarget,
-                nearPlatformSearchRadius,
+                SurfaceSetup.ScaleTileCount(nearPlatformSearchRadius),
                 reservedTiles,
                 placements);
 

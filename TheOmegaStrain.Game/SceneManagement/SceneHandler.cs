@@ -41,6 +41,20 @@ namespace TheOmegaStrain.Game.SceneManagement
         private SavedGameState? _tutorialResumeSavedState = null;
         private int _settingsReturnIntroPage = 0;
 
+        // ===== DEV / TEST SCENE SELECTION =====
+        // The ONLY value you edit. Scene index to jump to after the Intro.
+        // 0 = disabled (normal game: tutorial / saved game decides).
+        // 1 = Scene1, 2 = Scene2, 3 = Scene3 ... 9 = Outro, 10 = Simulation, 11 = Tutorial.
+        // The Intro ALWAYS plays first; this only overrides where you go after name entry,
+        // and it beats any saved game for that pilot.
+        // NOTE: set back to 0 before shipping.
+        public static int DevStartSceneIndex = 4;
+
+        // Runtime snapshot of the value above, resolved once in the constructor.
+        // Not a second setting: the Intro overwrites GamePlayState.SceneIndex with its own
+        // index as soon as it becomes active, so the request must be captured before that.
+        private readonly int _manualSceneIndexRequest;
+
         // Snapshot of campaign progression captured the moment we enter the tutorial scene,
         // so leaving the tutorial restores exactly what the player had before training (and
         // training-only pickups / score / kills disappear). Null means "no active snapshot".
@@ -68,7 +82,17 @@ namespace TheOmegaStrain.Game.SceneManagement
 
         public SceneHandler()
         {
+            _manualSceneIndexRequest = CaptureManualSceneIndexRequest();
             ApplySceneIndexOverrideFromGameState();
+        }
+
+        private int CaptureManualSceneIndexRequest()
+        {
+            if (DevStartSceneIndex > 0 && DevStartSceneIndex < scenes.Count)
+                return DevStartSceneIndex;
+
+            var requested = GameState.GamePlayState?.SceneIndex ?? 0;
+            return requested > 0 && requested < scenes.Count ? requested : 0;
         }
 
         public IScene GetActiveScene() => scenes[currentSceneIndex];
@@ -426,9 +450,11 @@ namespace TheOmegaStrain.Game.SceneManagement
                 return;
             }
 
+            bool isManualSceneJump = false;
             if (_targetSceneIndex.HasValue)
             {
                 currentSceneIndex = _targetSceneIndex.Value;
+                isManualSceneJump = _manualSceneIndexRequest > 0 && currentSceneIndex == _manualSceneIndexRequest;
                 _targetSceneIndex = null;
             }
             else
@@ -436,7 +462,10 @@ namespace TheOmegaStrain.Game.SceneManagement
                 currentSceneIndex = (currentSceneIndex + 1) % scenes.Count;
             }
 
-            currentSceneIndex = ApplyTutorialGate(currentSceneIndex);
+            // A manual/dev scene selection bypasses the tutorial gate, otherwise an
+            // untrained pilot would always be redirected into the tutorial scene.
+            if (!isManualSceneJump)
+                currentSceneIndex = ApplyTutorialGate(currentSceneIndex);
             var pendingSavedState = _pendingSavedState;
             if (pendingSavedState != null && scenes[currentSceneIndex].SceneType == SceneTypes.Simulation)
             {
@@ -742,10 +771,21 @@ namespace TheOmegaStrain.Game.SceneManagement
 
                 // Check for saved scene progress for this player
                 var saved = GameStatePersistence.LoadGameState(name);
+                int requestedSceneIndex = _manualSceneIndexRequest;
                 bool shouldStartTutorial = _pendingTutorialStart ||
                                            !TutorialProgressService.HasCompletedTutorial(name);
 
-                if (shouldStartTutorial)
+                // An explicit training request (T key) always wins over the dev scene switch.
+                bool hasManualSceneSelection = requestedSceneIndex > 0 && !_pendingTutorialStart;
+
+                if (hasManualSceneSelection)
+                {
+                    _pendingTutorialStart = false;
+                    _tutorialResumeSavedState = null;
+                    _pendingSavedState = null;
+                    _targetSceneIndex = requestedSceneIndex;
+                }
+                else if (shouldStartTutorial)
                 {
                     _pendingTutorialStart = false;
                     _tutorialResumeSavedState = saved != null && CanResumeSavedSceneAfterTutorial(saved)
@@ -1210,7 +1250,10 @@ namespace TheOmegaStrain.Game.SceneManagement
 
         private static void DisposeWorldMovements(I3dWorld world)
         {
-            foreach (var obj in world.WorldInhabitants.OfType<OmegaObject3D>())
+            // Snapshot first: disposing a movement can spawn/remove world inhabitants
+            // (e.g. detaching particles), which would invalidate a live enumerator.
+            var objects = world.WorldInhabitants.OfType<OmegaObject3D>().ToList();
+            foreach (var obj in objects)
             {
                 try
                 {

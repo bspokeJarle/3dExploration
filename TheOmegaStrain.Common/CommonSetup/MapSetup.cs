@@ -10,13 +10,12 @@ namespace TheOmegaStrain.Common.CommonSetup
     //TODO: Expand this as needed, common map properties can go here
     public static class MapSetup
     {
-        private const float OriginalTileSize = 75f;
         public const int globalMapSize = 2500 + SurfaceSetup.DefaultViewPortSize;
         public static int tileSize => SurfaceSetup.tileSize;
         public static int maxHeight = 75; //Height elevation for the map
-        public static int bitmapMapCenterOffsetX => (int)(4700f / OriginalTileSize * SurfaceSetup.tileSize);
-        public static int bitmapMapCenterOffsetY => (int)(1750f / OriginalTileSize * SurfaceSetup.tileSize);
         public const int bitmapSize = 72; //Size of the bitmap on screen
+        public static int bitmapMapCenterOffsetX => bitmapSize * tileSize;
+        public static int bitmapMapCenterOffsetY => (bitmapSize / 2) * tileSize;
         public static int screensPrMap => globalMapSize / SurfaceSetup.DefaultViewPortSize;
     }
 }

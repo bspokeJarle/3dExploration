@@ -28,8 +28,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float DepthStartZ = 700f;
         private const float DepthBehindSpread = 1800f;
         private const float DepthAheadSpread = 3400f;
-        private const float MinSize = 4.2f;
-        private const float MaxSize = 9.2f;
+        private const float MinSize = 2.52f;
+        private const float MaxSize = 5.52f;
         private const float MinFallSpeed = 0.25f;
         private const float MaxFallSpeed = 1.15f;
         private const float HorizontalDrift = 0.62f;

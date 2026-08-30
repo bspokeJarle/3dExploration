@@ -17,7 +17,7 @@ namespace TheOmegaStrain.Game.Scenes.Intro
 
         public bool SkipLogoCube { get; set; } = false;
 
-        public GameModes GameMode { get; } = GameModes.Live;
+        public GameModes GameMode { get; } = GameModes.Record;
 
         public string SceneMusic { get; } = "music_intro";
 

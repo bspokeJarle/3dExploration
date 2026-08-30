@@ -78,9 +78,6 @@ namespace TheOmegaStrain.Wpf
         private DateTime fadeOutTrigged = DateTime.MinValue;
         private int _updateInProgress = 0;
         private bool _isShuttingDown;
-        private DateTime _direct3DStartupTestEndsUtc;
-        private readonly List<ProjectedTriangleMesh> _direct3DStartupTestTriangles = new();
-        private Border? _direct3DStartupTestBanner;
         private long _lastTickTimestamp = 0;
         private long _lastWorldUpdateTimestamp = 0;
         private int _minimapFrameSkip = 0;
@@ -454,65 +451,6 @@ namespace TheOmegaStrain.Wpf
             }
 
             _overlayHost?.ShowOverlay();
-
-            if (_useDirect3D11)
-            {
-                ShowDirect3DStartupTest(w, h);
-                Dispatcher.BeginInvoke(() => _direct3DRenderer?.RenderTriangles(_direct3DStartupTestTriangles));
-            }
-        }
-
-        private void ShowDirect3DStartupTest(int width, int height)
-        {
-            _direct3DStartupTestTriangles.Clear();
-            int centerX = width / 2;
-            int centerY = height / 2;
-            int size = Math.Min(width, height) / 3;
-
-            AddDirect3DTestTriangle(centerX, centerY - size, centerX - size, centerY + size, centerX + size, centerY + size, "00FFFF");
-            AddDirect3DTestTriangle(centerX - size, centerY, centerX, centerY - size, centerX, centerY + size, "FFFF00");
-            AddDirect3DTestTriangle(centerX + size, centerY, centerX, centerY - size, centerX, centerY + size, "FF00FF");
-
-            _direct3DStartupTestEndsUtc = DateTime.UtcNow.AddSeconds(4);
-            _direct3DStartupTestBanner = new Border
-            {
-                Background = new SolidColorBrush(Color.FromArgb(220, 0, 0, 0)),
-                BorderBrush = Brushes.Cyan,
-                BorderThickness = new Thickness(2),
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(18, 12, 18, 12),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock
-                {
-                    Text = $"DIRECT3D 11 TEST\n36 surface tiles\n{_direct3DStartupTestTriangles.Count} D3D diagnostic triangles",
-                    Foreground = Brushes.White,
-                    FontSize = 24,
-                    TextAlignment = TextAlignment.Center
-                }
-            };
-            Panel.SetZIndex(_direct3DStartupTestBanner, int.MaxValue - 1);
-            OverlayRoot.Children.Add(_direct3DStartupTestBanner);
-        }
-
-        private void AddDirect3DTestTriangle(int x1, int y1, int x2, int y2, int x3, int y3, string color)
-        {
-            _direct3DStartupTestTriangles.Add(new ProjectedTriangleMesh
-            {
-                PartName = "Direct3DStartupTest",
-                X1 = x1,
-                Y1 = y1,
-                X2 = x2,
-                Y2 = y2,
-                X3 = x3,
-                Y3 = y3,
-                Color = color,
-                CalculatedZ = 0,
-                TriangleAngle = 0,
-                Rhw1 = 1,
-                Rhw2 = 1,
-                Rhw3 = 1
-            });
         }
 
         private void InitializeRawMouseInput()
@@ -878,18 +816,6 @@ namespace TheOmegaStrain.Wpf
 
         private void Handle3dWorldRendering(object? sender, EventArgs e)
         {
-            if (_useDirect3D11 && DateTime.UtcNow < _direct3DStartupTestEndsUtc)
-            {
-                worldRenderer.RenderTriangles(_direct3DStartupTestTriangles);
-                return;
-            }
-
-            if (_direct3DStartupTestBanner != null)
-            {
-                OverlayRoot.Children.Remove(_direct3DStartupTestBanner);
-                _direct3DStartupTestBanner = null;
-            }
-
             var nowTicks = Stopwatch.GetTimestamp();
             if (_lastFrameTick == 0)
             {
