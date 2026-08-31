@@ -10,8 +10,8 @@ namespace TheOmegaStrain.Gameplay.Controls
 {
     public sealed class SnowfallControls : IObjectMovement
     {
-        public const int VisibleFlakeTarget = 150;
-        private const int OffscreenFlakeReserve = 250;
+        public const int VisibleFlakeTarget = 120;
+        private const int OffscreenFlakeReserve = 200;
         public const int TargetFlakeCount = VisibleFlakeTarget + OffscreenFlakeReserve;
         public const float StartGuideYOffset = -1000f;
         public const float DepthSpread = 1000f;
@@ -20,8 +20,10 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float DepthStartZ = 750f;
         private const float DepthBehindSpread = 1800f;
         private const float DepthAheadSpread = 3400f;
-        private const float MinSize = 1.5f;
-        private const float MaxSize = 3.3f;
+        private const float MinSize = 0.75f;
+        private const float MaxSize = 1.65f;
+        // Upper bound for on-screen size, so flakes we fly straight into stay natural.
+        private const float MaxApparentSize = 4.5f;
         private const float MinFallSpeed = 1.2f;
         private const float MaxFallSpeed = 3.0f;
         private const float HorizontalDrift = 0.28f;
@@ -216,7 +218,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             float scale = WorldWeatherField.GetProjectionScale(relativeZ, objectZ);
             float centerX = relativeX / scale;
             float centerY = flake.OffsetY / scale;
-            float halfSize = flake.Size * opacity;
+            float halfSize = WorldWeatherField.ClampApparentSize(flake.Size * opacity, scale, MaxApparentSize);
 
             triangle.Color = SnowColor;
             triangle.noHidden = true;

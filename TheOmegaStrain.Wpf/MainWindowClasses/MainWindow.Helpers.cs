@@ -201,9 +201,8 @@ namespace TheOmegaStrain.Wpf.Helpers
             var mapPos = GameState.SurfaceState.GlobalMapPosition;
             if (mapPos != null)
             {
-                int viewportCenterOffset = (SurfaceSetup.viewPortSize * tileSize) / 2;
-                int shipMapX = MapCoordinateHelpers.WorldToTileIndex(mapPos.x + viewportCenterOffset, tileSize, mapWidth);
-                int shipMapZ = MapCoordinateHelpers.WorldToTileIndex(mapPos.z + viewportCenterOffset, tileSize, mapHeight);
+                int shipMapX = MapCoordinateHelpers.WorldToTileIndex(mapPos.x + MapSetup.viewPortCenterOffsetX, tileSize, mapWidth);
+                int shipMapZ = MapCoordinateHelpers.WorldToTileIndex(mapPos.z + MapSetup.viewPortCenterOffsetX, tileSize, mapHeight);
                 int shipBx = MapCoordinateHelpers.GetWrappedRelativeIndex(shipMapX, cropOriginX, mapWidth);
                 int shipBz = MapCoordinateHelpers.GetWrappedRelativeIndex(shipMapZ, cropOriginZ, mapHeight);
                 StampMarker(pixels, cropW, cropH, stride, shipBx, shipBz, greyPx);

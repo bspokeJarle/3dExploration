@@ -48,7 +48,7 @@ namespace TheOmegaStrain.Game.SceneManagement
         // The Intro ALWAYS plays first; this only overrides where you go after name entry,
         // and it beats any saved game for that pilot.
         // NOTE: set back to 0 before shipping.
-        public static int DevStartSceneIndex = 4;
+        public static int DevStartSceneIndex = 6;
 
         // Runtime snapshot of the value above, resolved once in the constructor.
         // Not a second setting: the Intro overwrites GamePlayState.SceneIndex with its own

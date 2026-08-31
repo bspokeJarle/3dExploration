@@ -9,6 +9,7 @@ using TheOmegaStrain.Game.World;
 using TheOmegaStrain.Common.CommonGlobalState;
 using TheOmegaStrain.Common.CommonGlobalState.States;
 using TheOmegaStrain.Common.CommonSetup;
+using TheOmegaStrain.Common.GamePlayHelpers;
 using TheOmegaStrain.Common.Persistence;
 using TheOmegaStrain.Domain;
 using TheOmegaStrain.Gameplay.Controls;
@@ -335,6 +336,22 @@ namespace TheOmegaStrain.Wpf
         }
 
         private Grid OverlayRoot => _overlayHost?.OverlayRoot ?? mainGrid;
+
+        private void UpdateDirect3DBackgroundFlash()
+        {
+            if (_direct3DRenderer == null)
+                return;
+
+            // The WPF backend paints the flash as a background rectangle. Direct3D clears the
+            // render target instead, so the same colour must be pushed into ClearColor or the
+            // lightning flash is invisible on this backend.
+            var weather = GameState.WeatherVisualState;
+            var (red, green, blue) = WeatherFlashColorHelpers.GetBackgroundColor(
+                weather?.LightningFlashIntensity ?? 0f,
+                weather?.ImpactFlashIntensity ?? 0f);
+
+            _direct3DRenderer.ClearColor = new Vortice.Mathematics.Color4(red / 255f, green / 255f, blue / 255f, 1f);
+        }
 
         private void OnDirect3DPanelResize(object? sender, EventArgs e)
         {
@@ -1115,6 +1132,7 @@ namespace TheOmegaStrain.Wpf
                         {
                             try
                             {
+                                UpdateDirect3DBackgroundFlash();
                                 worldRenderer.RenderTriangles(screenCoordinates);
                             }
                             finally

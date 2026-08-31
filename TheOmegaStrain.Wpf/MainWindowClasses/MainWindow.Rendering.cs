@@ -1,6 +1,7 @@
 using TheOmegaStrain.Common.CommonGlobalState;
 using TheOmegaStrain.Common.CommonGlobalState.States;
 using TheOmegaStrain.Common.CommonSetup;
+using TheOmegaStrain.Common.GamePlayHelpers;
 using TheOmegaStrain.Domain;
 using System;
 using System.Collections.Generic;
@@ -444,20 +445,7 @@ namespace TheOmegaStrain.Wpf.Rendering
             if (backgroundBrushCache.TryGetValue(cacheKey, out var brush))
                 return brush;
 
-            float t = key / 16f;
-            float warmth = warmthKey / 16f;
-
-            byte lightningRed = (byte)(2 + 38 * t);
-            byte lightningGreen = (byte)(4 + 56 * t);
-            byte lightningBlue = (byte)(9 + 92 * t);
-
-            byte impactRed = (byte)(12 + 120 * t);
-            byte impactGreen = (byte)(4 + 54 * t);
-            byte impactBlue = (byte)(2 + 20 * t);
-
-            byte red = Mix(lightningRed, impactRed, warmth);
-            byte green = Mix(lightningGreen, impactGreen, warmth);
-            byte blue = Mix(lightningBlue, impactBlue, warmth);
+            var (red, green, blue) = WeatherFlashColorHelpers.GetBackgroundColor(lightning, impact);
 
             brush = new SolidColorBrush(Color.FromRgb(red, green, blue));
             brush.Freeze();

@@ -29,7 +29,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene4
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Winter;
         public ISceneDirector Director { get; } = new Scene4Director();
-        public GameModes GameMode { get; } = GameModes.Record;
+        public GameModes GameMode { get; } = GameModes.Playback;
         public float InfectionThresholdPercent { get; } = 12.5f;
         public int InfectionSpreadRate { get; } = 6;
         public int SeederOffscreenSpeedFactor { get; } = 16;

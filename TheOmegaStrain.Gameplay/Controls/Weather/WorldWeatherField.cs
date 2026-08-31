@@ -157,6 +157,38 @@ namespace TheOmegaStrain.Gameplay.Controls.Weather
             return ScreenSetup.perspectiveAdjustment / denominator * ScreenSetup.defaultObjectZoom;
         }
 
+        /// <summary>
+        /// Limits how large a weather particle may appear on screen. Particle geometry is written in
+        /// pre-projection space, so the renderer magnifies it by the projection scale. Flying straight
+        /// into a flake, drop or leaf therefore blows it up to an unnatural size. Clamping the world
+        /// size against maxApparentSize / scale keeps the on-screen size bounded while leaving distant
+        /// particles completely untouched.
+        /// Only weather particles (snow, rain, leaves) use this; engine/exhaust particles are unaffected.
+        /// </summary>
+        public static float ClampApparentSize(float worldSize, float scale, float maxApparentSize)
+        {
+            if (maxApparentSize <= 0f || scale <= 0f)
+                return worldSize;
+
+            float allowedWorldSize = maxApparentSize / scale;
+            return worldSize > allowedWorldSize ? allowedWorldSize : worldSize;
+        }
+
+        /// <summary>
+        /// Returns a uniform shrink factor (0..1) for a particle whose reference dimension would
+        /// otherwise exceed maxApparentSize on screen. Multi-dimensional particles (such as slanted
+        /// raindrops) must scale every dimension by this same factor, otherwise clamping one axis
+        /// distorts the shape.
+        /// </summary>
+        public static float GetApparentSizeShrink(float worldSize, float scale, float maxApparentSize)
+        {
+            if (maxApparentSize <= 0f || scale <= 0f || worldSize <= 0f)
+                return 1f;
+
+            float allowedWorldSize = maxApparentSize / scale;
+            return worldSize > allowedWorldSize ? allowedWorldSize / worldSize : 1f;
+        }
+
         private float RandomRange(float min, float max)
         {
             return min + (float)_random.NextDouble() * (max - min);

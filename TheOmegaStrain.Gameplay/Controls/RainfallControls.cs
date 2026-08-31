@@ -35,6 +35,9 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float TopRespawnJitter = 140f;
         private const float FadeInStep = 0.18f;
         private const float GroundFadeDistance = 210f;
+        // Upper bound for on-screen size, so drops we fly straight into stay natural.
+        // Length is the reference dimension; width and slant follow the same shrink factor.
+        private const float MaxApparentLength = 34f;
 
         private static readonly WeatherFieldSettings FieldSettings = new(
             DepthStartZ: DepthStartZ,
@@ -250,6 +253,14 @@ namespace TheOmegaStrain.Gameplay.Controls
             float length = drop.Length * (0.72f + opacity * 0.28f);
             float halfWidth = drop.Width * (0.75f + opacity * 0.25f);
             float slant = (drop.VisualWindX * 4.5f) + drop.SlantJitter;
+
+            // Shrink the whole drop by one factor so length, width and slant stay in proportion.
+            // Clamping length alone flattens the streak into a horizontal smear.
+            float shrink = WorldWeatherField.GetApparentSizeShrink(length, scale, MaxApparentLength);
+            length *= shrink;
+            halfWidth *= shrink;
+            slant *= shrink;
+
             float tailX = centerX - slant;
             float tailY = centerY - length;
 

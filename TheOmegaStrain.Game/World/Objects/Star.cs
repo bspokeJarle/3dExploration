@@ -1,5 +1,6 @@
 using TheOmegaStrain.Game.Helpers;
 using TheOmegaStrain.Common.CommonGlobalState;
+using TheOmegaStrain.Common.OmegaEngineAdapters;
 using TheOmegaStrain.Domain;
 using System.Collections.Generic;
 
@@ -7,7 +8,12 @@ namespace TheOmegaStrain.Game.World.Objects
 {
     public static class Star
     {
-        private static readonly float ZoomRatio = 0.2f;
+        // Stars must have real pixel size. The old 0.2f value produced sub-pixel geometry
+        // (0.4px arms) that only stayed visible because the WPF renderer stroked every
+        // triangle with a 1px pen. Direct3D fills triangles without a stroke, so sub-pixel
+        // stars vanish or flicker. At 1.2f the arms span ~4.8px with ~1.15px thickness,
+        // which reads as a small cross-shaped star rather than a blob.
+        private static readonly float ZoomRatio = 1.2f;
 
         // Simple color palette for stars (can be tweaked to taste)
         // White, warm white, slightly blue-white, slightly reddish, slightly greenish
@@ -39,6 +45,7 @@ namespace TheOmegaStrain.Game.World.Objects
 
             var starTriangles = BuildStarGeometry(size, chosenColor);
             OmegaObject3DHelpers.ApplyScaleToTriangles(starTriangles, ZoomRatio);
+            starTriangles = ApplyRandomOrientation(starTriangles);
 
             var star = new OmegaObject3D { ObjectId = GameState.ObjectIdCounter++ };
 
@@ -56,12 +63,15 @@ namespace TheOmegaStrain.Game.World.Objects
             // StarFieldHandler normally supplies a zero offset and places stars via WorldPosition.
             star.ObjectOffsets = randomOffset;
 
-            // Random rotation to vary the visual appearance slightly
+            // Rotation is baked into the mesh above, so this must stay zero. Stars are added to
+            // the render list *after* LiveGameLoop deep-copies the world, which means
+            // RotateObjectGeometry would re-rotate the very same triangles every frame and the
+            // angle would accumulate - that is what made the starfield spin and shimmer.
             star.Rotation = new Vector3
             {
-                x = (float)(random.NextDouble() * 360.0),
-                y = (float)(random.NextDouble() * 360.0),
-                z = (float)(random.NextDouble() * 360.0)
+                x = 0f,
+                y = 0f,
+                z = 0f
             };
 
             var surfacePos = GameState.SurfaceState.GlobalMapPosition;
@@ -82,6 +92,21 @@ namespace TheOmegaStrain.Game.World.Objects
             return star;
         }
 
+        /// <summary>
+        /// Bakes a fixed random orientation into the star mesh. This is done once at creation
+        /// instead of via <c>Rotation</c>, because stars bypass the per-frame deep copy and would
+        /// otherwise have the same rotation re-applied to the same triangles on every frame.
+        /// Axis order matches the frame transformer (Z then Y then X).
+        /// </summary>
+        private static List<ITriangleMeshWithColorAndTexture> ApplyRandomOrientation(
+            List<ITriangleMeshWithColorAndTexture> triangles)
+        {
+            var rotate = new OmegaMeshRotation();
+            var rotated = rotate.RotateMesh(triangles, random.NextDouble() * 360.0, 'Z');
+            rotated = rotate.RotateMesh(rotated, random.NextDouble() * 360.0, 'Y');
+            return rotate.RotateMesh(rotated, random.NextDouble() * 360.0, 'X');
+        }
+
         private static string GetRandomStarColor()
         {
             int index = random.Next(StarColors.Length);
@@ -98,8 +123,8 @@ namespace TheOmegaStrain.Game.World.Objects
 
             // Three / four crossing “arms” as long, thin triangles in the XY-plane
             int armCount = 4;          // set to 3 if you want to test a 3-armed star
-            float halfLength = size * 0.5f;
-            float halfWidth = size * 0.12f; // thickness of the arms (0.1–0.2 usually looks good)
+            float halfLength = size * 0.38f;
+            float halfWidth = size * 0.2f;  // wider base relative to length = softer, less spiky arms
 
             var center = new Vector3 { x = 0f, y = 0f, z = 0f };
 

@@ -29,9 +29,26 @@ public class MapCoordinateHelpersTests
     }
 
     [TestMethod]
-    public void BitmapCropOffsets_CenterTheMapPositionInTheCrop()
+    public void BitmapCropOffsets_CenterTheShipInTheCrop()
     {
-        Assert.AreEqual(MapSetup.bitmapSize * MapSetup.tileSize, MapSetup.bitmapMapCenterOffsetX);
-        Assert.AreEqual((MapSetup.bitmapSize / 2) * MapSetup.tileSize, MapSetup.bitmapMapCenterOffsetY);
+        // Surface.CenterViewportOnLandingPlatform sets GlobalMapPosition to
+        // (shipTile * tileSize) - viewPortCenterOffsetX, using the same offset on both axes.
+        // The minimap crop must therefore be centred on the ship, not on GlobalMapPosition.
+        int tileSize = MapSetup.tileSize;
+
+        int cropW = MapSetup.bitmapSize * 2;
+        int cropH = MapSetup.bitmapSize;
+
+        // Place the ship on a known tile and derive the viewport corner exactly as Surface does.
+        int shipTileX = 500;
+        int shipTileZ = 400;
+        int mapX = (shipTileX * tileSize) - MapSetup.viewPortCenterOffsetX;
+        int mapZ = (shipTileZ * tileSize) - MapSetup.viewPortCenterOffsetX;
+
+        int cropX = (mapX - MapSetup.bitmapMapCenterOffsetX) / tileSize;
+        int cropZ = (mapZ - MapSetup.bitmapMapCenterOffsetY) / tileSize;
+
+        Assert.AreEqual(cropW / 2, shipTileX - cropX, "Ship must sit at the horizontal centre of the minimap crop.");
+        Assert.AreEqual(cropH / 2, shipTileZ - cropZ, "Ship must sit at the vertical centre of the minimap crop.");
     }
 }

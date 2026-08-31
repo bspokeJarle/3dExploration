@@ -30,6 +30,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float DepthAheadSpread = 3400f;
         private const float MinSize = 2.52f;
         private const float MaxSize = 5.52f;
+        // Upper bound for on-screen size, so leaves we fly straight into stay natural.
+        private const float MaxApparentSize = 12f;
         private const float MinFallSpeed = 0.25f;
         private const float MaxFallSpeed = 1.15f;
         private const float HorizontalDrift = 0.62f;
@@ -243,7 +245,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             float scale = WorldWeatherField.GetProjectionScale(relativeZ, objectZ);
             float centerX = relativeX / scale;
             float centerY = leaf.OffsetY / scale;
-            float size = leaf.Size * opacity;
+            float size = WorldWeatherField.ClampApparentSize(leaf.Size * opacity, scale, MaxApparentSize);
             float angle = leaf.Angle + MathF.Sin(leaf.Phase) * 0.42f;
             float cos = MathF.Cos(angle);
             float sin = MathF.Sin(angle);
