@@ -112,7 +112,14 @@ public class GroundControlsCraterTests
     [TestMethod]
     public void MoveObject_WhenBombCratersSurface_UsesLargerBlastRadius()
     {
-        GameState.SurfaceState.AiObjects.Add(CreateSurfaceBombAtTile(2, 2));
+        // The crater radius scales with the surface tile resolution, so grow the map and
+        // centre the bomb so the full blast (and its corners) stay inside the map bounds.
+        int radius = SurfaceSetup.ScaleTileCount(2);
+        int size = radius * 2 + 3;
+        int centre = size / 2;
+        ResizeMap(size);
+
+        GameState.SurfaceState.AiObjects.Add(CreateSurfaceBombAtTile(centre, centre));
 
         var ground = new OmegaObject3D
         {
@@ -125,12 +132,28 @@ public class GroundControlsCraterTests
 
         new GroundControls().MoveObject(ground, null, null);
 
-        AssertDryCratered(0, 2, GamePlayHelpers.TerrainType.Grassland);
-        AssertDryCratered(4, 2, GamePlayHelpers.TerrainType.Grassland);
-        AssertDryCratered(2, 0, GamePlayHelpers.TerrainType.Grassland);
-        AssertDryCratered(2, 4, GamePlayHelpers.TerrainType.Grassland);
-        Assert.IsFalse(GameState.SurfaceState.Global2DMap![0, 0].isCratered,
+        AssertDryCratered(centre - radius, centre, GamePlayHelpers.TerrainType.Grassland);
+        AssertDryCratered(centre + radius, centre, GamePlayHelpers.TerrainType.Grassland);
+        AssertDryCratered(centre, centre - radius, GamePlayHelpers.TerrainType.Grassland);
+        AssertDryCratered(centre, centre + radius, GamePlayHelpers.TerrainType.Grassland);
+        Assert.IsFalse(GameState.SurfaceState.Global2DMap![centre - radius, centre - radius].isCratered,
             "Blast radius should be wider than before without turning into a full square.");
+    }
+
+    private static void ResizeMap(int size)
+    {
+        GameState.SurfaceState.Global2DMap = new SurfaceData[size, size];
+        for (int z = 0; z < size; z++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                GameState.SurfaceState.Global2DMap[z, x] = new SurfaceData
+                {
+                    mapDepth = 20,
+                    isInfected = false
+                };
+            }
+        }
     }
 
     private static void SetTile(int x, int z, int depth)

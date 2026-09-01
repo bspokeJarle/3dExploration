@@ -1537,7 +1537,13 @@ namespace TheOmegaStrain.Gameplay.Controls
                     if (overLandingPlatform)
                     {
                         ResetUnsafeSurfaceHit();
-                        BeginSurfaceBounceRecovery(reenableGravityAtTop: false);
+
+                        // Resting on the pad re-reports the same contact every frame. The
+                        // thrust block above already cleared `landed`, so re-entering bounce
+                        // recovery here would zero the lift again on the very same frame and
+                        // leave the ship locked against the platform. Thrust always wins.
+                        if (!ThrustOn)
+                            BeginSurfaceBounceRecovery(reenableGravityAtTop: false);
                     }
                     else
                     {

@@ -30,10 +30,7 @@ namespace TheOmegaStrain.Game.World.Objects
             banner.ObjectName = "OutroLandingBanner";
             banner.ParentSurface = parentSurface;
             banner.ObjectOffsets = new Vector3();
-            // Banner stands on the ground, so it must share the 70-degree world pitch used by
-            // the platform and other surface-facing props. Without it the poles lay flat and
-            // cross over the landing pad instead of standing upright behind it.
-            banner.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0f, z = 0f };
+            banner.Rotation = new Vector3();
             banner.WorldPosition = new Vector3();
             banner.CrashBoxes = new List<List<IVector3>>();
             banner.CrashBoxesFollowRotation = false;

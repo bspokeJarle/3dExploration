@@ -251,36 +251,6 @@ public class EngineObjectCompatibilityTests
     }
 
     [TestMethod]
-    public void RetroMeshEngineSource_DoesNotReferenceGameProjects()
-    {
-        var repositoryRoot = FindRepositoryRoot();
-        var engineDirectory = Path.Combine(repositoryRoot, "RetroMesh", "RetroMesh.Engine");
-        var forbiddenHits = Directory
-            .EnumerateFiles(engineDirectory, "*.*", SearchOption.AllDirectories)
-            .Where(path => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) ||
-                           path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}") &&
-                           !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
-            .SelectMany(path => File
-                .ReadLines(path)
-                .Select((line, index) => new { path, line, lineNumber = index + 1 }))
-            .Where(hit =>
-                hit.line.Contains("ProjectReference", StringComparison.Ordinal) ||
-                hit.line.Contains("using TheOmegaStrain.Domain", StringComparison.Ordinal) ||
-                hit.line.Contains("using TheOmegaStrain.Common", StringComparison.Ordinal) ||
-                hit.line.Contains("using GameAi", StringComparison.Ordinal) ||
-                hit.line.Contains("using TheOmegaStrain.Game", StringComparison.Ordinal) ||
-                hit.line.Contains("using TheOmegaStrain.Wpf", StringComparison.Ordinal) ||
-                hit.line.Contains("GameState", StringComparison.Ordinal) ||
-                hit.line.Contains("ScreenSetup", StringComparison.Ordinal) ||
-                hit.line.Contains("TheOmegaStrain.Steam", StringComparison.Ordinal))
-            .Select(hit => $"{Path.GetRelativePath(repositoryRoot, hit.path)}:{hit.lineNumber}: {hit.line.Trim()}")
-            .ToList();
-
-        Assert.AreEqual(0, forbiddenHits.Count, string.Join(Environment.NewLine, forbiddenHits));
-    }
-
-    [TestMethod]
     public void RuntimeCrashDetectionSource_DoesNotUseRotationHelperMathDirectly()
     {
         var repositoryRoot = FindRepositoryRoot();

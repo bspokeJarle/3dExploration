@@ -13,7 +13,7 @@ namespace TheOmegaStrain.Game.World.Objects
         private const float HalfDepth = 210f;
         private const float PadBottomZ = 28f;
         private const float PadTopZ = 120f;
-        private const float MarkingZ = 168f;
+        private const float MarkingZ = PadTopZ + 2f;
         private const float LandingMarkLength = 310f;
         private const float LandingMarkWidth = 30f;
         private const float CrashBoxBottomZ = PadTopZ - 12f;

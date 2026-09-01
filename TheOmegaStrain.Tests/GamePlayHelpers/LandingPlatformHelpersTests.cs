@@ -13,23 +13,28 @@ public class LandingPlatformHelpersTests
 
         var rect = LandingPlatformHelpers.GetLandingPlatformRect(map);
 
-        Assert.AreEqual(6, rect.MinX);
-        Assert.AreEqual(6, rect.MinZ);
-        Assert.AreEqual(13, rect.MaxX);
-        Assert.AreEqual(13, rect.MaxZ);
-        Assert.AreEqual(LandingPlatformHelpers.LandingPlatformSizeTiles, rect.MaxX - rect.MinX + 1);
-        Assert.AreEqual(LandingPlatformHelpers.LandingPlatformSizeTiles, rect.MaxZ - rect.MinZ + 1);
+        int size = LandingPlatformHelpers.LandingPlatformSizeTiles;
+        int expectedMin = (20 - size) / 2;
+        int expectedMax = expectedMin + size - 1;
+
+        Assert.AreEqual(expectedMin, rect.MinX);
+        Assert.AreEqual(expectedMin, rect.MinZ);
+        Assert.AreEqual(expectedMax, rect.MaxX);
+        Assert.AreEqual(expectedMax, rect.MaxZ);
+        Assert.AreEqual(size, rect.MaxX - rect.MinX + 1);
+        Assert.AreEqual(size, rect.MaxZ - rect.MinZ + 1);
     }
 
     [TestMethod]
     public void IsLandingPlatformTile_UsesCenteredPlatformRect()
     {
         var map = CreateMap(20, 20);
+        var rect = LandingPlatformHelpers.GetLandingPlatformRect(map);
 
-        Assert.IsTrue(LandingPlatformHelpers.IsLandingPlatformTile(map, 6, 6));
-        Assert.IsTrue(LandingPlatformHelpers.IsLandingPlatformTile(map, 13, 13));
-        Assert.IsFalse(LandingPlatformHelpers.IsLandingPlatformTile(map, 5, 6));
-        Assert.IsFalse(LandingPlatformHelpers.IsLandingPlatformTile(map, 14, 13));
+        Assert.IsTrue(LandingPlatformHelpers.IsLandingPlatformTile(map, rect.MinX, rect.MinZ));
+        Assert.IsTrue(LandingPlatformHelpers.IsLandingPlatformTile(map, rect.MaxX, rect.MaxZ));
+        Assert.IsFalse(LandingPlatformHelpers.IsLandingPlatformTile(map, rect.MinX - 1, rect.MinZ));
+        Assert.IsFalse(LandingPlatformHelpers.IsLandingPlatformTile(map, rect.MaxX + 1, rect.MaxZ));
     }
 
     [TestMethod]
@@ -60,9 +65,10 @@ public class LandingPlatformHelpersTests
     public void IsSurfaceBasedOnLandingPlatform_ChecksOnlyPlatformMapIds()
     {
         var map = CreateMap(20, 20);
+        var rect = LandingPlatformHelpers.GetLandingPlatformRect(map);
 
-        Assert.IsTrue(LandingPlatformHelpers.IsSurfaceBasedOnLandingPlatform(map, map[6, 6].mapId));
-        Assert.IsFalse(LandingPlatformHelpers.IsSurfaceBasedOnLandingPlatform(map, map[5, 6].mapId));
+        Assert.IsTrue(LandingPlatformHelpers.IsSurfaceBasedOnLandingPlatform(map, map[rect.MinZ, rect.MinX].mapId));
+        Assert.IsFalse(LandingPlatformHelpers.IsSurfaceBasedOnLandingPlatform(map, map[rect.MinZ, rect.MinX - 1].mapId));
     }
 
     private static SurfaceData[,] CreateMap(int width, int height)

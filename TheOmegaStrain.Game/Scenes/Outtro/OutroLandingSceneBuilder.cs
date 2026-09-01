@@ -16,14 +16,14 @@ namespace TheOmegaStrain.Game.Scenes.Outro
         public static int LandingPlatformSizeTiles => SurfaceSetup.ScaleTileCount(8);
         public const int OutroMapMaxHeight = 75;
         public const int LandingPlatformDepth = 28;
-        public const int BannerOffsetAbovePlatform = 250;
+        public const int BannerOffsetAbovePlatform = 240;
         // Banner stands behind the pad. This must stay larger than
         // LandingShipFinalDepthAbovePlatform so the ship lands in front of the banner.
-        public const int BannerDepthBehindPlatform = 120;
+        public const int BannerDepthBehindPlatform = 130;
         public const int LandingShipStartHeightAbovePlatform = 760;
-        public const int LandingShipFinalHeightAbovePlatform = 190;
+        public const int LandingShipFinalHeightAbovePlatform = 240;
         public const int LandingShipStartDepthAbovePlatform = 92;
-        public const int LandingShipFinalDepthAbovePlatform = 68;
+        public const int LandingShipFinalDepthAbovePlatform = 28;
 
         private static int ScaleTileOffset(int originalOffset)
         {

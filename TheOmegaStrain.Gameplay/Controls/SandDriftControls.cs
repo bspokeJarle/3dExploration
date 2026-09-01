@@ -22,6 +22,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float DepthAheadSpread = 3600f;
         private const float MinSize = 0.75f;
         private const float MaxSize = 2.15f;
+        // Upper bound for on-screen size, so motes we fly straight into stay natural.
+        private const float MaxApparentSize = 5f;
         private const float MinVerticalDrift = -0.08f;
         private const float MaxVerticalDrift = 0.42f;
         private const float BaseWindX = 1.15f;
@@ -234,6 +236,11 @@ namespace TheOmegaStrain.Gameplay.Controls
             float size = mote.Size * (0.55f + opacity * 0.35f);
             float smear = size * (0.75f + mote.WindWeight * 0.25f);
 
+            // The mote is wider than it is tall, so shrink both extents by the same factor
+            // to keep the smear silhouette intact while bounding the on-screen size.
+            float shrink = WorldWeatherField.GetApparentSizeShrink(smear, scale, MaxApparentSize);
+            size *= shrink;
+            smear *= shrink;
             triangle.Color = ScaleHexColor(SandColor, 0.22f + QuantizeOpacity(opacity) * 0.42f);
             triangle.noHidden = true;
             triangle.angle = 1f;

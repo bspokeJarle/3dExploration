@@ -292,7 +292,7 @@ namespace TheOmegaStrain.Gameplay.Controls
                     triangle.vert1 = ScaleFromBaseline(baseline.V1, scale);
                     triangle.vert2 = ScaleFromBaseline(baseline.V2, scale);
                     triangle.vert3 = ScaleFromBaseline(baseline.V3, scale);
-                    if (upperHatchProgress > 0f && ShouldRenderNoHiddenDuringHatch(part.PartName))
+                    if (upperHatchProgress > 0f)
                     {
                         triangle.noHidden = true;
                     }
@@ -351,11 +351,6 @@ namespace TheOmegaStrain.Gameplay.Controls
         private static bool ShouldMoveWithUpperHatch(string? partName)
         {
             return partName == UpperHatchPartName || partName == TopCannonPartName;
-        }
-
-        private static bool ShouldRenderNoHiddenDuringHatch(string? partName)
-        {
-            return ShouldMoveWithUpperHatch(partName) || partName == LowerHullPartName;
         }
 
         private Vector3 RotateAroundHingeX(Vector3 vertex, Vector3 hinge, float angleDegrees)

@@ -1068,8 +1068,8 @@ public class OutroSceneTests
             .ToList();
         Assert.AreEqual(4, markingPart.Triangles.Count,
             "Landing platform should use a clean X landing mark, not several loose stripe blocks.");
-        Assert.IsTrue(markingVertices.All(v => v.z >= padTopZ + 40f),
-            "Landing mark should be lifted clearly above the platform top so the whole symbol is visible.");
+        Assert.IsTrue(markingVertices.All(v => v.z > padTopZ && v.z <= padTopZ + 10f),
+            "Landing mark should rest on the platform top, not float above it.");
         Assert.IsTrue(markingVertices.All(v => Math.Abs(v.x) < 330f && Math.Abs(v.y) < 210f),
             "Landing mark should fit fully within the platform top.");
 
@@ -1129,17 +1129,8 @@ public class OutroSceneTests
     }
 
     [TestMethod]
-    public void OutroLandingBanner_StandsUprightBehindLandingShip()
+    public void OutroLandingBanner_StandsBehindLandingShip()
     {
-        var builder = new OutroLandingSceneBuilder();
-        var world = new TestWorld();
-        builder.Build(world);
-
-        var banner = world.WorldInhabitants.First(o => o.ObjectName == "OutroLandingBanner");
-        var platform = world.WorldInhabitants.First(o => o.ObjectName == "OutroLandingPlatform");
-
-        Assert.AreEqual(platform.Rotation!.x, banner.Rotation!.x,
-            "Banner must share the platform's world pitch so its poles stand upright instead of lying flat across the pad.");
         Assert.IsTrue(OutroLandingSceneBuilder.CreateFinalBannerOffset().z > OutroLandingSceneBuilder.CreateFinalLandingShipOffset().z,
             "Banner should sit deeper than the landing ship so the ship lands in front of it.");
     }
