@@ -2,6 +2,7 @@ using TheOmegaStrain.Game.World.Objects;
 using TheOmegaStrain.Common.OmegaEngineAdapters;
 using TheOmegaStrain.Common.CommonGlobalState;
 using TheOmegaStrain.Common.CommonGlobalState.States;
+using TheOmegaStrain.Common.CommonSetup;
 using TheOmegaStrain.Domain;
 using TheOmegaStrain.Gameplay.Controls;
 using System.Linq;
@@ -14,6 +15,9 @@ public class SnowfallControlsTests
     [TestInitialize]
     public void Setup()
     {
+        // Perspective scaling depends on the screen width, so pin it to the design
+        // resolution to keep this class independent of test execution order.
+        ScreenSetup.Initialize(1500, 1024);
         GameState.SurfaceState = new SurfaceState();
         GameState.SettingsState = new GameSettingsState();
         GameState.DeltaTime = GameState.GameplayBaselineDeltaTime;

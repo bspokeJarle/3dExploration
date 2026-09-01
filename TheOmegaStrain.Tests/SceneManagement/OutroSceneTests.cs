@@ -1129,6 +1129,22 @@ public class OutroSceneTests
     }
 
     [TestMethod]
+    public void OutroLandingBanner_StandsUprightBehindLandingShip()
+    {
+        var builder = new OutroLandingSceneBuilder();
+        var world = new TestWorld();
+        builder.Build(world);
+
+        var banner = world.WorldInhabitants.First(o => o.ObjectName == "OutroLandingBanner");
+        var platform = world.WorldInhabitants.First(o => o.ObjectName == "OutroLandingPlatform");
+
+        Assert.AreEqual(platform.Rotation!.x, banner.Rotation!.x,
+            "Banner must share the platform's world pitch so its poles stand upright instead of lying flat across the pad.");
+        Assert.IsTrue(OutroLandingSceneBuilder.CreateFinalBannerOffset().z > OutroLandingSceneBuilder.CreateFinalLandingShipOffset().z,
+            "Banner should sit deeper than the landing ship so the ship lands in front of it.");
+    }
+
+    [TestMethod]
     public void OutroLandingSceneBuilder_AddLandingShip_StartsShipAbovePlatform()
     {
         var world = new TestWorld();
