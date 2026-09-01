@@ -25,7 +25,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene6
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Desert;
         public ISceneDirector Director { get; } = new Scene6Director();
-        public GameModes GameMode { get; } = GameModes.Record;
+        public GameModes GameMode { get; } = GameModes.Playback;
 
         public float InfectionThresholdPercent { get; } = 15.0f;
         public int InfectionSpreadRate { get; } = 7;

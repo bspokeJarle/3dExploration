@@ -10,13 +10,13 @@ namespace TheOmegaStrain.Game.Scenes.Tutorial
 {
     public class TutorialScene : IScene
     {
-        private const string TutorialSurfaceFile = "TutorialSurfaceRecording.retro";
+        private const string TutorialSurfaceFile = "Scene1SurfaceRecording_20260830_205856.retro";
         private readonly Surface Surface = new();
 
         public string SceneMusic { get; } = "music_kanpai";
         public SceneTypes SceneType { get; } = SceneTypes.Tutorial;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;
-        public GameModes GameMode { get; } = GameModes.Record;
+        public GameModes GameMode { get; } = GameModes.Playback;
         public ISceneDirector Director { get; } = new TutorialSceneDirector();
 
         public void SetupScene(I3dWorld world)

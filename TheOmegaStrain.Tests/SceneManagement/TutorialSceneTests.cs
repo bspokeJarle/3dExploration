@@ -99,7 +99,7 @@ public class TutorialSceneTests
         scene.SetupScene(world);
 
         Assert.AreEqual(GameModes.Playback, scene.GameMode);
-        Assert.AreEqual(Path.Combine("SceneFiles", "Scene1SurfaceRecording.retro"), GameState.SurfaceState.SurfaceFilePath);
+        Assert.AreEqual(Path.Combine("SceneFiles", "Scene1SurfaceRecording_20260830_205856.retro"), GameState.SurfaceState.SurfaceFilePath);
         Assert.IsNotNull(GameState.SurfaceState.Global2DMap);
         Assert.AreNotEqual(0UL, GameState.SurfaceState.SurfaceHash);
 
