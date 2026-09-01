@@ -1,0 +1,3 @@
+interface:
+  display_name: "Omega Object Workflow"
+  short_description: "Add Omega objects using existing scene, movement, AI, crashbox, and test patterns"

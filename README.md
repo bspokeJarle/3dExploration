@@ -103,3 +103,9 @@ The short-term goal is to keep The Omega Strain stable and shippable while
 RetroMesh becomes a clean framework for future games. Game-specific behavior
 should stay in the Omega projects; reusable rendering, geometry, projection,
 collision, timing, and engine services should live in RetroMesh.
+
+## AI Agent Guidance
+
+AI coding agents should read `AGENTS.md` before changing code. For concrete
+source-code patterns and test pointers, use `docs/AI_SOURCE_MAP.md`.
+Project-specific Codex skills live under `.codex/skills/`.
