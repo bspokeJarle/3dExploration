@@ -11,7 +11,11 @@ namespace TheOmegaStrain.Game.World.Objects.EarthObject
 {
     public static class EarthObject
     {
-        private const float RenderDepth = 520f;
+        // Earth sits far behind the Outro ship's dive target (OutroShipControls.TargetDepth,
+        // 1000) so the ship stays in front of the planet for the whole approach instead of
+        // flying past it. Keep this below RenderFarZ (2000) minus StarFieldRadius so the
+        // surrounding star shell is not depth-culled.
+        private const float RenderDepth = 1300f;
         private const float RenderYOffset = 0f;
         private const float CrashboxRadius = 200f;
         private const float CrashboxScale = 1.04f;

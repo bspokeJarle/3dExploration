@@ -342,8 +342,9 @@ public class OutroSceneTests
             $"Outro ship should enter from the right side. X offset was {ship.ObjectOffsets.x:0.0}.");
         Assert.IsTrue(ship.ObjectOffsets.x < ScreenSetup.screenSizeX * 0.5f,
             $"Outro ship should start like the Intro object: right side but already renderable. X offset was {ship.ObjectOffsets.x:0.0}.");
-        Assert.IsTrue(ship.ObjectOffsets.z < 520f,
-            $"Outro ship should start in front of Earth (depth < Earth's 520). Z offset was {ship.ObjectOffsets.z:0.0}.");
+        var earth = world.WorldInhabitants.First(o => o.ObjectName == "Earth");
+        Assert.IsTrue(ship.ObjectOffsets.z < earth.ObjectOffsets!.z,
+            $"Outro ship should start in front of Earth (depth < Earth's {earth.ObjectOffsets.z:0.0}). Z offset was {ship.ObjectOffsets.z:0.0}.");
         Assert.AreEqual(WorldViewSetup.CameraPitchDegrees, ship.Rotation!.x, "Outro ship should keep the same camera tilt as the rest of the scene.");
     }
 
