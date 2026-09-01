@@ -17,6 +17,9 @@ namespace TheOmegaStrain.Game.Scenes.Outro
         public const int OutroMapMaxHeight = 75;
         public const int LandingPlatformDepth = 28;
         public const int BannerOffsetAbovePlatform = 250;
+        // Banner stands behind the pad. This must stay larger than
+        // LandingShipFinalDepthAbovePlatform so the ship lands in front of the banner.
+        public const int BannerDepthBehindPlatform = 120;
         public const int LandingShipStartHeightAbovePlatform = 760;
         public const int LandingShipFinalHeightAbovePlatform = 190;
         public const int LandingShipStartDepthAbovePlatform = 92;
@@ -99,7 +102,7 @@ namespace TheOmegaStrain.Game.Scenes.Outro
         public static Vector3 CreateFinalBannerOffset()
         {
             var platformOffset = CreateFinalPlatformOffset();
-            return new Vector3 { x = platformOffset.x, y = platformOffset.y - (BannerOffsetAbovePlatform * ScreenSetup.ScreenScaleY), z = 430 };
+            return new Vector3 { x = platformOffset.x, y = platformOffset.y - (BannerOffsetAbovePlatform * ScreenSetup.ScreenScaleY), z = platformOffset.z + BannerDepthBehindPlatform };
         }
 
         public static Vector3 CreateInitialLandingShipOffset()
