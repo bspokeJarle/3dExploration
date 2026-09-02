@@ -1,6 +1,11 @@
 <Project>
   <PropertyGroup>
     <NoWarn>$(NoWarn);CS0162;CS0169;CS0219;CS0414;CS8600;CS8601;CS8602;CS8603;CS8604;CS8618;CS8622;CS8625;CS8632;CS8766;CS8767;CA2014;SYSLIB0060</NoWarn>
-    <RetroMeshEnginePath>C:\Users\JarleAdolfsen\Repositories\RetroMesh\RetroMesh.Engine\bin\Release\net10.0\RetroMesh.Engine.dll</RetroMeshEnginePath>
+    <RetroMeshRoot Condition="'$(RetroMeshRoot)' == ''">$(MSBuildThisFileDirectory)..\RetroMesh\</RetroMeshRoot>
+    <RetroMeshBuildConfiguration Condition="'$(RetroMeshBuildConfiguration)' == '' and '$(Configuration)' != ''">$(Configuration)</RetroMeshBuildConfiguration>
+    <RetroMeshBuildConfiguration Condition="'$(RetroMeshBuildConfiguration)' == ''">Debug</RetroMeshBuildConfiguration>
+    <RetroMeshEnginePath Condition="'$(RetroMeshEnginePath)' == ''">$(RetroMeshRoot)RetroMesh.Engine\bin\$(RetroMeshBuildConfiguration)\net10.0\RetroMesh.Engine.dll</RetroMeshEnginePath>
+    <RetroMeshDirect3D11Path Condition="'$(RetroMeshDirect3D11Path)' == ''">$(RetroMeshRoot)RetroMesh.Rendering.Direct3D11\bin\$(RetroMeshBuildConfiguration)\net10.0-windows7.0\RetroMesh.Rendering.Direct3D11.dll</RetroMeshDirect3D11Path>
+    <RetroMeshDirect3D11ShaderPath Condition="'$(RetroMeshDirect3D11ShaderPath)' == ''">$(RetroMeshRoot)RetroMesh.Rendering.Direct3D11\Shaders\ProjectedTriangle.hlsl</RetroMeshDirect3D11ShaderPath>
   </PropertyGroup>
 </Project>

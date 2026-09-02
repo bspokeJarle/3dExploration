@@ -6,6 +6,7 @@ public static class RendererBackendSelection
 {
     public static bool UseDirect3D11()
     {
-        return true;
+        var rendererOverride = Environment.GetEnvironmentVariable("OMEGASTRAIN_RENDERER");
+        return !string.Equals(rendererOverride, "wpf", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -57,10 +57,10 @@ namespace TheOmegaStrain.Wpf
         private const bool enableFileLogging = LiveGameLoop.EnableCpuHeadroomLogging;
         private const bool EnableSteamDiagnostics = true;
         private readonly DrawingVisualHost visualHost = new();
-        private readonly bool _useDirect3D11 = RendererBackendSelection.UseDirect3D11();
-        private readonly Direct3D11ProjectedTriangleRenderer? _direct3DRenderer;
-        private readonly Forms.Panel? _direct3DPanel;
-        private readonly OverlayHostWindow? _overlayHost;
+        private bool _useDirect3D11;
+        private Direct3D11ProjectedTriangleRenderer? _direct3DRenderer;
+        private Forms.Panel? _direct3DPanel;
+        private OverlayHostWindow? _overlayHost;
         private readonly DispatcherTimer timer = new DispatcherTimer();
         private readonly Stopwatch stopwatch = new Stopwatch();
         private int frameCount = 0;
@@ -152,9 +152,6 @@ namespace TheOmegaStrain.Wpf
             InitializeSteam();
 
             InitializeComponent();
-            Title = _useDirect3D11
-                ? "The Omega Strain — Direct3D 11 — Surface 36 tiles"
-                : "The Omega Strain — WPF fallback — Surface 36 tiles";
             this.PreviewKeyDown += new KeyEventHandler(HandleKeys);
             this.PreviewMouseDown += HandleMouseInputForOverlay;
             SourceInitialized += (_, _) =>
@@ -168,34 +165,12 @@ namespace TheOmegaStrain.Wpf
 
             mainGrid = MainGrid;
 
-            if (_useDirect3D11)
-            {
-                _direct3DPanel = new Forms.Panel
-                {
-                    BackColor = System.Drawing.Color.Black,
-                    Dock = Forms.DockStyle.Fill
-                };
-                Direct3DHost.Child = _direct3DPanel;
-                Direct3DHost.Visibility = Visibility.Visible;
-                _direct3DPanel.CreateControl();
-                _direct3DRenderer = new Direct3D11ProjectedTriangleRenderer(
-                    _direct3DPanel.Handle,
-                    Math.Max(1, _direct3DPanel.ClientSize.Width),
-                    Math.Max(1, _direct3DPanel.ClientSize.Height));
-                _direct3DRenderer.SetProjectionSize(
-                    Math.Max(1, ScreenSetup.screenSizeX),
-                    Math.Max(1, ScreenSetup.screenSizeY));
-                _direct3DPanel.Resize += OnDirect3DPanelResize;
-                worldRenderer = _direct3DRenderer;
+            if (!RendererBackendSelection.UseDirect3D11() || !TryInitializeDirect3D11Renderer())
+                InitializeWpfRenderer();
 
-                _overlayHost = new OverlayHostWindow(this);
-                mainGrid.Children.Remove(RenderImage);
-            }
-            else
-            {
-                mainGrid.Children.Add(visualHost);
-                worldRenderer = new WorldRenderer(visualHost);
-            }
+            Title = _useDirect3D11
+                ? "The Omega Strain — Direct3D 11 — Surface 36 tiles"
+                : "The Omega Strain — WPF fallback — Surface 36 tiles";
 
             _videoOverlay = new MediaElement
             {
@@ -336,6 +311,62 @@ namespace TheOmegaStrain.Wpf
         }
 
         private Grid OverlayRoot => _overlayHost?.OverlayRoot ?? mainGrid;
+
+        private bool TryInitializeDirect3D11Renderer()
+        {
+            try
+            {
+                _direct3DPanel = new Forms.Panel
+                {
+                    BackColor = System.Drawing.Color.Black,
+                    Dock = Forms.DockStyle.Fill
+                };
+                Direct3DHost.Child = _direct3DPanel;
+                Direct3DHost.Visibility = Visibility.Visible;
+                _direct3DPanel.CreateControl();
+                _direct3DRenderer = new Direct3D11ProjectedTriangleRenderer(
+                    _direct3DPanel.Handle,
+                    Math.Max(1, _direct3DPanel.ClientSize.Width),
+                    Math.Max(1, _direct3DPanel.ClientSize.Height));
+                _direct3DRenderer.SetProjectionSize(
+                    Math.Max(1, ScreenSetup.screenSizeX),
+                    Math.Max(1, ScreenSetup.screenSizeY));
+                _direct3DPanel.Resize += OnDirect3DPanelResize;
+                worldRenderer = _direct3DRenderer;
+
+                _overlayHost = new OverlayHostWindow(this);
+                mainGrid.Children.Remove(RenderImage);
+                _useDirect3D11 = true;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (Logger.EnableFileLogging)
+                    Logger.Log($"[Renderer] Direct3D11 unavailable, falling back to WPF. {ex.GetType().Name}: {ex.Message}");
+                SteamDiagnostics.Write($"[Renderer] Direct3D11 unavailable, falling back to WPF. {ex.GetType().Name}: {ex.Message}");
+
+                if (_direct3DPanel != null)
+                    _direct3DPanel.Resize -= OnDirect3DPanelResize;
+                _direct3DRenderer?.Dispose();
+                Direct3DHost.Child = null;
+                Direct3DHost.Visibility = Visibility.Collapsed;
+                _direct3DPanel?.Dispose();
+                _direct3DRenderer = null;
+                _direct3DPanel = null;
+                _overlayHost = null;
+                _useDirect3D11 = false;
+                return false;
+            }
+        }
+
+        private void InitializeWpfRenderer()
+        {
+            Direct3DHost.Child = null;
+            Direct3DHost.Visibility = Visibility.Collapsed;
+            mainGrid.Children.Add(visualHost);
+            worldRenderer = new WorldRenderer(visualHost);
+            _useDirect3D11 = false;
+        }
 
         private void UpdateDirect3DBackgroundFlash()
         {

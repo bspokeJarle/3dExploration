@@ -1,7 +1,7 @@
 ﻿The Omega Strain - Steam library asset pack
 
 Source images:
-C:\Users\JarleAdolfsen\Downloads\LibraryHero.png.png
+LibraryHero.png.png
 TheOmegaStrain.Wpf\GameGraphics\TheOmegaStrainLogo.png
 
 Files:
