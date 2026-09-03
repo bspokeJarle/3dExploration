@@ -247,6 +247,9 @@ namespace TheOmegaStrain.Game.World.Objects
             var bridge = BridgeCockpit();
             var jawSensors = JawSensorArray();
             var wingFairings = WingRootFairings();
+            var dorsalArmorDetails = DorsalArmorDetails();
+            var cannonInsetPanels = CannonInsetPanels();
+            var podSignalLights = PodSignalLights();
 
             var crashBoxes = MotherShipCrashBoxes();
 
@@ -298,6 +301,9 @@ namespace TheOmegaStrain.Game.World.Objects
             AddPart(ship, "BridgeCockpit", bridge, true);
             AddPart(ship, "JawSensorArray", jawSensors, true);
             AddPart(ship, "WingRootFairings", wingFairings, true);
+            AddPart(ship, "DorsalArmorDetails", dorsalArmorDetails, true);
+            AddPart(ship, "CannonInsetPanels", cannonInsetPanels, true);
+            AddPart(ship, "PodSignalLights", podSignalLights, true);
 
             ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             ship.ParentSurface = parentSurface;
@@ -1320,6 +1326,142 @@ namespace TheOmegaStrain.Game.World.Objects
                 new Vector3 { x = connectorBackX,       y = s * (rearBodyHalfWidth + 8f), z = connectorTop },
                 new Vector3 { x = connectorFrontX,      y = s * (bodyHalfWidth + 8f), z = connectorTop    },
                 BodyCenter, fairingColor);
+        }
+
+        // ----------------------------------------------------
+        //  DORSAL DETAILS / CANNON FINS / POD LIGHTS
+        // ----------------------------------------------------
+
+        public static List<ITriangleMeshWithColorAndTexture>? DorsalArmorDetails()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddRaisedPanel(tris, 62f, -7f, 36f, -16f, 20.8f, hullColorDark);
+            AddRaisedPanel(tris, 62f, 7f, 36f, 16f, 20.8f, hullColorDark);
+            AddRaisedPanel(tris, 30f, -14f, -4f, -25f, 25.2f, tealPanelDark);
+            AddRaisedPanel(tris, 30f, 14f, -4f, 25f, 25.2f, tealPanelDark);
+            AddRaisedPanel(tris, -18f, -18f, -56f, -25f, 20.4f, hullColorVeryDark);
+            AddRaisedPanel(tris, -18f, 18f, -56f, 25f, 20.4f, hullColorVeryDark);
+
+            AddFacetedDiamond(tris, 72f, 0f, 17.5f, 5.2f, bridgeGlass, bridgeColor);
+            AddFacetedDiamond(tris, 16f, -7f, 29.2f, 4.2f, cannonGlowBright, tealPanel);
+            AddFacetedDiamond(tris, 16f, 7f, 29.2f, 4.2f, cannonGlowBright, tealPanel);
+            AddFacetedDiamond(tris, -46f, 0f, 22.0f, 5.0f, rearGlowColor, orangePanelDark);
+
+            return tris;
+        }
+
+        public static List<ITriangleMeshWithColorAndTexture>? CannonInsetPanels()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddCannonInsetPanel(tris, 94f, isRight: false, cannonColorDark, tealPanelDark);
+            AddCannonInsetPanel(tris, 94f, isRight: true, cannonColorDark, tealPanelDark);
+            AddCannonInsetPanel(tris, 112f, isRight: false, hullColorDark, cannonGlow);
+            AddCannonInsetPanel(tris, 112f, isRight: true, hullColorDark, cannonGlow);
+            AddCannonInsetPanel(tris, 130f, isRight: false, cannonColorDark, cannonGlowBright);
+            AddCannonInsetPanel(tris, 130f, isRight: true, cannonColorDark, cannonGlowBright);
+
+            return tris;
+        }
+
+        public static List<ITriangleMeshWithColorAndTexture>? PodSignalLights()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddPodSignalLight(tris, isRight: false, x: 28f, z: 6.8f, color: tealPanel);
+            AddPodSignalLight(tris, isRight: false, x: 4f, z: 7.6f, color: cannonGlowBright);
+            AddPodSignalLight(tris, isRight: false, x: -16f, z: 6.6f, color: rearGlowColor);
+            AddPodSignalLight(tris, isRight: true, x: 28f, z: 6.8f, color: tealPanel);
+            AddPodSignalLight(tris, isRight: true, x: 4f, z: 7.6f, color: cannonGlowBright);
+            AddPodSignalLight(tris, isRight: true, x: -16f, z: 6.6f, color: rearGlowColor);
+
+            return tris;
+        }
+
+        private static void AddRaisedPanel(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x1,
+            float y1,
+            float x2,
+            float y2,
+            float z,
+            string color)
+        {
+            const float width = 4f;
+
+            var a = new Vector3 { x = x1, y = y1 - width, z = z };
+            var b = new Vector3 { x = x1, y = y1 + width, z = z + 0.4f };
+            var c = new Vector3 { x = x2, y = y2 + width, z = z + 0.2f };
+            var d = new Vector3 { x = x2, y = y2 - width, z = z - 0.2f };
+
+            AddQuadOutward(tris, a, b, c, d, BodyCenter, color);
+        }
+
+        private static void AddFacetedDiamond(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x,
+            float y,
+            float z,
+            float radius,
+            string colorA,
+            string colorB)
+        {
+            var front = new Vector3 { x = x + radius, y = y, z = z };
+            var right = new Vector3 { x = x, y = y + radius, z = z + 0.2f };
+            var back = new Vector3 { x = x - radius, y = y, z = z + 0.1f };
+            var left = new Vector3 { x = x, y = y - radius, z = z + 0.2f };
+            var peak = new Vector3 { x = x, y = y, z = z + 1.6f };
+
+            tris.Add(CreateTriangleOutward(front, peak, right, BodyCenter, colorA));
+            tris.Add(CreateTriangleOutward(right, peak, back, BodyCenter, colorB));
+            tris.Add(CreateTriangleOutward(back, peak, left, BodyCenter, colorA));
+            tris.Add(CreateTriangleOutward(left, peak, front, BodyCenter, colorB));
+        }
+
+        private static void AddCannonInsetPanel(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x,
+            bool isRight,
+            string panelColor,
+            string glowColor)
+        {
+            float side = isRight ? 1f : -1f;
+
+            float y = side * (cannonMidHalfWidth + 1.2f);
+            var topFront = new Vector3 { x = x + 5.5f, y = y, z = cannonTopMid - 0.6f };
+            var topBack = new Vector3 { x = x - 5.5f, y = y, z = cannonTopMid - 1.2f };
+            var bottomBack = new Vector3 { x = x - 4.5f, y = y, z = cannonBottomMid + 2.2f };
+            var bottomFront = new Vector3 { x = x + 4.5f, y = y, z = cannonBottomMid + 2.8f };
+            var peak = new Vector3 { x = x, y = side * (cannonMidHalfWidth + 3.0f), z = 0.8f };
+
+            tris.Add(CreateTriangleOutward(topFront, peak, topBack, BodyCenter, panelColor));
+            tris.Add(CreateTriangleOutward(topBack, peak, bottomBack, BodyCenter, hullColorVeryDark));
+            tris.Add(CreateTriangleOutward(bottomBack, peak, bottomFront, BodyCenter, panelColor));
+            tris.Add(CreateTriangleOutward(bottomFront, peak, topFront, BodyCenter, hullColorDark));
+
+            var glowTop = new Vector3 { x = x + 2.6f, y = side * (cannonMidHalfWidth + 3.3f), z = 2.8f };
+            var glowBack = new Vector3 { x = x - 2.6f, y = side * (cannonMidHalfWidth + 3.3f), z = 2.2f };
+            var glowBottom = new Vector3 { x = x, y = side * (cannonMidHalfWidth + 3.4f), z = -1.5f };
+            tris.Add(CreateTriangleOutward(glowTop, glowBottom, glowBack, BodyCenter, glowColor));
+        }
+
+        private static void AddPodSignalLight(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            bool isRight,
+            float x,
+            float z,
+            string color)
+        {
+            float side = isRight ? 1f : -1f;
+            float y = side * (podOuterY + ventPush + 0.8f);
+
+            var a = new Vector3 { x = x + 4.4f, y = y, z = z + 2.0f };
+            var b = new Vector3 { x = x - 4.4f, y = y, z = z + 2.0f };
+            var c = new Vector3 { x = x - 5.2f, y = y, z = z - 1.8f };
+            var d = new Vector3 { x = x + 3.6f, y = y, z = z - 1.8f };
+
+            AddQuadOutward(tris, a, b, c, d, BodyCenter, color);
         }
 
         // ----------------------------------------------------

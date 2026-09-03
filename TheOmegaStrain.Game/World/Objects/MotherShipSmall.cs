@@ -107,6 +107,9 @@ namespace TheOmegaStrain.Game.World.Objects
             var rearFace = MotherShipRearFace();
             var tower = MotherShipTower();
             var weakSpot = MotherShipWeakSpot();
+            var armorDetailPanels = MotherShipArmorDetailPanels();
+            var wingInsetPanels = MotherShipWingInsetPanels();
+            var dorsalLowRidges = MotherShipDorsalLowRidges();
 
             var crashBoxes = MotherShipCrashBoxes();
 
@@ -127,6 +130,9 @@ namespace TheOmegaStrain.Game.World.Objects
             AddPart(ship, "MotherShipRearFace", rearFace, true);
             AddPart(ship, "MotherShipTower", tower, true);
             AddPart(ship, "MotherShipWeakSpot", weakSpot, true);
+            AddPart(ship, "MotherShipArmorDetailPanels", armorDetailPanels, true);
+            AddPart(ship, "MotherShipWingInsetPanels", wingInsetPanels, true);
+            AddPart(ship, "MotherShipDorsalLowRidges", dorsalLowRidges, true);
 
             ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             ship.ParentSurface = parentSurface;
@@ -649,6 +655,162 @@ namespace TheOmegaStrain.Game.World.Objects
             }
 
             return tris;
+        }
+
+        // ----------------------------------------------------
+        //  SURFACE DETAILS
+        // ----------------------------------------------------
+
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipArmorDetailPanels()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddRaisedPanel(tris, 44f, -8f, 22f, -25f, 20.2f, 4.2f, hullColorDark);
+            AddRaisedPanel(tris, 44f, 8f, 22f, 25f, 20.2f, 4.2f, hullColorDark);
+            AddRaisedPanel(tris, 18f, -18f, -10f, -31f, 22.2f, 4.6f, wingPanelColor);
+            AddRaisedPanel(tris, 18f, 18f, -10f, 31f, 22.2f, 4.6f, wingPanelColor);
+            AddRaisedPanel(tris, -20f, -9f, -48f, -19f, 18.5f, 4.0f, hullColorVeryDark);
+            AddRaisedPanel(tris, -20f, 9f, -48f, 19f, 18.5f, 4.0f, hullColorVeryDark);
+
+            AddFacetedDiamond(tris, 32f, -4f, 23.0f, 6.0f, hullColorLight, hullColorMid);
+            AddFacetedDiamond(tris, 32f, 4f, 23.0f, 6.0f, hullColorLight, hullColorMid);
+            AddFacetedDiamond(tris, -42f, -16f, 18.4f, 5.0f, accentPanelColorDark, ventGlowColorDark);
+            AddFacetedDiamond(tris, -42f, 16f, 18.4f, 5.0f, accentPanelColorDark, ventGlowColorDark);
+
+            return tris;
+        }
+
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipWingInsetPanels()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddWingInsetPanel(tris, isRight: false, 28f, 10f, 62f, 94f, wingTopZ + 2.0f, wingPanelColorDark);
+            AddWingInsetPanel(tris, isRight: true, 28f, 10f, 62f, 94f, wingTopZ + 2.0f, wingPanelColorDark);
+            AddWingInsetPanel(tris, isRight: false, 2f, -15f, 55f, 84f, wingTopZ + 1.6f, accentPanelColorDark);
+            AddWingInsetPanel(tris, isRight: true, 2f, -15f, 55f, 84f, wingTopZ + 1.6f, accentPanelColorDark);
+
+            AddFacetedDiamond(tris, 8f, -105f, wingTopZ + 2.8f, 4.4f, wingTipColor, wingTipColorDark);
+            AddFacetedDiamond(tris, 8f, 105f, wingTopZ + 2.8f, 4.4f, wingTipColor, wingTipColorDark);
+
+            return tris;
+        }
+
+        public static List<ITriangleMeshWithColorAndTexture>? MotherShipDorsalLowRidges()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddLowRidge(tris, towerFrontX - 5f, -7f, towerFrontX - 15f, -11f, towerTopZ + 1.4f, towerTopZ + 5.8f, towerColor, towerColorDark);
+            AddLowRidge(tris, towerFrontX - 5f, 7f, towerFrontX - 15f, 11f, towerTopZ + 1.4f, towerTopZ + 5.8f, towerColor, towerColorDark);
+            AddLowRidge(tris, -34f, 0f, -54f, 0f, topBack + 5.0f, topBack + 9.2f, hullColorDark, hullColorVeryDark);
+
+            return tris;
+        }
+
+        private static void AddRaisedPanel(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x1,
+            float y1,
+            float x2,
+            float y2,
+            float z,
+            float width,
+            string color)
+        {
+            var a = new Vector3 { x = x1, y = y1 - width, z = z };
+            var b = new Vector3 { x = x1, y = y1 + width, z = z + 0.4f };
+            var c = new Vector3 { x = x2, y = y2 + width, z = z + 0.2f };
+            var d = new Vector3 { x = x2, y = y2 - width, z = z - 0.2f };
+
+            AddQuadOutward(tris, a, b, c, d, BodyCenter, color);
+        }
+
+        private static void AddWingInsetPanel(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            bool isRight,
+            float xStart,
+            float xEnd,
+            float innerY,
+            float outerY,
+            float z,
+            string color)
+        {
+            float side = isRight ? 1f : -1f;
+            float width = 5.2f;
+
+            var a = new Vector3 { x = xStart, y = side * innerY, z = z + 0.1f };
+            var b = new Vector3 { x = xStart - 7f, y = side * (innerY + width), z = z + 0.5f };
+            var c = new Vector3 { x = xEnd - 7f, y = side * (outerY + width), z = z + 0.2f };
+            var d = new Vector3 { x = xEnd, y = side * outerY, z = z - 0.1f };
+            var peak = new Vector3 { x = (xStart + xEnd) * 0.5f - 3f, y = side * ((innerY + outerY) * 0.5f + width * 0.5f), z = z + 1.4f };
+
+            tris.Add(CreateTriangleOutward(a, peak, b, BodyCenter, color));
+            tris.Add(CreateTriangleOutward(b, peak, c, BodyCenter, wingPanelColor));
+            tris.Add(CreateTriangleOutward(c, peak, d, BodyCenter, color));
+            tris.Add(CreateTriangleOutward(d, peak, a, BodyCenter, wingPanelColorDark));
+        }
+
+        private static void AddLightDiamond(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x,
+            float y,
+            float z,
+            float radius,
+            string color)
+        {
+            var front = new Vector3 { x = x + radius, y = y, z = z };
+            var right = new Vector3 { x = x, y = y + radius, z = z + 0.2f };
+            var back = new Vector3 { x = x - radius, y = y, z = z + 0.1f };
+            var left = new Vector3 { x = x, y = y - radius, z = z + 0.2f };
+
+            AddQuadOutward(tris, front, right, back, left, BodyCenter, color);
+        }
+
+        private static void AddFacetedDiamond(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x,
+            float y,
+            float z,
+            float radius,
+            string colorA,
+            string colorB)
+        {
+            var front = new Vector3 { x = x + radius, y = y, z = z };
+            var right = new Vector3 { x = x, y = y + radius, z = z + 0.2f };
+            var back = new Vector3 { x = x - radius, y = y, z = z + 0.1f };
+            var left = new Vector3 { x = x, y = y - radius, z = z + 0.2f };
+            var peak = new Vector3 { x = x, y = y, z = z + 1.5f };
+
+            tris.Add(CreateTriangleOutward(front, peak, right, BodyCenter, colorA));
+            tris.Add(CreateTriangleOutward(right, peak, back, BodyCenter, colorB));
+            tris.Add(CreateTriangleOutward(back, peak, left, BodyCenter, colorA));
+            tris.Add(CreateTriangleOutward(left, peak, front, BodyCenter, colorB));
+        }
+
+        private static void AddLowRidge(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x1,
+            float y1,
+            float x2,
+            float y2,
+            float baseZ,
+            float peakZ,
+            string colorA,
+            string colorB)
+        {
+            float width = 2.4f;
+            var a = new Vector3 { x = x1, y = y1 - width, z = baseZ };
+            var b = new Vector3 { x = x1, y = y1 + width, z = baseZ };
+            var c = new Vector3 { x = x2, y = y2 + width, z = baseZ - 0.4f };
+            var d = new Vector3 { x = x2, y = y2 - width, z = baseZ - 0.4f };
+            var peakFront = new Vector3 { x = x1 - 2f, y = y1, z = peakZ };
+            var peakBack = new Vector3 { x = x2 + 2f, y = y2, z = peakZ - 0.6f };
+
+            tris.Add(CreateTriangleOutward(a, peakFront, b, BodyCenter, colorA));
+            tris.Add(CreateTriangleOutward(b, peakFront, peakBack, BodyCenter, colorA));
+            tris.Add(CreateTriangleOutward(b, peakBack, c, BodyCenter, colorB));
+            tris.Add(CreateTriangleOutward(c, peakBack, d, BodyCenter, colorB));
+            tris.Add(CreateTriangleOutward(d, peakBack, peakFront, BodyCenter, colorB));
+            tris.Add(CreateTriangleOutward(d, peakFront, a, BodyCenter, colorA));
         }
 
         // ----------------------------------------------------

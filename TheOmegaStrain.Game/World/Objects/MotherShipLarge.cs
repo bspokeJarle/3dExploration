@@ -132,6 +132,9 @@ namespace TheOmegaStrain.Game.World.Objects
             AddPart(ship, "CommandTower", CommandTower(), true);
             AddPart(ship, "ArmorPanels", ArmorPanels(), true);
             AddPart(ship, "FinsAndAntennas", FinsAndAntennas(), true);
+            AddPart(ship, "CarrierSurfaceDetails", CarrierSurfaceDetails(), true);
+            AddPart(ship, "BroadsideArmorFacets", BroadsideArmorFacets(), true);
+            AddPart(ship, "EngineGlowDetails", EngineGlowDetails(), true);
 
             AddPart(ship, "DroneDropStartGuide", DroneDropStartGuide(), false);
             AddPart(ship, "DroneDropEndGuide", DroneDropEndGuide(), false);
@@ -667,6 +670,115 @@ namespace TheOmegaStrain.Game.World.Objects
                 new Vector3 { x = basePoint.x, y = basePoint.y + w, z = basePoint.z },
                 BodyCenter,
                 antenna));
+        }
+
+        public static List<ITriangleMeshWithColorAndTexture>? CarrierSurfaceDetails()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddPanel(tris, 36f, -7f, 18f, -20f, 13.8f, armorDark);
+            AddPanel(tris, 36f, 7f, 18f, 20f, 13.8f, armorDark);
+            AddPanel(tris, 10f, -17f, -18f, -31f, 16.2f, teal);
+            AddPanel(tris, 10f, 17f, -18f, 31f, 16.2f, teal);
+            AddPanel(tris, -32f, -18f, -54f, -24f, 14.6f, armor);
+            AddPanel(tris, -32f, 18f, -54f, 24f, 14.6f, armor);
+
+            AddFacetedDiamond(tris, 26f, 0f, 16.0f, 5.2f, accentTeal, tealDark);
+            AddFacetedDiamond(tris, -5f, -10f, 18.7f, 4.2f, orangeBright, orange);
+            AddFacetedDiamond(tris, -5f, 10f, 18.7f, 4.2f, orangeBright, orange);
+            AddFacetedDiamond(tris, -50f, 0f, 13.3f, 5.0f, orangeDark, armorDark);
+
+            return tris;
+        }
+
+        public static List<ITriangleMeshWithColorAndTexture>? BroadsideArmorFacets()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddBroadsideArmorFacet(tris, 22f, -35f, 12.8f, armor, tealDark);
+            AddBroadsideArmorFacet(tris, -10f, -42f, 15.0f, armorDark, orange);
+            AddBroadsideArmorFacet(tris, -40f, -32f, 12.0f, armor, orangeDark);
+            AddBroadsideArmorFacet(tris, 22f, 35f, 12.8f, armor, tealDark);
+            AddBroadsideArmorFacet(tris, -10f, 42f, 15.0f, armorDark, orange);
+            AddBroadsideArmorFacet(tris, -40f, 32f, 12.0f, armor, orangeDark);
+
+            return tris;
+        }
+
+        public static List<ITriangleMeshWithColorAndTexture>? EngineGlowDetails()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddRearEngineGlowStrip(tris, -14f, -10f, orangeBright);
+            AddRearEngineGlowStrip(tris, -7f, -3f, orange);
+            AddRearEngineGlowStrip(tris, -1.8f, 1.8f, teal);
+            AddRearEngineGlowStrip(tris, 3f, 7f, orange);
+            AddRearEngineGlowStrip(tris, 10f, 14f, orangeBright);
+
+            return tris;
+        }
+
+        private static void AddFacetedDiamond(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x,
+            float y,
+            float z,
+            float radius,
+            string colorA,
+            string colorB)
+        {
+            var front = new Vector3 { x = x + radius, y = y, z = z };
+            var right = new Vector3 { x = x, y = y + radius, z = z + 0.2f };
+            var back = new Vector3 { x = x - radius, y = y, z = z + 0.1f };
+            var left = new Vector3 { x = x, y = y - radius, z = z + 0.2f };
+            var peak = new Vector3 { x = x, y = y, z = z + 1.5f };
+
+            tris.Add(CreateTriangleOutward(front, peak, right, BodyCenter, colorA));
+            tris.Add(CreateTriangleOutward(right, peak, back, BodyCenter, colorB));
+            tris.Add(CreateTriangleOutward(back, peak, left, BodyCenter, colorA));
+            tris.Add(CreateTriangleOutward(left, peak, front, BodyCenter, colorB));
+        }
+
+        private static void AddBroadsideArmorFacet(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x,
+            float y,
+            float z,
+            string panelColor,
+            string glowColor)
+        {
+            float side = y >= 0f ? 1f : -1f;
+            var center = new Vector3 { x = x, y = y, z = z + 2f };
+
+            var frontInner = new Vector3 { x = x + 5.5f, y = y - side * 2.5f, z = z };
+            var frontOuter = new Vector3 { x = x + 4.0f, y = y + side * 4.0f, z = z + 0.2f };
+            var backOuter = new Vector3 { x = x - 5.5f, y = y + side * 4.0f, z = z - 0.1f };
+            var backInner = new Vector3 { x = x - 4.0f, y = y - side * 2.5f, z = z - 0.2f };
+            var peak = new Vector3 { x = x, y = y + side * 1.2f, z = z + 3.0f };
+
+            tris.Add(CreateTriangleOutward(frontInner, peak, frontOuter, center, panelColor));
+            tris.Add(CreateTriangleOutward(frontOuter, peak, backOuter, center, armorDark));
+            tris.Add(CreateTriangleOutward(backOuter, peak, backInner, center, panelColor));
+            tris.Add(CreateTriangleOutward(backInner, peak, frontInner, center, hullDark));
+
+            var glowFront = new Vector3 { x = x + 2.5f, y = y + side * 4.3f, z = z + 1.8f };
+            var glowBack = new Vector3 { x = x - 2.5f, y = y + side * 4.3f, z = z + 1.4f };
+            var glowBottom = new Vector3 { x = x, y = y + side * 4.4f, z = z - 1.2f };
+            tris.Add(CreateTriangleOutward(glowFront, glowBack, glowBottom, center, glowColor));
+        }
+
+        private static void AddRearEngineGlowStrip(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float yMin,
+            float yMax,
+            string color)
+        {
+            var tl = new Vector3 { x = engineBackX - 0.7f, y = yMin, z = 5.2f };
+            var tr = new Vector3 { x = engineBackX - 0.7f, y = yMax, z = 5.2f };
+            var br = new Vector3 { x = engineBackX - 0.7f, y = yMax, z = -5.2f };
+            var bl = new Vector3 { x = engineBackX - 0.7f, y = yMin, z = -5.2f };
+
+            AddQuadOutward(tris, tl, tr, br, bl, RearEngineCenter, color);
         }
 
         // ----------------------------------------------------
