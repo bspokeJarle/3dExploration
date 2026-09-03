@@ -353,18 +353,18 @@ namespace TheOmegaStrain.Game.Scenes.Scene7
 
             int sizeZ = map.GetLength(0);
             int sizeX = map.GetLength(1);
-            int patrolWidthTiles = 8;
-            int patrolHeightTiles = 2;
+            int patrolWidthTiles = SurfaceSetup.ScaleTileCount(8);
+            int patrolHeightTiles = SurfaceSetup.ScaleTileCount(2);
             int maxHeightDelta = 10;
-            int landingAreaSize = 8;
-            int landingBufferTiles = 6;
+            int landingAreaSize = LandingPlatformHelpers.LandingPlatformSizeTiles;
+            int landingBufferTiles = SurfaceSetup.ScaleTileCount(6);
 
             int mapCenterX = sizeX / 2;
             int mapCenterZ = sizeZ / 2;
             int landingTopLeftX = Math.Max(0, mapCenterX - (landingAreaSize / 2));
             int landingTopLeftZ = Math.Max(0, mapCenterZ - (landingAreaSize / 2));
             int guaranteedCenterX = mapCenterX;
-            int guaranteedCenterZ = Math.Clamp(mapCenterZ + landingAreaSize + landingBufferTiles + 6, 1, sizeZ - 2);
+            int guaranteedCenterZ = Math.Clamp(mapCenterZ + landingAreaSize + landingBufferTiles + SurfaceSetup.ScaleTileCount(6), 1, sizeZ - 2);
 
             int maxHeight = 0;
             for (int z = 0; z < sizeZ; z++)
@@ -620,25 +620,51 @@ namespace TheOmegaStrain.Game.Scenes.Scene7
             int bestDistance = int.MaxValue;
             bool found = false;
 
-            for (int z = 1; z < sizeZ - 1; z++)
+            // Expanding ring search around the start tile. A full-map scan here is far too
+            // expensive at the current tile resolution, since this runs once per candidate
+            // area. Rings are searched outwards and we stop as soon as no closer tile can
+            // exist (a tile in ring r is at least r away, so once we have a hit we only
+            // need to finish rings up to sqrt(bestDistance)).
+            int maxRadius = Math.Max(sizeX, sizeZ);
+            for (int radius = 1; radius <= maxRadius; radius++)
             {
-                for (int x = 1; x < sizeX - 1; x++)
+                if (found && (long)(radius - 1) * (radius - 1) > bestDistance)
+                    break;
+
+                int minX = Math.Max(1, startX - radius);
+                int maxX = Math.Min(sizeX - 2, startX + radius);
+                int minZ = Math.Max(1, startZ - radius);
+                int maxZ = Math.Min(sizeZ - 2, startZ + radius);
+
+                if (minX > maxX || minZ > maxZ)
+                    break;
+
+                for (int z = minZ; z <= maxZ; z++)
                 {
-                    if (map[z, x].hasLandbasedObject)
-                        continue;
+                    bool isEdgeRow = z == startZ - radius || z == startZ + radius;
+                    int step = isEdgeRow ? 1 : Math.Max(1, (radius * 2));
 
-                    if (!IsDryLandTerrain(map[z, x], maxHeight))
-                        continue;
-
-                    int dx = x - startX;
-                    int dz = z - startZ;
-                    int distance = (dx * dx) + (dz * dz);
-                    if (distance < bestDistance)
+                    for (int x = minX; x <= maxX; x += step)
                     {
-                        bestDistance = distance;
-                        bestTileX = x;
-                        bestTileZ = z;
-                        found = true;
+                        if (!isEdgeRow && x != startX - radius && x != startX + radius)
+                            continue;
+
+                        if (map[z, x].hasLandbasedObject)
+                            continue;
+
+                        if (!IsDryLandTerrain(map[z, x], maxHeight))
+                            continue;
+
+                        int dx = x - startX;
+                        int dz = z - startZ;
+                        int distance = (dx * dx) + (dz * dz);
+                        if (distance < bestDistance)
+                        {
+                            bestDistance = distance;
+                            bestTileX = x;
+                            bestTileZ = z;
+                            found = true;
+                        }
                     }
                 }
             }

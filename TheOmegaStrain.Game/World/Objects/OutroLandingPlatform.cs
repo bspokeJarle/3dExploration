@@ -13,7 +13,7 @@ namespace TheOmegaStrain.Game.World.Objects
         private const float HalfDepth = 210f;
         private const float PadBottomZ = 28f;
         private const float PadTopZ = 120f;
-        private const float MarkingZ = 168f;
+        private const float MarkingZ = PadTopZ + 2f;
         private const float LandingMarkLength = 310f;
         private const float LandingMarkWidth = 30f;
         private const float CrashBoxBottomZ = PadTopZ - 12f;
@@ -54,17 +54,17 @@ namespace TheOmegaStrain.Game.World.Objects
             return platform;
         }
 
-        private static List<ITriangleMeshWithColor> CreatePad()
+        private static List<ITriangleMeshWithColorAndTexture> CreatePad()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             AddRect(tris, -HalfWidth, -HalfDepth, HalfWidth, HalfDepth, PadTopZ, PadColor);
             AddSlabSides(tris);
             return tris;
         }
 
-        private static List<ITriangleMeshWithColor> CreateMarkings()
+        private static List<ITriangleMeshWithColorAndTexture> CreateMarkings()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             AddRotatedRect(tris, 0f, 0f, LandingMarkLength, LandingMarkWidth, 42f, MarkingZ, MarkingColor);
             AddRotatedRect(tris, 0f, 0f, LandingMarkLength, LandingMarkWidth, -42f, MarkingZ, MarkingColor);
             return tris;
@@ -80,7 +80,7 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static void AddSlabSides(List<ITriangleMeshWithColor> triangles)
+        private static void AddSlabSides(List<ITriangleMeshWithColorAndTexture> triangles)
         {
             AddVerticalRect(triangles,
                 new Vector3(-HalfWidth, -HalfDepth, PadBottomZ),
@@ -111,7 +111,7 @@ namespace TheOmegaStrain.Game.World.Objects
                 PadSideColor);
         }
 
-        private static void AddRect(List<ITriangleMeshWithColor> triangles, float left, float top, float right, float bottom, float z, string color)
+        private static void AddRect(List<ITriangleMeshWithColorAndTexture> triangles, float left, float top, float right, float bottom, float z, string color)
         {
             var topLeft = new Vector3(left, top, z);
             var topRight = new Vector3(right, top, z);
@@ -122,7 +122,7 @@ namespace TheOmegaStrain.Game.World.Objects
             triangles.Add(CreateTri(topLeft, bottomRight, bottomLeft, color));
         }
 
-        private static void AddRotatedRect(List<ITriangleMeshWithColor> triangles, float centerX, float centerY, float length, float width, float angleDegrees, float z, string color)
+        private static void AddRotatedRect(List<ITriangleMeshWithColorAndTexture> triangles, float centerX, float centerY, float length, float width, float angleDegrees, float z, string color)
         {
             float radians = angleDegrees * (MathF.PI / 180f);
             float dx = MathF.Cos(radians) * length * 0.5f;
@@ -139,7 +139,7 @@ namespace TheOmegaStrain.Game.World.Objects
             triangles.Add(CreateTri(a, c, d, color));
         }
 
-        private static void AddVerticalRect(List<ITriangleMeshWithColor> triangles, Vector3 a, Vector3 b, Vector3 c, Vector3 d, string color)
+        private static void AddVerticalRect(List<ITriangleMeshWithColorAndTexture> triangles, Vector3 a, Vector3 b, Vector3 c, Vector3 d, string color)
         {
             triangles.Add(CreateTri(a, b, c, color));
             triangles.Add(CreateTri(a, c, d, color));

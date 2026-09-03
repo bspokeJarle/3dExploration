@@ -21,7 +21,7 @@ namespace TheOmegaStrain.Gameplay.Helpers
 
         // Global roam behavior:
         // - RoamTilesDefault: how many tiles the random roam jumps when no screen target is found.
-        private const int RoamTilesDefault = 10;
+        private static int RoamTilesDefault => SurfaceSetup.ScaleTileCount(10);
 
         // Screen sniffing behavior:
         // - SmellScoreWeight: multiplier for BioTileCount dominance when scoring screens.

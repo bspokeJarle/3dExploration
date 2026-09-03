@@ -48,8 +48,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private bool _rocketStopRequested;
 
         public I3dObject? ParentObject { get; set; }
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
         public bool IsLanded => _elapsedSeconds >= LandingSeconds;
         public bool IsHatchOpen => _elapsedSeconds >= LandingSeconds + UpperHatchOpenSeconds;
@@ -136,14 +136,14 @@ namespace TheOmegaStrain.Gameplay.Controls
             theObject.Particles.MoveParticles();
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {
             if (_audioConfigured)
@@ -292,7 +292,7 @@ namespace TheOmegaStrain.Gameplay.Controls
                     triangle.vert1 = ScaleFromBaseline(baseline.V1, scale);
                     triangle.vert2 = ScaleFromBaseline(baseline.V2, scale);
                     triangle.vert3 = ScaleFromBaseline(baseline.V3, scale);
-                    if (upperHatchProgress > 0f && ShouldRenderNoHiddenDuringHatch(part.PartName))
+                    if (upperHatchProgress > 0f)
                     {
                         triangle.noHidden = true;
                     }
@@ -351,11 +351,6 @@ namespace TheOmegaStrain.Gameplay.Controls
         private static bool ShouldMoveWithUpperHatch(string? partName)
         {
             return partName == UpperHatchPartName || partName == TopCannonPartName;
-        }
-
-        private static bool ShouldRenderNoHiddenDuringHatch(string? partName)
-        {
-            return ShouldMoveWithUpperHatch(partName) || partName == LowerHullPartName;
         }
 
         private Vector3 RotateAroundHingeX(Vector3 vertex, Vector3 hinge, float angleDegrees)

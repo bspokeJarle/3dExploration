@@ -3,11 +3,13 @@ using TheOmegaStrain.Wpf.Input;
 using TheOmegaStrain.Wpf.MainWindowClasses;
 using TheOmegaStrain.Wpf.MainWindowClasses.Overlays;
 using TheOmegaStrain.Wpf.Rendering;
+using RetroMesh.Rendering.Direct3D11;
 using TheOmegaStrain.Runtime.Loops;
 using TheOmegaStrain.Game.World;
 using TheOmegaStrain.Common.CommonGlobalState;
 using TheOmegaStrain.Common.CommonGlobalState.States;
 using TheOmegaStrain.Common.CommonSetup;
+using TheOmegaStrain.Common.GamePlayHelpers;
 using TheOmegaStrain.Common.Persistence;
 using TheOmegaStrain.Domain;
 using TheOmegaStrain.Gameplay.Controls;
@@ -26,6 +28,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Interop;
 using System.Windows.Threading;
+using Forms = System.Windows.Forms;
 
 namespace TheOmegaStrain.Wpf
 {
@@ -53,7 +56,11 @@ namespace TheOmegaStrain.Wpf
         private const bool enableLogging = false;
         private const bool enableFileLogging = LiveGameLoop.EnableCpuHeadroomLogging;
         private const bool EnableSteamDiagnostics = true;
-        private DrawingVisualHost visualHost = new DrawingVisualHost();
+        private readonly DrawingVisualHost visualHost = new();
+        private bool _useDirect3D11;
+        private Direct3D11ProjectedTriangleRenderer? _direct3DRenderer;
+        private Forms.Panel? _direct3DPanel;
+        private OverlayHostWindow? _overlayHost;
         private readonly DispatcherTimer timer = new DispatcherTimer();
         private readonly Stopwatch stopwatch = new Stopwatch();
         private int frameCount = 0;
@@ -71,6 +78,7 @@ namespace TheOmegaStrain.Wpf
         private const int MaxPooledTriangleLists = 4;
         private DateTime fadeOutTrigged = DateTime.MinValue;
         private int _updateInProgress = 0;
+        private bool _isShuttingDown;
         private long _lastTickTimestamp = 0;
         private long _lastWorldUpdateTimestamp = 0;
         private int _minimapFrameSkip = 0;
@@ -152,14 +160,17 @@ namespace TheOmegaStrain.Wpf
                 InitializeRawMouseInput();
             };
             LocationChanged += (_, _) => ConfigureRuntimeFpsForCurrentMonitor("LocationChanged");
-            Closing += MainWindow_Closing;
+            Closed += MainWindow_Closed;
             Loaded += Window_Loaded;
 
-            mainGrid = new Grid();
-            Content = mainGrid;
+            mainGrid = MainGrid;
 
-            mainGrid.Children.Add(visualHost);
-            worldRenderer = new WorldRenderer(visualHost);
+            if (!RendererBackendSelection.UseDirect3D11() || !TryInitializeDirect3D11Renderer())
+                InitializeWpfRenderer();
+
+            Title = _useDirect3D11
+                ? "The Omega Strain — Direct3D 11 — Surface 36 tiles"
+                : "The Omega Strain — WPF fallback — Surface 36 tiles";
 
             _videoOverlay = new MediaElement
             {
@@ -176,7 +187,7 @@ namespace TheOmegaStrain.Wpf
             _videoOverlay.RenderTransform = new TranslateTransform(0, 0);
             _videoOverlay.RenderTransformOrigin = new Point(0.5, 0.5);
             Panel.SetZIndex(_videoOverlay, 1);
-            mainGrid.Children.Add(_videoOverlay);
+            OverlayRoot.Children.Add(_videoOverlay);
 
             FadeOverlay = new System.Windows.Shapes.Rectangle
             {
@@ -187,7 +198,7 @@ namespace TheOmegaStrain.Wpf
                 VerticalAlignment = VerticalAlignment.Stretch
             };
             Panel.SetZIndex(FadeOverlay, int.MaxValue);
-            mainGrid.Children.Add(FadeOverlay);
+            OverlayRoot.Children.Add(FadeOverlay);
 
             FpsText = new TextBlock
             {
@@ -197,11 +208,11 @@ namespace TheOmegaStrain.Wpf
                 HorizontalAlignment = HorizontalAlignment.Right,
                 VerticalAlignment = VerticalAlignment.Top
             };
-            mainGrid.Children.Add(FpsText);
+            OverlayRoot.Children.Add(FpsText);
 
 
             // Overlay handlers must be put in the grid
-            _overlayManager = new OverlayManager(mainGrid);
+            _overlayManager = new OverlayManager(OverlayRoot);
 
             // MotherShip in-world health bar
             _motherShipHealthBarCanvas = new Canvas
@@ -230,7 +241,7 @@ namespace TheOmegaStrain.Wpf
 
             _motherShipHealthBarCanvas.Children.Add(_motherShipHealthBarBg);
             _motherShipHealthBarCanvas.Children.Add(_motherShipHealthBarFill);
-            mainGrid.Children.Add(_motherShipHealthBarCanvas);
+            OverlayRoot.Children.Add(_motherShipHealthBarCanvas);
 
             // MotherShip ram warning reticle
             _ramWarningCanvas = new Canvas
@@ -260,7 +271,7 @@ namespace TheOmegaStrain.Wpf
 
             _ramWarningCanvas.Children.Add(_ramWarningOuter);
             _ramWarningCanvas.Children.Add(_ramWarningInner);
-            mainGrid.Children.Add(_ramWarningCanvas);
+            OverlayRoot.Children.Add(_ramWarningCanvas);
 
             // Aim assist target indicator (white concentric circles)
             _aimAssistCanvas = new Canvas
@@ -290,15 +301,130 @@ namespace TheOmegaStrain.Wpf
 
             _aimAssistCanvas.Children.Add(_aimAssistOuter);
             _aimAssistCanvas.Children.Add(_aimAssistInner);
-            mainGrid.Children.Add(_aimAssistCanvas);
+            OverlayRoot.Children.Add(_aimAssistCanvas);
 
             timer.Interval = TimeSpan.FromMilliseconds(8);
             CompositionTarget.Rendering += Handle3dWorldRendering;
+            LocationChanged += OnWindowBoundsChanged;
+            SizeChanged += OnWindowBoundsChanged;
             stopwatch.Start();
         }
 
-        private void MainWindow_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
+        private Grid OverlayRoot => _overlayHost?.OverlayRoot ?? mainGrid;
+
+        private bool TryInitializeDirect3D11Renderer()
         {
+            try
+            {
+                _direct3DPanel = new Forms.Panel
+                {
+                    BackColor = System.Drawing.Color.Black,
+                    Dock = Forms.DockStyle.Fill
+                };
+                Direct3DHost.Child = _direct3DPanel;
+                Direct3DHost.Visibility = Visibility.Visible;
+                _direct3DPanel.CreateControl();
+                _direct3DRenderer = new Direct3D11ProjectedTriangleRenderer(
+                    _direct3DPanel.Handle,
+                    Math.Max(1, _direct3DPanel.ClientSize.Width),
+                    Math.Max(1, _direct3DPanel.ClientSize.Height));
+                _direct3DRenderer.SetProjectionSize(
+                    Math.Max(1, ScreenSetup.screenSizeX),
+                    Math.Max(1, ScreenSetup.screenSizeY));
+                _direct3DPanel.Resize += OnDirect3DPanelResize;
+                worldRenderer = _direct3DRenderer;
+
+                _overlayHost = new OverlayHostWindow(this);
+                mainGrid.Children.Remove(RenderImage);
+                _useDirect3D11 = true;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                if (Logger.EnableFileLogging)
+                    Logger.Log($"[Renderer] Direct3D11 unavailable, falling back to WPF. {ex.GetType().Name}: {ex.Message}");
+                SteamDiagnostics.Write($"[Renderer] Direct3D11 unavailable, falling back to WPF. {ex.GetType().Name}: {ex.Message}");
+
+                if (_direct3DPanel != null)
+                    _direct3DPanel.Resize -= OnDirect3DPanelResize;
+                _direct3DRenderer?.Dispose();
+                Direct3DHost.Child = null;
+                Direct3DHost.Visibility = Visibility.Collapsed;
+                _direct3DPanel?.Dispose();
+                _direct3DRenderer = null;
+                _direct3DPanel = null;
+                _overlayHost = null;
+                _useDirect3D11 = false;
+                return false;
+            }
+        }
+
+        private void InitializeWpfRenderer()
+        {
+            Direct3DHost.Child = null;
+            Direct3DHost.Visibility = Visibility.Collapsed;
+            mainGrid.Children.Add(visualHost);
+            worldRenderer = new WorldRenderer(visualHost);
+            _useDirect3D11 = false;
+        }
+
+        private void UpdateDirect3DBackgroundFlash()
+        {
+            if (_direct3DRenderer == null)
+                return;
+
+            // The WPF backend paints the flash as a background rectangle. Direct3D clears the
+            // render target instead, so the same colour must be pushed into ClearColor or the
+            // lightning flash is invisible on this backend.
+            var weather = GameState.WeatherVisualState;
+            var (red, green, blue) = WeatherFlashColorHelpers.GetBackgroundColor(
+                weather?.LightningFlashIntensity ?? 0f,
+                weather?.ImpactFlashIntensity ?? 0f);
+
+            _direct3DRenderer.ClearColor = new Vortice.Mathematics.Color4(red / 255f, green / 255f, blue / 255f, 1f);
+        }
+
+        private void OnDirect3DPanelResize(object? sender, EventArgs e)
+        {
+            if (_isShuttingDown || _direct3DRenderer == null || _direct3DPanel == null)
+                return;
+
+            _direct3DRenderer.Resize(
+                Math.Max(1, _direct3DPanel.ClientSize.Width),
+                Math.Max(1, _direct3DPanel.ClientSize.Height));
+            _direct3DRenderer.SetProjectionSize(
+                Math.Max(1, ScreenSetup.screenSizeX),
+                Math.Max(1, ScreenSetup.screenSizeY));
+        }
+
+        private void OnWindowBoundsChanged(object? sender, EventArgs e)
+        {
+            _overlayHost?.SynchronizeBounds();
+            if (_direct3DRenderer != null && _direct3DPanel != null)
+            {
+                int width = Math.Max(1, _direct3DPanel.ClientSize.Width);
+                int height = Math.Max(1, _direct3DPanel.ClientSize.Height);
+                ScreenSetup.Initialize(width, height);
+                _direct3DRenderer.SetProjectionSize(width, height);
+            }
+        }
+
+        private void MainWindow_Closed(object? sender, EventArgs e)
+        {
+            if (_isShuttingDown)
+                return;
+
+            _isShuttingDown = true;
+            Closed -= MainWindow_Closed;
+            CompositionTarget.Rendering -= Handle3dWorldRendering;
+            LocationChanged -= OnWindowBoundsChanged;
+            SizeChanged -= OnWindowBoundsChanged;
+            if (_direct3DPanel != null)
+                _direct3DPanel.Resize -= OnDirect3DPanelResize;
+            _direct3DRenderer?.Dispose();
+            Direct3DHost.Child = null;
+            _direct3DPanel?.Dispose();
+            _overlayHost?.Close();
             ShutdownRawMouseInput();
             ShutdownSteam();
             // Closing the window is not a checkpoint. Progress and highscores
@@ -361,7 +487,18 @@ namespace TheOmegaStrain.Wpf
             int w = (int)ActualWidth;
             int h = (int)ActualHeight;
             if (w > 0 && h > 0)
+            {
                 ScreenSetup.Initialize(w, h);
+                _direct3DRenderer?.SetProjectionSize(w, h);
+                if (_direct3DPanel != null)
+                {
+                    _direct3DRenderer?.Resize(
+                        Math.Max(1, _direct3DPanel.ClientSize.Width),
+                        Math.Max(1, _direct3DPanel.ClientSize.Height));
+                }
+            }
+
+            _overlayHost?.ShowOverlay();
         }
 
         private void InitializeRawMouseInput()
@@ -957,7 +1094,8 @@ namespace TheOmegaStrain.Wpf
             if (stopwatch.ElapsedMilliseconds >= 1000)
             {
                 Fps = frameCount;
-                FpsText.Text = $"FPS: {frameCount} Triangles:{worldRenderer.GetRenderingTriangleCount()} {gameWorldManager.DebugMessage}";
+                string rendererBackend = _useDirect3D11 ? "D3D11" : "WPF";
+                FpsText.Text = $"[{rendererBackend}] FPS: {frameCount} Triangles:{worldRenderer.GetRenderingTriangleCount()} {gameWorldManager.DebugMessage}";
                 frameCount = 0;
                 stopwatch.Restart();
             }
@@ -1025,6 +1163,7 @@ namespace TheOmegaStrain.Wpf
                         {
                             try
                             {
+                                UpdateDirect3DBackgroundFlash();
                                 worldRenderer.RenderTriangles(screenCoordinates);
                             }
                             finally

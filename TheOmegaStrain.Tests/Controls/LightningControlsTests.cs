@@ -146,7 +146,7 @@ public class LightningControlsTests
             0.001f);
     }
 
-    private static bool SameDepth(ITriangleMeshWithColor triangle)
+    private static bool SameDepth(ITriangleMeshWithColorAndTexture triangle)
     {
         return Math.Abs(triangle.vert1.z - triangle.vert2.z) < 0.001f
             && Math.Abs(triangle.vert1.z - triangle.vert3.z) < 0.001f;

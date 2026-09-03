@@ -1,6 +1,7 @@
 using TheOmegaStrain.Game.World.Objects;
 using TheOmegaStrain.Common.CommonGlobalState;
 using TheOmegaStrain.Common.CommonSetup;
+using TheOmegaStrain.Gameplay.Controls.Weather;
 using TheOmegaStrain.Domain;
 using System;
 using System.Collections.Generic;
@@ -12,8 +13,8 @@ namespace TheOmegaStrain.Runtime.Rendering
 
     public class StarFieldHandler
     {
-        public const int VisibleStarTarget = 150;
-        private const int OffscreenStarReserve = 250;
+        public const int VisibleStarTarget = 260;
+        private const int OffscreenStarReserve = 430;
         public const int TargetStarCount = VisibleStarTarget + OffscreenStarReserve;
 
         private const float FadeInStep = 0.035f;
@@ -30,6 +31,11 @@ namespace TheOmegaStrain.Runtime.Rendering
         private const float TravelBehindRecycleDistance = 2200f;
         private const float TravelAheadRecycleDistance = 3900f;
         private const int DirectionalSpawnModulo = 5;
+
+        // Star geometry is written pre-projection, so the renderer magnifies it by the projection
+        // scale. Flying towards a star would otherwise blow it up to an unnatural size, so the
+        // on-screen size is capped the same way weather particles are.
+        private const float MaxApparentSize = 6f;
 
         // Do not show stars if the surface is close to the ground/camera.
         private static float GroundDistanceY => 287.5f * ScreenSetup.ScreenScaleY;
@@ -181,7 +187,8 @@ namespace TheOmegaStrain.Runtime.Rendering
                 Star = star,
                 BaseColor = GetBaseColor(star),
                 Opacity = 0f,
-                FadeMode = StarFadeMode.FadingIn
+                FadeMode = StarFadeMode.FadingIn,
+                BaseVertices = CaptureBaseVertices(star)
             };
 
             PlaceStar(state, currentWorldPos, offset);
@@ -189,8 +196,60 @@ namespace TheOmegaStrain.Runtime.Rendering
             return state;
         }
 
+        /// <summary>
+        /// Snapshots the star's baked geometry. Stars are appended after the per-frame deep copy,
+        /// so their triangles must never be scaled in place - the factor would compound each frame.
+        /// Every frame rewrites the vertices from this immutable snapshot instead.
+        /// </summary>
+        private static NumericsVector3[] CaptureBaseVertices(OmegaObject3D star)
+        {
+            var triangles = star.ObjectParts[0].Triangles;
+            var baseVertices = new NumericsVector3[triangles.Count * 3];
+
+            for (int i = 0; i < triangles.Count; i++)
+            {
+                var tri = triangles[i];
+                baseVertices[i * 3] = new NumericsVector3(tri.vert1.x, tri.vert1.y, tri.vert1.z);
+                baseVertices[i * 3 + 1] = new NumericsVector3(tri.vert2.x, tri.vert2.y, tri.vert2.z);
+                baseVertices[i * 3 + 2] = new NumericsVector3(tri.vert3.x, tri.vert3.y, tri.vert3.z);
+            }
+
+            return baseVertices;
+        }
+
+        /// <summary>
+        /// Rewrites the star's vertices from its base mesh, shrunk so the star never exceeds
+        /// MaxApparentSize on screen. Distant stars are left at full size.
+        /// </summary>
+        private static void ApplyApparentSizeClamp(StarState state, IVector3 currentWorldPos)
+        {
+            float relativeZ = state.Star.WorldPosition.z - currentWorldPos.z;
+            float scale = WorldWeatherField.GetProjectionScale(relativeZ, 0f);
+            float shrink = WorldWeatherField.GetApparentSizeShrink(state.BaseHalfExtent, scale, MaxApparentSize);
+
+            var triangles = state.Star.ObjectParts[0].Triangles;
+            var baseVertices = state.BaseVertices;
+
+            for (int i = 0; i < triangles.Count; i++)
+            {
+                var tri = triangles[i];
+                WriteVertex(tri.vert1, baseVertices[i * 3], shrink);
+                WriteVertex(tri.vert2, baseVertices[i * 3 + 1], shrink);
+                WriteVertex(tri.vert3, baseVertices[i * 3 + 2], shrink);
+            }
+        }
+
+        private static void WriteVertex(IVector3 target, NumericsVector3 source, float shrink)
+        {
+            target.x = source.X * shrink;
+            target.y = source.Y * shrink;
+            target.z = source.Z * shrink;
+        }
+
         private void UpdateStar(StarState state, IVector3 currentWorldPos)
         {
+            ApplyApparentSizeClamp(state, currentWorldPos);
+
             if (state.FadeMode == StarFadeMode.FadingOutForRecycle)
             {
                 state.Opacity = Math.Max(0f, state.Opacity - FadeOutStep);
@@ -464,6 +523,26 @@ namespace TheOmegaStrain.Runtime.Rendering
             public required string BaseColor;
             public float Opacity;
             public StarFadeMode FadeMode;
+
+            // Immutable snapshot of the baked star mesh, plus its largest radius. Used to rewrite
+            // the vertices each frame so the apparent-size clamp never compounds.
+            public required NumericsVector3[] BaseVertices;
+
+            public float BaseHalfExtent
+            {
+                get
+                {
+                    if (_baseHalfExtent > 0f)
+                        return _baseHalfExtent;
+
+                    for (int i = 0; i < BaseVertices.Length; i++)
+                        _baseHalfExtent = MathF.Max(_baseHalfExtent, BaseVertices[i].Length());
+
+                    return _baseHalfExtent;
+                }
+            }
+
+            private float _baseHalfExtent;
         }
 
         private enum StarFadeMode

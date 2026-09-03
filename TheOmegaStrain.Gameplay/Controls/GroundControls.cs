@@ -9,8 +9,8 @@ namespace TheOmegaStrain.Gameplay.Controls
 {
     public class GroundControls : IObjectMovement
     {
-        public ITriangleMeshWithColor? StartCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public ITriangleMeshWithColor? GuideCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public I3dObject ParentObject { get; set; }
 
@@ -21,8 +21,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private readonly HashSet<int> _processedBombCraters = new();
         private DateTime _lastWaterWaveFrame = DateTime.MinValue;
         private float _waterWaveTimeSeconds;
-        private const int BombCraterRadiusTiles = 2;
-        private const int WaterWaveEdgePaddingTiles = 1;
+        private static int BombCraterRadiusTiles => SurfaceSetup.ScaleTileCount(2);
+        private static int WaterWaveEdgePaddingTiles => SurfaceSetup.ScaleTileCount(1);
         private const float WaterWaveTilePhaseJitterRadians = 0.20944f; // about 12 degrees
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -143,7 +143,7 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         private int CalculateAnimatedWaterDepth(int originalDepth, int tileX, int tileZ, int maxAnimatedWaterDepth)
         {
-            float waveLength = Math.Max(0.25f, SurfaceAnimationSetup.WaterWaveLengthInTiles);
+            float waveLength = Math.Max(0.25f, SurfaceSetup.ScaleTileCount((int)Math.Ceiling(SurfaceAnimationSetup.WaterWaveLengthInTiles)));
             float speed = SurfaceAnimationSetup.WaterWaveSpeedRadiansPerSecond;
             float phaseA = ((tileX + tileZ) / waveLength) * (2f * MathF.PI);
             float phaseB = ((tileX - tileZ) / (waveLength * 1.7f)) * (2f * MathF.PI);
@@ -394,14 +394,14 @@ namespace TheOmegaStrain.Gameplay.Controls
             return (int)Math.Ceiling(MapSetup.maxHeight * 0.15f);
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             throw new NotImplementedException();
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             throw new NotImplementedException();
         }

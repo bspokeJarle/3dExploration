@@ -14,11 +14,11 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float ScaleAmplitude = 0.22f;
         private const float DriftAmplitude = 2.5f;
 
-        private List<ITriangleMeshWithColor>? _baseTriangles;
+        private List<ITriangleMeshWithColorAndTexture>? _baseTriangles;
         private float _timeSeconds;
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = null!;
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -33,9 +33,9 @@ namespace TheOmegaStrain.Gameplay.Controls
             return theObject;
         }
 
-        private List<ITriangleMeshWithColor> CreatePulsingStars(List<ITriangleMeshWithColor> baseTriangles)
+        private List<ITriangleMeshWithColorAndTexture> CreatePulsingStars(List<ITriangleMeshWithColorAndTexture> baseTriangles)
         {
-            var animated = new List<ITriangleMeshWithColor>(baseTriangles.Count);
+            var animated = new List<ITriangleMeshWithColorAndTexture>(baseTriangles.Count);
             int starIndex = 0;
             for (int i = 0; i < baseTriangles.Count; i += TrianglesPerStar)
             {
@@ -72,7 +72,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             return animated;
         }
 
-        private static Vector3 GetStarCenter(List<ITriangleMeshWithColor> triangles, int startIndex, int count)
+        private static Vector3 GetStarCenter(List<ITriangleMeshWithColorAndTexture> triangles, int startIndex, int count)
         {
             float x = 0f;
             float y = 0f;
@@ -133,9 +133,9 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         public void ConfigureAudio(IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry) { }
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
         public void Dispose() => _baseTriangles = null;
     }
 }

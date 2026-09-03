@@ -44,9 +44,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return astronaut;
         }
 
-        private static List<ITriangleMeshWithColor> CreateBody()
+        private static List<ITriangleMeshWithColorAndTexture> CreateBody()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             AddRectXZ(tris, -9f, 4f, 9f, 25f, FigureY, SuitLight);
             AddRectXZ(tris, -6f, 8f, 6f, 19f, FigureY - FigureDepth, SuitShadow);
             AddRectXZ(tris, -8f, -9f, -1f, 4f, FigureY, SuitShadow);
@@ -54,32 +54,32 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static List<ITriangleMeshWithColor> CreateHelmet()
+        private static List<ITriangleMeshWithColorAndTexture> CreateHelmet()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             AddOctagon(tris, 0f, 36f, 10f, FigureY, SuitLight);
             AddRectXZ(tris, -6f, 33f, 6f, 38f, FigureY - FigureDepth, VisorColor);
             return tris;
         }
 
-        private static List<ITriangleMeshWithColor> CreateLeftArm()
+        private static List<ITriangleMeshWithColorAndTexture> CreateLeftArm()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             AddSegmentXZ(tris, -8f, 22f, -21f, 12f, 4f, FigureY, SuitShadow);
             AddOctagon(tris, -23f, 10f, 4f, FigureY, GloveColor);
             return tris;
         }
 
-        private static List<ITriangleMeshWithColor> CreateWavingArm()
+        private static List<ITriangleMeshWithColorAndTexture> CreateWavingArm()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             AddSegmentXZ(tris, 8f, 23f, 22f, 36f, 4f, FigureY, SuitShadow);
             AddSegmentXZ(tris, 22f, 36f, 31f, 49f, 4f, FigureY, SuitLight);
             AddOctagon(tris, 33f, 52f, 4.5f, FigureY, GloveColor);
             return tris;
         }
 
-        private static void AddRectXZ(List<ITriangleMeshWithColor> tris, float left, float bottom, float right, float top, float y, string color)
+        private static void AddRectXZ(List<ITriangleMeshWithColorAndTexture> tris, float left, float bottom, float right, float top, float y, string color)
         {
             var a = new Vector3(left, y, bottom);
             var b = new Vector3(right, y, bottom);
@@ -89,7 +89,7 @@ namespace TheOmegaStrain.Game.World.Objects
             tris.Add(CreateTri(a, c, d, color));
         }
 
-        private static void AddSegmentXZ(List<ITriangleMeshWithColor> tris, float x1, float z1, float x2, float z2, float width, float y, string color)
+        private static void AddSegmentXZ(List<ITriangleMeshWithColorAndTexture> tris, float x1, float z1, float x2, float z2, float width, float y, string color)
         {
             float dx = x2 - x1;
             float dz = z2 - z1;
@@ -107,7 +107,7 @@ namespace TheOmegaStrain.Game.World.Objects
             tris.Add(CreateTri(a, c, d, color));
         }
 
-        private static void AddOctagon(List<ITriangleMeshWithColor> tris, float centerX, float centerZ, float radius, float y, string color)
+        private static void AddOctagon(List<ITriangleMeshWithColorAndTexture> tris, float centerX, float centerZ, float radius, float y, string color)
         {
             var center = new Vector3(centerX, y, centerZ);
             for (int i = 0; i < 8; i++)
@@ -135,7 +135,7 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor> triangles, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture> triangles, bool visible)
         {
             obj.ObjectParts.Add(new OmegaObjectPart3D
             {

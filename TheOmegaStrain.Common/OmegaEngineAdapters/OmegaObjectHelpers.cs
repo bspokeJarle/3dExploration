@@ -127,7 +127,7 @@ namespace TheOmegaStrain.Common.OmegaEngineAdapters
             return new CosSin { CosRes = cosSin.CosRes, SinRes = cosSin.SinRes };
         }
 
-        public static List<ITriangleMeshWithColor> ConvertToTrianglesWithColor(List<TriangleMesh> triangles, string color)
+        public static List<ITriangleMeshWithColorAndTexture> ConvertToTrianglesWithColor(List<TriangleMesh> triangles, string color)
         {
             return MeshGeometryOperations.ConvertToTrianglesWithColor(
                 triangles,
@@ -146,7 +146,7 @@ namespace TheOmegaStrain.Common.OmegaEngineAdapters
             return copiedTriangles.Cast<TriangleMeshWithColor>().ToList();
         }
 
-        public static List<ITriangleMeshWithColor> CopyTriangles(IReadOnlyList<ITriangleMeshWithColor> source)
+        public static List<ITriangleMeshWithColorAndTexture> CopyTriangles(IReadOnlyList<ITriangleMeshWithColorAndTexture> source)
         {
             return EngineObjectCloner.CopyTriangles(
                 source,
@@ -154,7 +154,7 @@ namespace TheOmegaStrain.Common.OmegaEngineAdapters
                 CopyRequiredVector);
         }
 
-        public static TriangleMeshWithColor CopyTriangle(ITriangleMeshWithColor triangle)
+        public static TriangleMeshWithColor CopyTriangle(ITriangleMeshWithColorAndTexture triangle)
         {
             return (TriangleMeshWithColor)EngineObjectCloner.CopyTriangle(
                 triangle,
@@ -162,11 +162,11 @@ namespace TheOmegaStrain.Common.OmegaEngineAdapters
                 CopyRequiredVector);
         }
 
-        public static List<ITriangleMeshWithColor> CopyPartTriangles(I3dObject obj, string partName)
+        public static List<ITriangleMeshWithColorAndTexture> CopyPartTriangles(I3dObject obj, string partName)
         {
             var part = obj.ObjectParts.Find(part => part.PartName == partName);
             return part?.Triangles == null
-                ? new List<ITriangleMeshWithColor>()
+                ? new List<ITriangleMeshWithColorAndTexture>()
                 : CopyTriangles(part.Triangles);
         }
 

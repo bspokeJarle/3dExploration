@@ -184,9 +184,9 @@ namespace TheOmegaStrain.Game.World.Objects
         // ----------------------------------------------------
 
         // Upper dome – triangles point outward from BodyCenter
-        public static List<ITriangleMeshWithColor>? SeederTopHull()
+        public static List<ITriangleMeshWithColorAndTexture>? SeederTopHull()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Apex of upper dome
             var top = new Vector3 { x = 0, y = 0, z = topDomeHeight };
@@ -210,9 +210,9 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         // Lower dome – triangles point outward from BodyCenter
-        public static List<ITriangleMeshWithColor>? SeederBottomHull()
+        public static List<ITriangleMeshWithColorAndTexture>? SeederBottomHull()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Apex of lower dome
             var bottom = new Vector3 { x = 0, y = 0, z = -bottomDomeHeight };
@@ -236,9 +236,9 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         // Rim ring around the saucer – side quads, normals outward from BodyCenter
-        public static List<ITriangleMeshWithColor>? SeederRimRing()
+        public static List<ITriangleMeshWithColorAndTexture>? SeederRimRing()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var topRing = GenerateCirclePoints(mainSegments, seederRadius, seederThickness);
             var bottomRing = GenerateCirclePoints(mainSegments, seederRadius, -seederThickness);
@@ -262,9 +262,9 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         // Center module under the saucer – cylinder + bottom cap, outward from BodyCenter
-        public static List<ITriangleMeshWithColor>? SeederCenterModule()
+        public static List<ITriangleMeshWithColorAndTexture>? SeederCenterModule()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float topZ = -seederThickness;
             float bottomZ = -seederThickness - centerModuleHeight;
@@ -296,9 +296,9 @@ namespace TheOmegaStrain.Game.World.Objects
 
         // Rectangular-like panels on the underside, pushed to the absolute bottom
         // of the lower dome while still staying inside the hull volume.
-        public static List<ITriangleMeshWithColor>? SeederPanels()
+        public static List<ITriangleMeshWithColorAndTexture>? SeederPanels()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Radii that keep panels fully inside the hull outline
             float innerRadius = seederRadius * 0.25f;
@@ -330,9 +330,9 @@ namespace TheOmegaStrain.Game.World.Objects
 
 
         // Alien ball on top – outward from its own center
-        public static List<ITriangleMeshWithColor>? SeederAlienBall()
+        public static List<ITriangleMeshWithColorAndTexture>? SeederAlienBall()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float centerZ = topDomeHeight + alienRadius * 0.6f; // Slight overlap into upper dome
             var sphereCenter = new Vector3 { x = 0, y = 0, z = centerZ };
@@ -407,9 +407,9 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         // Side windows – outward from BodyCenter (so hidden-face will behave correctly)
-        public static List<ITriangleMeshWithColor>? SeederSideWindows()
+        public static List<ITriangleMeshWithColorAndTexture>? SeederSideWindows()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float windowWidth = 6f;
             float windowHeight = 4f;
@@ -475,9 +475,9 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         // Door on the -Y side – outward from BodyCenter
-        public static List<ITriangleMeshWithColor>? SeederDoor()
+        public static List<ITriangleMeshWithColorAndTexture>? SeederDoor()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float doorWidth = 8f;
             float doorHeight = 7f;
@@ -504,20 +504,20 @@ namespace TheOmegaStrain.Game.World.Objects
         //  PARTICLE GUIDES (only these use noHidden = true)
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? ParticlesDirectionGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? ParticlesDirectionGuide()
         {
             float guideZ = -seederThickness - centerModuleHeight - particleGuideDistance;
-            var direction = new List<ITriangleMeshWithColor>
+            var direction = new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateParticleGuidePoint(guideZ)
             };
             return direction;
         }
 
-        public static List<ITriangleMeshWithColor>? ParticlesStartGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? ParticlesStartGuide()
         {
             float startZ = -seederThickness - centerModuleHeight;
-            var direction = new List<ITriangleMeshWithColor>
+            var direction = new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateParticleGuidePoint(startZ)
             };

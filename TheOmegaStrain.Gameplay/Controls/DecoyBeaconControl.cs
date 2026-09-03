@@ -22,8 +22,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float WheelRotationDegreesPerSecond = 540f;
         // Deployed decoy fuse: timeout explosion only. Direct hits explode immediately.
         private const float DeployedDecoyLifetimeSeconds = 2.25f;
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -167,7 +167,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             return GeometryMath.MoveAngleTowards(current, target, maxDelta);
         }
 
-        private static Vector3 GetPartCenter(List<ITriangleMeshWithColor> triangles)
+        private static Vector3 GetPartCenter(List<ITriangleMeshWithColorAndTexture> triangles)
         {
             if (triangles == null || triangles.Count == 0)
             {
@@ -199,9 +199,9 @@ namespace TheOmegaStrain.Gameplay.Controls
             };
         }
 
-        private static List<ITriangleMeshWithColor> TranslateMesh(List<ITriangleMeshWithColor> triangles, Vector3 offset)
+        private static List<ITriangleMeshWithColorAndTexture> TranslateMesh(List<ITriangleMeshWithColorAndTexture> triangles, Vector3 offset)
         {
-            var translated = new List<ITriangleMeshWithColor>(triangles.Count);
+            var translated = new List<ITriangleMeshWithColorAndTexture>(triangles.Count);
 
             foreach (var triangle in triangles)
             {
@@ -506,10 +506,10 @@ namespace TheOmegaStrain.Gameplay.Controls
             return theObject;
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
         public void Dispose()
         {
@@ -538,7 +538,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             _explosionSound = null;
         }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             throw new NotImplementedException();
         }

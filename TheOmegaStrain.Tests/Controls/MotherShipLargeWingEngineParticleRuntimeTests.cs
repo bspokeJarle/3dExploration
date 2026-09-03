@@ -18,9 +18,9 @@ public class MotherShipLargeWingEngineParticleRuntimeTests
         public float LifeMultiplier { get; set; } = 1f;
         public int MaxParticlesOverride { get; set; }
 
-        public readonly List<(ITriangleMeshWithColor trajectory, ITriangleMeshWithColor start)> Calls = new();
+        public readonly List<(ITriangleMeshWithColorAndTexture trajectory, ITriangleMeshWithColorAndTexture start)> Calls = new();
 
-        public void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion, float upwardVelocityBoost = 0f)
+        public void ReleaseParticles(ITriangleMeshWithColorAndTexture Trajectory, ITriangleMeshWithColorAndTexture StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion, float upwardVelocityBoost = 0f)
         {
             Calls.Add((Trajectory, StartPosition));
         }
@@ -28,7 +28,7 @@ public class MotherShipLargeWingEngineParticleRuntimeTests
         public void MoveParticles() { }
     }
 
-    private static List<ITriangleMeshWithColor> ApplyShipRotation(List<ITriangleMeshWithColor> tris, Vector3 rotation)
+    private static List<ITriangleMeshWithColorAndTexture> ApplyShipRotation(List<ITriangleMeshWithColorAndTexture> tris, Vector3 rotation)
     {
         var r = Rotate.RotateZMesh(tris, rotation.z);
         r = Rotate.RotateYMesh(r, rotation.y);
@@ -36,7 +36,7 @@ public class MotherShipLargeWingEngineParticleRuntimeTests
         return r;
     }
 
-    private static Vector3 Centroid(ITriangleMeshWithColor tri) => new Vector3
+    private static Vector3 Centroid(ITriangleMeshWithColorAndTexture tri) => new Vector3
     {
         x = (tri.vert1.x + tri.vert2.x + tri.vert3.x) / 3f,
         y = (tri.vert1.y + tri.vert2.y + tri.vert3.y) / 3f,
@@ -68,8 +68,8 @@ public class MotherShipLargeWingEngineParticleRuntimeTests
         var leftStartPart = ship.ObjectParts.Find(p => p.PartName == "LeftWingEngineStart")!;
         var rightStartPart = ship.ObjectParts.Find(p => p.PartName == "RightWingEngineStart")!;
 
-        var leftRot = ApplyShipRotation(new List<ITriangleMeshWithColor>(leftStartPart.Triangles), (Vector3)ship.Rotation);
-        var rightRot = ApplyShipRotation(new List<ITriangleMeshWithColor>(rightStartPart.Triangles), (Vector3)ship.Rotation);
+        var leftRot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture>(leftStartPart.Triangles), (Vector3)ship.Rotation);
+        var rightRot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture>(rightStartPart.Triangles), (Vector3)ship.Rotation);
 
         var left = Centroid(leftRot[0]);
         var right = Centroid(rightRot[0]);
@@ -107,15 +107,15 @@ public class MotherShipLargeWingEngineParticleRuntimeTests
         var leftStartA = ship.ObjectParts.Find(p => p.PartName == "LeftWingEngineStart")!.Triangles[0];
         var leftGuideA = ship.ObjectParts.Find(p => p.PartName == "LeftWingEngineGuide")!.Triangles[0];
         var rotA = (Vector3)ship.Rotation;
-        var leftStartARot = ApplyShipRotation(new List<ITriangleMeshWithColor> { leftStartA }, rotA)[0];
-        var leftGuideARot = ApplyShipRotation(new List<ITriangleMeshWithColor> { leftGuideA }, rotA)[0];
+        var leftStartARot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture> { leftStartA }, rotA)[0];
+        var leftGuideARot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture> { leftGuideA }, rotA)[0];
         ctrl.SetParticleGuideCoordinates(leftStartARot, null!);
         ctrl.SetParticleGuideCoordinates(null!, leftGuideARot);
 
         var rightStartA = ship.ObjectParts.Find(p => p.PartName == "RightWingEngineStart")!.Triangles[0];
         var rightGuideA = ship.ObjectParts.Find(p => p.PartName == "RightWingEngineGuide")!.Triangles[0];
-        var rightStartARot = ApplyShipRotation(new List<ITriangleMeshWithColor> { rightStartA }, rotA)[0];
-        var rightGuideARot = ApplyShipRotation(new List<ITriangleMeshWithColor> { rightGuideA }, rotA)[0];
+        var rightStartARot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture> { rightStartA }, rotA)[0];
+        var rightGuideARot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture> { rightGuideA }, rotA)[0];
         ctrl.SetRearEngineGuideCoordinates(rightStartARot, null!);
         ctrl.SetRearEngineGuideCoordinates(null!, rightGuideARot);
 
@@ -132,7 +132,7 @@ public class MotherShipLargeWingEngineParticleRuntimeTests
 
         var leftStartB = ship.ObjectParts.Find(p => p.PartName == "LeftWingEngineStart")!.Triangles[0];
         var rotB = (Vector3)ship.Rotation;
-        var leftStartBRot = ApplyShipRotation(new List<ITriangleMeshWithColor> { leftStartB }, rotB)[0];
+        var leftStartBRot = ApplyShipRotation(new List<ITriangleMeshWithColorAndTexture> { leftStartB }, rotB)[0];
         var expectedSpawn = Centroid(leftStartBRot);
 
         Assert.AreEqual(expectedSpawn.x, actualSpawn.x, 0.01f,

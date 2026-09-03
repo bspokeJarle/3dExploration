@@ -10,22 +10,22 @@ namespace TheOmegaStrain.Gameplay.Controls
 {
     public sealed class RainfallControls : IObjectMovement
     {
-        public const int VisibleDropTarget = 180;
-        private const int OffscreenDropReserve = 260;
+        public const int VisibleDropTarget = 101;
+        private const int OffscreenDropReserve = 146;
         public const int TargetDropCount = VisibleDropTarget + OffscreenDropReserve;
         public const float StartGuideYOffset = -1050f;
         public const float DepthSpread = 1200f;
 
         private const string RainColor = "BDEAFF";
-        private const float DepthStartZ = 650f;
+        private const float DepthStartZ = 1150f;
         private const float DepthBehindSpread = 2000f;
         private const float DepthAheadSpread = 3800f;
         private const float MinFallSpeed = 14f;
         private const float MaxFallSpeed = 25f;
-        private const float MinLength = 24f;
-        private const float MaxLength = 58f;
-        private const float MinWidth = 0.75f;
-        private const float MaxWidth = 1.7f;
+        private const float MinLength = 10.8f;
+        private const float MaxLength = 26.4f;
+        private const float MinWidth = 0.33f;
+        private const float MaxWidth = 0.78f;
         private const float BaseWindX = -1.7f;
         private const float BaseWindZ = 0.08f;
         private const float WindPulseX = 0.65f;
@@ -35,6 +35,9 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float TopRespawnJitter = 140f;
         private const float FadeInStep = 0.18f;
         private const float GroundFadeDistance = 210f;
+        // Upper bound for on-screen size, so drops we fly straight into stay natural.
+        // Length is the reference dimension; width and slant follow the same shrink factor.
+        private const float MaxApparentLength = 34f;
 
         private static readonly WeatherFieldSettings FieldSettings = new(
             DepthStartZ: DepthStartZ,
@@ -67,8 +70,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private SoundDefinition? _rainLoopSound;
         private IAudioInstance? _rainLoopInstance;
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject? ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -227,7 +230,7 @@ namespace TheOmegaStrain.Gameplay.Controls
         }
 
         private static void WriteTriangle(
-            ITriangleMeshWithColor triangle,
+            ITriangleMeshWithColorAndTexture triangle,
             Raindrop drop,
             IVector3 mapPosition,
             float objectZ,
@@ -250,6 +253,14 @@ namespace TheOmegaStrain.Gameplay.Controls
             float length = drop.Length * (0.72f + opacity * 0.28f);
             float halfWidth = drop.Width * (0.75f + opacity * 0.25f);
             float slant = (drop.VisualWindX * 4.5f) + drop.SlantJitter;
+
+            // Shrink the whole drop by one factor so length, width and slant stay in proportion.
+            // Clamping length alone flattens the streak into a horizontal smear.
+            float shrink = WorldWeatherField.GetApparentSizeShrink(length, scale, MaxApparentLength);
+            length *= shrink;
+            halfWidth *= shrink;
+            slant *= shrink;
+
             float tailX = centerX - slant;
             float tailY = centerY - length;
 
@@ -270,7 +281,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             triangle.vert3.z = relativeZ;
         }
 
-        private static void CollapseTriangle(ITriangleMeshWithColor triangle)
+        private static void CollapseTriangle(ITriangleMeshWithColorAndTexture triangle)
         {
             triangle.Color = "000000";
             triangle.angle = 0f;
@@ -280,7 +291,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             triangle.vert1.z = triangle.vert2.z = triangle.vert3.z = 0f;
         }
 
-        private static ITriangleMeshWithColor CreateRainTriangle()
+        private static ITriangleMeshWithColorAndTexture CreateRainTriangle()
         {
             return new TriangleMeshWithColor
             {
@@ -371,9 +382,9 @@ namespace TheOmegaStrain.Gameplay.Controls
         }
 
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
         private sealed class Raindrop
         {

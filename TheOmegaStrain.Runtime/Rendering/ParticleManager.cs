@@ -95,7 +95,7 @@ namespace TheOmegaStrain.Runtime.Rendering
                     ParentSurface = inhabitant.ParentSurface,
                     ObjectParts = new List<I3dObjectPart>
                     {
-                        new OmegaObjectPart3D { Triangles = new List<ITriangleMeshWithColor> { particleTriangle }, PartName = "Particle", IsVisible = true }
+                        new OmegaObjectPart3D { Triangles = new List<ITriangleMeshWithColorAndTexture> { particleTriangle }, PartName = "Particle", IsVisible = true }
                     },
                     ObjectOffsets = new Vector3
                     {
@@ -202,7 +202,7 @@ namespace TheOmegaStrain.Runtime.Rendering
                     ParentSurface = inhabitant.ParentSurface,
                     ObjectParts = new List<I3dObjectPart>
                     {
-                        new OmegaObjectPart3D { Triangles = new List<ITriangleMeshWithColor> { shadowTriangle }, PartName = "ParticleShadow", IsVisible = true }
+                        new OmegaObjectPart3D { Triangles = new List<ITriangleMeshWithColorAndTexture> { shadowTriangle }, PartName = "ParticleShadow", IsVisible = true }
                     },
                     ObjectOffsets = new Vector3
                     {
@@ -243,27 +243,27 @@ namespace TheOmegaStrain.Runtime.Rendering
         }
 
         //Creates a crashbox from a triangle
-        private List<List<IVector3>> CreateCrashBoxFromTriangle(ITriangleMeshWithColor triangle)
+        private List<List<IVector3>> CreateCrashBoxFromTriangle(ITriangleMeshWithColorAndTexture triangle)
         {
             return MeshGeometryOperations.GenerateTriangleAabbCrashBox(
                 triangle,
                 static (x, y, z) => new Vector3 { x = x, y = y, z = z });
         }
 
-        private ITriangleMeshWithColor RotateParticle(ITriangleMeshWithColor particleTriangle, Vector3 rotation)
+        private ITriangleMeshWithColorAndTexture RotateParticle(ITriangleMeshWithColorAndTexture particleTriangle, Vector3 rotation)
         {
             var triangleCopy = CopyParticleTriangle(particleTriangle);
 
             return Rotate3d.RotateXMesh(
                 Rotate3d.RotateYMesh(
-                    Rotate3d.RotateZMesh(new List<ITriangleMeshWithColor> { triangleCopy }, rotation.z),
+                    Rotate3d.RotateZMesh(new List<ITriangleMeshWithColorAndTexture> { triangleCopy }, rotation.z),
                     rotation.y
                 ),
                 rotation.x
             ).First();
         }
 
-        private static TriangleMeshWithColor CopyParticleTriangle(ITriangleMeshWithColor triangle)
+        private static TriangleMeshWithColor CopyParticleTriangle(ITriangleMeshWithColorAndTexture triangle)
         {
             return new TriangleMeshWithColor
             {

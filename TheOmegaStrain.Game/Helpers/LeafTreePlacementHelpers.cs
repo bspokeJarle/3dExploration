@@ -1,4 +1,5 @@
 using TheOmegaStrain.Game.World.Objects;
+using TheOmegaStrain.Common.CommonSetup;
 using TheOmegaStrain.Common.GamePlayHelpers;
 using TheOmegaStrain.Domain;
 using TheOmegaStrain.Gameplay.Controls;
@@ -9,9 +10,9 @@ namespace TheOmegaStrain.Game.Helpers
 {
     public static class LeafTreePlacementHelpers
     {
-        private const int PlatformBufferTiles = 2;
-        private const int NearPlatformMinSpacingTiles = 2;
-        private const int WaterBufferRadius = 1;
+        private static int PlatformBufferTiles => SurfaceSetup.ScaleTileCount(2);
+        private static int NearPlatformMinSpacingTiles => SurfaceSetup.ScaleTileCount(2);
+        private static int WaterBufferRadius => SurfaceSetup.ScaleTileCount(1);
 
         public static void AddLeafTrees(
             I3dWorld world,
@@ -37,7 +38,7 @@ namespace TheOmegaStrain.Game.Helpers
                 map,
                 maxHeight,
                 nearPlatformTarget,
-                nearPlatformSearchRadius,
+                SurfaceSetup.ScaleTileCount(nearPlatformSearchRadius),
                 reservedTiles,
                 placements);
 

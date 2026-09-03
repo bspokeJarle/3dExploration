@@ -119,12 +119,12 @@ namespace TheOmegaStrain.Gameplay.Controls
         public int zoom = 400;
 
         public I3dObject ParentObject { get; set; }
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
-        public ITriangleMeshWithColor? WeaponStartCoordinates { get; set; }
-        public ITriangleMeshWithColor? WeaponGuideCoordinates { get; set; }
-        public ITriangleMeshWithColor? RearStartCoordinates { get; set; }
-        public ITriangleMeshWithColor? RearGuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? WeaponStartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? WeaponGuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? RearStartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? RearGuideCoordinates { get; set; }
 
         public float Thrust { get; set; } = 0;
         public bool ThrustOn { get; set; } = false;
@@ -197,13 +197,13 @@ namespace TheOmegaStrain.Gameplay.Controls
             _surfaceThudSound = soundRegistry.Get("ship_thud");
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) RearStartCoordinates = StartCoord;
             if (GuideCoord != null) RearGuideCoordinates = GuideCoord;
@@ -1153,8 +1153,8 @@ namespace TheOmegaStrain.Gameplay.Controls
             // Each frame, pick which engine emits based on thrust component weights.
             // Over time this distributes particles proportionally between engines
             // while avoiding shared-pool contention from multiple calls.
-            ITriangleMeshWithColor? emitStart = StartCoordinates;
-            ITriangleMeshWithColor? emitGuide = GuideCoordinates;
+            ITriangleMeshWithColorAndTexture? emitStart = StartCoordinates;
+            ITriangleMeshWithColorAndTexture? emitGuide = GuideCoordinates;
 
             if (hasRear)
             {
@@ -1537,7 +1537,13 @@ namespace TheOmegaStrain.Gameplay.Controls
                     if (overLandingPlatform)
                     {
                         ResetUnsafeSurfaceHit();
-                        BeginSurfaceBounceRecovery(reenableGravityAtTop: false);
+
+                        // Resting on the pad re-reports the same contact every frame. The
+                        // thrust block above already cleared `landed`, so re-entering bounce
+                        // recovery here would zero the lift again on the very same frame and
+                        // leave the ship locked against the platform. Thrust always wins.
+                        if (!ThrustOn)
+                            BeginSurfaceBounceRecovery(reenableGravityAtTop: false);
                     }
                     else
                     {
@@ -2106,7 +2112,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             float maxZ = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
                          (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
 
-            GameState.SurfaceState.GlobalMapPosition.x = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.x, Physics.InertiaX * frameScale * travelSpeedMultiplier, 75, maxX);
+            GameState.SurfaceState.GlobalMapPosition.x = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.x, Physics.InertiaX * frameScale * travelSpeedMultiplier, SurfaceSetup.tileSize, maxX);
             GameState.SurfaceState.GlobalMapPosition.z = Physics.WrapPosition(GameState.SurfaceState.GlobalMapPosition.z, Physics.InertiaZ * frameScale * travelSpeedMultiplier, 0, maxZ);
 
             // Apply vertical inertia to screen position (positive InertiaY = up = ObjectOffsets.y decreases)
@@ -2291,7 +2297,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             GameState.SurfaceState.GlobalMapPosition = new Vector3 { x = SurfaceSetup.DefaultMapPosition.x, y = SurfaceSetup.DefaultMapPosition.y, z = SurfaceSetup.DefaultMapPosition.z };
         }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) WeaponStartCoordinates = StartCoord;
             if (GuideCoord != null) WeaponGuideCoordinates = GuideCoord;

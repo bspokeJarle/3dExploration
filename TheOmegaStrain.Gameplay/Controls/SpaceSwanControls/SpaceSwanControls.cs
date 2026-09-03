@@ -42,8 +42,8 @@ namespace TheOmegaStrain.Gameplay.Controls.SpaceSwanControls
         private int _lastFlapSinSign = 0;
         private readonly OmegaMeshRotation _rotate = new();
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -379,7 +379,7 @@ namespace TheOmegaStrain.Gameplay.Controls.SpaceSwanControls
             }
         }
 
-        private List<ITriangleMeshWithColor> RotateAroundPivot(List<ITriangleMeshWithColor> triangles, float pivotY, float pivotZ, float angleDegrees)
+        private List<ITriangleMeshWithColorAndTexture> RotateAroundPivot(List<ITriangleMeshWithColorAndTexture> triangles, float pivotY, float pivotZ, float angleDegrees)
         {
             TranslateTrianglesYZ(triangles, -pivotY, -pivotZ);
             var rotated = _rotate.RotateXMesh(triangles, angleDegrees);
@@ -391,7 +391,7 @@ namespace TheOmegaStrain.Gameplay.Controls.SpaceSwanControls
             return rotated;
         }
 
-        private static void TranslateTrianglesYZ(List<ITriangleMeshWithColor> triangles, float dy, float dz)
+        private static void TranslateTrianglesYZ(List<ITriangleMeshWithColorAndTexture> triangles, float dy, float dz)
         {
             for (int i = 0; i < triangles.Count; i++)
             {
@@ -447,15 +447,15 @@ namespace TheOmegaStrain.Gameplay.Controls.SpaceSwanControls
         {
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 

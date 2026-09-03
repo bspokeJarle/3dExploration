@@ -115,7 +115,7 @@ namespace TheOmegaStrain.Game.World.Objects.LogoCube
             return obj;
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 
@@ -131,9 +131,9 @@ namespace TheOmegaStrain.Game.World.Objects.LogoCube
         //  CUBE SHELL: only +Z and -Z faces as 4x4 squares
         //  (no +Y/-Y faces, and no solid +X/-X faces to avoid "stuff behind decals")
         // ----------------------------------------------------
-        private static List<ITriangleMeshWithColor> CreateCubeShell_PartialFaces(float half, int grid)
+        private static List<ITriangleMeshWithColorAndTexture> CreateCubeShell_PartialFaces(float half, int grid)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             var rand = new Random(1337); // stable colors per run
 
             float x0 = -half, x1 = +half;
@@ -189,7 +189,7 @@ namespace TheOmegaStrain.Game.World.Objects.LogoCube
         // ----------------------------------------------------
 
         // Place decal on a Y face (y constant)
-        private static List<ITriangleMeshWithColor> BuildLogoFaceDecal_YFace(
+        private static List<ITriangleMeshWithColorAndTexture> BuildLogoFaceDecal_YFace(
             string data,
             float faceY,
             Vector3 outwardCenter,
@@ -197,7 +197,7 @@ namespace TheOmegaStrain.Game.World.Objects.LogoCube
             bool flipX,
             bool flipZ)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             if (string.IsNullOrWhiteSpace(data)) return tris;
 
             var lines = data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
@@ -252,7 +252,7 @@ namespace TheOmegaStrain.Game.World.Objects.LogoCube
         // Place decal on an X face (x constant), mapping:
         //   file X -> world Y
         //   file Z -> world Z
-        private static List<ITriangleMeshWithColor> BuildLogoFaceDecal_XFace(
+        private static List<ITriangleMeshWithColorAndTexture> BuildLogoFaceDecal_XFace(
             string data,
             float faceX,
             Vector3 outwardCenter,
@@ -260,7 +260,7 @@ namespace TheOmegaStrain.Game.World.Objects.LogoCube
             bool flipX,
             bool flipZ)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             if (string.IsNullOrWhiteSpace(data)) return tris;
 
             var lines = data.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);

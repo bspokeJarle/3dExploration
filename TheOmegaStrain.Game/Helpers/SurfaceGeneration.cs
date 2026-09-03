@@ -16,8 +16,8 @@ namespace TheOmegaStrain.Game.Helpers
         const float perlinScaleMax = 0.013f;
         const double waterPatchProbability = 0.50;
         const float heightExponent = 1.7f;
-        const int wrapSize = 18;
-        const int landingAreaSize = LandingPlatformHelpers.LandingPlatformSizeTiles;
+        private static int wrapSize => SurfaceSetup.ScaleTileCount(18);
+        private static int landingAreaSize => LandingPlatformHelpers.LandingPlatformSizeTiles;
         public static int maxTrees { get; set; }
         public static int maxHouses { get; set; }
         public static bool IncludeTestTreesInFrontOfPlatform = true;
@@ -137,6 +137,9 @@ namespace TheOmegaStrain.Game.Helpers
             var areas = new List<FishJumpArea>();
             if (map == null || maxAreas <= 0)
                 return areas;
+
+            minWidthTiles = SurfaceSetup.ScaleTileCount(minWidthTiles);
+            minHeightTiles = SurfaceSetup.ScaleTileCount(minHeightTiles);
 
             int mapHeight = map.GetLength(0);
             int mapWidth = map.GetLength(1);
@@ -398,7 +401,9 @@ namespace TheOmegaStrain.Game.Helpers
             {
                 int centerX = random.Next(mapSize * 3 / 8, mapSize * 5 / 8);
                 int centerY = random.Next(mapSize * 3 / 8, mapSize * 5 / 8);
-                int radius = random.Next(10, 15);
+                int radius = random.Next(
+                    SurfaceSetup.ScaleTileCount(10),
+                    SurfaceSetup.ScaleTileCount(15));
 
                 for (int i = -radius; i <= radius; i++)
                 {
@@ -490,7 +495,7 @@ namespace TheOmegaStrain.Game.Helpers
 
             int lakeCount = 3 + random.Next(2);
             int center = mapSize / 2;
-            int minCenter = Math.Max(18, mapSize / 7);
+            int minCenter = Math.Max(SurfaceSetup.ScaleTileCount(18), mapSize / 7);
             int maxCenter = mapSize - minCenter;
             int coastDepth = Math.Max(1, (int)Math.Ceiling(maxHeight * 0.10));
             int shoreDepth = Math.Max(coastDepth + 1, (int)Math.Ceiling(maxHeight * 0.18));
@@ -500,18 +505,29 @@ namespace TheOmegaStrain.Game.Helpers
             {
                 if (lake == 0)
                 {
-                    int nearOffset = Math.Max(18, mapSize / 55);
-                    int nearX = Math.Min(mapSize - 24, center + nearOffset);
-                    int nearY = Math.Max(24, center - nearOffset / 2);
-                    lakeCenters.Add((nearX, nearY, Math.Max(11, mapSize / 30), Math.Max(11, mapSize / 34), NextLakePhase(), NextLakePhase(), NextLakePhase()));
+                    int nearOffset = Math.Max(SurfaceSetup.ScaleTileCount(18), mapSize / 55);
+                    int nearX = Math.Min(mapSize - SurfaceSetup.ScaleTileCount(24), center + nearOffset);
+                    int nearY = Math.Max(SurfaceSetup.ScaleTileCount(24), center - nearOffset / 2);
+                    lakeCenters.Add((
+                        nearX,
+                        nearY,
+                        SurfaceSetup.ScaleTileCount(Math.Max(11, mapSize / 30)),
+                        SurfaceSetup.ScaleTileCount(Math.Max(11, mapSize / 34)),
+                        NextLakePhase(),
+                        NextLakePhase(),
+                        NextLakePhase()));
                     continue;
                 }
 
                 int attempts = 0;
                 while (attempts++ < 80)
                 {
-                    int rx = random.Next(Math.Max(11, mapSize / 28), Math.Max(14, mapSize / 19));
-                    int ry = random.Next(Math.Max(11, mapSize / 34), Math.Max(14, mapSize / 25));
+                    int rx = random.Next(
+                        SurfaceSetup.ScaleTileCount(Math.Max(11, mapSize / 28)),
+                        SurfaceSetup.ScaleTileCount(Math.Max(14, mapSize / 19)));
+                    int ry = random.Next(
+                        SurfaceSetup.ScaleTileCount(Math.Max(11, mapSize / 34)),
+                        SurfaceSetup.ScaleTileCount(Math.Max(14, mapSize / 25)));
                     int x = random.Next(minCenter, maxCenter);
                     int y = random.Next(minCenter, maxCenter);
 
@@ -523,7 +539,7 @@ namespace TheOmegaStrain.Game.Helpers
                     {
                         int dx = x - existing.x;
                         int dy = y - existing.y;
-                        int minDistance = rx + existing.rx + Math.Max(8, mapSize / 35);
+                        int minDistance = rx + existing.rx + SurfaceSetup.ScaleTileCount(Math.Max(8, mapSize / 35));
                         if ((dx * dx) + (dy * dy) < minDistance * minDistance)
                         {
                             overlapsExisting = true;
@@ -541,8 +557,8 @@ namespace TheOmegaStrain.Game.Helpers
 
             foreach (var lake in lakeCenters)
             {
-                int paddedRx = (int)Math.Ceiling(lake.rx * 1.25) + 3;
-                int paddedRy = (int)Math.Ceiling(lake.ry * 1.25) + 3;
+                int paddedRx = (int)Math.Ceiling(lake.rx * 1.25) + SurfaceSetup.ScaleTileCount(3);
+                int paddedRy = (int)Math.Ceiling(lake.ry * 1.25) + SurfaceSetup.ScaleTileCount(3);
                 for (int y = lake.y - paddedRy; y <= lake.y + paddedRy; y++)
                 {
                     if (y < 1 || y >= mapSize - 1)
@@ -790,9 +806,9 @@ namespace TheOmegaStrain.Game.Helpers
             int H(int x, int y) => map[y, x].mapDepth;
 
             // === Tunables ===
-            const int ScreenSize = 18;
-            const int WaterBufferRadius = 1;
-            const int MinTreeSpacing = 1;
+            int screenSize = SurfaceSetup.ScaleTileCount(18);
+            int waterBufferRadius = SurfaceSetup.ScaleTileCount(1);
+            int minTreeSpacing = SurfaceSetup.ScaleTileCount(3);
 
             if (overrideMaxTrees.HasValue)
             {
@@ -873,7 +889,7 @@ namespace TheOmegaStrain.Game.Helpers
                 }
             }
 
-            int screensPerAxis = mapSize / ScreenSize;
+            int screensPerAxis = mapSize / screenSize;
             int totalScreens = screensPerAxis * screensPerAxis;
             float treesPerScreen = (float)numberOfTrees / totalScreens;
             int basePerScreen = (int)Math.Floor(treesPerScreen);
@@ -888,9 +904,9 @@ namespace TheOmegaStrain.Game.Helpers
             {
                 for (int sx = 0; sx < screensPerAxis; sx++)
                 {
-                    int x0 = sx * ScreenSize, y0 = sy * ScreenSize;
-                    int x1 = Math.Min(x0 + ScreenSize, mapSize);
-                    int y1 = Math.Min(y0 + ScreenSize, mapSize);
+                    int x0 = sx * screenSize, y0 = sy * screenSize;
+                    int x1 = Math.Min(x0 + screenSize, mapSize);
+                    int y1 = Math.Min(y0 + screenSize, mapSize);
 
                     var list = new List<(int x, int y, int h)>();
 
@@ -902,7 +918,7 @@ namespace TheOmegaStrain.Game.Helpers
                             int d = H(x, y);
 
                             if (!IsDryByEnum(d, maxHeight)) continue;
-                            if (HasWaterWithinRadius(x, y, WaterBufferRadius)) continue;
+                            if (HasWaterWithinRadius(x, y, waterBufferRadius)) continue;
                             if (!QuadTopLeftIsDry(x, y)) continue;
 
                             list.Add((x, y, d));
@@ -933,7 +949,7 @@ namespace TheOmegaStrain.Game.Helpers
                         candidates.RemoveAt(last);
 
                         if (used.Contains((x, y))) continue;
-                        if (HasTreeWithinRadius(used, x, y, MinTreeSpacing)) continue;
+                        if (HasTreeWithinRadius(used, x, y, minTreeSpacing)) continue;
 
                         used.Add((x, y));
                         treeLocations.Add((x, y, h));
@@ -947,7 +963,7 @@ namespace TheOmegaStrain.Game.Helpers
             int[,] placedPerScreen = new int[screensPerAxis, screensPerAxis]; // [sy, sx]
             foreach (var (x, y, _) in treeLocations)
             {
-                int psx = x / ScreenSize, psy = y / ScreenSize;
+                int psx = x / screenSize, psy = y / screenSize;
                 if (psx >= 0 && psx < screensPerAxis && psy >= 0 && psy < screensPerAxis)
                     placedPerScreen[psy, psx]++;
             }
@@ -971,7 +987,7 @@ namespace TheOmegaStrain.Game.Helpers
             {
                 if (treeLocations.Count >= numberOfTrees) break;
                 if (used.Contains((x, y))) continue;
-                if (HasTreeWithinRadius(used, x, y, MinTreeSpacing)) continue;
+                if (HasTreeWithinRadius(used, x, y, minTreeSpacing)) continue;
 
                 used.Add((x, y));
                 treeLocations.Add((x, y, h));
@@ -988,9 +1004,9 @@ namespace TheOmegaStrain.Game.Helpers
 
                 int d = H(x, y);
                 if (!IsDryByEnum(d, maxHeight)) continue;
-                if (HasWaterWithinRadius(x, y, WaterBufferRadius)) continue;
+                if (HasWaterWithinRadius(x, y, waterBufferRadius)) continue;
                 if (!QuadTopLeftIsDry(x, y)) continue;
-                if (HasTreeWithinRadius(used, x, y, MinTreeSpacing)) continue;
+                if (HasTreeWithinRadius(used, x, y, minTreeSpacing)) continue;
 
                 used.Add((x, y));
                 treeLocations.Add((x, y, d));
@@ -1044,7 +1060,9 @@ namespace TheOmegaStrain.Game.Helpers
                 return true;
             }
 
-            int spacing = Math.Max(8, placementSpacing ?? 40);
+            int spacing = Math.Max(
+                SurfaceSetup.ScaleTileCount(8),
+                placementSpacing ?? SurfaceSetup.ScaleTileCount(40));
             int start = spacing / 2;
             int endX = mapSize - spacing / 2 - 1;
             int endY = mapSize - spacing / 2 - 1;
@@ -1271,9 +1289,9 @@ namespace TheOmegaStrain.Game.Helpers
             Log("=== ENTER FindTowerPlacements ===");
             Log($"Map: sizeX={sizeX} sizeY={sizeY} mapSize={mapSize} maxHeight={maxHeight} totalTowers={totalTowers}");
 
-            int nearRadius = 17;
-            int spacing = 6;                 // same “looks good” value you liked
-            int landingBufferTiles = 1;      // exclude platform + 1 tile ring rundt det
+            int nearRadius = SurfaceSetup.ScaleTileCount(17);
+            int spacing = SurfaceSetup.ScaleTileCount(6);
+            int landingBufferTiles = SurfaceSetup.ScaleTileCount(1);
 
             // ------------------------------------------------------------
             // 0) Find landing platform robustly (8x8 flat block, highest depth near center)

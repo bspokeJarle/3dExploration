@@ -25,15 +25,10 @@ audio foundations, timing, and other shared game-loop functionality.
 - `docs/`: architecture and engine usage documentation.
 - `installer/`: installer setup and related notes.
 
-## RetroMesh Engine
+## Local Setup
 
-The Omega Strain consumes RetroMesh as a local NuGet package:
-
-```text
-..\RetroMesh\artifacts\packages
-```
-
-For local development, keep the related repositories as siblings:
+For local development, keep The Omega Strain and RetroMesh as sibling
+repositories:
 
 ```text
 Repositories/
@@ -42,16 +37,41 @@ Repositories/
   RetroMesh.GameTemplate/
 ```
 
-Run the bootstrap script from a fresh checkout. It clones RetroMesh next to this
-repository as `..\RetroMesh\` if needed, builds the package version configured
-in `Directory.Build.props`, and can restore Omega afterwards:
+The Omega Strain references the local RetroMesh build through `RetroMeshRoot` in
+`Directory.Build.props`. The default points to `..\RetroMesh\`, so a normal
+sibling checkout builds without machine-specific paths.
+
+From a fresh checkout, run:
 
 ```powershell
-.\build\Prepare-RetroMeshPackage.ps1 -RestoreOmega
+.\build\Prepare-RetroMeshDependencies.ps1 -RestoreOmega -BuildOmega
 ```
 
-The package version is controlled by `RetroMeshEnginePackageVersion` in
-`Directory.Build.props`.
+That script clones RetroMesh next to this repository if it is missing, builds
+the RetroMesh projects, optionally runs the engine tests, restores this solution,
+and builds The Omega Strain.
+
+If RetroMesh lives somewhere else, override the root when building:
+
+```powershell
+dotnet build .\TheOmegaStrain.sln -p:RetroMeshRoot=C:\Path\To\RetroMesh\
+```
+
+Use Release for the Steam/installer output:
+
+```powershell
+.\build\Prepare-RetroMeshDependencies.ps1 -Configuration Release -RestoreOmega -BuildOmega
+dotnet build .\TheOmegaStrain.sln -c Release --no-restore
+```
+
+To force the old WPF renderer while debugging machine-specific Direct3D issues:
+
+```powershell
+$env:OMEGASTRAIN_RENDERER = "wpf"
+dotnet run --project .\TheOmegaStrain.Wpf\TheOmegaStrain.Wpf.csproj
+```
+
+## RetroMesh Engine
 
 The general engine/game boundary is documented in
 `docs/USING_RETROMESH_ENGINE.md`.
@@ -103,3 +123,9 @@ The short-term goal is to keep The Omega Strain stable and shippable while
 RetroMesh becomes a clean framework for future games. Game-specific behavior
 should stay in the Omega projects; reusable rendering, geometry, projection,
 collision, timing, and engine services should live in RetroMesh.
+
+## AI Agent Guidance
+
+AI coding agents should read `AGENTS.md` before changing code. For concrete
+source-code patterns and test pointers, use `docs/AI_SOURCE_MAP.md`.
+Project-specific Codex skills live under `.codex/skills/`.

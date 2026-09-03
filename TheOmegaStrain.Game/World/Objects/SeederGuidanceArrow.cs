@@ -70,9 +70,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  SHAFT / BODY
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? ArrowBody()
+        public static List<ITriangleMeshWithColorAndTexture>? ArrowBody()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float xBack = -shaftLength * 0.5f;
             float xFront = shaftLength * 0.5f;
@@ -109,9 +109,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  ARROW HEAD
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? ArrowHead()
+        public static List<ITriangleMeshWithColorAndTexture>? ArrowHead()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float shaftFrontX = shaftLength * 0.5f;
             float headBaseX = shaftFrontX - 2f;
@@ -209,9 +209,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  BEVELS / EXTRA DEPTH
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? ArrowBevels()
+        public static List<ITriangleMeshWithColorAndTexture>? ArrowBevels()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float xBack = -shaftLength * 0.5f + tailInset;
             float xFront = shaftLength * 0.5f - 1.5f;
@@ -244,7 +244,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddLongBevel(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 start,
             Vector3 end,
             Vector3 outward,
@@ -273,7 +273,7 @@ namespace TheOmegaStrain.Game.World.Objects
         //  HELPERS
         // ----------------------------------------------------
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null)
                 return;

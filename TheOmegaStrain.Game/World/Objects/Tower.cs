@@ -142,7 +142,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tower;
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 
@@ -160,7 +160,7 @@ namespace TheOmegaStrain.Game.World.Objects
 
         // Base building: simple box from z=0..baseHeight.
         // Uses local center for correct outward normals (hidden-face).
-        public static List<ITriangleMeshWithColor>? TowerBase()
+        public static List<ITriangleMeshWithColorAndTexture>? TowerBase()
         {
             float z0 = 0f;
             float z1 = baseHeight;
@@ -177,9 +177,9 @@ namespace TheOmegaStrain.Game.World.Objects
         /// Door + windows pushed outward from the base walls to avoid z-fighting / sorting issues.
         /// Decals are NOT shaded.
         /// </summary>
-        public static List<ITriangleMeshWithColor>? TowerBaseDecals_DoorAndWindows()
+        public static List<ITriangleMeshWithColorAndTexture>? TowerBaseDecals_DoorAndWindows()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float baseZ0 = 0f;
             float baseZ1 = baseHeight;
@@ -281,7 +281,7 @@ namespace TheOmegaStrain.Game.World.Objects
 
         // Shaft: tapered cylinder/frustum sitting on top of base.
         // Uses local center at shaft mid-height for correct hidden-face.
-        public static List<ITriangleMeshWithColor>? TowerShaft()
+        public static List<ITriangleMeshWithColorAndTexture>? TowerShaft()
         {
             int detailLevel = GetDetailLevelOrPreset(ShaftDetailOverride);
             int segments = GetSegmentsForPart("Shaft", detailLevel);
@@ -306,7 +306,7 @@ namespace TheOmegaStrain.Game.World.Objects
 
         // Head outer frame: wider frustum section.
         // Uses local center at head mid-height for correct hidden-face.
-        public static List<ITriangleMeshWithColor>? TowerHeadFrame()
+        public static List<ITriangleMeshWithColorAndTexture>? TowerHeadFrame()
         {
             int detailLevel = GetDetailLevelOrPreset(HeadDetailOverride);
             int segments = GetSegmentsForPart("Head", detailLevel);
@@ -331,7 +331,7 @@ namespace TheOmegaStrain.Game.World.Objects
 
         // Head glass ring: inset frustum band.
         // Glass kept FLAT (no shading) for readability.
-        public static List<ITriangleMeshWithColor>? TowerHeadGlass()
+        public static List<ITriangleMeshWithColorAndTexture>? TowerHeadGlass()
         {
             int detailLevel = GetDetailLevelOrPreset(HeadDetailOverride);
             int segments = GetSegmentsForPart("Head", detailLevel);
@@ -360,7 +360,7 @@ namespace TheOmegaStrain.Game.World.Objects
 
         // Roof cap: frustum to smaller radius with top cap.
         // Uses local center at roof mid-height for correct hidden-face.
-        public static List<ITriangleMeshWithColor>? TowerRoof()
+        public static List<ITriangleMeshWithColorAndTexture>? TowerRoof()
         {
             int detailLevel = GetDetailLevelOrPreset(HeadDetailOverride);
             int segments = GetSegmentsForPart("Head", detailLevel);
@@ -388,12 +388,12 @@ namespace TheOmegaStrain.Game.World.Objects
 
         // Radar: mast box + dish disc.
         // Uses local centers for mast/tip/dish to keep outward normals correct.
-        public static List<ITriangleMeshWithColor>? TowerRadar()
+        public static List<ITriangleMeshWithColorAndTexture>? TowerRadar()
         {
             int detailLevel = GetDetailLevelOrPreset(RadarDetailOverride);
             int segments = GetSegmentsForPart("Radar", detailLevel);
 
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float roofTopZ = baseHeight + shaftHeight + headHeight + roofHeight;
 
@@ -490,9 +490,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  GEOMETRY HELPERS (shaded vs flat)
         // ----------------------------------------------------
 
-        private static List<ITriangleMeshWithColor> CreateBox(Vector3 min, Vector3 max, Vector3 center, string baseHexColor, bool shaded)
+        private static List<ITriangleMeshWithColorAndTexture> CreateBox(Vector3 min, Vector3 max, Vector3 center, string baseHexColor, bool shaded)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var p000 = new Vector3 { x = min.x, y = min.y, z = min.z };
             var p001 = new Vector3 { x = min.x, y = min.y, z = max.z };
@@ -514,7 +514,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static List<ITriangleMeshWithColor> CreateFrustum(
+        private static List<ITriangleMeshWithColorAndTexture> CreateFrustum(
             int segments,
             float radiusBottom,
             float radiusTop,
@@ -526,7 +526,7 @@ namespace TheOmegaStrain.Game.World.Objects
             bool capTop,
             bool shaded)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var ringBottom = GenerateCirclePoints(segments, radiusBottom, zBottom);
             var ringTop = GenerateCirclePoints(segments, radiusTop, zTop);
@@ -646,7 +646,7 @@ namespace TheOmegaStrain.Game.World.Objects
         // ----------------------------------------------------
 
         private static void AddQuadOutward(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 v1,
             Vector3 v2,
             Vector3 v3,

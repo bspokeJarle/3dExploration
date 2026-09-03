@@ -5,7 +5,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="RetroMesh.Engine" Version="$(RetroMeshEnginePackageVersion)" />
+    <Reference Include="RetroMesh.Engine">
+      <HintPath>$(RetroMeshEnginePath)</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TheOmegaStrain.Common\TheOmegaStrain.Common.csproj" />

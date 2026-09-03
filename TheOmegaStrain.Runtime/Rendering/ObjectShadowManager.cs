@@ -178,7 +178,7 @@ namespace TheOmegaStrain.Runtime.Rendering
             else if (isTowerLike)
             {
                 // Direct tile lookup by SurfaceBasedId (O(N) scan, single pass, no closure)
-                ITriangleMeshWithColor matchedTile = null;
+                ITriangleMeshWithColorAndTexture matchedTile = null;
                 if (inhabitant.SurfaceBasedId != null)
                 {
                     long sid = (long)inhabitant.SurfaceBasedId;
@@ -311,7 +311,7 @@ namespace TheOmegaStrain.Runtime.Rendering
             {
                 var part = simplifiedShadowPart;
 
-                var shadowTriangles = new List<ITriangleMeshWithColor>(part.Triangles.Count);
+                var shadowTriangles = new List<ITriangleMeshWithColorAndTexture>(part.Triangles.Count);
                 var projectionOptions = CreateObjectShadowProjectionOptions(
                     shadowBaseX,
                     shadowBaseY,
@@ -370,7 +370,7 @@ namespace TheOmegaStrain.Runtime.Rendering
         }
 
         internal static bool TryGetSurfaceGroundPoint(
-            IReadOnlyList<ITriangleMeshWithColor> rotatedTiles,
+            IReadOnlyList<ITriangleMeshWithColorAndTexture> rotatedTiles,
             float targetX,
             float targetZ,
             out float groundX,

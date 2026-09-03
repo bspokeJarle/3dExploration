@@ -36,7 +36,7 @@ public class BomberBombControlsTests
                 {
                     PartName = "BombPart",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {
@@ -95,7 +95,7 @@ public class BomberBombControlsTests
                 {
                     PartName = "BombPart",
                     IsVisible = true,
-                    Triangles = new List<ITriangleMeshWithColor>
+                    Triangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {

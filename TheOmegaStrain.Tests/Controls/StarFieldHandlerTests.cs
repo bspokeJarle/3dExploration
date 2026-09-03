@@ -55,6 +55,67 @@ public class StarFieldHandlerTests
     }
 
     [TestMethod]
+    public void GenerateStarfield_KeepsStarRotationZeroSoGeometryDoesNotAccumulate()
+    {
+        var handler = new StarFieldHandler(CreateSurface());
+        handler.GenerateStarfield();
+
+        var first = handler.GetStars()[0];
+        var startVert = first.ObjectParts[0].Triangles[0].vert1;
+        float startX = startVert.x;
+        float startY = startVert.y;
+
+        for (int frame = 0; frame < 30; frame++)
+            handler.GenerateStarfield();
+
+        // Stars are appended after the per-frame deep copy, so a non-zero Rotation would be
+        // re-applied to these exact triangles every frame and the angle would accumulate.
+        foreach (var star in handler.GetStars())
+        {
+            Assert.AreEqual(0f, star.Rotation.x);
+            Assert.AreEqual(0f, star.Rotation.y);
+            Assert.AreEqual(0f, star.Rotation.z);
+        }
+
+        Assert.AreEqual(startX, first.ObjectParts[0].Triangles[0].vert1.x, 0.0001f,
+            "Star geometry must not drift between frames.");
+        Assert.AreEqual(startY, first.ObjectParts[0].Triangles[0].vert1.y, 0.0001f,
+            "Star geometry must not drift between frames.");
+    }
+
+    [TestMethod]
+    public void GenerateStarfield_ClampsApparentSizeWithoutShrinkingOverTime()
+    {
+        var handler = new StarFieldHandler(CreateSurface());
+        handler.GenerateStarfield();
+
+        var first = handler.GetStars()[0];
+        float afterFirstFrame = MaxVertexRadius(first);
+
+        // The clamp must be recomputed from an immutable base mesh. If it were applied to the
+        // live triangles the factor would compound and stars would collapse to nothing, since
+        // stars bypass the per-frame deep copy.
+        for (int frame = 0; frame < 60; frame++)
+            handler.GenerateStarfield();
+
+        Assert.AreEqual(afterFirstFrame, MaxVertexRadius(first), 0.0001f,
+            "Star size must not compound across frames.");
+        Assert.IsTrue(afterFirstFrame > 0f, "Star must not collapse to a point.");
+    }
+
+    private static float MaxVertexRadius(OmegaObject3D star)
+    {
+        float max = 0f;
+        foreach (var tri in star.ObjectParts[0].Triangles)
+        {
+            foreach (var v in new[] { tri.vert1, tri.vert2, tri.vert3 })
+                max = MathF.Max(max, MathF.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z));
+        }
+
+        return max;
+    }
+
+    [TestMethod]
     public void GenerateStarfield_FadesOutBelowAltitudeWithoutClearingPool()
     {
         var handler = new StarFieldHandler(CreateSurface());
@@ -100,7 +161,7 @@ public class StarFieldHandlerTests
     {
         return new Surface
         {
-            RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>()
+            RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>()
         };
     }
 

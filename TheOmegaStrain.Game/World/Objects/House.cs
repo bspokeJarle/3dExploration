@@ -69,7 +69,7 @@ namespace TheOmegaStrain.Game.World.Objects
             // ground. Use as many triangles as the outline needs — no hard
             // limit. House here = 7 tris: main body + overhanging roof +
             // garage + chimney.
-            var shadowTris = new List<ITriangleMeshWithColor>(7);
+            var shadowTris = new List<ITriangleMeshWithColorAndTexture>(7);
             const string sc = OmegaObject3DHelpers.ShadowColorHex;
 
             // --- Main house box (2 tris) ---
@@ -119,9 +119,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return house;
         }
 
-        public static List<ITriangleMeshWithColor>? HouseDetails()
+        public static List<ITriangleMeshWithColorAndTexture>? HouseDetails()
         {
-            var details = new List<ITriangleMeshWithColor>();
+            var details = new List<ITriangleMeshWithColorAndTexture>();
             string doorHandleColor = "D4A017"; // Gullfarge for dørhåndtak
             float handleSize = 1.2f;
             float handleOffset = 2.5f;
@@ -138,9 +138,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return details;
         }
 
-        public static List<ITriangleMeshWithColor>? HouseWalls()
+        public static List<ITriangleMeshWithColorAndTexture>? HouseWalls()
         {
-            var walls = new List<ITriangleMeshWithColor>();
+            var walls = new List<ITriangleMeshWithColorAndTexture>();
             string wallColor = "D9B382"; // Mer naturlig gulaktig for veggene
 
             var v1 = new Vector3 { x = -houseWidth / 2, y = -houseDepth / 2, z = 0 };
@@ -165,9 +165,9 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
 
-        public static List<ITriangleMeshWithColor>? HouseWindows()
+        public static List<ITriangleMeshWithColorAndTexture>? HouseWindows()
         {
-            var windows = new List<ITriangleMeshWithColor>();
+            var windows = new List<ITriangleMeshWithColorAndTexture>();
             string windowColor = "A0C4FF"; // Lys blå farge for vinduer
             float windowWidth = 6f;
             float windowHeight = 6f;
@@ -184,9 +184,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return windows;
         }
 
-        public static List<ITriangleMeshWithColor>? HouseDoor()
+        public static List<ITriangleMeshWithColorAndTexture>? HouseDoor()
         {
-            var door = new List<ITriangleMeshWithColor>();
+            var door = new List<ITriangleMeshWithColorAndTexture>();
             string doorColor = "6D4C41"; // Mørk brun farge for døren
             float doorWidth = 8f;
             float doorHeight = 12f;
@@ -202,9 +202,9 @@ namespace TheOmegaStrain.Game.World.Objects
 
             return door;
         }
-        public static List<ITriangleMeshWithColor>? GarageWindow()
+        public static List<ITriangleMeshWithColorAndTexture>? GarageWindow()
         {
-            var window = new List<ITriangleMeshWithColor>();
+            var window = new List<ITriangleMeshWithColorAndTexture>();
             string windowColor = "0000FF"; // Blå farge for vinduet
             float windowWidth = 5f;
             float windowHeight = 5f;
@@ -220,9 +220,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return window;
         }
 
-        public static List<ITriangleMeshWithColor>? HouseRoof()
+        public static List<ITriangleMeshWithColorAndTexture>? HouseRoof()
         {
-            var roof = new List<ITriangleMeshWithColor>();
+            var roof = new List<ITriangleMeshWithColorAndTexture>();
             string roofColor = "8B0000"; // Mørk rød for taket
             float roofOverhang = 3.0f; // Overheng i alle retninger
 
@@ -240,9 +240,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return roof;
         }
 
-        public static List<ITriangleMeshWithColor>? GarageRoof()
+        public static List<ITriangleMeshWithColorAndTexture>? GarageRoof()
         {
-            var roof = new List<ITriangleMeshWithColor>();
+            var roof = new List<ITriangleMeshWithColorAndTexture>();
             string roofColor = "AA0000"; // Red for garage roof
 
             var v1 = new Vector3 { x = -houseWidth / 2 - garageWidth, y = -garageDepth / 2, z = garageHeight };
@@ -256,9 +256,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return roof;
         }
 
-        public static List<ITriangleMeshWithColor>? GarageStructure()
+        public static List<ITriangleMeshWithColorAndTexture>? GarageStructure()
         {
-            var garage = new List<ITriangleMeshWithColor>();
+            var garage = new List<ITriangleMeshWithColorAndTexture>();
             string garageColor = "B0A090"; // Neutral grayish tone for walls
 
             var v1 = new Vector3 { x = -houseWidth / 2 - garageWidth, y = -garageDepth / 2, z = 0 };
@@ -285,9 +285,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return garage;
         }
 
-        public static List<ITriangleMeshWithColor>? GarageDoor()
+        public static List<ITriangleMeshWithColorAndTexture>? GarageDoor()
         {
-            var door = new List<ITriangleMeshWithColor>();
+            var door = new List<ITriangleMeshWithColorAndTexture>();
             string doorColor = "777777"; // Gray for garage door
 
             float doorInset = 2.5f;

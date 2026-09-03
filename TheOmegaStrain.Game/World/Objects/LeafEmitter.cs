@@ -37,9 +37,9 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> CreateLeafBuffer()
+        private static List<ITriangleMeshWithColorAndTexture> CreateLeafBuffer()
         {
-            var triangles = new List<ITriangleMeshWithColor>(LeafDriftControls.TargetLeafCount);
+            var triangles = new List<ITriangleMeshWithColorAndTexture>(LeafDriftControls.TargetLeafCount);
             for (int i = 0; i < LeafDriftControls.TargetLeafCount; i++)
             {
                 triangles.Add(new TriangleMeshWithColor

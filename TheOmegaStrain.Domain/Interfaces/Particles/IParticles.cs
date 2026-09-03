@@ -20,13 +20,13 @@ namespace TheOmegaStrain.Domain
         /// </summary>
         int MaxParticlesOverride { get; set; }
 
-        void ReleaseParticles(ITriangleMeshWithColor Trajectory, ITriangleMeshWithColor StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion, float upwardVelocityBoost = 0f);
+        void ReleaseParticles(ITriangleMeshWithColorAndTexture Trajectory, ITriangleMeshWithColorAndTexture StartPosition, IVector3 WorldPosition, IObjectMovement ParentShip, int Thrust, bool? explosion, float upwardVelocityBoost = 0f);
         void MoveParticles();
     }
 
     public interface IParticle
     {
-        ITriangleMeshWithColor ParticleTriangle { get; set; }
+        ITriangleMeshWithColorAndTexture ParticleTriangle { get; set; }
         IVector3 Velocity { get; set; }
         IVector3 Acceleration { get; set; }
         long VariedStart { get; set; }

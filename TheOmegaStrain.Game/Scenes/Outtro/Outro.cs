@@ -10,7 +10,7 @@ namespace TheOmegaStrain.Game.Scenes.Outro
 {
     public class Outro : IScene
     {
-        public GameModes GameMode { get; } = GameModes.Live;
+        public GameModes GameMode { get; } = GameModes.Playback;
         public string SceneMusic { get; } = "music_outro";
         public SceneTypes SceneType { get; } = SceneTypes.Outro;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.HillsWoods;

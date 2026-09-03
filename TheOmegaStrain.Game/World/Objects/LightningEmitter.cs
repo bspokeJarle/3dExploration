@@ -37,9 +37,9 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> CreateLightningBuffer()
+        private static List<ITriangleMeshWithColorAndTexture> CreateLightningBuffer()
         {
-            var triangles = new List<ITriangleMeshWithColor>(LightningControls.TargetTriangleCount);
+            var triangles = new List<ITriangleMeshWithColorAndTexture>(LightningControls.TargetTriangleCount);
             for (int i = 0; i < LightningControls.TargetTriangleCount; i++)
             {
                 triangles.Add(new TriangleMeshWithColor

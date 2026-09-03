@@ -15,8 +15,8 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
         // -------------------------------------------------------
         //  Interface properties
         // -------------------------------------------------------
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -55,16 +55,16 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
         // -------------------------------------------------------
         //  Wing-engine particle guides (left & right)
         // -------------------------------------------------------
-        private ITriangleMeshWithColor? _leftEngineStart;
-        private ITriangleMeshWithColor? _leftEngineGuide;
-        private ITriangleMeshWithColor? _rightEngineStart;
-        private ITriangleMeshWithColor? _rightEngineGuide;
+        private ITriangleMeshWithColorAndTexture? _leftEngineStart;
+        private ITriangleMeshWithColorAndTexture? _leftEngineGuide;
+        private ITriangleMeshWithColorAndTexture? _rightEngineStart;
+        private ITriangleMeshWithColorAndTexture? _rightEngineGuide;
 
         // -------------------------------------------------------
         //  Weapon guides (from rotated WeaponStartGuide / WeaponDirectionGuide parts)
         // -------------------------------------------------------
-        private ITriangleMeshWithColor? _weaponStartGuide;
-        private ITriangleMeshWithColor? _weaponDirectionGuide;
+        private ITriangleMeshWithColorAndTexture? _weaponStartGuide;
+        private ITriangleMeshWithColorAndTexture? _weaponDirectionGuide;
 
         // Local logging gate — paired with global Logger.EnableFileLogging. Leave false by default
         // to avoid noise; flip to true when debugging the guide/fire pipeline.
@@ -88,17 +88,17 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
         // Original (unrotated) triangle baselines for engine + pod parts — captured once on first AnimateEngines call.
         // The whole pod assembly (pod housing, connector, nacelle vents, engine + engine guide) rotates together
         // around the ship centerline so the engine pods visibly swing as one unit.
-        private List<ITriangleMeshWithColor>? _leftEngineOriginalTris;
-        private List<ITriangleMeshWithColor>? _rightEngineOriginalTris;
-        private List<ITriangleMeshWithColor>? _leftEngineGuideOriginalTris;
-        private List<ITriangleMeshWithColor>? _rightEngineGuideOriginalTris;
-        private List<ITriangleMeshWithColor>? _leftEngineStartOriginalTris;
-        private List<ITriangleMeshWithColor>? _rightEngineStartOriginalTris;
-        private List<ITriangleMeshWithColor>? _leftPodOriginalTris;
-        private List<ITriangleMeshWithColor>? _rightPodOriginalTris;
-        private List<ITriangleMeshWithColor>? _leftConnectorOriginalTris;
-        private List<ITriangleMeshWithColor>? _rightConnectorOriginalTris;
-        private List<ITriangleMeshWithColor>? _podNacelleVentsOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _leftEngineOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _rightEngineOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _leftEngineGuideOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _rightEngineGuideOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _leftEngineStartOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _rightEngineStartOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _leftPodOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _rightPodOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _leftConnectorOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _rightConnectorOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _podNacelleVentsOriginalTris;
 
         // -------------------------------------------------------
         //  Cannon muzzle ball spin animation
@@ -108,7 +108,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
         // -------------------------------------------------------
         private const float MuzzleSpinSpeed = 180f;     // degrees per second
         private float _muzzleSpinAngle = 0f;
-        private List<ITriangleMeshWithColor>? _muzzleOriginalTris;
+        private List<ITriangleMeshWithColorAndTexture>? _muzzleOriginalTris;
 
         // -------------------------------------------------------
         //  Engine color animation (idle dark-red → active yellow)
@@ -592,7 +592,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
             return new Vector3 { x = map.x, y = 0, z = map.z };
         }
 
-        private ITriangleMeshWithColor? GetCurrentFrameRotatedGuide(I3dObject theObject, string partName, float rotX, float rotY, float rotZ)
+        private ITriangleMeshWithColorAndTexture? GetCurrentFrameRotatedGuide(I3dObject theObject, string partName, float rotX, float rotY, float rotZ)
         {
             var part = theObject.ObjectParts.Find(p => p.PartName == partName);
             if (part?.Triangles == null || part.Triangles.Count == 0)
@@ -609,7 +609,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
                 vert3 = new Vector3 { x = src.vert3.x, y = src.vert3.y, z = src.vert3.z },
             };
 
-            var mesh = new List<ITriangleMeshWithColor> { tri };
+            var mesh = new List<ITriangleMeshWithColorAndTexture> { tri };
             mesh = _rotate.RotateZMesh(mesh, rotZ);
             mesh = _rotate.RotateYMesh(mesh, rotY);
             mesh = _rotate.RotateXMesh(mesh, rotX);
@@ -627,7 +627,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
         // -------------------------------------------------------
         //  Particles
         // -------------------------------------------------------
-        private void ReleaseWingParticles(I3dObject theObject, ITriangleMeshWithColor? start, ITriangleMeshWithColor? guide)
+        private void ReleaseWingParticles(I3dObject theObject, ITriangleMeshWithColorAndTexture? start, ITriangleMeshWithColorAndTexture? guide)
         {
             if (start == null || guide == null || ParentObject?.Particles == null) return;
             var worldPos = (Vector3)theObject.WorldPosition;
@@ -648,7 +648,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
                 y = 2f * startPos.y - guidePos.y,
                 z = 2f * startPos.z - guidePos.z
             };
-            ITriangleMeshWithColor reversedGuide = new TriangleMeshWithColor
+            ITriangleMeshWithColorAndTexture reversedGuide = new TriangleMeshWithColor
             {
                 Color = guide.Color,
                 noHidden = guide.noHidden,
@@ -784,7 +784,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
         // local frame: nose-up/nose-down). Z-axis rotation keeps the lateral (Y) position
         // fixed, so the pod stays on its wing while the fore/aft end swings up and down.
         private void ApplyPivotedRotation(I3dObject theObject, string partName,
-            List<ITriangleMeshWithColor>? originalTris, Vector3 pivot, float angle)
+            List<ITriangleMeshWithColorAndTexture>? originalTris, Vector3 pivot, float angle)
         {
             if (originalTris == null || originalTris.Count == 0) return;
             var part = theObject.ObjectParts.Find(p => p.PartName == partName);
@@ -820,7 +820,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
             part.Triangles = TranslateMesh(rotated, pivot);
         }
 
-        private void ApplyEngineRotation(I3dObject theObject, string partName, List<ITriangleMeshWithColor>? originalTris)
+        private void ApplyEngineRotation(I3dObject theObject, string partName, List<ITriangleMeshWithColorAndTexture>? originalTris)
         {
             if (originalTris == null || originalTris.Count == 0) return;
             var part = theObject.ObjectParts.Find(p => p.PartName == partName);
@@ -857,7 +857,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
             }
         }
 
-        private static Vector3 GetPartCenter(List<ITriangleMeshWithColor> triangles)
+        private static Vector3 GetPartCenter(List<ITriangleMeshWithColorAndTexture> triangles)
         {
             float minX = float.MaxValue, minY = float.MaxValue, minZ = float.MaxValue;
             float maxX = float.MinValue, maxY = float.MinValue, maxZ = float.MinValue;
@@ -873,9 +873,9 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
             return new Vector3 { x = (minX + maxX) * 0.5f, y = (minY + maxY) * 0.5f, z = (minZ + maxZ) * 0.5f };
         }
 
-        private static List<ITriangleMeshWithColor> TranslateMesh(List<ITriangleMeshWithColor> triangles, Vector3 offset)
+        private static List<ITriangleMeshWithColorAndTexture> TranslateMesh(List<ITriangleMeshWithColorAndTexture> triangles, Vector3 offset)
         {
-            var result = new List<ITriangleMeshWithColor>(triangles.Count);
+            var result = new List<ITriangleMeshWithColorAndTexture>(triangles.Count);
             foreach (var tri in triangles)
             {
                 result.Add(new TriangleMeshWithColor
@@ -1010,19 +1010,19 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
         //  Guide coordinate setters
         // -------------------------------------------------------
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) _leftEngineStart = StartCoord;
             if (GuideCoord != null) _leftEngineGuide = GuideCoord;
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) _rightEngineStart = StartCoord;
             if (GuideCoord != null) _rightEngineGuide = GuideCoord;
         }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) _weaponStartGuide = StartCoord;
             if (GuideCoord != null) _weaponDirectionGuide = GuideCoord;

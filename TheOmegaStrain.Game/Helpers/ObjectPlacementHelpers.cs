@@ -14,7 +14,7 @@ namespace TheOmegaStrain.Game.Helpers
 
         private static Vector3 CreateVector(float x, float y, float z) => new(x, y, z);
 
-        private static ITriangleMeshWithColor? GetSurfaceTriangle(OmegaObject3D obj)
+        private static ITriangleMeshWithColorAndTexture? GetSurfaceTriangle(OmegaObject3D obj)
         {
             var surface = obj?.ParentSurface;
             if (surface == null || obj?.SurfaceBasedId == null)

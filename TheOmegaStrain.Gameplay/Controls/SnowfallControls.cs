@@ -10,8 +10,8 @@ namespace TheOmegaStrain.Gameplay.Controls
 {
     public sealed class SnowfallControls : IObjectMovement
     {
-        public const int VisibleFlakeTarget = 150;
-        private const int OffscreenFlakeReserve = 250;
+        public const int VisibleFlakeTarget = 120;
+        private const int OffscreenFlakeReserve = 200;
         public const int TargetFlakeCount = VisibleFlakeTarget + OffscreenFlakeReserve;
         public const float StartGuideYOffset = -1000f;
         public const float DepthSpread = 1000f;
@@ -20,8 +20,10 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float DepthStartZ = 750f;
         private const float DepthBehindSpread = 1800f;
         private const float DepthAheadSpread = 3400f;
-        private const float MinSize = 1.5f;
-        private const float MaxSize = 3.3f;
+        private const float MinSize = 0.75f;
+        private const float MaxSize = 1.65f;
+        // Upper bound for on-screen size, so flakes we fly straight into stay natural.
+        private const float MaxApparentSize = 4.5f;
         private const float MinFallSpeed = 1.2f;
         private const float MaxFallSpeed = 3.0f;
         private const float HorizontalDrift = 0.28f;
@@ -54,8 +56,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private readonly WorldWeatherField _weatherField;
         private readonly List<Snowflake> _flakes = new(TargetFlakeCount);
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject? ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -197,7 +199,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             return flake;
         }
 
-        private static void WriteTriangle(ITriangleMeshWithColor triangle, Snowflake flake, IVector3 mapPosition, float objectZ)
+        private static void WriteTriangle(ITriangleMeshWithColorAndTexture triangle, Snowflake flake, IVector3 mapPosition, float objectZ)
         {
             float opacity = GlobalSnowOpacity;
             if (opacity <= 0.01f)
@@ -216,7 +218,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             float scale = WorldWeatherField.GetProjectionScale(relativeZ, objectZ);
             float centerX = relativeX / scale;
             float centerY = flake.OffsetY / scale;
-            float halfSize = flake.Size * opacity;
+            float halfSize = WorldWeatherField.ClampApparentSize(flake.Size * opacity, scale, MaxApparentSize);
 
             triangle.Color = SnowColor;
             triangle.noHidden = true;
@@ -235,7 +237,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             triangle.vert3.z = relativeZ;
         }
 
-        private static ITriangleMeshWithColor CreateSnowTriangle()
+        private static ITriangleMeshWithColorAndTexture CreateSnowTriangle()
         {
             return new TriangleMeshWithColor
             {
@@ -269,9 +271,9 @@ namespace TheOmegaStrain.Gameplay.Controls
             _weatherField.Reset();
         }
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
         private sealed class Snowflake
         {

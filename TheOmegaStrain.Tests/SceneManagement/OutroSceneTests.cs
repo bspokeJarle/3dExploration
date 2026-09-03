@@ -342,8 +342,9 @@ public class OutroSceneTests
             $"Outro ship should enter from the right side. X offset was {ship.ObjectOffsets.x:0.0}.");
         Assert.IsTrue(ship.ObjectOffsets.x < ScreenSetup.screenSizeX * 0.5f,
             $"Outro ship should start like the Intro object: right side but already renderable. X offset was {ship.ObjectOffsets.x:0.0}.");
-        Assert.IsTrue(ship.ObjectOffsets.z < 520f,
-            $"Outro ship should start in front of Earth (depth < Earth's 520). Z offset was {ship.ObjectOffsets.z:0.0}.");
+        var earth = world.WorldInhabitants.First(o => o.ObjectName == "Earth");
+        Assert.IsTrue(ship.ObjectOffsets.z < earth.ObjectOffsets!.z,
+            $"Outro ship should start in front of Earth (depth < Earth's {earth.ObjectOffsets.z:0.0}). Z offset was {ship.ObjectOffsets.z:0.0}.");
         Assert.AreEqual(WorldViewSetup.CameraPitchDegrees, ship.Rotation!.x, "Outro ship should keep the same camera tilt as the rest of the scene.");
     }
 
@@ -1067,8 +1068,8 @@ public class OutroSceneTests
             .ToList();
         Assert.AreEqual(4, markingPart.Triangles.Count,
             "Landing platform should use a clean X landing mark, not several loose stripe blocks.");
-        Assert.IsTrue(markingVertices.All(v => v.z >= padTopZ + 40f),
-            "Landing mark should be lifted clearly above the platform top so the whole symbol is visible.");
+        Assert.IsTrue(markingVertices.All(v => v.z > padTopZ && v.z <= padTopZ + 10f),
+            "Landing mark should rest on the platform top, not float above it.");
         Assert.IsTrue(markingVertices.All(v => Math.Abs(v.x) < 330f && Math.Abs(v.y) < 210f),
             "Landing mark should fit fully within the platform top.");
 
@@ -1125,6 +1126,13 @@ public class OutroSceneTests
         Assert.IsNotNull(banner.ObjectParts.FirstOrDefault(p => p.PartName == "BannerPoleLeft"));
         Assert.IsNotNull(banner.ObjectParts.FirstOrDefault(p => p.PartName == "BannerPoleRight"));
         Assert.IsInstanceOfType(banner.Movement, typeof(OutroLandingBannerControls));
+    }
+
+    [TestMethod]
+    public void OutroLandingBanner_StandsBehindLandingShip()
+    {
+        Assert.IsTrue(OutroLandingSceneBuilder.CreateFinalBannerOffset().z > OutroLandingSceneBuilder.CreateFinalLandingShipOffset().z,
+            "Banner should sit deeper than the landing ship so the ship lands in front of it.");
     }
 
     [TestMethod]

@@ -596,7 +596,7 @@ public class ShipWeaponAudioTests
                 {
                     PartName = "MuzzleFlash",
                     IsVisible = false,
-                    Triangles = new List<ITriangleMeshWithColor> { CreateGuideVertex(0f, -50f, 28f) }
+                    Triangles = new List<ITriangleMeshWithColorAndTexture> { CreateGuideVertex(0f, -50f, 28f) }
                 }
             },
             Movement = controls,

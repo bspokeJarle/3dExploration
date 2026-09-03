@@ -10,7 +10,7 @@ namespace TheOmegaStrain.Game.Scenes.Tutorial
 {
     public class TutorialScene : IScene
     {
-        private const string TutorialSurfaceFile = "Scene1SurfaceRecording.retro";
+        private const string TutorialSurfaceFile = "Scene1SurfaceRecording_20260830_205856.retro";
         private readonly Surface Surface = new();
 
         public string SceneMusic { get; } = "music_kanpai";
@@ -169,7 +169,7 @@ namespace TheOmegaStrain.Game.Scenes.Tutorial
                     {
                         PartName = "TutorialVoicePromptMarker",
                         IsVisible = true,
-                        Triangles = new List<ITriangleMeshWithColor>
+                        Triangles = new List<ITriangleMeshWithColorAndTexture>
                         {
                             new TriangleMeshWithColor
                             {

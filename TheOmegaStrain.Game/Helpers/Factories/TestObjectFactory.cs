@@ -28,7 +28,7 @@ namespace TheOmegaStrain.Game.Helpers
                     {
                         IsVisible = true,
                         PartName = "Body",
-                        Triangles = new List<ITriangleMeshWithColor>
+                        Triangles = new List<ITriangleMeshWithColorAndTexture>
                         {
                             new TriangleMeshWithColor
                             {
@@ -63,7 +63,7 @@ namespace TheOmegaStrain.Game.Helpers
                     {
                         IsVisible = true,
                         PartName = "Main",
-                        Triangles = new List<ITriangleMeshWithColor>
+                        Triangles = new List<ITriangleMeshWithColorAndTexture>
                         {
                             new TriangleMeshWithColor
                             {
@@ -76,7 +76,7 @@ namespace TheOmegaStrain.Game.Helpers
                 },
                 ParentSurface = new Surface
                 {
-                    RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>
+                    RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>
                     {
                         new TriangleMeshWithColor
                         {
@@ -92,6 +92,6 @@ namespace TheOmegaStrain.Game.Helpers
     {
         public string PartName { get; set; }
         public bool IsVisible { get; set; }
-        public List<ITriangleMeshWithColor> Triangles { get; set; } = new();
+        public List<ITriangleMeshWithColorAndTexture> Triangles { get; set; } = new();
     }
 }

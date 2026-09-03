@@ -3,7 +3,12 @@ namespace TheOmegaStrain.Common.CommonSetup
     //TODO: Expand this as needed, common Screen properties can go here
     public static class ScreenSetup
     {
-        public const int perspectiveAdjustment = 1500;
+        // Design-time perspective distance. The projection divides by this value, so
+        // keeping it fixed while the window grows would make objects at a given z appear
+        // relatively larger or smaller depending on resolution. Scaling it with the
+        // window width keeps depth-driven sizing proportional to the screen.
+        public const int basePerspectiveAdjustment = 1500;
+        public static float perspectiveAdjustment => basePerspectiveAdjustment * ScreenScaleX;
         public const int defaultObjectZoom = 2;
         public const int targetFps = 90;
         public static int RuntimeTargetFps { get; private set; } = targetFps;

@@ -22,6 +22,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float DepthAheadSpread = 3600f;
         private const float MinSize = 0.75f;
         private const float MaxSize = 2.15f;
+        // Upper bound for on-screen size, so motes we fly straight into stay natural.
+        private const float MaxApparentSize = 5f;
         private const float MinVerticalDrift = -0.08f;
         private const float MaxVerticalDrift = 0.42f;
         private const float BaseWindX = 1.15f;
@@ -59,8 +61,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private float _windX = BaseWindX;
         private float _windZ = BaseWindZ;
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject? ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -217,7 +219,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             return mote;
         }
 
-        private static void WriteTriangle(ITriangleMeshWithColor triangle, DustMote mote, IVector3 mapPosition, float objectZ)
+        private static void WriteTriangle(ITriangleMeshWithColorAndTexture triangle, DustMote mote, IVector3 mapPosition, float objectZ)
         {
             float opacity = mote.Opacity * GlobalSandOpacity;
             if (opacity <= 0.015f)
@@ -234,6 +236,11 @@ namespace TheOmegaStrain.Gameplay.Controls
             float size = mote.Size * (0.55f + opacity * 0.35f);
             float smear = size * (0.75f + mote.WindWeight * 0.25f);
 
+            // The mote is wider than it is tall, so shrink both extents by the same factor
+            // to keep the smear silhouette intact while bounding the on-screen size.
+            float shrink = WorldWeatherField.GetApparentSizeShrink(smear, scale, MaxApparentSize);
+            size *= shrink;
+            smear *= shrink;
             triangle.Color = ScaleHexColor(SandColor, 0.22f + QuantizeOpacity(opacity) * 0.42f);
             triangle.noHidden = true;
             triangle.angle = 1f;
@@ -251,7 +258,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             triangle.vert3.z = relativeZ;
         }
 
-        private static void CollapseTriangle(ITriangleMeshWithColor triangle)
+        private static void CollapseTriangle(ITriangleMeshWithColorAndTexture triangle)
         {
             triangle.Color = "000000";
             triangle.angle = 0f;
@@ -261,7 +268,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             triangle.vert1.z = triangle.vert2.z = triangle.vert3.z = 0f;
         }
 
-        private static ITriangleMeshWithColor CreateDustTriangle()
+        private static ITriangleMeshWithColorAndTexture CreateDustTriangle()
         {
             return new TriangleMeshWithColor
             {
@@ -316,9 +323,9 @@ namespace TheOmegaStrain.Gameplay.Controls
         }
 
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
         private sealed class DustMote
         {

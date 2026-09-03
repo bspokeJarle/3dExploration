@@ -251,7 +251,7 @@ public class ParticlesAI : IParticles
         return new Vector3(x, y, z);
     }
 
-    public void ReleaseParticles(ITriangleMeshWithColor trajectory, ITriangleMeshWithColor startPosition, IVector3 worldPosition, IObjectMovement parentShip, int thrust, bool? explosion, float upwardVelocityBoost = 0f)
+    public void ReleaseParticles(ITriangleMeshWithColorAndTexture trajectory, ITriangleMeshWithColorAndTexture startPosition, IVector3 worldPosition, IObjectMovement parentShip, int thrust, bool? explosion, float upwardVelocityBoost = 0f)
     {
         LastEmissionWasBurst = false;
         LastEmissionParticleCount = 0;
@@ -523,7 +523,7 @@ public class ParticlesAI : IParticles
 public class Particle : IParticle
 {
     public DateTime BirthTime { get; set; } = DateTime.Now;
-    public ITriangleMeshWithColor ParticleTriangle { get; set; }
+    public ITriangleMeshWithColorAndTexture ParticleTriangle { get; set; }
     public IVector3 Velocity { get; set; }
     public IVector3 Acceleration { get; set; }
     public float Life { get; set; }

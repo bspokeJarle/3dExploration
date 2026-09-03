@@ -11,7 +11,7 @@ public class SpaceSwanControlsTests
     public void RotateAroundPivot_WithZeroAngle_DoesNotTranslateWingWhenRotationMutatesInput()
     {
         var controls = new SpaceSwanControls();
-        var triangles = new List<ITriangleMeshWithColor>
+        var triangles = new List<ITriangleMeshWithColorAndTexture>
         {
             new TriangleMeshWithColor
             {
@@ -30,7 +30,7 @@ public class SpaceSwanControlsTests
             BindingFlags.Instance | BindingFlags.NonPublic);
 
         Assert.IsNotNull(method);
-        var result = (List<ITriangleMeshWithColor>)method.Invoke(
+        var result = (List<ITriangleMeshWithColorAndTexture>)method.Invoke(
             controls,
             new object[] { triangles, 17f, -6f, 0f })!;
 

@@ -100,9 +100,9 @@ namespace TheOmegaStrain.Game.World.Objects
         // Outward normals enforced via CreateTriangleOutward.
         //
 
-        public static List<ITriangleMeshWithColor>? PlusSignBody()
+        public static List<ITriangleMeshWithColorAndTexture>? PlusSignBody()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Horizontal arm (extends in X, narrow in Z)
             AddBox(tris,
@@ -121,9 +121,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor> TravelSpeedBody(int boltCount)
+        public static List<ITriangleMeshWithColorAndTexture> TravelSpeedBody(int boltCount)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             int count = Math.Clamp(boltCount, 2, 3);
             float scale = count == 2 ? 0.72f : 0.58f;
             float spacing = count == 2 ? 22f : 24f;
@@ -136,7 +136,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddLightningBolt(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             float offsetX,
             float scale)
         {
@@ -189,7 +189,7 @@ namespace TheOmegaStrain.Game.World.Objects
 
         // Generates 12 triangles (6 faces) for an axis-aligned box
         private static void AddBox(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             float minX, float maxX,
             float minZ, float maxZ,
             float minY, float maxY,

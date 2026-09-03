@@ -1,6 +1,7 @@
 using TheOmegaStrain.Game.Scenes.Scene1;
 using TheOmegaStrain.Common.CommonGlobalState;
 using TheOmegaStrain.Common.CommonGlobalState.States;
+using TheOmegaStrain.Common.CommonSetup;
 using TheOmegaStrain.Common.Events;
 using TheOmegaStrain.Common.GamePlayHelpers;
 using TheOmegaStrain.Domain;
@@ -33,9 +34,11 @@ public class HillsWoodsLeafAssetsTests
 
         Assert.IsTrue(world.WorldInhabitants.Count(o => o.ObjectName == "Tree") > 0,
             "Old Tree objects should still be present.");
-        Assert.IsTrue(leafTrees.Count > 8000,
-            "LeafTree placement should be denser than the original hills/woods pass.");
-        Assert.IsTrue(CountLeafTreesNearPlatform(leafTrees, map, searchRadius: 26) >= 8,
+        // Tree spacing scales with the surface tile resolution, so the absolute count is
+        // much lower than the pre-scaling pass; assert a meaningful coverage floor instead.
+        Assert.IsTrue(leafTrees.Count > 500,
+            $"LeafTree placement should cover the hills/woods map. Actual: {leafTrees.Count}");
+        Assert.IsTrue(CountLeafTreesNearPlatform(leafTrees, map, searchRadius: SurfaceSetup.ScaleTileCount(26)) >= 8,
             "Some LeafTree objects should be guaranteed near the landing platform.");
         Assert.IsTrue(leafTrees.All(o => !LandingPlatformHelpers.IsSurfaceBasedOnLandingPlatform(map, o.SurfaceBasedId ?? 0)),
             "LeafTree objects should not be placed on the landing platform.");

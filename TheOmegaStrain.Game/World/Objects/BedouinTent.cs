@@ -44,7 +44,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tent;
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor> triangles, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture> triangles, bool visible)
         {
             obj.ObjectParts.Add(new OmegaObjectPart3D
             {
@@ -54,14 +54,14 @@ namespace TheOmegaStrain.Game.World.Objects
             });
         }
 
-        private static List<ITriangleMeshWithColor> TentCanvas()
+        private static List<ITriangleMeshWithColorAndTexture> TentCanvas()
         {
             const string light = "3F352D";
             const string mid = "2A211B";
             const string dark = "181310";
             const string back = "241A15";
 
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             var center = new Vector3 { x = 0f, y = 0f, z = 9f };
 
             var frontLeftGround = new Vector3 { x = -50f, y = -22f, z = 0f };
@@ -81,14 +81,14 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static List<ITriangleMeshWithColor> TentPatternBands()
+        private static List<ITriangleMeshWithColorAndTexture> TentPatternBands()
         {
             const string woolStripe = "D8C28A";
             const string paleStripe = "E7D8AF";
             const string redStripe = "9A3024";
             const string amberStripe = "B67A3D";
 
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             var center = new Vector3 { x = 0f, y = 0f, z = 9f };
 
             var frontLeftGround = new Vector3 { x = -50f, y = -22f, z = 0f };
@@ -148,11 +148,11 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static List<ITriangleMeshWithColor> TentDarkSide()
+        private static List<ITriangleMeshWithColorAndTexture> TentDarkSide()
         {
             const string dark = "422415";
             var center = new Vector3 { x = 0f, y = -24f, z = 6f };
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 OmegaObject3DHelpers.CreateTriangleOutward(
                     new Vector3 { x = -8f, y = -23f, z = 0f },
@@ -164,11 +164,11 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> TentEntrance()
+        private static List<ITriangleMeshWithColorAndTexture> TentEntrance()
         {
             const string flap = "D6A96C";
             var center = new Vector3 { x = 0f, y = -23f, z = 8f };
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 OmegaObject3DHelpers.CreateTriangleOutward(
                     new Vector3 { x = -50f, y = -23f, z = 0f },
@@ -194,10 +194,10 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> TentPoles()
+        private static List<ITriangleMeshWithColorAndTexture> TentPoles()
         {
             const string pole = "A77A48";
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 AddPole(-13f, -22f, 0f, -11f, -20f, 19f, pole),
                 AddPole(13f, -22f, 0f, 11f, -20f, 19f, pole),
@@ -206,10 +206,10 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> TentRopes()
+        private static List<ITriangleMeshWithColorAndTexture> TentRopes()
         {
             const string rope = "F0D99C";
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             AddRope(tris, new Vector3 { x = -13f, y = -20f, z = 18f }, new Vector3 { x = -70f, y = -35f, z = 0f }, rope);
             AddRope(tris, new Vector3 { x = 13f, y = -20f, z = 18f }, new Vector3 { x = 70f, y = -35f, z = 0f }, rope);
@@ -222,7 +222,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddSlopeBand(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 frontGround,
             Vector3 backGround,
             Vector3 backTop,
@@ -244,7 +244,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddRope(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 start,
             Vector3 end,
             string color,
@@ -275,7 +275,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddOverlayQuadOutward(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 v1,
             Vector3 v2,
             Vector3 v3,
@@ -346,7 +346,7 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> TentShadow()
+        private static List<ITriangleMeshWithColorAndTexture> TentShadow()
         {
             const string sc = OmegaObject3DHelpers.ShadowColorHex;
             var a = new Vector3 { x = -50f, y = -23f, z = 0f };
@@ -355,7 +355,7 @@ namespace TheOmegaStrain.Game.World.Objects
             var d = new Vector3 { x = -44f, y = 22f, z = 0f };
             var ridge = new Vector3 { x = 0f, y = 0f, z = 18f };
 
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 new TriangleMeshWithColor { Color = sc, vert1 = a, vert2 = b, vert3 = ridge },
                 new TriangleMeshWithColor { Color = sc, vert1 = b, vert2 = c, vert3 = ridge },

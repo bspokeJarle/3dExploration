@@ -16,10 +16,10 @@ namespace TheOmegaStrain.Game.World.Objects
         private const float MainSurfaceLandingLeadY = 8f;
 
         public Vector3 GlobalMapRotation { get; set; } = new Vector3 { x = WorldViewSetup.SurfacePitchDegrees, y = 0, z = 0 };
-        public List<ITriangleMeshWithColor> RotatedSurfaceTriangles  { get; set; }
-        public Dictionary<long, ITriangleMeshWithColor> RotatedSurfaceTriangleByLandId { get; set; } = new();
+        public List<ITriangleMeshWithColorAndTexture> RotatedSurfaceTriangles  { get; set; }
+        public Dictionary<long, ITriangleMeshWithColorAndTexture> RotatedSurfaceTriangleByLandId { get; set; } = new();
         public HashSet<long?> LandBasedIds { get; set; } = new HashSet<long?>();
-        private readonly List<ITriangleMeshWithColor> _surfaceTriangles = new();
+        private readonly List<ITriangleMeshWithColorAndTexture> _surfaceTriangles = new();
         private readonly List<List<IVector3>> _viewPortCrashBoxes = new();
         private readonly List<string?> _viewPortCrashBoxNames = new();
 
@@ -376,6 +376,9 @@ namespace TheOmegaStrain.Game.World.Objects
                 GameState.SurfaceState.SurfaceFilePath = recordPath;
                 GameState.SurfaceState.SurfaceHash = hash;
             }
+
+            CenterViewportOnLandingPlatform(GameState.SurfaceState.Global2DMap);
+
             // ------------------------------------------------------------
             // Always build bitmap from surface
             // ------------------------------------------------------------
@@ -415,6 +418,19 @@ namespace TheOmegaStrain.Game.World.Objects
                 mapSize,
                 MapSetup.maxHeight,
                 enableLogging);
+        }
+
+        private void CenterViewportOnLandingPlatform(SurfaceData[,] map)
+        {
+            int viewportCenterOffset = (ViewPortSize() * TileSize()) / 2;
+            var platformCenter = LandingPlatformHelpers.GetLandingPlatformCenterTile(map);
+
+            GameState.SurfaceState.GlobalMapPosition = new Vector3
+            {
+                x = (platformCenter.x * TileSize()) - viewportCenterOffset,
+                y = 0,
+                z = (platformCenter.z * TileSize()) - viewportCenterOffset
+            };
         }
 
         private static int GetActualMaxHeight(SurfaceData[,] map)

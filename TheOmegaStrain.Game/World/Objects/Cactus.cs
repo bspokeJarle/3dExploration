@@ -49,7 +49,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return cactus;
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? triangles, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? triangles, bool visible)
         {
             if (triangles == null) return;
 
@@ -61,9 +61,9 @@ namespace TheOmegaStrain.Game.World.Objects
             });
         }
 
-        private static List<ITriangleMeshWithColor> CreateArm(bool leftSide, float attachZ, float reach, float height, string[] colors)
+        private static List<ITriangleMeshWithColorAndTexture> CreateArm(bool leftSide, float attachZ, float reach, float height, string[] colors)
         {
-            var triangles = new List<ITriangleMeshWithColor>();
+            var triangles = new List<ITriangleMeshWithColorAndTexture>();
             float side = leftSide ? -1f : 1f;
 
             triangles.AddRange(CreateHorizontalPrism(
@@ -87,9 +87,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return triangles;
         }
 
-        private static List<ITriangleMeshWithColor> CreateBloom(float bodyHeight, string[] colors)
+        private static List<ITriangleMeshWithColorAndTexture> CreateBloom(float bodyHeight, string[] colors)
         {
-            var triangles = new List<ITriangleMeshWithColor>();
+            var triangles = new List<ITriangleMeshWithColorAndTexture>();
             var top = new Vector3 { x = 0f, y = 0f, z = bodyHeight + 7f };
             var center = new Vector3 { x = 0f, y = 0f, z = bodyHeight + 1.5f };
             const int petals = 6;
@@ -109,7 +109,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return triangles;
         }
 
-        private static List<ITriangleMeshWithColor> CreateCappedCylinder(
+        private static List<ITriangleMeshWithColorAndTexture> CreateCappedCylinder(
             float radius,
             float height,
             string colorA,
@@ -119,7 +119,7 @@ namespace TheOmegaStrain.Game.World.Objects
             float centerY = 0f,
             float baseZ = 0f)
         {
-            var triangles = new List<ITriangleMeshWithColor>();
+            var triangles = new List<ITriangleMeshWithColorAndTexture>();
             string[] colors = { colorA, colorB, colorC };
             const int segments = 8;
             float topZ = baseZ + height;
@@ -146,7 +146,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return triangles;
         }
 
-        private static List<ITriangleMeshWithColor> CreateHorizontalPrism(
+        private static List<ITriangleMeshWithColorAndTexture> CreateHorizontalPrism(
             float startX,
             float endX,
             float centerY,
@@ -154,7 +154,7 @@ namespace TheOmegaStrain.Game.World.Objects
             float radius,
             string[] colors)
         {
-            var triangles = new List<ITriangleMeshWithColor>();
+            var triangles = new List<ITriangleMeshWithColorAndTexture>();
             const int segments = 6;
             for (int i = 0; i < segments; i++)
             {
@@ -174,12 +174,12 @@ namespace TheOmegaStrain.Game.World.Objects
             return triangles;
         }
 
-        private static List<ITriangleMeshWithColor> RotateTriangles(List<ITriangleMeshWithColor> triangles, float degrees)
+        private static List<ITriangleMeshWithColorAndTexture> RotateTriangles(List<ITriangleMeshWithColorAndTexture> triangles, float degrees)
         {
             float radians = degrees * MathF.PI / 180f;
             float cos = MathF.Cos(radians);
             float sin = MathF.Sin(radians);
-            var rotated = new List<ITriangleMeshWithColor>(triangles.Count);
+            var rotated = new List<ITriangleMeshWithColorAndTexture>(triangles.Count);
 
             foreach (var triangle in triangles)
             {
@@ -225,10 +225,10 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> CactusShadow(float rotationZ, float bodyHeight)
+        private static List<ITriangleMeshWithColorAndTexture> CactusShadow(float rotationZ, float bodyHeight)
         {
             const string sc = OmegaObject3DHelpers.ShadowColorHex;
-            var triangles = new List<ITriangleMeshWithColor>();
+            var triangles = new List<ITriangleMeshWithColorAndTexture>();
 
             AddShadowStem(triangles, centerX: 0f, halfWidth: BodyRadius * 1.05f, baseY: -BodyRadius, topY: BodyRadius, height: bodyHeight, color: sc);
             AddShadowStem(triangles, centerX: -ArmReach * 0.68f, halfWidth: ArmRadius * 1.1f, baseY: -ArmRadius, topY: ArmRadius, height: bodyHeight * 0.82f, color: sc);
@@ -240,7 +240,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddShadowStem(
-            List<ITriangleMeshWithColor> triangles,
+            List<ITriangleMeshWithColorAndTexture> triangles,
             float centerX,
             float halfWidth,
             float baseY,
@@ -257,7 +257,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddShadowArm(
-            List<ITriangleMeshWithColor> triangles,
+            List<ITriangleMeshWithColorAndTexture> triangles,
             float startX,
             float endX,
             float z,

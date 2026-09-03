@@ -100,7 +100,7 @@ namespace TheOmegaStrain.Gameplay.Controls.JumpingFishControls
         private const float FinPivotZ = -1.6f;
 
         private readonly OmegaMeshRotation _rotate = new();
-        private readonly Dictionary<string, List<ITriangleMeshWithColor>> _baseTrianglesByPart = new();
+        private readonly Dictionary<string, List<ITriangleMeshWithColorAndTexture>> _baseTrianglesByPart = new();
         private readonly float _jumpHorizontalSpan;
         private readonly bool _hasPathBounds;
         private readonly float _minPathOffsetX;
@@ -133,8 +133,8 @@ namespace TheOmegaStrain.Gameplay.Controls.JumpingFishControls
         private IAudioPlayer? _audio;
         private SoundDefinition? _splashSound;
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
         public JumpingFishControls()
@@ -526,7 +526,7 @@ namespace TheOmegaStrain.Gameplay.Controls.JumpingFishControls
             };
         }
 
-        private static ITriangleMeshWithColor CreateSplashPointTriangle(Vector3 point)
+        private static ITriangleMeshWithColorAndTexture CreateSplashPointTriangle(Vector3 point)
         {
             return new TriangleMeshWithColor
             {
@@ -632,7 +632,7 @@ namespace TheOmegaStrain.Gameplay.Controls.JumpingFishControls
             }
         }
 
-        private static void TranslateTrianglesYZ(List<ITriangleMeshWithColor> triangles, float dy, float dz)
+        private static void TranslateTrianglesYZ(List<ITriangleMeshWithColorAndTexture> triangles, float dy, float dz)
         {
             for (int i = 0; i < triangles.Count; i++)
             {
@@ -657,17 +657,17 @@ namespace TheOmegaStrain.Gameplay.Controls.JumpingFishControls
         {
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
             if (StartCoord != null) StartCoordinates = StartCoord;
             if (GuideCoord != null) GuideCoordinates = GuideCoord;
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 

@@ -115,7 +115,7 @@ namespace TheOmegaStrain.Game.World.Objects
         // === Geometry helpers (inline per segment to avoid external deps) ===
         // Build a triangular frustum (3-sided tube) between two Y-positions along -Y,
         // centered on X=0, Z=28, using X and Z as the cross-section axes.
-        private static List<ITriangleMeshWithColor> BuildTriTube(float yStart, float yEnd, float rStart, float rEnd, string colorHex)
+        private static List<ITriangleMeshWithColorAndTexture> BuildTriTube(float yStart, float yEnd, float rStart, float rEnd, string colorHex)
         {
             // Axis is exactly along -Y. Cross-section plane is XZ at z=28.
             // Use an equilateral triangle: angles 0°, 120°, 240°.
@@ -137,7 +137,7 @@ namespace TheOmegaStrain.Game.World.Objects
             }
 
             // 3 side quads → 6 triangles (RHS): (A0[i], A0[j], A1[j]) and (A0[i], A1[j], A1[i])
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             for (int i = 0; i < 3; i++)
             {
                 int j = (i + 1) % 3;
@@ -149,7 +149,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         // Segment 1 — longest, bright; starts at the muzzle and goes far forward
-        public static List<ITriangleMeshWithColor>? LazerSegment1()
+        public static List<ITriangleMeshWithColorAndTexture>? LazerSegment1()
         {
             // Length ~75; slight taper
             float yStart = -45f;  // at cannon muzzle
@@ -159,7 +159,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         // Segment 2 — medium, darker
-        public static List<ITriangleMeshWithColor>? LazerSegment2()
+        public static List<ITriangleMeshWithColorAndTexture>? LazerSegment2()
         {
             // Length ~50; taper continues
             float yStart = -120f;
@@ -169,7 +169,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         // Segment 3 — shortest, grey tail
-        public static List<ITriangleMeshWithColor>? LazerSegment3()
+        public static List<ITriangleMeshWithColorAndTexture>? LazerSegment3()
         {
             // Length ~30; final taper
             float yStart = -170f;

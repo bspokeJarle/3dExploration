@@ -156,7 +156,7 @@ namespace TheOmegaStrain.Game.World.Objects
         //  TRUNK
         // ----------------------------------------------------
 
-        private static List<ITriangleMeshWithColor>? CreateBentTrunk(
+        private static List<ITriangleMeshWithColorAndTexture>? CreateBentTrunk(
             float height,
             float baseRadius,
             float topRadius,
@@ -166,7 +166,7 @@ namespace TheOmegaStrain.Game.World.Objects
             float bendY,
             Vector3 center)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var rings = new List<List<Vector3>>();
 
@@ -246,13 +246,13 @@ namespace TheOmegaStrain.Game.World.Objects
         //  CROWN
         // ----------------------------------------------------
 
-        private static List<ITriangleMeshWithColor>? CreateCrownCore(
+        private static List<ITriangleMeshWithColorAndTexture>? CreateCrownCore(
             float z,
             float radius,
             float height,
             Vector3 center)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             int segments = 8;
             var lower = CreateRing(0, 0, z, radius, radius, segments);
@@ -283,7 +283,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static List<ITriangleMeshWithColor>? CreatePalmLeaves(
+        private static List<ITriangleMeshWithColorAndTexture>? CreatePalmLeaves(
             float crownZ,
             int leafCount,
             float leafLength,
@@ -293,7 +293,7 @@ namespace TheOmegaStrain.Game.World.Objects
             float asymmetry,
             Vector3 center)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             for (int i = 0; i < leafCount; i++)
             {
@@ -383,9 +383,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static List<ITriangleMeshWithColor>? CreateFruitCluster(float z, float radius, Vector3 center)
+        private static List<ITriangleMeshWithColorAndTexture>? CreateFruitCluster(float z, float radius, Vector3 center)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             AddFruit(tris, new Vector3 { x = 1.6f, y = 0.8f, z = z }, radius, fruitOrange, center);
             AddFruit(tris, new Vector3 { x = -1.5f, y = 1.0f, z = z - 0.8f }, radius * 0.85f, fruitRed, center);
@@ -394,7 +394,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddFruit(List<ITriangleMeshWithColor> tris, Vector3 c, float r, string color, Vector3 center)
+        private static void AddFruit(List<ITriangleMeshWithColorAndTexture> tris, Vector3 c, float r, string color, Vector3 center)
         {
             var top = new Vector3 { x = c.x, y = c.y, z = c.z + r };
             var bottom = new Vector3 { x = c.x, y = c.y, z = c.z - r };
@@ -443,7 +443,7 @@ namespace TheOmegaStrain.Game.World.Objects
         //  SHADOWS
         // ----------------------------------------------------
 
-        private static List<ITriangleMeshWithColor> LargePalmShadow()
+        private static List<ITriangleMeshWithColorAndTexture> LargePalmShadow()
         {
             return PalmShadow(
                 trunkHeight: 38f,
@@ -452,7 +452,7 @@ namespace TheOmegaStrain.Game.World.Objects
                 trunkWidth: 5f);
         }
 
-        private static List<ITriangleMeshWithColor> SmallPalmShadow()
+        private static List<ITriangleMeshWithColorAndTexture> SmallPalmShadow()
         {
             return PalmShadow(
                 trunkHeight: 23f,
@@ -461,13 +461,13 @@ namespace TheOmegaStrain.Game.World.Objects
                 trunkWidth: 3.5f);
         }
 
-        private static List<ITriangleMeshWithColor> PalmShadow(
+        private static List<ITriangleMeshWithColorAndTexture> PalmShadow(
             float trunkHeight,
             float crownZ,
             float crownRadius,
             float trunkWidth)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             const string sc = OmegaObject3DHelpers.ShadowColorHex;
 
             var tA = new Vector3 { x = -trunkWidth, y = 0f, z = 0f };
@@ -547,7 +547,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return a + (b - a) * t;
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 
@@ -572,7 +572,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddQuadOutward(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 v1,
             Vector3 v2,
             Vector3 v3,

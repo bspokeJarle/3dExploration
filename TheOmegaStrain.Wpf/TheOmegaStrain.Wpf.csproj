@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows7.0</TargetFramework>
     <RootNamespace>TheOmegaStrain.Wpf</RootNamespace>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>TheOmegaStrain</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>GameGraphics\OmegaStrain.ico</ApplicationIcon>
@@ -11,9 +12,24 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="GameGraphics\OmegaStrain.ico" />
+    <None Include="$(RetroMeshDirect3D11ShaderPath)">
+      <Link>Shaders\ProjectedTriangle.hlsl</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="RetroMesh.Engine" Version="$(RetroMeshEnginePackageVersion)" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="Vortice.D3DCompiler" Version="3.8.3" />
+    <PackageReference Include="Vortice.Direct3D11" Version="3.8.3" />
+    <!-- Required at runtime by RetroMesh.Engine (XboxControllerInput). RetroMesh.Engine is
+         referenced as a raw DLL, so its NuGet dependencies are not resolved transitively. -->
+    <PackageReference Include="SharpDX.DirectInput" Version="4.2.0" />
+    <Reference Include="RetroMesh.Engine">
+      <HintPath>$(RetroMeshEnginePath)</HintPath>
+    </Reference>
+    <Reference Include="RetroMesh.Rendering.Direct3D11">
+      <HintPath>$(RetroMeshDirect3D11Path)</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TheOmegaStrain.Runtime\TheOmegaStrain.Runtime.csproj" />
@@ -48,7 +64,28 @@
     <None Update="GameGraphics\seeder_icon_48.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="SceneFiles\**\*.retro">
+    <None Update="SceneFiles\Scene1SurfaceRecording_20260830_205856.retro">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SceneFiles\Scene2SurfaceRecording_20260824_224730.retro">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SceneFiles\Scene3SurfaceRecording_20260823_185258.retro">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SceneFiles\Scene4SurfaceRecording_20260526_193822.retro">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SceneFiles\Scene5SurfaceRecording_20260526_215801.retro">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SceneFiles\Scene6SurfaceRecording_20260530_desert_lakes.retro">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SceneFiles\Scene7SurfaceRecording_20260526_222053.retro">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="SceneFiles\Scene8SurfaceRecording_20260526_223403.retro">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <Compile Update="Properties\Resources.Designer.cs">
@@ -244,4 +281,18 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <Target Name="RemoveInactiveSceneRecordingsFromOutput" AfterTargets="CopyFilesToOutputDirectory">
+    <ItemGroup>
+      <ActiveSceneRecordingOutput Include="$(OutDir)SceneFiles\Scene1SurfaceRecording_20260830_205856.retro" />
+      <ActiveSceneRecordingOutput Include="$(OutDir)SceneFiles\Scene2SurfaceRecording_20260824_224730.retro" />
+      <ActiveSceneRecordingOutput Include="$(OutDir)SceneFiles\Scene3SurfaceRecording_20260823_185258.retro" />
+      <ActiveSceneRecordingOutput Include="$(OutDir)SceneFiles\Scene4SurfaceRecording_20260526_193822.retro" />
+      <ActiveSceneRecordingOutput Include="$(OutDir)SceneFiles\Scene5SurfaceRecording_20260526_215801.retro" />
+      <ActiveSceneRecordingOutput Include="$(OutDir)SceneFiles\Scene6SurfaceRecording_20260530_desert_lakes.retro" />
+      <ActiveSceneRecordingOutput Include="$(OutDir)SceneFiles\Scene7SurfaceRecording_20260526_222053.retro" />
+      <ActiveSceneRecordingOutput Include="$(OutDir)SceneFiles\Scene8SurfaceRecording_20260526_223403.retro" />
+      <InactiveSceneRecordingOutput Include="$(OutDir)SceneFiles\*.retro" Exclude="@(ActiveSceneRecordingOutput)" />
+    </ItemGroup>
+    <Delete Files="@(InactiveSceneRecordingOutput)" />
+  </Target>
 </Project>

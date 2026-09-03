@@ -37,9 +37,9 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> CreateSnowflakeBuffer()
+        private static List<ITriangleMeshWithColorAndTexture> CreateSnowflakeBuffer()
         {
-            var triangles = new List<ITriangleMeshWithColor>(SnowfallControls.TargetFlakeCount);
+            var triangles = new List<ITriangleMeshWithColorAndTexture>(SnowfallControls.TargetFlakeCount);
             for (int i = 0; i < SnowfallControls.TargetFlakeCount; i++)
             {
                 triangles.Add(new TriangleMeshWithColor

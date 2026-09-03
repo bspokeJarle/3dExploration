@@ -16,7 +16,7 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float TipWeightPower = 1.12f;
         private const float LeafRootRadius = 2.2f;
 
-        private readonly Dictionary<string, List<ITriangleMeshWithColor>> _baseTrianglesByPart = new();
+        private readonly Dictionary<string, List<ITriangleMeshWithColorAndTexture>> _baseTrianglesByPart = new();
         private DateTime _lastFrameTime = DateTime.MinValue;
         private float _timeSeconds;
         private float _maxLeafRadius = 1f;
@@ -27,8 +27,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         protected virtual float LeafSwayAmplitude => 4.4f;
         protected virtual float LeafFlutterAmplitude => 1.6f;
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
@@ -69,11 +69,11 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
         }
 
-        private List<ITriangleMeshWithColor> CreateWindTriangles(
-            List<ITriangleMeshWithColor> baseTriangles,
+        private List<ITriangleMeshWithColorAndTexture> CreateWindTriangles(
+            List<ITriangleMeshWithColorAndTexture> baseTriangles,
             float phase)
         {
-            var animated = new List<ITriangleMeshWithColor>(baseTriangles.Count);
+            var animated = new List<ITriangleMeshWithColorAndTexture>(baseTriangles.Count);
 
             foreach (var triangle in baseTriangles)
             {
@@ -171,15 +171,15 @@ namespace TheOmegaStrain.Gameplay.Controls
         {
         }
 
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord)
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord)
         {
         }
 

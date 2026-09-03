@@ -260,9 +260,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  NOSE / BEAK
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? SwanBeakNose()
+        public static List<ITriangleMeshWithColorAndTexture>? SwanBeakNose()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var tipTop = new Vector3 { x = noseTipX, y = 0f, z = 1.2f };
             var tipBottom = new Vector3 { x = noseTipX - 1.5f, y = 0f, z = -0.8f };
@@ -323,9 +323,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? SwanNoseTransition()
+        public static List<ITriangleMeshWithColorAndTexture>? SwanNoseTransition()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             var baseRing = new List<Vector3>
             {
                 new Vector3 { x = noseBaseX, y =  0f,                   z =  bodyTopFront + 0.5f },
@@ -365,9 +365,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  BODY
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? SwanBodyTop()
+        public static List<ITriangleMeshWithColorAndTexture>? SwanBodyTop()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var front = GetFrontRing();
             var mid = GetMidRing();
@@ -399,9 +399,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? SwanBodyBottom()
+        public static List<ITriangleMeshWithColorAndTexture>? SwanBodyBottom()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var front = GetFrontRing();
             var mid = GetMidRing();
@@ -433,9 +433,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? SwanBodySides()
+        public static List<ITriangleMeshWithColorAndTexture>? SwanBodySides()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var front = GetFrontRing();
             var mid = GetMidRing();
@@ -461,9 +461,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  CANOPY / CORE
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? SwanCanopy()
+        public static List<ITriangleMeshWithColorAndTexture>? SwanCanopy()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float baseFrontZ = bodyTopFront + canopyBaseLiftFront;
             float baseMidZ = bodyTopMid + canopyBaseLiftMid;
@@ -501,9 +501,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? SwanCore()
+        public static List<ITriangleMeshWithColorAndTexture>? SwanCore()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var ftl = new Vector3 { x = coreFrontX, y = -coreHalfWidth, z = coreCenterZ + coreHalfHeight };
             var ftr = new Vector3 { x = coreFrontX, y = coreHalfWidth, z = coreCenterZ + coreHalfHeight };
@@ -529,9 +529,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  WINGS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? SwanWingSegment(bool isLeft, int segmentIndex)
+        public static List<ITriangleMeshWithColorAndTexture>? SwanWingSegment(bool isLeft, int segmentIndex)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             WingSegmentSpec spec = GetWingSegmentSpec(isLeft, segmentIndex);
 
@@ -674,9 +674,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  TAIL
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? SwanTailPlanes()
+        public static List<ITriangleMeshWithColorAndTexture>? SwanTailPlanes()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Left tail plane
             {
@@ -733,9 +733,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? SwanVerticalFin()
+        public static List<ITriangleMeshWithColorAndTexture>? SwanVerticalFin()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var a = new Vector3 { x = verticalFinFrontX, y = 0f, z = bodyTopBack + 0.9f };
             var b = new Vector3 { x = verticalFinTipX, y = 0f, z = bodyTopBack + verticalFinHeight };
@@ -763,9 +763,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  GUIDES / COLLISION
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? ParticlesDirectionGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? ParticlesDirectionGuide()
         {
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = bodyBackX - 4f, y =  4f, z =  1f },
@@ -777,9 +777,9 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        public static List<ITriangleMeshWithColor>? ParticlesStartGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? ParticlesStartGuide()
         {
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = bodyBackX + 2f, y =  3.5f, z =  0.8f },
@@ -827,7 +827,7 @@ namespace TheOmegaStrain.Game.World.Objects
         //  HELPERS
         // ----------------------------------------------------
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 

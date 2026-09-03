@@ -11,7 +11,7 @@ namespace TheOmegaStrain.Game.Helpers
         public const string ShadowColorHex = MeshGeometryOperations.ShadowColorHex;
         public static bool _localLoggingEnabled = false;
 
-        public static void ApplyScaleToTriangles(List<ITriangleMeshWithColor> triangles, float scale)
+        public static void ApplyScaleToTriangles(List<ITriangleMeshWithColorAndTexture> triangles, float scale)
         {
             MeshGeometryOperations.ApplyScaleToTriangles(triangles, scale);
         }
@@ -37,7 +37,7 @@ namespace TheOmegaStrain.Game.Helpers
                 layers);
         }
 
-        public static void AddCustomShadowPart(I3dObject actualObject, List<ITriangleMeshWithColor> triangles)
+        public static void AddCustomShadowPart(I3dObject actualObject, List<ITriangleMeshWithColorAndTexture> triangles)
         {
             MeshGeometryOperations.AddCustomShadowPart(
                 actualObject,
@@ -104,7 +104,7 @@ namespace TheOmegaStrain.Game.Helpers
             return overlaps;
         }
 
-        public static List<ITriangleMeshWithColor> ConvertToTrianglesWithColor(List<TriangleMesh> triangles, string color)
+        public static List<ITriangleMeshWithColorAndTexture> ConvertToTrianglesWithColor(List<TriangleMesh> triangles, string color)
         {
             return MeshGeometryOperations.ConvertToTrianglesWithColor(
                 triangles,
@@ -114,7 +114,7 @@ namespace TheOmegaStrain.Game.Helpers
         }
 
         public static void AddQuadOutward(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 v1,
             Vector3 v2,
             Vector3 v3,

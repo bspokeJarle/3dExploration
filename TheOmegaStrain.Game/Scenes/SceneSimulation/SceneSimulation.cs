@@ -364,7 +364,9 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
                 return;
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(map, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
+            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(map, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
             SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), treePlacements, radius: 1);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), housePlacements, radius: 1);
             foreach (var treePlacement in treePlacements)
             {
                 var tree = Tree.CreateTree(Surface);
@@ -379,8 +381,6 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
                 if (tree.SurfaceBasedId > 0) world.WorldInhabitants.Add(tree);
             }
 
-            var housePlacements = SurfaceGeneration.FindHousePlacementAreas(map, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 15000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), housePlacements, radius: 1);
             foreach (var housePlacement in housePlacements)
             {
                 var house = House.CreateHouse(Surface);
@@ -501,7 +501,9 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
                 return;
 
             var treePlacements = SurfaceGeneration.FindTreePlacementAreas(map, Surface.GlobalMapSize(), Surface.TileSize(), Surface.MaxHeight(), 30000);
+            var iglooPlacements = SurfaceGeneration.FindHousePlacementAreas(map, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 30000);
             SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), treePlacements, radius: 1);
+            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), iglooPlacements, radius: 1);
             foreach (var treePlacement in treePlacements)
             {
                 var tree = Tree.CreateTree(Surface);
@@ -517,8 +519,6 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
                 if (tree.SurfaceBasedId > 0) world.WorldInhabitants.Add(tree);
             }
 
-            var iglooPlacements = SurfaceGeneration.FindHousePlacementAreas(map, Surface.GlobalMapSize(), Surface.MaxHeight(), treePlacements, 30000);
-            SurfaceGeneration.FlattenTerrainAroundPlacements(map, Surface.MaxHeight(), iglooPlacements, radius: 1);
             var iglooRotationVariants = new float[] { -30f, -18f, -8f, 0f, 12f, 24f, 36f };
             int iglooIndex = 0;
             foreach (var iglooPlacement in iglooPlacements)
@@ -709,14 +709,14 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
             float baseOffsetX = 75 * ScreenSetup.ScreenScaleX;
             int mapCenterX = sizeX / 2;
             int mapCenterZ = sizeZ / 2;
-            int landingAreaSize = 8;
-            int landingBufferTiles = 6;
+            int landingAreaSize = LandingPlatformHelpers.LandingPlatformSizeTiles;
+            int landingBufferTiles = SurfaceSetup.ScaleTileCount(6);
             int landingTopLeftX = Math.Max(0, mapCenterX - (landingAreaSize / 2));
             int landingTopLeftZ = Math.Max(0, mapCenterZ - (landingAreaSize / 2));
 
             var patrolTiles = new List<(int tileX, int tileZ, int startX, int endX)>();
-            int patrolWidthTiles = 8;
-            int patrolHeightTiles = 2;
+            int patrolWidthTiles = SurfaceSetup.ScaleTileCount(8);
+            int patrolHeightTiles = SurfaceSetup.ScaleTileCount(2);
 
             for (int z = 1; z < sizeZ - patrolHeightTiles - 1; z += patrolHeightTiles)
             {

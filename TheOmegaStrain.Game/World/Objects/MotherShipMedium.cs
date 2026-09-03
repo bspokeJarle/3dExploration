@@ -247,6 +247,9 @@ namespace TheOmegaStrain.Game.World.Objects
             var bridge = BridgeCockpit();
             var jawSensors = JawSensorArray();
             var wingFairings = WingRootFairings();
+            var dorsalArmorDetails = DorsalArmorDetails();
+            var cannonInsetPanels = CannonInsetPanels();
+            var podSignalLights = PodSignalLights();
 
             var crashBoxes = MotherShipCrashBoxes();
 
@@ -298,6 +301,9 @@ namespace TheOmegaStrain.Game.World.Objects
             AddPart(ship, "BridgeCockpit", bridge, true);
             AddPart(ship, "JawSensorArray", jawSensors, true);
             AddPart(ship, "WingRootFairings", wingFairings, true);
+            AddPart(ship, "DorsalArmorDetails", dorsalArmorDetails, true);
+            AddPart(ship, "CannonInsetPanels", cannonInsetPanels, true);
+            AddPart(ship, "PodSignalLights", podSignalLights, true);
 
             ship.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
             ship.ParentSurface = parentSurface;
@@ -319,9 +325,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  HAMMERHEAD FRONT
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? HammerHeadTop()
+        public static List<ITriangleMeshWithColorAndTexture>? HammerHeadTop()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var nose = new Vector3 { x = noseTipX, y = 0f, z = noseTop };
 
@@ -353,9 +359,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? HammerHeadBottom()
+        public static List<ITriangleMeshWithColorAndTexture>? HammerHeadBottom()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var nose = new Vector3 { x = noseTipX - 8f, y = 0f, z = noseBottom };
 
@@ -387,9 +393,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? HammerHeadSides()
+        public static List<ITriangleMeshWithColorAndTexture>? HammerHeadSides()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Nose front faces (connecting top jaw edge to bottom jaw edge)
             {
@@ -441,9 +447,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  MAIN BODY
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? MainBodyTop()
+        public static List<ITriangleMeshWithColorAndTexture>? MainBodyTop()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var frontLeft = new Vector3 { x = bodyMidX, y = -bodyHalfWidth, z = bodyTop };
             var frontRight = new Vector3 { x = bodyMidX, y = bodyHalfWidth, z = bodyTop };
@@ -473,9 +479,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? MainBodyBottom()
+        public static List<ITriangleMeshWithColorAndTexture>? MainBodyBottom()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var frontLeft = new Vector3 { x = bodyMidX, y = -bodyHalfWidth, z = bodyBottom };
             var frontRight = new Vector3 { x = bodyMidX, y = bodyHalfWidth, z = bodyBottom };
@@ -505,9 +511,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? MainBodySides()
+        public static List<ITriangleMeshWithColorAndTexture>? MainBodySides()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Left side
             AddQuadOutward(
@@ -554,19 +560,19 @@ namespace TheOmegaStrain.Game.World.Objects
         //  SIDE PODS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? LeftPod()
+        public static List<ITriangleMeshWithColorAndTexture>? LeftPod()
         {
             return BuildPod(isRight: false);
         }
 
-        public static List<ITriangleMeshWithColor>? RightPod()
+        public static List<ITriangleMeshWithColorAndTexture>? RightPod()
         {
             return BuildPod(isRight: true);
         }
 
-        private static List<ITriangleMeshWithColor> BuildPod(bool isRight)
+        private static List<ITriangleMeshWithColorAndTexture> BuildPod(bool isRight)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             float s = isRight ? 1f : -1f;
 
             var ftl = new Vector3 { x = podFrontX, y = s * podInnerYFront, z = podHalfHeightTop };
@@ -614,19 +620,19 @@ namespace TheOmegaStrain.Game.World.Objects
         //  CONNECTORS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? LeftConnector()
+        public static List<ITriangleMeshWithColorAndTexture>? LeftConnector()
         {
             return BuildConnector(isRight: false);
         }
 
-        public static List<ITriangleMeshWithColor>? RightConnector()
+        public static List<ITriangleMeshWithColorAndTexture>? RightConnector()
         {
             return BuildConnector(isRight: true);
         }
 
-        private static List<ITriangleMeshWithColor> BuildConnector(bool isRight)
+        private static List<ITriangleMeshWithColorAndTexture> BuildConnector(bool isRight)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             float s = isRight ? 1f : -1f;
 
             var bodyFrontTop = new Vector3 { x = connectorFrontX, y = s * 28f, z = connectorTop };
@@ -660,9 +666,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  FRONT CANNON
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? FrontCannonBody()
+        public static List<ITriangleMeshWithColorAndTexture>? FrontCannonBody()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var backTop = new Vector3 { x = cannonBackX, y = 0f, z = cannonTopBack };
             var backRT = new Vector3 { x = cannonBackX, y = cannonBackHalfWidth, z = 4.4f };
@@ -730,9 +736,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? FrontCannonMuzzle()
+        public static List<ITriangleMeshWithColorAndTexture>? FrontCannonMuzzle()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var tip = new Vector3 { x = muzzleX, y = 0f, z = 0f };
             var ring = GenerateEllipseRing(muzzleSegments, cannonFrontX + 2f, muzzleRadius, muzzleRadius);
@@ -747,12 +753,12 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? LaserDirectionGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? LaserDirectionGuide()
         {
             // vert1 is the direction tip — placed FAR BEYOND the muzzle tip (muzzleX=148) along the cannon's +X axis
             // so the aiming vector is clearly visible ahead of the ship. FireWeapon normalizes (direction - start)
             // to get the trajectory vector, so the absolute X distance only affects visualization, not aim accuracy.
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = 280f, y =  4f, z =  2f },
@@ -764,11 +770,11 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        public static List<ITriangleMeshWithColor>? LaserStartGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? LaserStartGuide()
         {
             // vert1 is the spawn point — placed BARELY OUTSIDE the muzzle tip (muzzleX=148) so the start guide
             // sits just in front of the cannon. Both guides are now clearly separated along +X so you can see them distinctly.
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = 156f, y =  4f, z =  2f },
@@ -788,10 +794,10 @@ namespace TheOmegaStrain.Game.World.Objects
         // The control class pulses them back-to-front to animate a charge travelling
         // up the barrel. Outer/inner radii are sized to wrap just outside the barrel.
 
-        private static List<ITriangleMeshWithColor> BuildHexChargeRing(
+        private static List<ITriangleMeshWithColorAndTexture> BuildHexChargeRing(
             float xPos, float outerY, float outerZ, float innerY, float innerZ, string color)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             const int segments = 6;
             var outer = GenerateEllipseRing(segments, xPos, outerY, outerZ);
             var inner = GenerateEllipseRing(segments, xPos, innerY, innerZ);
@@ -804,22 +810,22 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? CannonChargeRing1()
+        public static List<ITriangleMeshWithColorAndTexture>? CannonChargeRing1()
             => BuildHexChargeRing(cannonBackX,  outerY: 30f, outerZ: 24f, innerY: 21f, innerZ: 15f, "44CCFF");
 
-        public static List<ITriangleMeshWithColor>? CannonChargeRing2()
+        public static List<ITriangleMeshWithColorAndTexture>? CannonChargeRing2()
             => BuildHexChargeRing(cannonMidX,   outerY: 26f, outerZ: 20f, innerY: 17f, innerZ: 13f, "66DDFF");
 
-        public static List<ITriangleMeshWithColor>? CannonChargeRing3()
+        public static List<ITriangleMeshWithColorAndTexture>? CannonChargeRing3()
             => BuildHexChargeRing(cannonFrontX, outerY: 22f, outerZ: 17f, innerY: 13f, innerZ: 11f, "88EEFF");
 
         // ----------------------------------------------------
         //  PANELS / REAR / SPINE
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? TopPanels()
+        public static List<ITriangleMeshWithColorAndTexture>? TopPanels()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // long teal strip
             var a = new Vector3 { x = 64f, y = -9f, z = 19.0f };
@@ -846,9 +852,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? RearFace()
+        public static List<ITriangleMeshWithColorAndTexture>? RearFace()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var tl = new Vector3 { x = tailX, y = -tailHalfWidth, z = tailTop };
             var tr = new Vector3 { x = tailX, y = tailHalfWidth, z = tailTop };
@@ -864,7 +870,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddRearGlow(List<ITriangleMeshWithColor> tris, float yMin, float yMax, string color)
+        private static void AddRearGlow(List<ITriangleMeshWithColorAndTexture> tris, float yMin, float yMax, string color)
         {
             var tl = new Vector3 { x = tailX - 0.2f, y = yMin, z = 3.6f };
             var tr = new Vector3 { x = tailX - 0.2f, y = yMax, z = 3.6f };
@@ -874,9 +880,9 @@ namespace TheOmegaStrain.Game.World.Objects
             AddQuadOutward(tris, tl, tr, br, bl, BodyCenter, color);
         }
 
-        public static List<ITriangleMeshWithColor>? EnergySpine()
+        public static List<ITriangleMeshWithColorAndTexture>? EnergySpine()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var lf = new Vector3 { x = spineFrontX, y = -spineHalfWidthFront, z = spineBaseTopFront };
             var rf = new Vector3 { x = spineFrontX, y = spineHalfWidthFront, z = spineBaseTopFront };
@@ -902,9 +908,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? WeakSpot()
+        public static List<ITriangleMeshWithColorAndTexture>? WeakSpot()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var front = new Vector3 { x = weakSpotFrontX, y = 0f, z = weakSpotCenterZ };
             var back = new Vector3 { x = weakSpotBackX, y = 0f, z = weakSpotCenterZ };
@@ -949,9 +955,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  REAR THRUSTERS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? RearThrusters()
+        public static List<ITriangleMeshWithColorAndTexture>? RearThrusters()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Three thruster nozzles arranged vertically at tailX
             float[] offsets = { 10f, 0f, -10f };
@@ -991,9 +997,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  BELLY ARMOR PLATES
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BellyArmorPlates()
+        public static List<ITriangleMeshWithColorAndTexture>? BellyArmorPlates()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Front belly plate (under neck/jaw transition)
             AddQuadOutward(tris,
@@ -1026,9 +1032,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  WING ENGINE NOZZLES (descending thrusters on pod undersides)
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? WingEngine(bool isRight)
+        public static List<ITriangleMeshWithColorAndTexture>? WingEngine(bool isRight)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             float s = isRight ? 1f : -1f;
 
             // Nozzle faces downward (-Z). Ring lies in the XY plane at nozzleZ.
@@ -1078,14 +1084,14 @@ namespace TheOmegaStrain.Game.World.Objects
         // start at the nozzle center, guide straight out along nozzle axis (-Z).
         private const float WingEngineGuideOffsetZ = 100f;
 
-        public static List<ITriangleMeshWithColor>? WingEngineStart(bool isRight)
+        public static List<ITriangleMeshWithColorAndTexture>? WingEngineStart(bool isRight)
         {
             float s = isRight ? 1f : -1f;
             float cx = (podFrontX + podBackX) * 0.5f;  // 9  — nozzle X
             float cy = s * (podOuterY - 18f);           // s*90 — nozzle Y
             float cz = podHalfHeightBottom - 1f;        // -11 — nozzle Z
 
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 new TriangleMeshWithColor
                 {
@@ -1098,14 +1104,14 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        public static List<ITriangleMeshWithColor>? WingEngineGuide(bool isRight)
+        public static List<ITriangleMeshWithColorAndTexture>? WingEngineGuide(bool isRight)
         {
             float s = isRight ? 1f : -1f;
             float cx = (podFrontX + podBackX) * 0.5f;
             float cy = s * (podOuterY - 18f);
             float cz = (podHalfHeightBottom - 1f) - WingEngineGuideOffsetZ;
 
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 new TriangleMeshWithColor
                 {
@@ -1122,15 +1128,15 @@ namespace TheOmegaStrain.Game.World.Objects
         //  POD NACELLE VENTS (vents on side pod outer faces)
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? PodNacelleVents()
+        public static List<ITriangleMeshWithColorAndTexture>? PodNacelleVents()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             BuildPodVents(tris, isRight: false);
             BuildPodVents(tris, isRight: true);
             return tris;
         }
 
-        private static void BuildPodVents(List<ITriangleMeshWithColor> tris, bool isRight)
+        private static void BuildPodVents(List<ITriangleMeshWithColorAndTexture> tris, bool isRight)
         {
             float s = isRight ? 1f : -1f;
             float outerY = s * (podOuterY + ventPush);
@@ -1161,9 +1167,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  HULL PANEL LINES
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? HullPanelLines()
+        public static List<ITriangleMeshWithColorAndTexture>? HullPanelLines()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float pz = bodyTop + panelLineThickness;
 
@@ -1206,9 +1212,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  BRIDGE COCKPIT
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? BridgeCockpit()
+        public static List<ITriangleMeshWithColorAndTexture>? BridgeCockpit()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var bCenter = new Vector3 { x = (bridgeFrontX + bridgeBackX) * 0.5f, y = 0f, z = (bridgeBaseZ + bridgeTopZ) * 0.5f };
 
@@ -1259,9 +1265,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  JAW SENSOR ARRAY
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? JawSensorArray()
+        public static List<ITriangleMeshWithColorAndTexture>? JawSensorArray()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Four sensor spikes along the front jaw edge (two each side)
             float[] yPositions = { -sensorHalfSpacing, -sensorHalfSpacing * 0.35f,
@@ -1286,15 +1292,15 @@ namespace TheOmegaStrain.Game.World.Objects
         //  WING ROOT FAIRINGS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? WingRootFairings()
+        public static List<ITriangleMeshWithColorAndTexture>? WingRootFairings()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             BuildWingFairing(tris, isRight: false);
             BuildWingFairing(tris, isRight: true);
             return tris;
         }
 
-        private static void BuildWingFairing(List<ITriangleMeshWithColor> tris, bool isRight)
+        private static void BuildWingFairing(List<ITriangleMeshWithColorAndTexture> tris, bool isRight)
         {
             float s = isRight ? 1f : -1f;
 
@@ -1320,6 +1326,142 @@ namespace TheOmegaStrain.Game.World.Objects
                 new Vector3 { x = connectorBackX,       y = s * (rearBodyHalfWidth + 8f), z = connectorTop },
                 new Vector3 { x = connectorFrontX,      y = s * (bodyHalfWidth + 8f), z = connectorTop    },
                 BodyCenter, fairingColor);
+        }
+
+        // ----------------------------------------------------
+        //  DORSAL DETAILS / CANNON FINS / POD LIGHTS
+        // ----------------------------------------------------
+
+        public static List<ITriangleMeshWithColorAndTexture>? DorsalArmorDetails()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddRaisedPanel(tris, 62f, -7f, 36f, -16f, 20.8f, hullColorDark);
+            AddRaisedPanel(tris, 62f, 7f, 36f, 16f, 20.8f, hullColorDark);
+            AddRaisedPanel(tris, 30f, -14f, -4f, -25f, 25.2f, tealPanelDark);
+            AddRaisedPanel(tris, 30f, 14f, -4f, 25f, 25.2f, tealPanelDark);
+            AddRaisedPanel(tris, -18f, -18f, -56f, -25f, 20.4f, hullColorVeryDark);
+            AddRaisedPanel(tris, -18f, 18f, -56f, 25f, 20.4f, hullColorVeryDark);
+
+            AddFacetedDiamond(tris, 72f, 0f, 17.5f, 5.2f, bridgeGlass, bridgeColor);
+            AddFacetedDiamond(tris, 16f, -7f, 29.2f, 4.2f, cannonGlowBright, tealPanel);
+            AddFacetedDiamond(tris, 16f, 7f, 29.2f, 4.2f, cannonGlowBright, tealPanel);
+            AddFacetedDiamond(tris, -46f, 0f, 22.0f, 5.0f, rearGlowColor, orangePanelDark);
+
+            return tris;
+        }
+
+        public static List<ITriangleMeshWithColorAndTexture>? CannonInsetPanels()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddCannonInsetPanel(tris, 94f, isRight: false, cannonColorDark, tealPanelDark);
+            AddCannonInsetPanel(tris, 94f, isRight: true, cannonColorDark, tealPanelDark);
+            AddCannonInsetPanel(tris, 112f, isRight: false, hullColorDark, cannonGlow);
+            AddCannonInsetPanel(tris, 112f, isRight: true, hullColorDark, cannonGlow);
+            AddCannonInsetPanel(tris, 130f, isRight: false, cannonColorDark, cannonGlowBright);
+            AddCannonInsetPanel(tris, 130f, isRight: true, cannonColorDark, cannonGlowBright);
+
+            return tris;
+        }
+
+        public static List<ITriangleMeshWithColorAndTexture>? PodSignalLights()
+        {
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
+
+            AddPodSignalLight(tris, isRight: false, x: 28f, z: 6.8f, color: tealPanel);
+            AddPodSignalLight(tris, isRight: false, x: 4f, z: 7.6f, color: cannonGlowBright);
+            AddPodSignalLight(tris, isRight: false, x: -16f, z: 6.6f, color: rearGlowColor);
+            AddPodSignalLight(tris, isRight: true, x: 28f, z: 6.8f, color: tealPanel);
+            AddPodSignalLight(tris, isRight: true, x: 4f, z: 7.6f, color: cannonGlowBright);
+            AddPodSignalLight(tris, isRight: true, x: -16f, z: 6.6f, color: rearGlowColor);
+
+            return tris;
+        }
+
+        private static void AddRaisedPanel(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x1,
+            float y1,
+            float x2,
+            float y2,
+            float z,
+            string color)
+        {
+            const float width = 4f;
+
+            var a = new Vector3 { x = x1, y = y1 - width, z = z };
+            var b = new Vector3 { x = x1, y = y1 + width, z = z + 0.4f };
+            var c = new Vector3 { x = x2, y = y2 + width, z = z + 0.2f };
+            var d = new Vector3 { x = x2, y = y2 - width, z = z - 0.2f };
+
+            AddQuadOutward(tris, a, b, c, d, BodyCenter, color);
+        }
+
+        private static void AddFacetedDiamond(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x,
+            float y,
+            float z,
+            float radius,
+            string colorA,
+            string colorB)
+        {
+            var front = new Vector3 { x = x + radius, y = y, z = z };
+            var right = new Vector3 { x = x, y = y + radius, z = z + 0.2f };
+            var back = new Vector3 { x = x - radius, y = y, z = z + 0.1f };
+            var left = new Vector3 { x = x, y = y - radius, z = z + 0.2f };
+            var peak = new Vector3 { x = x, y = y, z = z + 1.6f };
+
+            tris.Add(CreateTriangleOutward(front, peak, right, BodyCenter, colorA));
+            tris.Add(CreateTriangleOutward(right, peak, back, BodyCenter, colorB));
+            tris.Add(CreateTriangleOutward(back, peak, left, BodyCenter, colorA));
+            tris.Add(CreateTriangleOutward(left, peak, front, BodyCenter, colorB));
+        }
+
+        private static void AddCannonInsetPanel(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            float x,
+            bool isRight,
+            string panelColor,
+            string glowColor)
+        {
+            float side = isRight ? 1f : -1f;
+
+            float y = side * (cannonMidHalfWidth + 1.2f);
+            var topFront = new Vector3 { x = x + 5.5f, y = y, z = cannonTopMid - 0.6f };
+            var topBack = new Vector3 { x = x - 5.5f, y = y, z = cannonTopMid - 1.2f };
+            var bottomBack = new Vector3 { x = x - 4.5f, y = y, z = cannonBottomMid + 2.2f };
+            var bottomFront = new Vector3 { x = x + 4.5f, y = y, z = cannonBottomMid + 2.8f };
+            var peak = new Vector3 { x = x, y = side * (cannonMidHalfWidth + 3.0f), z = 0.8f };
+
+            tris.Add(CreateTriangleOutward(topFront, peak, topBack, BodyCenter, panelColor));
+            tris.Add(CreateTriangleOutward(topBack, peak, bottomBack, BodyCenter, hullColorVeryDark));
+            tris.Add(CreateTriangleOutward(bottomBack, peak, bottomFront, BodyCenter, panelColor));
+            tris.Add(CreateTriangleOutward(bottomFront, peak, topFront, BodyCenter, hullColorDark));
+
+            var glowTop = new Vector3 { x = x + 2.6f, y = side * (cannonMidHalfWidth + 3.3f), z = 2.8f };
+            var glowBack = new Vector3 { x = x - 2.6f, y = side * (cannonMidHalfWidth + 3.3f), z = 2.2f };
+            var glowBottom = new Vector3 { x = x, y = side * (cannonMidHalfWidth + 3.4f), z = -1.5f };
+            tris.Add(CreateTriangleOutward(glowTop, glowBottom, glowBack, BodyCenter, glowColor));
+        }
+
+        private static void AddPodSignalLight(
+            List<ITriangleMeshWithColorAndTexture> tris,
+            bool isRight,
+            float x,
+            float z,
+            string color)
+        {
+            float side = isRight ? 1f : -1f;
+            float y = side * (podOuterY + ventPush + 0.8f);
+
+            var a = new Vector3 { x = x + 4.4f, y = y, z = z + 2.0f };
+            var b = new Vector3 { x = x - 4.4f, y = y, z = z + 2.0f };
+            var c = new Vector3 { x = x - 5.2f, y = y, z = z - 1.8f };
+            var d = new Vector3 { x = x + 3.6f, y = y, z = z - 1.8f };
+
+            AddQuadOutward(tris, a, b, c, d, BodyCenter, color);
         }
 
         // ----------------------------------------------------
@@ -1386,7 +1528,7 @@ namespace TheOmegaStrain.Game.World.Objects
         //  HELPERS
         // ----------------------------------------------------
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 
@@ -1450,7 +1592,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddQuadOutward(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 v1,
             Vector3 v2,
             Vector3 v3,

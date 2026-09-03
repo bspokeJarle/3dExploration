@@ -271,7 +271,7 @@ public class ParticleShadowProjectionTests
     {
         var surface = new Surface
         {
-            RotatedSurfaceTriangles = new List<ITriangleMeshWithColor>()
+            RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>()
         };
 
         GameState.SurfaceState.SurfaceViewportObject = new OmegaObject3D

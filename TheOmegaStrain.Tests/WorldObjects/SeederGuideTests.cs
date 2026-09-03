@@ -45,7 +45,7 @@ public class SeederGuideTests
         AssertPointAnchor(start, visibleBottomZ);
     }
 
-    private static void AssertPointAnchor(ITriangleMeshWithColor triangle, float expectedZ)
+    private static void AssertPointAnchor(ITriangleMeshWithColorAndTexture triangle, float expectedZ)
     {
         AssertVertex(triangle.vert1, expectedZ);
         AssertVertex(triangle.vert2, expectedZ);
@@ -59,7 +59,7 @@ public class SeederGuideTests
         Assert.AreEqual(expectedZ, vertex.z, 0.001f, "Seeder particle guide vertex should sit on the expected local Z.");
     }
 
-    private static Vector3 GetCentroid(ITriangleMeshWithColor triangle)
+    private static Vector3 GetCentroid(ITriangleMeshWithColorAndTexture triangle)
     {
         return new Vector3
         {

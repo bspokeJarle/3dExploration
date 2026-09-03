@@ -37,9 +37,9 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> CreateRaindropBuffer()
+        private static List<ITriangleMeshWithColorAndTexture> CreateRaindropBuffer()
         {
-            var triangles = new List<ITriangleMeshWithColor>(RainfallControls.TargetDropCount);
+            var triangles = new List<ITriangleMeshWithColorAndTexture>(RainfallControls.TargetDropCount);
             for (int i = 0; i < RainfallControls.TargetDropCount; i++)
             {
                 triangles.Add(new TriangleMeshWithColor

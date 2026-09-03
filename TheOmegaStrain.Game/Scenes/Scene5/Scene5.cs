@@ -18,7 +18,6 @@ namespace TheOmegaStrain.Game.Scenes.Scene5
     public class Scene5 : IScene
     {
         Surface Surface = new();
-
         public string SceneMusic { get; } = "music_kanpai";
         public SceneTypes SceneType { get; } = SceneTypes.Game;
         public SceneBiomeTypes SceneBiome { get; } = SceneBiomeTypes.Rainforrest;

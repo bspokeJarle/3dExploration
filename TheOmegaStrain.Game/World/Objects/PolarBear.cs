@@ -75,9 +75,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  BODY
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? MainBody()
+        public static List<ITriangleMeshWithColorAndTexture>? MainBody()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var rear = Ring(-28f, 0f, 12f, 12f, 10f, 8);
             var mid = Ring(-10f, 0f, 13f, 14f, 11f, 8);
@@ -97,9 +97,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? ShoulderBlock()
+        public static List<ITriangleMeshWithColorAndTexture>? ShoulderBlock()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var back = Ring(-2f, 0f, 15f, 10.6f, 7.3f, 8);
             var front = Ring(14f, 0f, 16.2f, 9.1f, 8.3f, 8);
@@ -120,9 +120,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? Neck()
+        public static List<ITriangleMeshWithColorAndTexture>? Neck()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var back = Ring(14f, 0f, 14f, 7f, 7f, 8);
             var front = Ring(24f, 0f, 13f, 5f, 5f, 8);
@@ -136,9 +136,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  HEAD
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? Head()
+        public static List<ITriangleMeshWithColorAndTexture>? Head()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var back = Ring(24f, 0f, 13f, 5.6f, 5f, 8);
             var mid = Ring(32f, 0f, 12.7f, 5.2f, 4.3f, 8);
@@ -150,9 +150,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? UpperSnout()
+        public static List<ITriangleMeshWithColorAndTexture>? UpperSnout()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var backLeft = new Vector3 { x = 39.2f, y = -3.6f, z = 11.8f };
             var backMid = new Vector3 { x = 39.2f, y = 0f, z = 13.2f };
@@ -180,9 +180,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? LowerJaw()
+        public static List<ITriangleMeshWithColorAndTexture>? LowerJaw()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var backLeft = new Vector3 { x = 38.6f, y = -3.6f, z = 10.8f };
             var backRight = new Vector3 { x = 38.6f, y = 3.6f, z = 10.8f };
@@ -206,9 +206,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? Ears()
+        public static List<ITriangleMeshWithColorAndTexture>? Ears()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             AddEar(tris, -1f);
             AddEar(tris, 1f);
@@ -216,7 +216,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddEar(List<ITriangleMeshWithColor> tris, float side)
+        private static void AddEar(List<ITriangleMeshWithColorAndTexture> tris, float side)
         {
             var a = new Vector3 { x = 27f, y = side * 3.8f, z = 16.8f };
             var b = new Vector3 { x = 30f, y = side * 6.0f, z = 19.3f };
@@ -228,9 +228,9 @@ namespace TheOmegaStrain.Game.World.Objects
             tris.Add(CreateTriangleOutward(d, c, b, HeadCenter, furShadow));
         }
 
-        public static List<ITriangleMeshWithColor>? EyesAndNose()
+        public static List<ITriangleMeshWithColorAndTexture>? EyesAndNose()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             AddEye(tris, -1f);
             AddEye(tris, 1f);
@@ -245,7 +245,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddEye(List<ITriangleMeshWithColor> tris, float side)
+        private static void AddEye(List<ITriangleMeshWithColorAndTexture> tris, float side)
         {
             tris.Add(CreateTriangleOutward(
                 new Vector3 { x = 38.5f, y = side * 3.2f, z = 14.9f },
@@ -259,9 +259,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  LEGS / PAWS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? LegsAndPaws()
+        public static List<ITriangleMeshWithColorAndTexture>? LegsAndPaws()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             AddLeg(tris, 10f, -7.5f, front: true);
             AddLeg(tris, 10f, 7.5f, front: true);
@@ -271,7 +271,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddLeg(List<ITriangleMeshWithColor> tris, float x, float y, bool front)
+        private static void AddLeg(List<ITriangleMeshWithColorAndTexture> tris, float x, float y, bool front)
         {
             float upperHeight = front ? 8f : 7f;
             float pawLength = front ? 8.2f : 7.8f;
@@ -290,9 +290,9 @@ namespace TheOmegaStrain.Game.World.Objects
             tris.AddRange(CreateBox(pawMin, pawMax, center, front ? furLight : furMid));
         }
 
-        public static List<ITriangleMeshWithColor>? Tail()
+        public static List<ITriangleMeshWithColorAndTexture>? Tail()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var top = new Vector3 { x = -38.5f, y = 0f, z = 13f };
             var bottom = new Vector3 { x = -38.5f, y = 0f, z = 9f };
@@ -333,9 +333,9 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        private static List<ITriangleMeshWithColor> PolarBearShadow()
+        private static List<ITriangleMeshWithColorAndTexture> PolarBearShadow()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             const string sc = OmegaObject3DHelpers.ShadowColorHex;
 
             AddShadowRect(tris, -42f, 22f, 0f, 18f, sc);
@@ -346,7 +346,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddShadowRect(List<ITriangleMeshWithColor> tris, float x1, float x2, float z1, float z2, string color)
+        private static void AddShadowRect(List<ITriangleMeshWithColorAndTexture> tris, float x1, float x2, float z1, float z2, string color)
         {
             var a = new Vector3 { x = x1, y = 0f, z = z1 };
             var b = new Vector3 { x = x2, y = 0f, z = z1 };
@@ -381,7 +381,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return points;
         }
 
-        private static void StitchRings(List<ITriangleMeshWithColor> tris, List<Vector3> a, List<Vector3> b, Vector3 center)
+        private static void StitchRings(List<ITriangleMeshWithColorAndTexture> tris, List<Vector3> a, List<Vector3> b, Vector3 center)
         {
             for (int i = 0; i < a.Count; i++)
             {
@@ -405,9 +405,9 @@ namespace TheOmegaStrain.Game.World.Objects
             }
         }
 
-        private static List<ITriangleMeshWithColor> CreateBox(Vector3 min, Vector3 max, Vector3 center, string color)
+        private static List<ITriangleMeshWithColorAndTexture> CreateBox(Vector3 min, Vector3 max, Vector3 center, string color)
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var p000 = new Vector3 { x = min.x, y = min.y, z = min.z };
             var p001 = new Vector3 { x = min.x, y = min.y, z = max.z };
@@ -428,7 +428,7 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 
@@ -441,7 +441,7 @@ namespace TheOmegaStrain.Game.World.Objects
         }
 
         private static void AddQuadOutward(
-            List<ITriangleMeshWithColor> tris,
+            List<ITriangleMeshWithColorAndTexture> tris,
             Vector3 v1,
             Vector3 v2,
             Vector3 v3,

@@ -16,7 +16,7 @@ namespace TheOmegaStrain.Common.OmegaEngineAdapters
         public const float DefaultShadowVertexStretchBoost = GroundProjectionMath.DefaultShadowVertexStretchBoost;
 
         public static bool TryGetSurfaceGroundPoint(
-            IReadOnlyList<ITriangleMeshWithColor>? rotatedTiles,
+            IReadOnlyList<ITriangleMeshWithColorAndTexture>? rotatedTiles,
             float targetX,
             float targetZ,
             out float groundX,
@@ -33,7 +33,7 @@ namespace TheOmegaStrain.Common.OmegaEngineAdapters
         }
 
         public static bool TryGetFrontmostSurfaceGroundPoint(
-            IReadOnlyList<ITriangleMeshWithColor>? rotatedTiles,
+            IReadOnlyList<ITriangleMeshWithColorAndTexture>? rotatedTiles,
             float targetX,
             out float groundX,
             out float groundY,

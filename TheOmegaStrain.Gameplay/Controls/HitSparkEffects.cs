@@ -74,8 +74,8 @@ namespace TheOmegaStrain.Gameplay.Helpers
         private static void ReleaseStyledHitSparks(
             I3dObject theObject,
             IObjectMovement parentMovement,
-            ITriangleMeshWithColor start,
-            ITriangleMeshWithColor guide,
+            ITriangleMeshWithColorAndTexture start,
+            ITriangleMeshWithColorAndTexture guide,
             ParticlesAI particles,
             int thrust,
             string? objectName)
@@ -156,7 +156,7 @@ namespace TheOmegaStrain.Gameplay.Helpers
             };
         }
 
-        private static bool TryCreateHitSparkGuides(I3dObject theObject, out ITriangleMeshWithColor start, out ITriangleMeshWithColor guide)
+        private static bool TryCreateHitSparkGuides(I3dObject theObject, out ITriangleMeshWithColorAndTexture start, out ITriangleMeshWithColorAndTexture guide)
         {
             start = null!;
             guide = null!;
@@ -210,7 +210,7 @@ namespace TheOmegaStrain.Gameplay.Helpers
             return new Vector3 { x = x / count, y = y / count, z = z / count };
         }
 
-        private static ITriangleMeshWithColor CreatePointTriangle(Vector3 point)
+        private static ITriangleMeshWithColorAndTexture CreatePointTriangle(Vector3 point)
         {
             return new TriangleMeshWithColor
             {

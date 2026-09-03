@@ -28,8 +28,10 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float DepthStartZ = 700f;
         private const float DepthBehindSpread = 1800f;
         private const float DepthAheadSpread = 3400f;
-        private const float MinSize = 4.2f;
-        private const float MaxSize = 9.2f;
+        private const float MinSize = 2.52f;
+        private const float MaxSize = 5.52f;
+        // Upper bound for on-screen size, so leaves we fly straight into stay natural.
+        private const float MaxApparentSize = 12f;
         private const float MinFallSpeed = 0.25f;
         private const float MaxFallSpeed = 1.15f;
         private const float HorizontalDrift = 0.62f;
@@ -64,8 +66,8 @@ namespace TheOmegaStrain.Gameplay.Controls
         private float _windPhase;
         private float _windX = BaseWindX;
 
-        public ITriangleMeshWithColor? StartCoordinates { get; set; }
-        public ITriangleMeshWithColor? GuideCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
+        public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject? ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
@@ -222,7 +224,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             return leaf;
         }
 
-        private static void WriteTriangle(ITriangleMeshWithColor triangle, FallingLeaf leaf, IVector3 mapPosition, float objectZ)
+        private static void WriteTriangle(ITriangleMeshWithColorAndTexture triangle, FallingLeaf leaf, IVector3 mapPosition, float objectZ)
         {
             if (string.IsNullOrWhiteSpace(leaf.Color) &&
                 !string.IsNullOrWhiteSpace(triangle.Color) &&
@@ -243,7 +245,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             float scale = WorldWeatherField.GetProjectionScale(relativeZ, objectZ);
             float centerX = relativeX / scale;
             float centerY = leaf.OffsetY / scale;
-            float size = leaf.Size * opacity;
+            float size = WorldWeatherField.ClampApparentSize(leaf.Size * opacity, scale, MaxApparentSize);
             float angle = leaf.Angle + MathF.Sin(leaf.Phase) * 0.42f;
             float cos = MathF.Cos(angle);
             float sin = MathF.Sin(angle);
@@ -270,7 +272,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             triangle.vert3.z = relativeZ;
         }
 
-        private static void CollapseTriangle(ITriangleMeshWithColor triangle)
+        private static void CollapseTriangle(ITriangleMeshWithColorAndTexture triangle)
         {
             triangle.Color = "000000";
             triangle.angle = 0f;
@@ -280,7 +282,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             triangle.vert1.z = triangle.vert2.z = triangle.vert3.z = 0f;
         }
 
-        private static ITriangleMeshWithColor CreateLeafTriangle(int index)
+        private static ITriangleMeshWithColorAndTexture CreateLeafTriangle(int index)
         {
             return new TriangleMeshWithColor
             {
@@ -318,9 +320,9 @@ namespace TheOmegaStrain.Gameplay.Controls
         }
 
         public void ReleaseParticles(I3dObject theObject) { }
-        public void SetParticleGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
-        public void SetWeaponGuideCoordinates(ITriangleMeshWithColor StartCoord, ITriangleMeshWithColor GuideCoord) { }
+        public void SetParticleGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetRearEngineGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
+        public void SetWeaponGuideCoordinates(ITriangleMeshWithColorAndTexture StartCoord, ITriangleMeshWithColorAndTexture GuideCoord) { }
 
         private sealed class FallingLeaf
         {

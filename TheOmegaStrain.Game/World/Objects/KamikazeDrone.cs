@@ -167,9 +167,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  NOSE
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? KamikazeRoundedNose()
+        public static List<ITriangleMeshWithColorAndTexture>? KamikazeRoundedNose()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float tipX = noseBaseX + noseLength;
             float x1 = noseBaseX + noseLength * 0.80f;
@@ -199,9 +199,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? KamikazeNoseTransition()
+        public static List<ITriangleMeshWithColorAndTexture>? KamikazeNoseTransition()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Use 8 segments here so they map 1:1 with front ring
             var baseRing = GenerateEllipseRing(8, noseBaseX, noseRadiusY, noseRadiusZ);
@@ -232,9 +232,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  BODY
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? KamikazeBodyTop()
+        public static List<ITriangleMeshWithColorAndTexture>? KamikazeBodyTop()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             var ring = GetFrontRing();
 
             var top = ring[0];
@@ -267,9 +267,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? KamikazeBodyBottom()
+        public static List<ITriangleMeshWithColorAndTexture>? KamikazeBodyBottom()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             var ring = GetFrontRing();
 
             var bottom = ring[4];
@@ -302,9 +302,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? KamikazeBodySides()
+        public static List<ITriangleMeshWithColorAndTexture>? KamikazeBodySides()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
             var ring = GetFrontRing();
 
             // Left side uses shared front points
@@ -362,9 +362,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  SPINE + CANOPY
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? KamikazeTopSpine()
+        public static List<ITriangleMeshWithColorAndTexture>? KamikazeTopSpine()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var lf = new Vector3 { x = bodyFrontX + 2f, y = -spineHalfWidthFront, z = bodyTopFront + 0.25f };
             var rf = new Vector3 { x = bodyFrontX + 2f, y = spineHalfWidthFront, z = bodyTopFront + 0.25f };
@@ -394,9 +394,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? KamikazeCanopy()
+        public static List<ITriangleMeshWithColorAndTexture>? KamikazeCanopy()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             float baseFrontZ = bodyTopFront + spineLiftFront + canopyLiftFront;
             float baseMidZ = bodyTopMid + spineLiftMid + canopyLiftMid;
@@ -438,9 +438,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  ENGINE + FINS
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? KamikazeEngineBlock()
+        public static List<ITriangleMeshWithColorAndTexture>? KamikazeEngineBlock()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             var ftl = new Vector3 { x = engineFrontX, y = -engineHalfWidth, z = engineHalfHeight };
             var ftr = new Vector3 { x = engineFrontX, y = engineHalfWidth, z = engineHalfHeight };
@@ -461,9 +461,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return tris;
         }
 
-        public static List<ITriangleMeshWithColor>? KamikazeRearFins()
+        public static List<ITriangleMeshWithColorAndTexture>? KamikazeRearFins()
         {
-            var tris = new List<ITriangleMeshWithColor>();
+            var tris = new List<ITriangleMeshWithColorAndTexture>();
 
             // Left
             {
@@ -512,9 +512,9 @@ namespace TheOmegaStrain.Game.World.Objects
         //  GUIDES / COLLISION
         // ----------------------------------------------------
 
-        public static List<ITriangleMeshWithColor>? ParticlesDirectionGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? ParticlesDirectionGuide()
         {
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = engineBackX - 2f, y =  6f, z =  2f },
@@ -526,9 +526,9 @@ namespace TheOmegaStrain.Game.World.Objects
             };
         }
 
-        public static List<ITriangleMeshWithColor>? ParticlesStartGuide()
+        public static List<ITriangleMeshWithColorAndTexture>? ParticlesStartGuide()
         {
-            return new List<ITriangleMeshWithColor>
+            return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
                     new Vector3 { x = engineFrontX - 2f, y =  5f, z =  2f },
@@ -566,7 +566,7 @@ namespace TheOmegaStrain.Game.World.Objects
         //  HELPERS
         // ----------------------------------------------------
 
-        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColor>? tris, bool visible)
+        private static void AddPart(OmegaObject3D obj, string name, List<ITriangleMeshWithColorAndTexture>? tris, bool visible)
         {
             if (tris == null) return;
 

@@ -195,10 +195,16 @@ public sealed class SteamTests
     [TestMethod]
     public void SteamAppIdFileIsCopiedForDebugRuns()
     {
+        // steam_appid.txt is deliberately copied only for Debug builds (see
+        // TheOmegaStrain.Steam.csproj); production builds must not ship it.
+#if DEBUG
         var appIdPath = Path.Combine(AppContext.BaseDirectory, "steam_appid.txt");
 
         Assert.IsTrue(File.Exists(appIdPath));
         Assert.AreEqual(SteamGameConfig.DevelopmentAppId.ToString(), File.ReadAllText(appIdPath).Trim());
+#else
+        Assert.Inconclusive("steam_appid.txt is only copied for Debug builds.");
+#endif
     }
 
     [TestMethod]

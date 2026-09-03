@@ -1,0 +1,3 @@
+interface:
+  display_name: "Omega Scene Workflow"
+  short_description: "Create Omega gameplay scenes using existing setup, director, biome, overlay, and test patterns"
