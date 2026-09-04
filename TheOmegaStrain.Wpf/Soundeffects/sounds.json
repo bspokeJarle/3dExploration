@@ -848,7 +848,7 @@
       },
 
       "settings": {
-        "volume": 1.0,
+        "volume": 0.55,
         "maxVoices": 4,
         "is3D": true,
         "priority": 110

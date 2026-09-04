@@ -476,6 +476,9 @@ namespace TheOmegaStrain.Game.World.Objects
             tris.Add(CreateTriangleOutward(centerRear, rearRight, tailRight, BodyCenter, hullColorDark));
             tris.Add(CreateTriangleOutward(centerRear, tailRight, centerTail, BodyCenter, hullColorDark));
 
+            // Close the tail ridge between the center spine point and the rear edge
+            tris.Add(CreateTriangleOutward(centerTail, tailRight, tailLeft, BodyCenter, hullColorDark));
+
             return tris;
         }
 
@@ -507,6 +510,9 @@ namespace TheOmegaStrain.Game.World.Objects
 
             tris.Add(CreateTriangleOutward(centerRear, tailRight, rearRight, BodyCenter, hullColorVeryDark));
             tris.Add(CreateTriangleOutward(centerRear, centerTail, tailRight, BodyCenter, hullColorVeryDark));
+
+            // Close the tail underside between the center spine point and the rear edge
+            tris.Add(CreateTriangleOutward(centerTail, tailLeft, tailRight, BodyCenter, hullColorVeryDark));
 
             return tris;
         }
@@ -963,10 +969,10 @@ namespace TheOmegaStrain.Game.World.Objects
             float[] offsets = { 10f, 0f, -10f };
             foreach (float yOff in offsets)
             {
-                var nozzleCenter = new Vector3 { x = tailX - thrusterDepth * 0.5f, y = yOff, z = 0f };
-                var ring = GenerateEllipseRing(thrusterSegments, tailX, thrusterRadius, thrusterRadius);
-                var innerRing = GenerateEllipseRing(thrusterSegments, tailX - thrusterDepth, thrusterRadius * 0.55f, thrusterRadius * 0.55f);
-                var glowCenter = new Vector3 { x = tailX - thrusterDepth, y = yOff, z = 0f };
+                var nozzleCenter = new Vector3 { x = tailX + thrusterDepth * 0.5f, y = yOff, z = 0f };
+                var ring = GenerateEllipseRing(thrusterSegments, tailX - 0.4f, thrusterRadius, thrusterRadius);
+                var innerRing = GenerateEllipseRing(thrusterSegments, tailX + thrusterDepth, thrusterRadius * 0.55f, thrusterRadius * 0.55f);
+                var glowCenter = new Vector3 { x = tailX + thrusterDepth, y = yOff, z = 0f };
 
                 // Offset entire ring by yOff
                 for (int i = 0; i < ring.Count; i++)
@@ -986,7 +992,7 @@ namespace TheOmegaStrain.Game.World.Objects
                 {
                     int next = (i + 1) % thrusterSegments;
                     string col = (i % 2 == 0) ? thrusterInnerColor : cannonGlowBright;
-                    tris.Add(CreateTriangleOutward(glowCenter, innerRing[i], innerRing[next], new Vector3 { x = tailX - thrusterDepth - 2f, y = yOff, z = 0f }, col));
+                    tris.Add(CreateTriangleOutward(glowCenter, innerRing[i], innerRing[next], new Vector3 { x = tailX + thrusterDepth + 2f, y = yOff, z = 0f }, col));
                 }
             }
 
