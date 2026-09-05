@@ -610,11 +610,11 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             IsNameConfirmed = false;
             _cursorBlinkTimer = 0f;
             Body = "";
-            Footer = "KEYBOARD: ENTER CONFIRM | ESC BACK\nXBOX: [A] CONFIRM | [B] BACK";
+            Footer = "KEYBOARD: ENTER | RIGHT NEW | UP/DOWN SAVES | ESC\nXBOX: [A] OK | D-PAD RIGHT NEW | UP/DOWN SAVES | [B] BACK";
 
             DimStrength = 0.65f;
             PanelWidthRatio = 0.68f;
-            PanelHeightRatio = 0.26f;
+            PanelHeightRatio = 0.28f;
             PanelYOffsetRatio = 0.00f;
             CenterText = true;
 
@@ -634,7 +634,10 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             if (key >= GameInputKey.A && key <= GameInputKey.Z)
             {
                 if (NameEntryBuffer.Length < MaxCallsignLength)
+                {
                     NameEntryBuffer += (char)('A' + (key - GameInputKey.A));
+                    NameEntryValidationMessage = "";
+                }
                 return true;
             }
 
@@ -642,7 +645,10 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             if (key >= GameInputKey.D0 && key <= GameInputKey.D9)
             {
                 if (NameEntryBuffer.Length < MaxCallsignLength)
+                {
                     NameEntryBuffer += (char)('0' + (key - GameInputKey.D0));
+                    NameEntryValidationMessage = "";
+                }
                 return true;
             }
 
@@ -650,7 +656,10 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             if (key >= GameInputKey.NumPad0 && key <= GameInputKey.NumPad9)
             {
                 if (NameEntryBuffer.Length < MaxCallsignLength)
+                {
                     NameEntryBuffer += (char)('0' + (key - GameInputKey.NumPad0));
+                    NameEntryValidationMessage = "";
+                }
                 return true;
             }
 
@@ -666,6 +675,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             if (key == GameInputKey.Space && NameEntryBuffer.Length < MaxCallsignLength)
             {
                 NameEntryBuffer += ' ';
+                NameEntryValidationMessage = "";
                 return true;
             }
 
@@ -673,6 +683,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             if ((key == GameInputKey.OemMinus || key == GameInputKey.Subtract) && NameEntryBuffer.Length < MaxCallsignLength)
             {
                 NameEntryBuffer += '-';
+                NameEntryValidationMessage = "";
                 return true;
             }
 

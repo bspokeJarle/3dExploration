@@ -111,7 +111,9 @@ Steam DLL.
 Supabase/highscore configuration is optional as well. When cloud setup or
 network access is unavailable, the game should fall back to local persistence.
 For Supabase duplicate cleanup and unique-row enforcement, use
-`Tools/Supabase/CleanupDuplicateHighscores.sql` in the Supabase SQL Editor.
+`Tools/Supabase/CleanupDuplicateHighscores.sql` in the Supabase SQL Editor. To
+reserve callsigns online, use `Tools/Supabase/SetupPlayerCallsignRegistry.sql`;
+missing callsign registry access is treated as offline mode.
 
 ## Related Repositories
 

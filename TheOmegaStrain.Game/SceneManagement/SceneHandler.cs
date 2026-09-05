@@ -741,31 +741,39 @@ namespace TheOmegaStrain.Game.SceneManagement
                 return;
             }
 
-            if (key == GameInputKey.Return || key == GameInputKey.Enter)
+            if (key == GameInputKey.Right)
             {
-                var name = PlayerNameFormatter.Normalize(overlay.NameEntryBuffer);
-                if (string.IsNullOrEmpty(name))
+                overlay.NameEntryBuffer = PlayerCallsignService.CreateSuggestedCallsign(overlay.NameEntryBuffer);
+                overlay.NameEntryValidationMessage = ">> NEW CALLSIGN SUGGESTED";
+                return;
+            }
+
+            if (key == GameInputKey.Up || key == GameInputKey.Down)
+            {
+                var direction = key == GameInputKey.Up ? -1 : 1;
+                var localProfile = PlayerCallsignService.SelectLocalProfileCallsign(overlay.NameEntryBuffer, direction);
+                if (!string.IsNullOrEmpty(localProfile))
                 {
-                    overlay.NameEntryValidationMessage = ">> CALLSIGN CANNOT BE EMPTY";
+                    overlay.NameEntryBuffer = localProfile;
+                    overlay.NameEntryValidationMessage = ">> LOCAL CALLSIGN SELECTED";
                     return;
                 }
 
-                var priorName = PersistenceSetup.LoadLastPlayerName();
-                bool isOwnName = string.Equals(name, priorName, StringComparison.OrdinalIgnoreCase)
-                              || PersistenceSetup.HasPlayerSaveFile(name);
+                overlay.NameEntryValidationMessage = ">> NO LOCAL CALLSIGNS FOUND";
+                return;
+            }
 
-                if (!isOwnName)
+            if (key == GameInputKey.Return || key == GameInputKey.Enter)
+            {
+                var priorName = PersistenceSetup.LoadLastPlayerName();
+                var confirmation = PlayerCallsignService.TryConfirmCallsign(overlay.NameEntryBuffer, priorName);
+                if (!confirmation.IsAccepted)
                 {
-                    var highscores = HighscoreService.LoadLocalHighscores();
-                    bool taken = highscores.Entries.Exists(e =>
-                        string.Equals(e.PlayerName, name, StringComparison.OrdinalIgnoreCase));
-                    if (taken)
-                    {
-                        overlay.NameEntryValidationMessage = ">> CALLSIGN ALREADY IN USE - CHOOSE ANOTHER";
-                        return;
-                    }
+                    overlay.NameEntryValidationMessage = confirmation.ValidationMessage;
+                    return;
                 }
 
+                var name = confirmation.Callsign;
                 overlay.IsNameConfirmed = true;
                 GameState.GamePlayState.PlayerName = name;
                 PersistenceSetup.SaveLastPlayerName(name);
@@ -1095,7 +1103,11 @@ namespace TheOmegaStrain.Game.SceneManagement
             ClearVideoOverlay();
 
             var lastPlayer = PersistenceSetup.LoadLastPlayerName();
-            overlay.SetNameEntryPreset(lastPlayer);
+            var initialName = string.IsNullOrWhiteSpace(lastPlayer)
+                ? PlayerCallsignService.CreateSuggestedCallsign()
+                : lastPlayer;
+
+            overlay.SetNameEntryPreset(initialName);
         }
 
         private static void CloseTutorialOverlayAndResume(IScene scene, I3dWorld world)
