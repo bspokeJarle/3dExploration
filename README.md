@@ -110,6 +110,8 @@ Steam DLL.
 
 Supabase/highscore configuration is optional as well. When cloud setup or
 network access is unavailable, the game should fall back to local persistence.
+For Supabase duplicate cleanup and unique-row enforcement, use
+`Tools/Supabase/CleanupDuplicateHighscores.sql` in the Supabase SQL Editor.
 
 ## Related Repositories
 
