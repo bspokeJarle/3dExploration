@@ -7,7 +7,9 @@ namespace TheOmegaStrain.Common.CommonGlobalState
 {
     public static class GameSettingsOverlayFormatter
     {
-        public const string Footer = "UP/DOWN SELECT  //  LEFT/RIGHT ADJUST  //  ENTER OR ESC TO CLOSE";
+        public const string Footer =
+            "KEYBOARD: UP/DOWN SELECT | LEFT/RIGHT ADJUST | ENTER/ESC CLOSE\n" +
+            "XBOX: D-PAD SELECT/ADJUST | [A]/[B] CLOSE";
 
         public static string BuildAudioBody(GameSettingsState settings, int selectedIndex)
         {
@@ -52,38 +54,42 @@ namespace TheOmegaStrain.Common.CommonGlobalState
 
             var lines = new List<string>
             {
-                "Choose one active control source. Keyboard weapon keys 1/2/3 always stay live.",
+                "Set the control source first. Then choose which mapping list to edit.",
+                "Keyboard weapon keys 1/2/3 stay live for quick weapon select.",
                 ""
             };
 
-            AddValueLine(lines, selectedIndex, 0, "CONTROL TYPE", FormatControlMode(settings.ActiveControlScheme));
+            AddValueLine(lines, selectedIndex, 0, "ACTIVE IN GAME", FormatControlMode(settings.ActiveControlScheme));
+            AddValueLine(lines, selectedIndex, 1, "EDIT MAPPINGS", FormatControlMode(settings.ControlsEditorScheme));
+            lines.Add("");
+            lines.Add($"{FormatControlMode(settings.ControlsEditorScheme)} MAPPINGS");
 
-            switch (settings.ActiveControlScheme)
+            switch (settings.ControlsEditorScheme)
             {
                 case ControlInputMode.Mouse:
-                    AddValueLine(lines, selectedIndex, 1, "THRUST", FormatMouseButton(settings.MouseThrustButton));
-                    AddValueLine(lines, selectedIndex, 2, "FIRE", FormatMouseButton(settings.MouseFireButton));
+                    AddValueLine(lines, selectedIndex, 2, "THRUST", FormatMouseButton(settings.MouseThrustButton));
+                    AddValueLine(lines, selectedIndex, 3, "FIRE", FormatMouseButton(settings.MouseFireButton));
                     AddValueLine(lines, selectedIndex, -1, "STEER", "MOUSE MOVE");
                     break;
                 case ControlInputMode.XboxController:
-                    AddValueLine(lines, selectedIndex, 1, "THRUST", FormatXboxButton(settings.XboxThrustButton));
-                    AddValueLine(lines, selectedIndex, 2, "FIRE", FormatXboxButton(settings.XboxFireButton));
-                    AddValueLine(lines, selectedIndex, 3, "PITCH UP", FormatXboxButton(settings.XboxPitchUpButton));
-                    AddValueLine(lines, selectedIndex, 4, "PITCH DOWN", FormatXboxButton(settings.XboxPitchDownButton));
-                    AddValueLine(lines, selectedIndex, 5, "TURN LEFT", FormatXboxButton(settings.XboxTurnLeftButton));
-                    AddValueLine(lines, selectedIndex, 6, "TURN RIGHT", FormatXboxButton(settings.XboxTurnRightButton));
-                    AddValueLine(lines, selectedIndex, 7, "POWERUP 1", FormatXboxButton(settings.XboxBulletButton));
-                    AddValueLine(lines, selectedIndex, 8, "POWERUP 2", FormatXboxButton(settings.XboxDecoyButton));
-                    AddValueLine(lines, selectedIndex, 9, "POWERUP 3", FormatXboxButton(settings.XboxLazerButton));
-                    AddValueLine(lines, selectedIndex, 10, "POWERUP 4", FormatXboxButton(settings.XboxPowerup4Button));
+                    AddValueLine(lines, selectedIndex, 2, "THRUST", FormatXboxButton(settings.XboxThrustButton));
+                    AddValueLine(lines, selectedIndex, 3, "FIRE", FormatXboxButton(settings.XboxFireButton));
+                    AddValueLine(lines, selectedIndex, 4, "PITCH UP", FormatXboxButton(settings.XboxPitchUpButton));
+                    AddValueLine(lines, selectedIndex, 5, "PITCH DOWN", FormatXboxButton(settings.XboxPitchDownButton));
+                    AddValueLine(lines, selectedIndex, 6, "TURN LEFT", FormatXboxButton(settings.XboxTurnLeftButton));
+                    AddValueLine(lines, selectedIndex, 7, "TURN RIGHT", FormatXboxButton(settings.XboxTurnRightButton));
+                    AddValueLine(lines, selectedIndex, 8, "POWERUP 1", FormatXboxButton(settings.XboxBulletButton));
+                    AddValueLine(lines, selectedIndex, 9, "POWERUP 2", FormatXboxButton(settings.XboxDecoyButton));
+                    AddValueLine(lines, selectedIndex, 10, "POWERUP 3", FormatXboxButton(settings.XboxLazerButton));
+                    AddValueLine(lines, selectedIndex, 11, "POWERUP 4", FormatXboxButton(settings.XboxPowerup4Button));
                     break;
                 default:
-                    AddValueLine(lines, selectedIndex, 1, "THRUST", FormatKeyboardKey(settings.KeyboardThrustKey));
-                    AddValueLine(lines, selectedIndex, 2, "FIRE", FormatKeyboardKey(settings.KeyboardFireKey));
-                    AddValueLine(lines, selectedIndex, 3, "PITCH UP", FormatKeyboardKey(settings.KeyboardPitchUpKey));
-                    AddValueLine(lines, selectedIndex, 4, "PITCH DOWN", FormatKeyboardKey(settings.KeyboardPitchDownKey));
-                    AddValueLine(lines, selectedIndex, 5, "TURN LEFT", FormatKeyboardKey(settings.KeyboardTurnLeftKey));
-                    AddValueLine(lines, selectedIndex, 6, "TURN RIGHT", FormatKeyboardKey(settings.KeyboardTurnRightKey));
+                    AddValueLine(lines, selectedIndex, 2, "THRUST", FormatKeyboardKey(settings.KeyboardThrustKey));
+                    AddValueLine(lines, selectedIndex, 3, "FIRE", FormatKeyboardKey(settings.KeyboardFireKey));
+                    AddValueLine(lines, selectedIndex, 4, "PITCH UP", FormatKeyboardKey(settings.KeyboardPitchUpKey));
+                    AddValueLine(lines, selectedIndex, 5, "PITCH DOWN", FormatKeyboardKey(settings.KeyboardPitchDownKey));
+                    AddValueLine(lines, selectedIndex, 6, "TURN LEFT", FormatKeyboardKey(settings.KeyboardTurnLeftKey));
+                    AddValueLine(lines, selectedIndex, 7, "TURN RIGHT", FormatKeyboardKey(settings.KeyboardTurnRightKey));
                     break;
             }
 

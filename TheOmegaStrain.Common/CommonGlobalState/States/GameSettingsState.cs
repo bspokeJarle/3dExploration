@@ -30,12 +30,16 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
 
     public sealed class GameSettingsState : IAudioVolumeProfile
     {
-        public const int CurrentSettingsSchemaVersion = 3;
+        public const int CurrentSettingsSchemaVersion = 4;
         public const int VolumeStepPercent = 5;
         public const int ParticleDensityStepPercent = 10;
-        public const int KeyboardControlsOptionCount = 7;
-        public const int MouseControlsOptionCount = 3;
-        public const int XboxControlsOptionCount = 11;
+        private const int ControlFlowOptionCount = 2;
+        private const int KeyboardMappingOptionCount = 6;
+        private const int MouseMappingOptionCount = 2;
+        private const int XboxMappingOptionCount = 10;
+        public const int KeyboardControlsOptionCount = ControlFlowOptionCount + KeyboardMappingOptionCount;
+        public const int MouseControlsOptionCount = ControlFlowOptionCount + MouseMappingOptionCount;
+        public const int XboxControlsOptionCount = ControlFlowOptionCount + XboxMappingOptionCount;
 
         private static readonly string[] KeyboardKeyOptions =
         {
@@ -75,6 +79,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         public bool EnhancedShadowsEnabled { get; set; } = true;
 
         public ControlInputMode ActiveControlScheme { get; set; } = ControlInputMode.Keyboard;
+        public ControlInputMode ControlsEditorScheme { get; set; } = ControlInputMode.Keyboard;
         public string KeyboardThrustKey { get; set; } = "Space";
         public string KeyboardFireKey { get; set; } = "RShiftKey";
         public string KeyboardPitchUpKey { get; set; } = "Up";
@@ -115,6 +120,8 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
 
             if (!Enum.IsDefined(typeof(ControlInputMode), ActiveControlScheme))
                 ActiveControlScheme = ControlInputMode.Keyboard;
+            if (!Enum.IsDefined(typeof(ControlInputMode), ControlsEditorScheme))
+                ControlsEditorScheme = ActiveControlScheme;
 
             KeyboardThrustKey = NormalizeKeyboardKey(KeyboardThrustKey, "Space");
             KeyboardFireKey = NormalizeKeyboardKey(KeyboardFireKey, "RShiftKey");
@@ -211,7 +218,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         {
             Normalize();
 
-            return ActiveControlScheme switch
+            return ControlsEditorScheme switch
             {
                 ControlInputMode.Mouse => MouseControlsOptionCount,
                 ControlInputMode.XboxController => XboxControlsOptionCount,
@@ -226,14 +233,27 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
 
             Normalize();
 
-            bool changed = selectedIndex == 0
-                ? AdjustActiveControlScheme(direction)
-                : ActiveControlScheme switch
+            bool changed;
+            if (selectedIndex == 0)
+            {
+                changed = AdjustActiveControlScheme(direction);
+                if (changed)
+                    ControlsEditorScheme = ActiveControlScheme;
+            }
+            else if (selectedIndex == 1)
+            {
+                changed = AdjustControlsEditorScheme(direction);
+            }
+            else
+            {
+                int mappingIndex = selectedIndex - 1;
+                changed = ControlsEditorScheme switch
                 {
-                    ControlInputMode.Mouse => AdjustMouseControl(selectedIndex, direction),
-                    ControlInputMode.XboxController => AdjustXboxControl(selectedIndex, direction),
-                    _ => AdjustKeyboardControl(selectedIndex, direction)
+                    ControlInputMode.Mouse => AdjustMouseControl(mappingIndex, direction),
+                    ControlInputMode.XboxController => AdjustXboxControl(mappingIndex, direction),
+                    _ => AdjustKeyboardControl(mappingIndex, direction)
                 };
+            }
 
             if (changed)
                 Version++;
@@ -295,6 +315,12 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         private bool AdjustActiveControlScheme(int direction)
         {
             ActiveControlScheme = CycleEnum(ActiveControlScheme, direction);
+            return true;
+        }
+
+        private bool AdjustControlsEditorScheme(int direction)
+        {
+            ControlsEditorScheme = CycleEnum(ControlsEditorScheme, direction);
             return true;
         }
 

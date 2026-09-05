@@ -32,6 +32,8 @@ namespace TheOmegaStrain.Game.SceneManagement
         private int currentSceneIndex = 0;
         private const bool enableLogging = false;
         private const int SceneAdvanceDelayFrames = 5;
+        private const string IntroKeyboardControlsPageTitle = "FLIGHT CONTROLS";
+        private const string IntroXboxControlsPageTitle = "XBOX CONTROLLER";
         private bool _pendingSceneAdvance = false;
         private int _pendingSceneAdvanceFramesLeft = 0;
         private int? _targetSceneIndex = null;
@@ -1008,6 +1010,16 @@ namespace TheOmegaStrain.Game.SceneManagement
             {
                 _pendingTutorialStart = true;
                 ShowNameEntryOverlay(overlay);
+                return;
+            }
+
+            if (key == GameInputKey.K && overlay.TrySelectPageByTitle(IntroKeyboardControlsPageTitle))
+            {
+                return;
+            }
+
+            if (key == GameInputKey.X && overlay.TrySelectPageByTitle(IntroXboxControlsPageTitle))
+            {
                 return;
             }
 

@@ -63,6 +63,24 @@ public class OverlayAutoPagingTests
     }
 
     [TestMethod]
+    public void TrySelectPageByTitle_SelectsMatchingPageAndAppliesContent()
+    {
+        var overlay = new ScreenOverlayState();
+        overlay.AddPage("H1", "T1", "B1", "F1");
+        overlay.AddPage("H2", "FLIGHT CONTROLS", "B2", "F2");
+        overlay.CurrentPage = 0;
+        overlay.ApplyPageContent();
+
+        bool selected = overlay.TrySelectPageByTitle("FLIGHT CONTROLS");
+
+        Assert.IsTrue(selected);
+        Assert.AreEqual(1, overlay.CurrentPage);
+        Assert.AreEqual("FLIGHT CONTROLS", overlay.Title);
+        Assert.AreEqual("B2", overlay.Body);
+        Assert.AreEqual("F2", overlay.Footer);
+    }
+
+    [TestMethod]
     public void IntroOverlay_AutoPagesAfterLogoShowsOverlay()
     {
         var intro = new Intro();

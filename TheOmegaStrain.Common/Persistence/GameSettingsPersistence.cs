@@ -83,6 +83,11 @@ namespace TheOmegaStrain.Common.Persistence
                 state.XboxLazerButton = XboxControlButton.B;
                 state.XboxPowerup4Button = XboxControlButton.A;
             }
+
+            if (settingsSchemaVersion < 4)
+            {
+                state.ControlsEditorScheme = state.ActiveControlScheme;
+            }
         }
 
         private static int GetSettingsSchemaVersion(string json)

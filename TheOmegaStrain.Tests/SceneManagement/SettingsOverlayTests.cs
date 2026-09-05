@@ -126,12 +126,88 @@ public class SettingsOverlayTests
             Assert.AreEqual(ScreenOverlaySettingsPanel.Controls, overlay.SettingsPanel);
             Assert.AreEqual(ControlInputMode.Keyboard, GameState.SettingsState.ActiveControlScheme);
             StringAssert.Contains(overlay.Title, "CONTROL");
+            StringAssert.Contains(overlay.Body, "ACTIVE IN GAME");
+            StringAssert.Contains(overlay.Body, "EDIT MAPPINGS");
 
             HandleKeyPress(handler, world, GameInputKey.Right);
 
             Assert.AreEqual(ControlInputMode.Mouse, GameState.SettingsState.ActiveControlScheme);
-            StringAssert.Contains(overlay.Body, "MOUSE");
+            Assert.AreEqual(ControlInputMode.Mouse, GameState.SettingsState.ControlsEditorScheme);
+            StringAssert.Contains(overlay.Body, "MOUSE MAPPINGS");
             Assert.IsTrue(File.Exists(PersistenceSetup.LocalSettingsFilePath));
+        });
+    }
+
+    [TestMethod]
+    public void IntroControlsSettings_CanEditMappingListWithoutChangingActiveControlScheme()
+    {
+        RunOnStaThread(() =>
+        {
+            var handler = new SceneHandler();
+            var world = CreateRealWorld(handler);
+            handler.SetupActiveScene(world);
+
+            var overlay = GameState.ScreenOverlayState;
+            overlay.ShowOverlay = true;
+
+            HandleKeyPress(handler, world, GameInputKey.C);
+
+            HandleKeyPress(handler, world, GameInputKey.Down);
+            HandleKeyPress(handler, world, GameInputKey.Right);
+
+            Assert.AreEqual(ControlInputMode.Keyboard, GameState.SettingsState.ActiveControlScheme);
+            Assert.AreEqual(ControlInputMode.Mouse, GameState.SettingsState.ControlsEditorScheme);
+            StringAssert.Contains(overlay.Body, "MOUSE MAPPINGS");
+
+            HandleKeyPress(handler, world, GameInputKey.Down);
+            HandleKeyPress(handler, world, GameInputKey.Right);
+
+            Assert.AreEqual(ControlInputMode.Keyboard, GameState.SettingsState.ActiveControlScheme);
+            Assert.AreNotEqual(MouseControlButton.Right, GameState.SettingsState.MouseThrustButton);
+        });
+    }
+
+    [TestMethod]
+    public void IntroKeyboardShortcut_SelectsFlightControlsPage()
+    {
+        RunOnStaThread(() =>
+        {
+            var handler = new SceneHandler();
+            var world = CreateRealWorld(handler);
+            handler.SetupActiveScene(world);
+
+            var overlay = GameState.ScreenOverlayState;
+            overlay.ShowOverlay = true;
+            overlay.CurrentPage = 0;
+            overlay.ApplyPageContent();
+
+            HandleKeyPress(handler, world, GameInputKey.K);
+
+            Assert.AreEqual(ScreenOverlayType.Intro, overlay.Type);
+            Assert.IsTrue(overlay.ShowOverlay);
+            Assert.AreEqual("FLIGHT CONTROLS", overlay.Title);
+        });
+    }
+
+    [TestMethod]
+    public void IntroKeyboardXShortcut_SelectsXboxControlsPage()
+    {
+        RunOnStaThread(() =>
+        {
+            var handler = new SceneHandler();
+            var world = CreateRealWorld(handler);
+            handler.SetupActiveScene(world);
+
+            var overlay = GameState.ScreenOverlayState;
+            overlay.ShowOverlay = true;
+            overlay.CurrentPage = 0;
+            overlay.ApplyPageContent();
+
+            HandleKeyPress(handler, world, GameInputKey.X);
+
+            Assert.AreEqual(ScreenOverlayType.Intro, overlay.Type);
+            Assert.IsTrue(overlay.ShowOverlay);
+            Assert.AreEqual("XBOX CONTROLLER", overlay.Title);
         });
     }
 

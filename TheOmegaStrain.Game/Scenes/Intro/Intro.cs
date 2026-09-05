@@ -13,7 +13,19 @@ namespace TheOmegaStrain.Game.Scenes.Intro
 {
     public class Intro : IScene
     {
-        private const string StartFooter = "PRESS ANY KEY TO INITIATE PROTOCOL  //  [T] TRAINING  //  [S] SOUND  //  [G] GRAPHICS  //  [C] CONTROLS";
+        private const string StoryFooter =
+            "PRESS ANY KEY OR XBOX [A] TO START\n" +
+            "[K] KEYBOARD / MOUSE CONTROLS\n" +
+            "[X] XBOX CONTROLLER CONTROLS";
+
+        private const string ControlsFooter =
+            "KEYBOARD: ARROWS PAGE | [C] SETTINGS | ESC EXIT\n" +
+            "XBOX: D-PAD PAGE | [A] START | [B] BACK | [X] SETTINGS\n" +
+            "[S] SOUND | [G] GRAPHICS";
+
+        private const string InfoFooter =
+            "PRESS ANY KEY OR XBOX [A] TO START\n" +
+            "ARROWS / D-PAD CHANGE PAGE";
 
         public bool SkipLogoCube { get; set; } = false;
 
@@ -65,7 +77,7 @@ namespace TheOmegaStrain.Game.Scenes.Intro
                 "Designated: OMEGA STRAIN.\n\n" +
                 "Autonomous Seeder units detected.\n" +
                 "Containment probability: 12%.",
-                StartFooter);
+                StoryFooter);
 
             // Page 2: Controls
             o.AddPage(
@@ -74,26 +86,36 @@ namespace TheOmegaStrain.Game.Scenes.Intro
                 "KEYBOARD:\n" +
                 "  [SPACE]       THRUST\n" +
                 "  [RIGHT SHIFT] FIRE CURRENT WEAPON\n" +
-                "  [1] BULLET  - High fire rate, effective vs Seeders\n" +
-                "  [2] DECOY   - Lures Kamikaze Drones away from your ship\n" +
-                "  [3] LAZER   - Powerful beam, cuts through targets\n\n" +
+                "  [1] BULLET  |  [2] DECOY  |  [3] LAZER\n" +
+                "  [T] TUTORIAL  |  [C] CONTROLS  |  [X] EXIT\n\n" +
                 "MOUSE:\n" +
-                "  LEFT BUTTON   FIRE CURRENT WEAPON\n" +
+                "  MOVE MOUSE    PITCH / TURN\n" +
+                "  LEFT BUTTON   FIRE\n" +
                 "  RIGHT BUTTON  THRUST\n" +
-                "  MOVE MOUSE    PITCH / TURN\n\n" +
+                "  [1] BULLET  |  [2] DECOY  |  [3] LAZER\n\n" +
+                "Input type and mappings can be changed in CONTROLS.",
+                ControlsFooter);
+
+            // Page 3: Xbox controller
+            o.AddPage(
+                "RETROMESH // FIELD MANUAL",
+                "XBOX CONTROLLER",
                 "XBOX CONTROLLER:\n" +
                 "  LEFT STICK    PITCH / TURN\n" +
                 "  [RT]          THRUST\n" +
-                "  [LT]          FIRE CURRENT WEAPON\n" +
-                "  [X]/[Y]/[B]   1 BULLET / 2 DECOY / 3 LAZER\n" +
-                "  [A]           POWERUP 4 RESERVED\n\n" +
-                "NAVIGATION:\n" +
-                "  KEYBOARD [X] MENU  //  [T] TUTORIAL  //  [C] CONTROLS\n\n" +
-                "NOTE:\n" +
-                "  Input type and mappings can be changed in CONTROLS.",
-                StartFooter);
+                "  [LT]          FIRE\n" +
+                "  [X] BULLET  |  [Y] DECOY  |  [B] LAZER\n" +
+                "  [A]           POWERUP 4 RESERVED\n" +
+                "  [MENU]        PAUSE GAMEPLAY\n" +
+                "  [VIEW]        EXIT TO MENU\n\n" +
+                "OVERLAYS:\n" +
+                "  [A] SELECT  |  [B] BACK\n" +
+                "  D-PAD / LEFT STICK NAVIGATE\n" +
+                "  [Y] TRAINING  |  [X] CONTROL SETTINGS\n" +
+                "  [LB] SOUND  |  [RB] GRAPHICS",
+                ControlsFooter);
 
-            // Page 3: Gameplay tips
+            // Page 4: Gameplay tips
             o.AddPage(
                 "RETROMESH // FIELD MANUAL",
                 "TACTICAL TIPS",
@@ -104,14 +126,14 @@ namespace TheOmegaStrain.Game.Scenes.Intro
                 "  - Decoys unlock after collecting your first PowerUp\n" +
                 "  - PowerUps drop from glowing Seeders\n" +
                 "  - Eliminate all enemies to face the MotherShip",
-                StartFooter);
+                InfoFooter);
 
-            // Page 4: Highscores
+            // Page 5: Highscores
             o.AddPage(
                 "RETROMESH // HALL OF FAME",
                 "TOP PILOTS",
                 HighscoreOverlayFormatter.BuildBody(),
-                StartFooter);
+                InfoFooter);
 
             o.CurrentPage = 0;
             o.ApplyPageContent();

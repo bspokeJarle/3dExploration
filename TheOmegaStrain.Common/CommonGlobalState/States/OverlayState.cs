@@ -150,6 +150,31 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         }
 
         /// <summary>
+        /// Selects the first page with a matching title. Returns true if a page was selected.
+        /// </summary>
+        public bool TrySelectPageByTitle(string title)
+        {
+            if (string.IsNullOrWhiteSpace(title) || Pages.Count == 0)
+                return false;
+
+            for (int i = 0; i < Pages.Count; i++)
+            {
+                var page = Pages[i];
+                if (page.Length < 2)
+                    continue;
+
+                if (!string.Equals(page[1], title, StringComparison.Ordinal))
+                    continue;
+
+                CurrentPage = i;
+                ApplyPageContent();
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Copies Header/Title/Body/Footer from the current page entry.
         /// </summary>
         public void ApplyPageContent()
@@ -585,7 +610,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             IsNameConfirmed = false;
             _cursorBlinkTimer = 0f;
             Body = "";
-            Footer = "ENTER TO CONFIRM  //  ESC TO GO BACK";
+            Footer = "KEYBOARD: ENTER CONFIRM | ESC BACK\nXBOX: [A] CONFIRM | [B] BACK";
 
             DimStrength = 0.65f;
             PanelWidthRatio = 0.68f;
