@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 
 namespace TheOmegaStrain.Wpf.MainWindowClasses.Overlays;
@@ -27,6 +28,11 @@ public sealed class OverlayHostWindow : Window
         IsHitTestVisible = false;
         ShowActivated = false;
         Focusable = false;
+
+        // Separate top-level window, so it does not inherit the main window's
+        // Cursor="None". It covers the full play area, so without this the
+        // arrow reappears over the game.
+        Cursor = Cursors.None;
         Content = OverlayRoot;
     }
 

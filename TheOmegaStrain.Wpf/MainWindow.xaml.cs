@@ -324,6 +324,12 @@ namespace TheOmegaStrain.Wpf
                 Direct3DHost.Child = _direct3DPanel;
                 Direct3DHost.Visibility = Visibility.Visible;
                 _direct3DPanel.CreateControl();
+
+                // The hosted WinForms panel owns its own HWND and therefore does
+                // not inherit the WPF window's Cursor="None". Without this the
+                // arrow stays visible over the whole Direct3D render surface.
+                _direct3DPanel.Cursor = Forms.Cursors.Default;
+                Forms.Cursor.Hide();
                 _direct3DRenderer = new Direct3D11ProjectedTriangleRenderer(
                     _direct3DPanel.Handle,
                     Math.Max(1, _direct3DPanel.ClientSize.Width),
@@ -347,6 +353,7 @@ namespace TheOmegaStrain.Wpf
 
                 if (_direct3DPanel != null)
                     _direct3DPanel.Resize -= OnDirect3DPanelResize;
+                Forms.Cursor.Show();
                 _direct3DRenderer?.Dispose();
                 Direct3DHost.Child = null;
                 Direct3DHost.Visibility = Visibility.Collapsed;
@@ -421,6 +428,8 @@ namespace TheOmegaStrain.Wpf
             SizeChanged -= OnWindowBoundsChanged;
             if (_direct3DPanel != null)
                 _direct3DPanel.Resize -= OnDirect3DPanelResize;
+            if (_useDirect3D11)
+                Forms.Cursor.Show();
             _direct3DRenderer?.Dispose();
             Direct3DHost.Child = null;
             _direct3DPanel?.Dispose();
