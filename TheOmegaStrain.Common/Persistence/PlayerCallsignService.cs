@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using TheOmegaStrain.Domain;
 
 namespace TheOmegaStrain.Common.Persistence
 {
@@ -54,10 +55,15 @@ namespace TheOmegaStrain.Common.Persistence
             if (string.IsNullOrEmpty(normalizedCurrent))
                 return profiles[0];
 
-            var index = profiles
-                .Select((name, i) => new { Name = name, Index = i })
-                .FirstOrDefault(item => string.Equals(item.Name, normalizedCurrent, StringComparison.OrdinalIgnoreCase))
-                ?.Index ?? -1;
+            var index = -1;
+            for (int i = 0; i < profiles.Count; i++)
+            {
+                if (string.Equals(profiles[i], normalizedCurrent, StringComparison.OrdinalIgnoreCase))
+                {
+                    index = i;
+                    break;
+                }
+            }
 
             if (index < 0)
                 return profiles[0];
@@ -148,8 +154,12 @@ namespace TheOmegaStrain.Common.Persistence
                 AddNamesFromFiles(names, "progress_", ".enc");
                 AddNamesFromFiles(names, "tutorial_", ".json");
             }
-            catch
+            catch (Exception ex)
             {
+                // Never block callsign entry on a filesystem problem, but make it
+                // diagnosable instead of silently returning an incomplete set.
+                if (Logger.EnableFileLogging)
+                    Logger.Log($"[Callsign] Failed to enumerate local profiles. {ex.GetType().Name}: {ex.Message}");
             }
         }
 

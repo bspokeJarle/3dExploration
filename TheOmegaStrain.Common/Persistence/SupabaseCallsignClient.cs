@@ -29,7 +29,9 @@ namespace TheOmegaStrain.Common.Persistence
             PropertyNameCaseInsensitive = true
         };
 
-        private static HttpClient CreateHttpClient() => new() { Timeout = TimeSpan.FromSeconds(3) };
+        // Kept short: TryReserveAsync is awaited from the synchronous callsign
+        // confirmation flow, so this timeout is the worst-case input freeze.
+        private static HttpClient CreateHttpClient() => new() { Timeout = TimeSpan.FromSeconds(1.5) };
 
         public static async Task<SupabaseCallsignReservationStatus> TryReserveAsync(string callsign)
         {
@@ -42,51 +44,17 @@ namespace TheOmegaStrain.Common.Persistence
 
             try
             {
-                var existing = await FetchExistingAsync(normalized).ConfigureAwait(false);
-                if (existing == null)
-                    return SupabaseCallsignReservationStatus.Unavailable;
-
-                if (existing.Value)
-                    return SupabaseCallsignReservationStatus.Taken;
-
+                // Single round trip on purpose. player_name is the table's PRIMARY
+                // KEY, so the insert itself decides ownership atomically: 409
+                // Conflict means somebody else already holds the callsign. A
+                // preceding SELECT would only add latency to a call that blocks
+                // the confirmation flow, and could still lose a race.
                 return await InsertAsync(normalized).ConfigureAwait(false);
             }
             catch
             {
                 return SupabaseCallsignReservationStatus.Unavailable;
             }
-        }
-
-        private static async Task<bool?> FetchExistingAsync(string normalized)
-        {
-            var escapedName = Uri.EscapeDataString(normalized);
-            var url = $"{PersistenceSetup.SupabaseUrl}/rest/v1/{PersistenceSetup.SupabaseCallsignTableName}" +
-                      $"?select=player_name&player_name=eq.{escapedName}&limit=1";
-
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            SetSupabaseHeaders(request);
-
-            using var response = await Http.SendAsync(request).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
-                return null;
-
-            var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            var rows = JsonSerializer.Deserialize<SupabaseCallsignRow[]>(body, JsonOptions);
-            if (rows == null || rows.Length == 0)
-                return false;
-
-            for (int i = 0; i < rows.Length; i++)
-            {
-                if (string.Equals(
-                    PlayerNameFormatter.Normalize(rows[i].PlayerName),
-                    normalized,
-                    StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         private static async Task<SupabaseCallsignReservationStatus> InsertAsync(string normalized)

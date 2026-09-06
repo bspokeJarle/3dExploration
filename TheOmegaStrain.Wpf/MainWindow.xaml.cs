@@ -320,6 +320,32 @@ namespace TheOmegaStrain.Wpf
 
         private Grid OverlayRoot => _overlayHost?.OverlayRoot ?? mainGrid;
 
+        /// <summary>
+        /// Forms.Cursor.Hide/Show are reference counted per message queue rather
+        /// than scoped to a control, so they must be balanced exactly once. This
+        /// flag guarantees that regardless of how initialization or shutdown is
+        /// reached.
+        /// </summary>
+        private bool _winFormsCursorHidden;
+
+        private void HideWinFormsCursor()
+        {
+            if (_winFormsCursorHidden)
+                return;
+
+            Forms.Cursor.Hide();
+            _winFormsCursorHidden = true;
+        }
+
+        private void ShowWinFormsCursor()
+        {
+            if (!_winFormsCursorHidden)
+                return;
+
+            Forms.Cursor.Show();
+            _winFormsCursorHidden = false;
+        }
+
         private bool TryInitializeDirect3D11Renderer()
         {
             try
@@ -337,7 +363,7 @@ namespace TheOmegaStrain.Wpf
                 // not inherit the WPF window's Cursor="None". Without this the
                 // arrow stays visible over the whole Direct3D render surface.
                 _direct3DPanel.Cursor = Forms.Cursors.Default;
-                Forms.Cursor.Hide();
+                HideWinFormsCursor();
                 _direct3DRenderer = new Direct3D11ProjectedTriangleRenderer(
                     _direct3DPanel.Handle,
                     Math.Max(1, _direct3DPanel.ClientSize.Width),
@@ -361,7 +387,7 @@ namespace TheOmegaStrain.Wpf
 
                 if (_direct3DPanel != null)
                     _direct3DPanel.Resize -= OnDirect3DPanelResize;
-                Forms.Cursor.Show();
+                ShowWinFormsCursor();
                 _direct3DRenderer?.Dispose();
                 Direct3DHost.Child = null;
                 Direct3DHost.Visibility = Visibility.Collapsed;
@@ -436,8 +462,7 @@ namespace TheOmegaStrain.Wpf
             SizeChanged -= OnWindowBoundsChanged;
             if (_direct3DPanel != null)
                 _direct3DPanel.Resize -= OnDirect3DPanelResize;
-            if (_useDirect3D11)
-                Forms.Cursor.Show();
+            ShowWinFormsCursor();
             _direct3DRenderer?.Dispose();
             Direct3DHost.Child = null;
             _direct3DPanel?.Dispose();
