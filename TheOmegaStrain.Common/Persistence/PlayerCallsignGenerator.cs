@@ -6,16 +6,26 @@ namespace TheOmegaStrain.Common.Persistence
 {
     public static class PlayerCallsignGenerator
     {
-        private static readonly string[] Prefixes =
+        // Every word is kept at 7 characters or less so that any
+        // "PREFIX NAME" combination fits inside ScreenOverlayState.MaxCallsignLength (16).
+        internal static readonly string[] Prefixes =
         {
-            "AGILE", "BRAVE", "COSMIC", "FROST", "IRON", "LLAMA", "LUCKY", "LUNAR",
-            "NEON", "NOBLE", "ORBIT", "QUICK", "RAPID", "ROGUE", "SOLAR", "TURBO"
+            "AGILE", "ANGRY", "ASTRO", "ATOMIC", "BRAVE", "CHROME", "COSMIC", "CRIMSON",
+            "CYBER", "DIESEL", "FROST", "FUZZY", "GAMMA", "GRUMPY", "HYPER", "IRON",
+            "JOLLY", "LASER", "LLAMA", "LUCKY", "LUNAR", "MAGNET", "MEGA", "NEON",
+            "NOBLE", "NUCLEAR", "ORBIT", "PIXEL", "PLASMA", "PROTON", "QUANTUM", "QUICK",
+            "RAPID", "RETRO", "ROGUE", "RUSTY", "SILENT", "SOLAR", "SONIC", "STELLAR",
+            "STORM", "TITAN", "TURBO", "VELVET", "VIVID", "VOLTAIC", "WICKED", "ZESTY"
         };
 
-        private static readonly string[] Names =
+        internal static readonly string[] Names =
         {
-            "ASTER", "ATLAS", "BRABEN", "HALLEY", "KEPLER", "MIRA", "NOVA", "NYX",
-            "ORION", "RHEA", "SAGAN", "VEGA", "VIKTOR", "VOSS", "WREN", "ZED"
+            "ASTER", "ATLAS", "BADGER", "BRABEN", "CACTUS", "COMET", "CRATER", "DRAGON",
+            "FALCON", "GECKO", "HALLEY", "HORNET", "IBEX", "JUNO", "KEPLER", "KESTREL",
+            "LYNX", "MAGPIE", "MIRA", "NEBULA", "NOVA", "NYX", "ONYX", "ORION",
+            "OTTER", "PHOENIX", "PULSAR", "QUASAR", "RAVEN", "RHEA", "SAGAN", "SPUTNIK",
+            "TALON", "TESLA", "THORN", "TUNDRA", "VEGA", "VIKTOR", "VIPER", "VOSS",
+            "WALRUS", "WOMBAT", "WREN", "YETI", "ZEBRA", "ZED", "ZENITH", "ZODIAC"
         };
 
         public static string CreateSuggestion(IReadOnlyCollection<string>? reservedCallsigns = null)

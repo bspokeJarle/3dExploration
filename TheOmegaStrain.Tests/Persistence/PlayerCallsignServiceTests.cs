@@ -71,6 +71,36 @@ public class PlayerCallsignServiceTests
     }
 
     [TestMethod]
+    public void CreateSuggestion_EveryPrefixAndNameCombinationFitsOverlay()
+    {
+        // Guards the word lists: adding a long word must not silently push
+        // suggestions past the name entry field width.
+        foreach (var prefix in PlayerCallsignGenerator.Prefixes)
+        {
+            foreach (var name in PlayerCallsignGenerator.Names)
+            {
+                string candidate = $"{prefix} {name}";
+                Assert.IsTrue(
+                    candidate.Length <= ScreenOverlayState.MaxCallsignLength,
+                    $"{candidate} is {candidate.Length} characters and does not fit the name entry field.");
+            }
+        }
+    }
+
+    [TestMethod]
+    public void CreateSuggestion_WordListsAreUppercaseAndUnique()
+    {
+        CollectionAssert.AllItemsAreUnique(PlayerCallsignGenerator.Prefixes);
+        CollectionAssert.AllItemsAreUnique(PlayerCallsignGenerator.Names);
+
+        foreach (var word in PlayerCallsignGenerator.Prefixes.Concat(PlayerCallsignGenerator.Names))
+        {
+            Assert.AreEqual(word.ToUpperInvariant(), word, $"{word} should be uppercase.");
+            Assert.IsFalse(string.IsNullOrWhiteSpace(word));
+        }
+    }
+
+    [TestMethod]
     public void TryConfirmCallsign_RejectsLocalHighscoreDuplicate()
     {
         HighscoreService.SaveLocalHighscores(new HighscoreList
