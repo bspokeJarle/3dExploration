@@ -7,7 +7,7 @@ namespace TheOmegaStrain.Game.World.Objects
 {
     public static class SnowEmitter
     {
-        public static OmegaObject3D CreateSnowEmitter(ISurface? parentSurface)
+        public static OmegaObject3D CreateSnowEmitter(ISurface? parentSurface, System.Random? random = null)
         {
             return new OmegaObject3D
             {
@@ -17,7 +17,7 @@ namespace TheOmegaStrain.Game.World.Objects
                 Rotation = new Vector3 { x = 0, y = 0, z = 0 },
                 WorldPosition = new Vector3 { x = 0, y = 0, z = 0 },
                 ParentSurface = parentSurface,
-                Movement = new SnowfallControls(),
+                Movement = new SnowfallControls(random),
                 Particles = null,
                 CrashBoxes = new List<List<IVector3>>(),
                 CrashBoxesFollowRotation = false,

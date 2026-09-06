@@ -46,4 +46,17 @@ public class ScreenOverlayChoiceTests
         Assert.AreEqual(0, overlay.SelectedChoiceIndex);
         StringAssert.Contains(overlay.Body, "> CONTINUE");
     }
+
+    [TestMethod]
+    public void ResetToDefaults_ClearsQuitApplicationRequest()
+    {
+        var overlay = new ScreenOverlayState
+        {
+            QuitApplicationRequested = true
+        };
+
+        overlay.ResetToDefaults();
+
+        Assert.IsFalse(overlay.QuitApplicationRequested);
+    }
 }

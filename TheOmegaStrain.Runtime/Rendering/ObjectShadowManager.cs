@@ -45,6 +45,25 @@ namespace TheOmegaStrain.Runtime.Rendering
         public static float TowerShadowSurfaceLift = 10f;
         public static float UniversalShadowLift = 10f;
 
+        // Hard ceiling for how far up-screen ANY shadow anchor may travel.
+        // The rotated tile grid has a minimum Y (the horizon row, furthest from
+        // the camera). Lifts and per-object ShadowOffsets are applied on top of
+        // the ground lookup and can push the anchor PAST that row, at which
+        // point the shadow renders above the terrain silhouette and reads as a
+        // dark blob floating in the sky (very visible during lightning flashes).
+        // The anchor is clamped to (horizonY + this margin) so a shadow can get
+        // close to the horizon but never above it. Increase to allow shadows
+        // nearer the horizon, decrease to keep them further down the surface.
+        public static float ShadowHorizonMargin = 4f;
+
+        // Ship-only lift. The ship anchors to the frontmost ground tile, which is
+        // always at ground level. On raised geometry (landing platform) the ship
+        // shadow therefore ends up UNDER the platform surface and is hidden. This
+        // pulls the ship shadow toward the camera (-Y = up-screen after the tilt)
+        // so it clears the platform. Increase if it still hides, decrease if the
+        // shadow floats too high above flat ground.
+        public static float ShipShadowSurfaceLift = 36f;
+
         // Tower-like per-axis nudge applied AFTER the matched-tile anchor, so
         // the tower trunk and its shadow line up visually. These are the values
         // you've been iterating on — tweak freely.
@@ -174,6 +193,12 @@ namespace TheOmegaStrain.Runtime.Rendering
                         out shadowBaseY,
                         out shadowBaseZ))
                     return;
+
+                // Lift the ship shadow up-screen so it stays visible on top of
+                // raised geometry (landing platform) instead of being occluded
+                // by it. On flat ground the lift is small enough to still read
+                // as a shadow sitting on the surface.
+                shadowBaseY -= ShipShadowSurfaceLift;
             }
             else if (isTowerLike)
             {
@@ -237,6 +262,16 @@ namespace TheOmegaStrain.Runtime.Rendering
                 //   - Y interpolated from the surface triangle under the object
                 shadowBaseX = targetX;
                 shadowBaseZ = targetZ;
+
+                // Objects can sit far outside the visible tile grid (e.g. mother
+                // ships spawn ~1500 units behind the viewport during descent).
+                // TryGetSurfaceGroundPoint always succeeds: when no triangle
+                // contains the point it falls back to the NEAREST tile center,
+                // which snaps the shadow to an arbitrary viewport edge and makes
+                // it appear far in front of the object. There is no ground under
+                // the object in that case, so skip the shadow entirely.
+                if (!IsWithinSurfaceBounds(rotatedTiles, targetX, targetZ))
+                    return;
 
                 if (!TryGetSurfaceGroundPoint(rotatedTiles, targetX, targetZ, out _, out float groundY, out _))
                     return;
@@ -306,6 +341,20 @@ namespace TheOmegaStrain.Runtime.Rendering
                 shadowBaseX += inhabitant.ShadowOffset.x;
                 shadowBaseY += inhabitant.ShadowOffset.y;
                 shadowBaseZ += inhabitant.ShadowOffset.z;
+            }
+
+            // Final safety clamp, applied AFTER every lift and per-object offset.
+            // Measure the actual top of the terrain (smallest Y in the rotated
+            // tile grid = the horizon row) and refuse to place the shadow anchor
+            // above it. Without this, the accumulated lifts can drive the anchor
+            // off the surface and the shadow appears as a floating shape in the
+            // sky behind the terrain. Clamping instead of discarding keeps the
+            // shadow present but pinned to the far edge of the ground.
+            if (TryGetSurfaceHorizonY(rotatedTiles, out float horizonY))
+            {
+                float minAllowedY = horizonY + ShadowHorizonMargin;
+                if (shadowBaseY < minAllowedY)
+                    shadowBaseY = minAllowedY;
             }
 
             {
@@ -384,6 +433,75 @@ namespace TheOmegaStrain.Runtime.Rendering
                 out groundX,
                 out groundY,
                 out groundZ);
+        }
+
+        /// <summary>
+        /// True when (targetX, targetZ) lies inside the axis-aligned bounds of the
+        /// rotated tile grid. Used to reject shadow casters that are outside the
+        /// terrain, where the ground lookup would otherwise silently fall back to
+        /// the nearest edge tile and misplace the shadow.
+        /// </summary>
+        internal static bool IsWithinSurfaceBounds(
+            IReadOnlyList<ITriangleMeshWithColorAndTexture> rotatedTiles,
+            float targetX,
+            float targetZ)
+        {
+            if (rotatedTiles == null || rotatedTiles.Count == 0)
+                return false;
+
+            float minX = float.MaxValue, maxX = float.MinValue;
+            float minZ = float.MaxValue, maxZ = float.MinValue;
+
+            for (int i = 0; i < rotatedTiles.Count; i++)
+            {
+                var tile = rotatedTiles[i];
+                AccumulateBounds(tile.vert1, ref minX, ref maxX, ref minZ, ref maxZ);
+                AccumulateBounds(tile.vert2, ref minX, ref maxX, ref minZ, ref maxZ);
+                AccumulateBounds(tile.vert3, ref minX, ref maxX, ref minZ, ref maxZ);
+            }
+
+            return targetX >= minX && targetX <= maxX
+                && targetZ >= minZ && targetZ <= maxZ;
+        }
+
+        /// <summary>
+        /// Smallest Y across the rotated tile grid, i.e. the horizon row that is
+        /// furthest from the camera after the surface tilt. Shadow anchors above
+        /// this value would render off the terrain and float in the sky.
+        /// </summary>
+        internal static bool TryGetSurfaceHorizonY(
+            IReadOnlyList<ITriangleMeshWithColorAndTexture> rotatedTiles,
+            out float horizonY)
+        {
+            horizonY = 0f;
+
+            if (rotatedTiles == null || rotatedTiles.Count == 0)
+                return false;
+
+            float minY = float.MaxValue;
+            for (int i = 0; i < rotatedTiles.Count; i++)
+            {
+                var tile = rotatedTiles[i];
+                if (tile.vert1.y < minY) minY = tile.vert1.y;
+                if (tile.vert2.y < minY) minY = tile.vert2.y;
+                if (tile.vert3.y < minY) minY = tile.vert3.y;
+            }
+
+            horizonY = minY;
+            return true;
+        }
+
+        private static void AccumulateBounds(
+            IVector3 vertex,
+            ref float minX,
+            ref float maxX,
+            ref float minZ,
+            ref float maxZ)
+        {
+            if (vertex.x < minX) minX = vertex.x;
+            if (vertex.x > maxX) maxX = vertex.x;
+            if (vertex.z < minZ) minZ = vertex.z;
+            if (vertex.z > maxZ) maxZ = vertex.z;
         }
 
         private static ObjectShadowProjectionOptions CreateObjectShadowProjectionOptions(

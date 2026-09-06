@@ -48,6 +48,7 @@ public class GameSettingsPersistenceTests
             EnhancedWeatherEnabled = true,
             EnhancedShadowsEnabled = false,
             ActiveControlScheme = ControlInputMode.Mouse,
+            ControlsEditorScheme = ControlInputMode.XboxController,
             KeyboardThrustKey = "W",
             KeyboardFireKey = "F",
             MouseThrustButton = MouseControlButton.Right,
@@ -73,6 +74,7 @@ public class GameSettingsPersistenceTests
         Assert.IsTrue(loaded.EnhancedWeatherEnabled);
         Assert.IsFalse(loaded.EnhancedShadowsEnabled);
         Assert.AreEqual(ControlInputMode.Mouse, loaded.ActiveControlScheme);
+        Assert.AreEqual(ControlInputMode.XboxController, loaded.ControlsEditorScheme);
         Assert.AreEqual("W", loaded.KeyboardThrustKey);
         Assert.AreEqual("F", loaded.KeyboardFireKey);
         Assert.AreEqual(MouseControlButton.Right, loaded.MouseThrustButton);
@@ -96,6 +98,7 @@ public class GameSettingsPersistenceTests
         Assert.AreEqual(100, GameState.SettingsState.MasterVolumePercent);
         Assert.AreEqual(GraphicsQualityPreset.Balanced, GameState.SettingsState.GraphicsQuality);
         Assert.AreEqual(ControlInputMode.Keyboard, GameState.SettingsState.ActiveControlScheme);
+        Assert.AreEqual(ControlInputMode.Keyboard, GameState.SettingsState.ControlsEditorScheme);
         Assert.AreEqual(MouseControlButton.Right, GameState.SettingsState.MouseThrustButton);
         Assert.AreEqual(MouseControlButton.Left, GameState.SettingsState.MouseFireButton);
         Assert.AreEqual(XboxControlButton.RightTrigger, GameState.SettingsState.XboxThrustButton);
@@ -123,6 +126,7 @@ public class GameSettingsPersistenceTests
         var loaded = GameSettingsPersistence.LoadSettings();
 
         Assert.AreEqual(ControlInputMode.XboxController, loaded.ActiveControlScheme);
+        Assert.AreEqual(ControlInputMode.XboxController, loaded.ControlsEditorScheme);
         Assert.AreEqual(XboxControlButton.RightTrigger, loaded.XboxThrustButton);
         Assert.AreEqual(XboxControlButton.LeftTrigger, loaded.XboxFireButton);
         Assert.AreEqual(XboxControlButton.X, loaded.XboxBulletButton);
@@ -150,6 +154,7 @@ public class GameSettingsPersistenceTests
         var loaded = GameSettingsPersistence.LoadSettings();
 
         Assert.AreEqual(ControlInputMode.XboxController, loaded.ActiveControlScheme);
+        Assert.AreEqual(ControlInputMode.XboxController, loaded.ControlsEditorScheme);
         Assert.AreEqual(XboxControlButton.X, loaded.XboxBulletButton);
         Assert.AreEqual(XboxControlButton.Y, loaded.XboxDecoyButton);
         Assert.AreEqual(XboxControlButton.B, loaded.XboxLazerButton);

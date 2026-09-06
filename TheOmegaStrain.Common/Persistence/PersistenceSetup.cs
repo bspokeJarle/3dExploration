@@ -146,6 +146,12 @@ namespace TheOmegaStrain.Common.Persistence
         public static string SupabaseTableName { get; set; } = "highscores";
 
         /// <summary>
+        /// Name of the optional player callsign registry table in Supabase.
+        /// The game keeps working if this table is missing or offline.
+        /// </summary>
+        public static string SupabaseCallsignTableName { get; set; } = "player_callsigns";
+
+        /// <summary>
         /// True when both URL and key are configured.
         /// </summary>
         public static bool IsSupabaseConfigured =>

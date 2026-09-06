@@ -32,6 +32,8 @@ namespace TheOmegaStrain.Game.SceneManagement
         private int currentSceneIndex = 0;
         private const bool enableLogging = false;
         private const int SceneAdvanceDelayFrames = 5;
+        private const string IntroKeyboardControlsPageTitle = "FLIGHT CONTROLS";
+        private const string IntroXboxControlsPageTitle = "XBOX CONTROLLER";
         private bool _pendingSceneAdvance = false;
         private int _pendingSceneAdvanceFramesLeft = 0;
         private int? _targetSceneIndex = null;
@@ -558,6 +560,12 @@ namespace TheOmegaStrain.Game.SceneManagement
                 return;
             }
 
+            if (overlay.ShowOverlay && overlay.ChoiceAction == ScreenOverlayChoiceAction.QuitGameConfirmation)
+            {
+                HandleQuitGameConfirmationChoice(key, scene, overlay);
+                return;
+            }
+
             if (overlay.ShowOverlay && overlay.ChoiceAction == ScreenOverlayChoiceAction.PlanetLostRecovery)
             {
                 HandlePlanetLostRecoveryChoice(key, world, overlay);
@@ -677,7 +685,7 @@ namespace TheOmegaStrain.Game.SceneManagement
             }
 
             if (overlay.Type == ScreenOverlayType.NameEntry ||
-                overlay.ChoiceAction == ScreenOverlayChoiceAction.PlanetLostRecovery)
+                overlay.ChoiceAction != ScreenOverlayChoiceAction.None)
             {
                 return;
             }
@@ -739,31 +747,39 @@ namespace TheOmegaStrain.Game.SceneManagement
                 return;
             }
 
-            if (key == GameInputKey.Return || key == GameInputKey.Enter)
+            if (key == GameInputKey.Right)
             {
-                var name = PlayerNameFormatter.Normalize(overlay.NameEntryBuffer);
-                if (string.IsNullOrEmpty(name))
+                overlay.NameEntryBuffer = PlayerCallsignService.CreateSuggestedCallsign(overlay.NameEntryBuffer);
+                overlay.NameEntryValidationMessage = ">> NEW CALLSIGN SUGGESTED";
+                return;
+            }
+
+            if (key == GameInputKey.Up || key == GameInputKey.Down)
+            {
+                var direction = key == GameInputKey.Up ? -1 : 1;
+                var localProfile = PlayerCallsignService.SelectLocalProfileCallsign(overlay.NameEntryBuffer, direction);
+                if (!string.IsNullOrEmpty(localProfile))
                 {
-                    overlay.NameEntryValidationMessage = ">> CALLSIGN CANNOT BE EMPTY";
+                    overlay.NameEntryBuffer = localProfile;
+                    overlay.NameEntryValidationMessage = ">> LOCAL CALLSIGN SELECTED";
                     return;
                 }
 
-                var priorName = PersistenceSetup.LoadLastPlayerName();
-                bool isOwnName = string.Equals(name, priorName, StringComparison.OrdinalIgnoreCase)
-                              || PersistenceSetup.HasPlayerSaveFile(name);
+                overlay.NameEntryValidationMessage = ">> NO LOCAL CALLSIGNS FOUND";
+                return;
+            }
 
-                if (!isOwnName)
+            if (key == GameInputKey.Return || key == GameInputKey.Enter)
+            {
+                var priorName = PersistenceSetup.LoadLastPlayerName();
+                var confirmation = PlayerCallsignService.TryConfirmCallsign(overlay.NameEntryBuffer, priorName);
+                if (!confirmation.IsAccepted)
                 {
-                    var highscores = HighscoreService.LoadLocalHighscores();
-                    bool taken = highscores.Entries.Exists(e =>
-                        string.Equals(e.PlayerName, name, StringComparison.OrdinalIgnoreCase));
-                    if (taken)
-                    {
-                        overlay.NameEntryValidationMessage = ">> CALLSIGN ALREADY IN USE - CHOOSE ANOTHER";
-                        return;
-                    }
+                    overlay.NameEntryValidationMessage = confirmation.ValidationMessage;
+                    return;
                 }
 
+                var name = confirmation.Callsign;
                 overlay.IsNameConfirmed = true;
                 GameState.GamePlayState.PlayerName = name;
                 PersistenceSetup.SaveLastPlayerName(name);
@@ -839,6 +855,38 @@ namespace TheOmegaStrain.Game.SceneManagement
             if (key == GameInputKey.Return || key == GameInputKey.Enter || key == GameInputKey.Space)
             {
                 StartPlanetLostRecoveryFade(world, resetToPlanetStart: overlay.SelectedChoiceIndex == 1);
+            }
+        }
+
+        private static void HandleQuitGameConfirmationChoice(GameInputKey key, IScene scene, ScreenOverlayState overlay)
+        {
+            if (key == GameInputKey.Up || key == GameInputKey.W || key == GameInputKey.Left || key == GameInputKey.A)
+            {
+                overlay.MoveChoiceSelection(-1);
+                return;
+            }
+
+            if (key == GameInputKey.Down || key == GameInputKey.S || key == GameInputKey.Right || key == GameInputKey.D)
+            {
+                overlay.MoveChoiceSelection(1);
+                return;
+            }
+
+            if (key == GameInputKey.Escape || key == GameInputKey.X)
+            {
+                CloseQuitGameConfirmation(scene, overlay);
+                return;
+            }
+
+            if (key == GameInputKey.Return || key == GameInputKey.Enter || key == GameInputKey.Space)
+            {
+                if (overlay.SelectedChoiceIndex == 1)
+                {
+                    overlay.QuitApplicationRequested = true;
+                    return;
+                }
+
+                CloseQuitGameConfirmation(scene, overlay);
             }
         }
 
@@ -1011,6 +1059,22 @@ namespace TheOmegaStrain.Game.SceneManagement
                 return;
             }
 
+            if (key == GameInputKey.K && overlay.TrySelectPageByTitle(IntroKeyboardControlsPageTitle))
+            {
+                return;
+            }
+
+            if (key == GameInputKey.X && overlay.TrySelectPageByTitle(IntroXboxControlsPageTitle))
+            {
+                return;
+            }
+
+            if (key == GameInputKey.Escape)
+            {
+                ShowQuitGameConfirmationOverlay(overlay);
+                return;
+            }
+
             // Page navigation with arrow keys
             if (overlay.HasMultiplePages)
             {
@@ -1083,7 +1147,47 @@ namespace TheOmegaStrain.Game.SceneManagement
             ClearVideoOverlay();
 
             var lastPlayer = PersistenceSetup.LoadLastPlayerName();
-            overlay.SetNameEntryPreset(lastPlayer);
+            var initialName = string.IsNullOrWhiteSpace(lastPlayer)
+                ? PlayerCallsignService.CreateSuggestedCallsign()
+                : lastPlayer;
+
+            overlay.SetNameEntryPreset(initialName);
+        }
+
+        private static void ShowQuitGameConfirmationOverlay(ScreenOverlayState overlay)
+        {
+            overlay.ResetToDefaults();
+            overlay.Type = ScreenOverlayType.Intro;
+            overlay.Anchor = ScreenOverlayAnchor.Center;
+            overlay.IsModal = true;
+            overlay.CanDismissWithInput = false;
+            overlay.Header = "ASTERION SYSTEMS";
+            overlay.Title = "QUIT GAME?";
+            overlay.Footer = "LEFT/RIGHT SELECT | ENTER CONFIRM\nXBOX: D-PAD SELECT | [A] CONFIRM | [B] BACK";
+            overlay.DimStrength = 0.72f;
+            overlay.PanelWidthRatio = 0.48f;
+            overlay.PanelHeightRatio = 0.30f;
+            overlay.PanelYOffsetRatio = 0.00f;
+            overlay.CenterText = true;
+            overlay.SetChoiceOptions(
+                ScreenOverlayChoiceAction.QuitGameConfirmation,
+                "Return to desktop?",
+                "NO",
+                "YES");
+            overlay.ShowOverlay = true;
+        }
+
+        private static void CloseQuitGameConfirmation(IScene scene, ScreenOverlayState overlay)
+        {
+            overlay.QuitApplicationRequested = false;
+            overlay.ClearChoiceOptions();
+            overlay.HardHide();
+
+            if (scene.SceneType == SceneTypes.Intro)
+            {
+                scene.SetupSceneOverlay();
+                GameState.ScreenOverlayState.ShowOverlay = true;
+            }
         }
 
         private static void CloseTutorialOverlayAndResume(IScene scene, I3dWorld world)

@@ -560,7 +560,11 @@ public class TutorialSceneTests
 
         intro.SetupSceneOverlay();
 
-        Assert.IsTrue(GameState.ScreenOverlayState.Pages.Any(page => page.Any(text => text.Contains("[T] TRAINING"))));
+        var storyFooter = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "THE OMEGA STRAIN")[3];
+        StringAssert.Contains(storyFooter, "[K] KEYBOARD / MOUSE CONTROLS");
+        StringAssert.Contains(storyFooter, "[X] XBOX CONTROLLER CONTROLS");
+        Assert.IsFalse(storyFooter.Contains("RIGHT SHIFT", StringComparison.Ordinal));
+
         var controls = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "FLIGHT CONTROLS")[2];
         StringAssert.Contains(controls, "[T] TUTORIAL");
     }

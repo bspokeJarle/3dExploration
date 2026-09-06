@@ -34,7 +34,8 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
     public enum ScreenOverlayChoiceAction
     {
         None = 0,
-        PlanetLostRecovery = 1
+        PlanetLostRecovery = 1,
+        QuitGameConfirmation = 2
     }
 
         /// <summary>
@@ -102,6 +103,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         public List<string> ChoiceOptions { get; } = new();
         public int SelectedChoiceIndex { get; private set; } = 0;
         public string ChoiceBodyPrefix { get; private set; } = "";
+        public bool QuitApplicationRequested { get; set; } = false;
         public bool HasChoiceOptions => ChoiceOptions.Count > 0;
         public string SelectedChoice =>
             HasChoiceOptions && SelectedChoiceIndex >= 0 && SelectedChoiceIndex < ChoiceOptions.Count
@@ -147,6 +149,31 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             CurrentPage--;
             ApplyPageContent();
             return true;
+        }
+
+        /// <summary>
+        /// Selects the first page with a matching title. Returns true if a page was selected.
+        /// </summary>
+        public bool TrySelectPageByTitle(string title)
+        {
+            if (string.IsNullOrWhiteSpace(title) || Pages.Count == 0)
+                return false;
+
+            for (int i = 0; i < Pages.Count; i++)
+            {
+                var page = Pages[i];
+                if (page.Length < 2)
+                    continue;
+
+                if (!string.Equals(page[1], title, StringComparison.Ordinal))
+                    continue;
+
+                CurrentPage = i;
+                ApplyPageContent();
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -309,6 +336,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             Footer = "";
             SettingsPanel = ScreenOverlaySettingsPanel.None;
             SelectedSettingsIndex = 0;
+            QuitApplicationRequested = false;
             ClearChoiceOptions();
 
             ShowVideoOverlay = false;
@@ -498,7 +526,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
                 string display = NameEntryBuffer + cursor;
                 string validation = string.IsNullOrEmpty(NameEntryValidationMessage)
                     ? "" : $"\n{NameEntryValidationMessage}";
-                Body = $"CALLSIGN: {display}{validation}";
+                Body = $"CALLSIGN: {display}\nNEW: RIGHT OR XBOX X | SAVES: UP/DOWN OR XBOX Y{validation}";
             }
         }
 
@@ -585,11 +613,11 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             IsNameConfirmed = false;
             _cursorBlinkTimer = 0f;
             Body = "";
-            Footer = "ENTER TO CONFIRM  //  ESC TO GO BACK";
+            Footer = "KEYBOARD: ENTER OK | ESC BACK\nXBOX: [A] OK | [B] BACK";
 
             DimStrength = 0.65f;
             PanelWidthRatio = 0.68f;
-            PanelHeightRatio = 0.26f;
+            PanelHeightRatio = 0.30f;
             PanelYOffsetRatio = 0.00f;
             CenterText = true;
 
@@ -609,7 +637,10 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             if (key >= GameInputKey.A && key <= GameInputKey.Z)
             {
                 if (NameEntryBuffer.Length < MaxCallsignLength)
+                {
                     NameEntryBuffer += (char)('A' + (key - GameInputKey.A));
+                    NameEntryValidationMessage = "";
+                }
                 return true;
             }
 
@@ -617,7 +648,10 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             if (key >= GameInputKey.D0 && key <= GameInputKey.D9)
             {
                 if (NameEntryBuffer.Length < MaxCallsignLength)
+                {
                     NameEntryBuffer += (char)('0' + (key - GameInputKey.D0));
+                    NameEntryValidationMessage = "";
+                }
                 return true;
             }
 
@@ -625,7 +659,10 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             if (key >= GameInputKey.NumPad0 && key <= GameInputKey.NumPad9)
             {
                 if (NameEntryBuffer.Length < MaxCallsignLength)
+                {
                     NameEntryBuffer += (char)('0' + (key - GameInputKey.NumPad0));
+                    NameEntryValidationMessage = "";
+                }
                 return true;
             }
 
@@ -641,6 +678,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             if (key == GameInputKey.Space && NameEntryBuffer.Length < MaxCallsignLength)
             {
                 NameEntryBuffer += ' ';
+                NameEntryValidationMessage = "";
                 return true;
             }
 
@@ -648,6 +686,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             if ((key == GameInputKey.OemMinus || key == GameInputKey.Subtract) && NameEntryBuffer.Length < MaxCallsignLength)
             {
                 NameEntryBuffer += '-';
+                NameEntryValidationMessage = "";
                 return true;
             }
 

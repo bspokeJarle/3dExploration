@@ -336,12 +336,15 @@ Read these first:
 - `TheOmegaStrain.Common/Persistence/PersistenceSetup.cs`
 - `TheOmegaStrain.Common/Persistence/TutorialProgressService.cs`
 - `TheOmegaStrain.Common/Persistence/SupabaseHighscoreClient.cs`
+- `TheOmegaStrain.Common/Persistence/PlayerCallsignService.cs`
+- `TheOmegaStrain.Common/Persistence/SupabaseCallsignClient.cs`
 
 Useful tests:
 
 - `TheOmegaStrain.Tests/Persistence/GameStatePersistenceIsolationTests.cs`
 - `TheOmegaStrain.Tests/Persistence/HighscoreServiceConsistencyTests.cs`
 - `TheOmegaStrain.Tests/Persistence/HighscoreRemoteFallbackTests.cs`
+- `TheOmegaStrain.Tests/Persistence/PlayerCallsignServiceTests.cs`
 - `TheOmegaStrain.Tests/Persistence/PowerUpCheckpointPersistenceTests.cs`
 - `TheOmegaStrain.Tests/Persistence/TutorialProgressServiceTests.cs`
 
@@ -357,6 +360,8 @@ Guardrails:
   says so.
 - Supabase should be used when configured and online; local fallback should keep
   the game playable offline.
+- Callsign reservation is optional: local duplicate checks should always run,
+  while Supabase registry failures should not block offline play.
 
 ## Steam Integration
 

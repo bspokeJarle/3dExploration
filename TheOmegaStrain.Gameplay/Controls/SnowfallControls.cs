@@ -52,7 +52,7 @@ namespace TheOmegaStrain.Gameplay.Controls
         public static int CurrentVisibleFlakeTarget => GameState.SettingsState.ScaleParticleCount(VisibleFlakeTarget);
         public static int CurrentTargetFlakeCount => GameState.SettingsState.ScaleParticleCount(TargetFlakeCount);
 
-        private readonly Random _random = new();
+        private readonly Random _random;
         private readonly WorldWeatherField _weatherField;
         private readonly List<Snowflake> _flakes = new(TargetFlakeCount);
 
@@ -61,8 +61,14 @@ namespace TheOmegaStrain.Gameplay.Controls
         public I3dObject? ParentObject { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
-        public SnowfallControls()
+        /// <summary>
+        /// Snowflake spawning, sizing and recycling are randomized. Production
+        /// uses a fresh unseeded generator so every session looks different;
+        /// tests pass a seeded one to make flake distribution reproducible.
+        /// </summary>
+        public SnowfallControls(Random? random = null)
         {
+            _random = random ?? new Random();
             _weatherField = new WorldWeatherField(_random, FieldSettings);
         }
 

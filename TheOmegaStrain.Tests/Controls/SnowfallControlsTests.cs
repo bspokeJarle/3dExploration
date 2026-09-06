@@ -54,7 +54,10 @@ public class SnowfallControlsTests
     [TestMethod]
     public void MoveObject_KeepsFlakesInWorldSpaceAsShipMoves()
     {
-        var emitter = SnowEmitter.CreateSnowEmitter(null);
+        // Seeded: flake recycling spreads WorldZ over DepthSpread (1000f), so an
+        // unseeded generator makes the average depth shift vary well outside the
+        // window asserted below.
+        var emitter = SnowEmitter.CreateSnowEmitter(null, new System.Random(20240607));
         emitter.Movement!.MoveObject(emitter, null, null);
 
         var snowflakePart = emitter.ObjectParts.Single(p => p.PartName == "Snowflakes");

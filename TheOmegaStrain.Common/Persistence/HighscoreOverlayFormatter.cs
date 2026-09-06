@@ -1,4 +1,5 @@
 using TheOmegaStrain.Domain;
+using System;
 using System.Linq;
 using System.Text;
 using TheOmegaStrain.Common.CommonGlobalState.States;
@@ -9,12 +10,16 @@ namespace TheOmegaStrain.Common.Persistence
     {
         private const string IntroHighscoreTitle = "TOP PILOTS";
         private const string OutroHighscoreTitle = "LEADERBOARD";
+        private const int HeaderLineCount = 2;
+        private const int MaxDisplayedHighscoreLines = 20;
+        private const int MaxDisplayedHighscoreEntries = MaxDisplayedHighscoreLines - HeaderLineCount;
 
-        public static string BuildBody(int count = 25)
+        public static string BuildBody(int count = MaxDisplayedHighscoreEntries)
         {
-            var entries = HighscoreService.GetTopScores(count)
+            int displayCount = Math.Clamp(count, 0, MaxDisplayedHighscoreEntries);
+            var entries = HighscoreService.GetTopScores(displayCount)
                 .OrderByDescending(e => e.Score)
-                .Take(count)
+                .Take(displayCount)
                 .ToList();
 
             if (entries.Count == 0)
@@ -37,7 +42,7 @@ namespace TheOmegaStrain.Common.Persistence
             return sb.ToString().TrimEnd();
         }
 
-        public static bool RefreshCurrentPageIfHighscorePage(ScreenOverlayState overlay, int count = 25)
+        public static bool RefreshCurrentPageIfHighscorePage(ScreenOverlayState overlay, int count = MaxDisplayedHighscoreEntries)
         {
             if (overlay.Pages.Count == 0 || overlay.CurrentPage < 0 || overlay.CurrentPage >= overlay.Pages.Count)
                 return false;

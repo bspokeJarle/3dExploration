@@ -124,13 +124,19 @@ public class SceneInfectionTuningTests
         Assert.IsTrue(controls.Contains("[1] BULLET", StringComparison.Ordinal));
         Assert.IsTrue(controls.Contains("[2] DECOY", StringComparison.Ordinal));
         Assert.IsTrue(controls.Contains("[3] LAZER", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("LEFT BUTTON   FIRE CURRENT WEAPON", StringComparison.Ordinal));
+        Assert.IsTrue(controls.Contains("LEFT BUTTON   FIRE", StringComparison.Ordinal));
         Assert.IsTrue(controls.Contains("RIGHT BUTTON  THRUST", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("LEFT STICK    PITCH / TURN", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("[RT]          THRUST", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("[LT]          FIRE CURRENT WEAPON", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("[X]/[Y]/[B]   1 BULLET / 2 DECOY / 3 LAZER", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("[A]           POWERUP 4 RESERVED", StringComparison.Ordinal));
+
+        var xbox = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "XBOX CONTROLLER")[2];
+        Assert.IsTrue(xbox.Contains("LEFT STICK    PITCH / TURN", StringComparison.Ordinal));
+        Assert.IsTrue(xbox.Contains("[RT]          THRUST", StringComparison.Ordinal));
+        Assert.IsTrue(xbox.Contains("[LT]          FIRE", StringComparison.Ordinal));
+        Assert.IsTrue(xbox.Contains("[X] BULLET", StringComparison.Ordinal));
+        Assert.IsTrue(xbox.Contains("[Y] DECOY", StringComparison.Ordinal));
+        Assert.IsTrue(xbox.Contains("[B] LAZER", StringComparison.Ordinal));
+        Assert.IsTrue(xbox.Contains("[A]           POWERUP 4 RESERVED", StringComparison.Ordinal));
+        Assert.IsTrue(xbox.Contains("[MENU]        PAUSE GAMEPLAY", StringComparison.Ordinal));
+        Assert.IsTrue(xbox.Contains("[VIEW]        EXIT TO MENU", StringComparison.Ordinal));
         Assert.IsTrue(controls.Contains("Input type and mappings can be changed in CONTROLS.", StringComparison.Ordinal));
     }
 

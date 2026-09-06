@@ -68,6 +68,82 @@ public class ObjectShadowManagerTests
         }
     }
 
+    [TestMethod]
+    public void FreeFlyingShadow_IsSkippedWhenObjectIsOutsideSurfaceBounds()
+    {
+        var surface = new Surface
+        {
+            RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>
+            {
+                new TriangleMeshWithColor
+                {
+                    vert1 = new Vector3 { x = 0f, y = 0f, z = 0f },
+                    vert2 = new Vector3 { x = 100f, y = 100f, z = 0f },
+                    vert3 = new Vector3 { x = 0f, y = 0f, z = 100f }
+                }
+            }
+        };
+
+        // Mirrors a mother ship during descent: spawned far behind the tile grid
+        // (DescentSpawnOffsetZ = -1500), so no ground exists under it.
+        var flyingObject = CreateFreeFlyingShadowCaster(surface, x: 25f, y: 400f, z: 1500f);
+        var shadows = new List<OmegaObject3D>();
+
+        new ObjectShadowManager().HandleObjectShadow(flyingObject, shadows);
+
+        Assert.AreEqual(
+            0,
+            shadows.Count,
+            "Objects outside the tile grid must not snap their shadow to the nearest edge tile.");
+    }
+
+    [TestMethod]
+    public void FreeFlyingShadow_IsClampedToHorizonWhenOffsetPushesItAboveTerrain()
+    {
+        float oldStaticOffsetY = ObjectShadowManager.StaticOffsetY;
+        try
+        {
+            ObjectShadowManager.StaticOffsetY = 0f;
+
+            // Horizon row (smallest Y) of this grid is y = 0.
+            var surface = new Surface
+            {
+                RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>
+                {
+                    new TriangleMeshWithColor
+                    {
+                        vert1 = new Vector3 { x = 0f, y = 0f, z = 0f },
+                        vert2 = new Vector3 { x = 100f, y = 100f, z = 0f },
+                        vert3 = new Vector3 { x = 0f, y = 0f, z = 100f }
+                    }
+                }
+            };
+
+            var flyingObject = CreateFreeFlyingShadowCaster(surface, x: 25f, y: 400f, z: 25f);
+
+            // A large negative offset would drive the anchor far above the
+            // horizon, making the shadow float in the sky behind the terrain.
+            flyingObject.ShadowOffset = new Vector3 { x = 0f, y = -900f, z = 0f };
+
+            var shadows = new List<OmegaObject3D>();
+
+            new ObjectShadowManager().HandleObjectShadow(flyingObject, shadows);
+
+            Assert.AreEqual(1, shadows.Count);
+            var shadowVertex = shadows[0].ObjectParts[0].Triangles[0].vert1;
+
+            Assert.AreEqual(
+                ObjectShadowManager.ShadowHorizonMargin,
+                shadowVertex.y,
+                0.001f,
+                "Shadow anchors must be clamped to the terrain horizon instead of floating above the surface.");
+        }
+        finally
+        {
+            ObjectShadowManager.StaticOffsetY = oldStaticOffsetY;
+        }
+    }
+
     private static OmegaObject3D CreateFreeFlyingShadowCaster(Surface surface, float x, float y, float z)
     {
         return new OmegaObject3D

@@ -106,6 +106,7 @@ namespace TheOmegaStrain.Wpf.MainWindowClasses
                 Foreground = Brushes.Lime,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 TextAlignment = TextAlignment.Center,
+                TextWrapping = TextWrapping.Wrap,
                 Opacity = 0.9
             };
 
