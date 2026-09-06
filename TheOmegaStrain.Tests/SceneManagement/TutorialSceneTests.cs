@@ -217,6 +217,8 @@ public class TutorialSceneTests
 
         Assert.AreEqual(SceneTypes.Tutorial, handler.GetActiveScene().SceneType);
         Assert.IsFalse(TutorialProgressService.HasCompletedTutorial("Pilot"));
+        Assert.IsFalse(world.WorldInhabitants.Any(o => o.ObjectName == "LogoCube"),
+            "Starting training must clear intro objects instead of layering the tutorial world on top.");
     }
 
     [TestMethod]
@@ -246,6 +248,47 @@ public class TutorialSceneTests
         Assert.AreEqual(0, GameState.GamePlayState.TotalShotsFired);
         Assert.AreEqual(0, GameState.GamePlayState.PowerUpsCollected,
             "Training is teaching only: no powerups, score, kills, shots, or deaths carry into the campaign.");
+    }
+
+    [TestMethod]
+    public void SceneHandler_CompletedTutorialClearsTrainingWorldBeforeCampaignScene()
+    {
+        RunOnStaThread(() =>
+        {
+            var handler = new SceneHandler();
+            var world = CreateRealWorld(handler);
+            GameState.GamePlayState.PlayerName = "Pilot";
+            GameState.GamePlayState.SceneIndex = 11;
+
+            var sceneIndexField = typeof(SceneHandler).GetField("currentSceneIndex", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            sceneIndexField?.SetValue(handler, 11);
+
+            handler.SetupActiveScene(world);
+
+            Assert.AreEqual(SceneTypes.Tutorial, handler.GetActiveScene().SceneType);
+            Assert.AreEqual(1, world.WorldInhabitants.Count(o => o.ObjectName == "Ship"));
+            Assert.IsTrue(world.WorldInhabitants.Any(o => o.ObjectName == "TutorialVoicePrompt"));
+            Assert.IsTrue(world.WorldInhabitants.Any(o => o.Movement is TutorialSeederControls));
+
+            GameState.TutorialState.ShowInstructionOverlay("TutorialComplete");
+            GameState.ShipState.ShipCrashDetectionDisabledUntilUtc = DateTime.UtcNow.AddSeconds(10);
+            GameState.ShipState.ShipGravityDisabledUntilUtc = DateTime.UtcNow.AddSeconds(10);
+            TutorialProgressService.MarkTutorialCompleted("Pilot");
+
+            handler.NextScene(world);
+
+            Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
+            Assert.AreEqual("Scene1", handler.GetActiveScene().GetType().Name);
+            Assert.AreEqual(1, world.WorldInhabitants.Count(o => o.ObjectName == "Ship"),
+                "Leaving training must not leave a second tutorial ship hooked into the world.");
+            Assert.IsFalse(world.WorldInhabitants.Any(o => o.ObjectName == "TutorialVoicePrompt"),
+                "Tutorial prompt controller must be removed before campaign gameplay starts.");
+            Assert.IsFalse(world.WorldInhabitants.Any(o => o.Movement is TutorialSeederControls),
+                "Training seeder controls must not survive into Scene1.");
+            Assert.IsFalse(GameState.TutorialState.InstructionOverlayPauseActive);
+            Assert.AreEqual(DateTime.MinValue, GameState.ShipState.ShipCrashDetectionDisabledUntilUtc);
+            Assert.AreEqual(DateTime.MinValue, GameState.ShipState.ShipGravityDisabledUntilUtc);
+        });
     }
 
     [TestMethod]

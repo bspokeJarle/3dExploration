@@ -108,6 +108,7 @@ namespace TheOmegaStrain.Game.SceneManagement
             PersistenceSetup.Initialize();
             GameSettingsPersistence.LoadIntoGameState();
             ApplySceneIndexOverrideFromGameState();
+            ClearWorldRuntimeState(world);
             ResetSurfaceState();
             var scene = GetActiveScene();
             CaptureTutorialEntrySnapshotIfNeeded(scene);
@@ -162,6 +163,7 @@ namespace TheOmegaStrain.Game.SceneManagement
             int prevSpeedPowerUpLevel = gps.SpeedPowerUpLevel;
 
             ClearVideoOverlay();
+            ClearWorldRuntimeState(world);
             gps.ResetForNewGame();
             ResetSurfaceState();
 
@@ -247,6 +249,7 @@ namespace TheOmegaStrain.Game.SceneManagement
             int prevSpeedPowerUpLevel = gps.SpeedPowerUpLevel;
 
             ClearVideoOverlay();
+            ClearWorldRuntimeState(world);
             gps.ResetForNewGame();
             gps.SceneIndex = sceneIndex;
             ResetSurfaceState();
@@ -299,6 +302,7 @@ namespace TheOmegaStrain.Game.SceneManagement
                 var saved = _tutorialResumeSavedState;
                 _tutorialResumeSavedState = null;
                 _tutorialEntrySnapshot = null;
+                ClearTutorialExitRuntimeState();
                 _pendingSavedState = saved;
                 _targetSceneIndex = ResolveSavedSceneIndex(saved);
                 _pendingNextScene = false;
@@ -330,9 +334,7 @@ namespace TheOmegaStrain.Game.SceneManagement
                 // Clear all objects from the previous scene (Outro ship, asteroids,
                 // surface, landing pad, astronaut, fireworks, particles) so nothing
                 // bleeds through into the new Simulation scene.
-                world.WorldInhabitants.Clear();
-                if (GameState.SurfaceState.AiObjects != null)
-                    GameState.SurfaceState.AiObjects.Clear();
+                ClearWorldRuntimeState(world);
 
                 ClearVideoOverlay();
                 gps.ResetForNewGame();
@@ -369,6 +371,9 @@ namespace TheOmegaStrain.Game.SceneManagement
             }
 
             ClearVideoOverlay();
+            ClearWorldRuntimeState(world);
+            if (isTutorial)
+                ClearTutorialExitRuntimeState();
             gps.ResetForNewGame();
             gps.SceneIndex = currentSceneIndex;
             ResetSurfaceState();
@@ -1376,6 +1381,26 @@ namespace TheOmegaStrain.Game.SceneManagement
             world.WorldInhabitants.Clear();
             if (GameState.SurfaceState.AiObjects != null)
                 GameState.SurfaceState.AiObjects.Clear();
+            ClearShipRuntimeState();
+        }
+
+        private static void ClearShipRuntimeState()
+        {
+            var shipState = GameState.ShipState;
+            shipState.ShipWorldPosition = null;
+            shipState.ShipCrashCenterWorldPosition = null;
+            shipState.ShipObjectOffsets = null;
+            shipState.ShipVelocity = null;
+            shipState.ShipHasShadow = false;
+            shipState.ShipImpactStatus = null;
+            shipState.ShipCrashDetectionDisabledUntilUtc = DateTime.MinValue;
+            shipState.ShipGravityDisabledUntilUtc = DateTime.MinValue;
+            shipState.BestCandidateStates.Clear();
+        }
+
+        private static void ClearTutorialExitRuntimeState()
+        {
+            GameState.TutorialState.Reset();
         }
 
         private static void ClearVideoOverlay()
