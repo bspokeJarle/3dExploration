@@ -56,10 +56,33 @@ namespace TheOmegaStrain.Wpf.Input
             return GameInputKey.None;
         }
 
+        public static GameInputKey ToNameEntryGameInputKey(XboxControllerSnapshot state)
+        {
+            if (XboxControllerInput.IsControlPressed(state, XboxControlButton.X))
+                return GameInputKey.Right;
+            if (XboxControllerInput.IsControlPressed(state, XboxControlButton.Y))
+                return GameInputKey.Down;
+
+            return ToGameInputKey(state);
+        }
+
+        public static GameInputKey ToIntroGameInputKey(XboxControllerSnapshot state)
+        {
+            if (XboxControllerInput.IsControlPressed(state, XboxControlButton.B) ||
+                XboxControllerInput.IsControlPressed(state, XboxControlButton.View))
+                return GameInputKey.Left;
+
+            return ToGameInputKey(state);
+        }
+
         public static bool IsPauseTogglePressed(XboxControllerSnapshot state) =>
             XboxControllerInput.IsControlPressed(state, XboxControlButton.Menu);
 
         public static bool IsExitToMenuPressed(XboxControllerSnapshot state) =>
             XboxControllerInput.IsControlPressed(state, XboxControlButton.View);
+
+        public static bool IsQuitConfirmationShortcutPressed(XboxControllerSnapshot state) =>
+            XboxControllerInput.IsControlPressed(state, XboxControlButton.View) &&
+            XboxControllerInput.IsControlPressed(state, XboxControlButton.Menu);
     }
 }

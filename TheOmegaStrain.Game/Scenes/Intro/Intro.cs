@@ -16,7 +16,7 @@ namespace TheOmegaStrain.Game.Scenes.Intro
         private const string StoryFooter =
             "PRESS ANY KEY OR XBOX [A] TO START\n" +
             "[K] KEYBOARD / MOUSE CONTROLS\n" +
-            "[X] XBOX CONTROLLER CONTROLS";
+            "[X] XBOX CONTROLLER CONTROLS | ESC QUIT";
 
         private const string ControlsFooter =
             "KEYBOARD: ARROWS PAGE | [C] SETTINGS | ESC EXIT\n" +
@@ -87,7 +87,7 @@ namespace TheOmegaStrain.Game.Scenes.Intro
                 "  [SPACE]       THRUST\n" +
                 "  [RIGHT SHIFT] FIRE CURRENT WEAPON\n" +
                 "  [1] BULLET  |  [2] DECOY  |  [3] LAZER\n" +
-                "  [T] TUTORIAL  |  [C] CONTROLS  |  [X] EXIT\n\n" +
+                "  [T] TUTORIAL  |  [C] CONTROLS  |  [ESC] QUIT\n\n" +
                 "MOUSE:\n" +
                 "  MOVE MOUSE    PITCH / TURN\n" +
                 "  LEFT BUTTON   FIRE\n" +
@@ -112,7 +112,8 @@ namespace TheOmegaStrain.Game.Scenes.Intro
                 "  [A] SELECT  |  [B] BACK\n" +
                 "  D-PAD / LEFT STICK NAVIGATE\n" +
                 "  [Y] TRAINING  |  [X] CONTROL SETTINGS\n" +
-                "  [LB] SOUND  |  [RB] GRAPHICS",
+                "  [LB] SOUND  |  [RB] GRAPHICS\n" +
+                "  [VIEW]+[MENU] QUIT GAME",
                 ControlsFooter);
 
             // Page 4: Gameplay tips

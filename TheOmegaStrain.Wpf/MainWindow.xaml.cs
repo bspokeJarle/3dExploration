@@ -96,6 +96,7 @@ namespace TheOmegaStrain.Wpf
         private bool _xboxMenuRepeatArmed = false;
         private bool _xboxPauseButtonWasDown = false;
         private bool _xboxExitButtonWasDown = false;
+        private bool _xboxQuitConfirmationShortcutWasDown = false;
         private const double XboxMenuInitialRepeatSeconds = 0.32;
         private const double XboxMenuRepeatSeconds = 0.12;
         private const string IntroXboxControlsPageTitle = "XBOX CONTROLLER";
@@ -672,8 +673,12 @@ namespace TheOmegaStrain.Wpf
                 ResetXboxMenuInputState();
                 _xboxPauseButtonWasDown = false;
                 _xboxExitButtonWasDown = false;
+                _xboxQuitConfirmationShortcutWasDown = false;
                 return;
             }
+
+            if (TryHandleXboxQuitConfirmationShortcut(controllerState))
+                return;
 
             if (TryHandleXboxGameplayExit(controllerState))
                 return;
@@ -690,7 +695,12 @@ namespace TheOmegaStrain.Wpf
                 return;
             }
 
-            var key = XboxMenuInputMapper.ToGameInputKey(controllerState);
+            var key = IsNameEntryOverlayActive()
+                ? XboxMenuInputMapper.ToNameEntryGameInputKey(controllerState)
+                : IsPlainIntroOverlayActive()
+                    ? XboxMenuInputMapper.ToIntroGameInputKey(controllerState)
+                    : XboxMenuInputMapper.ToGameInputKey(controllerState);
+
             if (key == GameInputKey.None && CanXboxShortcutInputControlCurrentState())
                 key = XboxMenuInputMapper.ToShortcutGameInputKey(controllerState);
 
@@ -702,6 +712,23 @@ namespace TheOmegaStrain.Wpf
 
             if (ShouldDispatchXboxMenuInput(key))
                 DispatchSceneInputKey(key);
+        }
+
+        private static bool IsNameEntryOverlayActive()
+        {
+            var overlay = GameState.ScreenOverlayState;
+            return overlay is { ShowOverlay: true, Type: ScreenOverlayType.NameEntry };
+        }
+
+        private static bool IsPlainIntroOverlayActive()
+        {
+            var overlay = GameState.ScreenOverlayState;
+            return overlay is
+            {
+                ShowOverlay: true,
+                Type: ScreenOverlayType.Intro,
+                ChoiceAction: ScreenOverlayChoiceAction.None
+            };
         }
 
         private bool CanNonKeyboardInputActivateOverlay()
@@ -736,13 +763,13 @@ namespace TheOmegaStrain.Wpf
                 return false;
 
             var sceneTypeBeforeMenuExit = world?.SceneHandler?.GetActiveScene().SceneType;
-            if (IsMenuExitKey(key) && ShouldShutdownFromMenuExitKey(key))
+            world.SceneHandler.HandleKeyPress(key, world);
+
+            if (GameState.ScreenOverlayState.QuitApplicationRequested)
             {
                 Application.Current.Shutdown();
                 return true;
             }
-
-            world.SceneHandler.HandleKeyPress(key, world);
 
             if (IsMenuExitKey(key))
                 StopNonMusicAudioIfReturnedToIntro(sceneTypeBeforeMenuExit);
@@ -758,27 +785,6 @@ namespace TheOmegaStrain.Wpf
 
             if (world?.SceneHandler?.GetActiveScene().SceneType == SceneTypes.Intro)
                 gameWorldManager.StopNonMusicAudio();
-        }
-
-        private bool ShouldShutdownFromMenuExitKey(GameInputKey key)
-        {
-            if (!IsMenuExitKey(key))
-                return false;
-
-            var overlay = GameState.ScreenOverlayState;
-            if (overlay.Type == ScreenOverlayType.NameEntry && overlay.ShowOverlay)
-                return false;
-
-            if (overlay.Type == ScreenOverlayType.Settings && overlay.ShowOverlay)
-                return false;
-
-            if (world?.SceneHandler?.GetActiveScene().SceneType != SceneTypes.Intro)
-                return false;
-
-            if (key == GameInputKey.X && overlay.Type == ScreenOverlayType.Intro && overlay.ShowOverlay)
-                return false;
-
-            return true;
         }
 
         private static bool IsMenuExitKey(GameInputKey key) => key == GameInputKey.Escape || key == GameInputKey.X;
@@ -822,6 +828,27 @@ namespace TheOmegaStrain.Wpf
             return true;
         }
 
+        private bool TryHandleXboxQuitConfirmationShortcut(XboxControllerSnapshot controllerState)
+        {
+            bool quitPressed = XboxMenuInputMapper.IsQuitConfirmationShortcutPressed(controllerState);
+            if (!quitPressed)
+            {
+                _xboxQuitConfirmationShortcutWasDown = false;
+                return false;
+            }
+
+            if (_xboxQuitConfirmationShortcutWasDown)
+                return true;
+
+            _xboxQuitConfirmationShortcutWasDown = true;
+
+            if (!CanXboxQuitConfirmationShortcutCurrentState())
+                return true;
+
+            DispatchSceneInputKey(GameInputKey.Escape);
+            return true;
+        }
+
         private bool TryHandleXboxIntroControlsShortcut(XboxControllerSnapshot controllerState)
         {
             if (!CanXboxIntroControlsShortcutCurrentState())
@@ -843,6 +870,19 @@ namespace TheOmegaStrain.Wpf
                 !overlay.ShowOverlay ||
                 overlay.Type != ScreenOverlayType.Intro ||
                 overlay.CurrentPage != 0)
+                return false;
+
+            var sceneType = world?.SceneHandler?.GetActiveScene().SceneType ?? GameState.GamePlayState.CurrentSceneType;
+            return sceneType == SceneTypes.Intro;
+        }
+
+        private bool CanXboxQuitConfirmationShortcutCurrentState()
+        {
+            var overlay = GameState.ScreenOverlayState;
+            if (overlay == null ||
+                !overlay.ShowOverlay ||
+                overlay.Type != ScreenOverlayType.Intro ||
+                overlay.ChoiceAction != ScreenOverlayChoiceAction.None)
                 return false;
 
             var sceneType = world?.SceneHandler?.GetActiveScene().SceneType ?? GameState.GamePlayState.CurrentSceneType;

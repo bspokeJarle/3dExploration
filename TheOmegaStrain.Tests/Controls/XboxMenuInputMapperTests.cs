@@ -70,6 +70,26 @@ public class XboxMenuInputMapperTests
     }
 
     [TestMethod]
+    public void ToNameEntryGameInputKey_MapsFaceButtonsToNameActions()
+    {
+        Assert.AreEqual(GameInputKey.Return, XboxMenuInputMapper.ToNameEntryGameInputKey(Snapshot(A)));
+        Assert.AreEqual(GameInputKey.Escape, XboxMenuInputMapper.ToNameEntryGameInputKey(Snapshot(B)));
+        Assert.AreEqual(GameInputKey.Right, XboxMenuInputMapper.ToNameEntryGameInputKey(Snapshot(X)));
+        Assert.AreEqual(GameInputKey.Down, XboxMenuInputMapper.ToNameEntryGameInputKey(Snapshot(Y)));
+        Assert.AreEqual(GameInputKey.Up, XboxMenuInputMapper.ToNameEntryGameInputKey(Snapshot(DPadUp)));
+        Assert.AreEqual(GameInputKey.Right, XboxMenuInputMapper.ToNameEntryGameInputKey(Snapshot(DPadRight)));
+    }
+
+    [TestMethod]
+    public void ToIntroGameInputKey_MapsBackButtonsToPreviousPage()
+    {
+        Assert.AreEqual(GameInputKey.Left, XboxMenuInputMapper.ToIntroGameInputKey(Snapshot(B)));
+        Assert.AreEqual(GameInputKey.Left, XboxMenuInputMapper.ToIntroGameInputKey(Snapshot(View)));
+        Assert.AreEqual(GameInputKey.Return, XboxMenuInputMapper.ToIntroGameInputKey(Snapshot(A)));
+        Assert.AreEqual(GameInputKey.Return, XboxMenuInputMapper.ToIntroGameInputKey(Snapshot(Menu)));
+    }
+
+    [TestMethod]
     public void IsPauseTogglePressed_OnlyUsesMenuButton()
     {
         Assert.IsTrue(XboxMenuInputMapper.IsPauseTogglePressed(Snapshot(Menu)));
@@ -81,6 +101,14 @@ public class XboxMenuInputMapperTests
     {
         Assert.IsTrue(XboxMenuInputMapper.IsExitToMenuPressed(Snapshot(View)));
         Assert.IsFalse(XboxMenuInputMapper.IsExitToMenuPressed(Snapshot(B)));
+    }
+
+    [TestMethod]
+    public void IsQuitConfirmationShortcutPressed_RequiresViewAndMenu()
+    {
+        Assert.IsTrue(XboxMenuInputMapper.IsQuitConfirmationShortcutPressed(Snapshot((ushort)(View | Menu))));
+        Assert.IsFalse(XboxMenuInputMapper.IsQuitConfirmationShortcutPressed(Snapshot(View)));
+        Assert.IsFalse(XboxMenuInputMapper.IsQuitConfirmationShortcutPressed(Snapshot(Menu)));
     }
 
     private static XboxControllerSnapshot Snapshot(

@@ -34,7 +34,8 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
     public enum ScreenOverlayChoiceAction
     {
         None = 0,
-        PlanetLostRecovery = 1
+        PlanetLostRecovery = 1,
+        QuitGameConfirmation = 2
     }
 
         /// <summary>
@@ -102,6 +103,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         public List<string> ChoiceOptions { get; } = new();
         public int SelectedChoiceIndex { get; private set; } = 0;
         public string ChoiceBodyPrefix { get; private set; } = "";
+        public bool QuitApplicationRequested { get; set; } = false;
         public bool HasChoiceOptions => ChoiceOptions.Count > 0;
         public string SelectedChoice =>
             HasChoiceOptions && SelectedChoiceIndex >= 0 && SelectedChoiceIndex < ChoiceOptions.Count
@@ -334,6 +336,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             Footer = "";
             SettingsPanel = ScreenOverlaySettingsPanel.None;
             SelectedSettingsIndex = 0;
+            QuitApplicationRequested = false;
             ClearChoiceOptions();
 
             ShowVideoOverlay = false;
@@ -523,7 +526,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
                 string display = NameEntryBuffer + cursor;
                 string validation = string.IsNullOrEmpty(NameEntryValidationMessage)
                     ? "" : $"\n{NameEntryValidationMessage}";
-                Body = $"CALLSIGN: {display}{validation}";
+                Body = $"CALLSIGN: {display}\nNEW: RIGHT OR XBOX X | SAVES: UP/DOWN OR XBOX Y{validation}";
             }
         }
 
@@ -610,11 +613,11 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             IsNameConfirmed = false;
             _cursorBlinkTimer = 0f;
             Body = "";
-            Footer = "KEYBOARD: ENTER | RIGHT NEW | UP/DOWN SAVES | ESC\nXBOX: [A] OK | D-PAD RIGHT NEW | UP/DOWN SAVES | [B] BACK";
+            Footer = "KEYBOARD: ENTER OK | ESC BACK\nXBOX: [A] OK | [B] BACK";
 
             DimStrength = 0.65f;
             PanelWidthRatio = 0.68f;
-            PanelHeightRatio = 0.28f;
+            PanelHeightRatio = 0.30f;
             PanelYOffsetRatio = 0.00f;
             CenterText = true;
 

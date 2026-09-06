@@ -418,6 +418,24 @@ public class HighscoreRemoteFallbackTests
     }
 
     [TestMethod]
+    public void BuildBody_ShowsNoMoreThanTwentyEntries()
+    {
+        HighscoreService.SaveLocalHighscores(new HighscoreList
+        {
+            Entries = Enumerable.Range(1, 25)
+                .Select(i => CreateEntry($"PILOT{i:00}", 26000 - i, i))
+                .ToList()
+        });
+
+        string body = HighscoreOverlayFormatter.BuildBody(count: 25);
+
+        Assert.IsTrue(body.Contains("PILOT20"));
+        Assert.IsFalse(body.Contains("PILOT21"));
+        Assert.AreEqual(22, body.Split('\n').Length);
+        Assert.AreEqual(25, HighscoreService.LoadLocalHighscores().Entries.Count);
+    }
+
+    [TestMethod]
     public void WorldStartup_InitializesPersistenceBeforeIntroOverlayBuildsHighscores()
     {
         File.WriteAllText(

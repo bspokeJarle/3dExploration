@@ -560,6 +560,12 @@ namespace TheOmegaStrain.Game.SceneManagement
                 return;
             }
 
+            if (overlay.ShowOverlay && overlay.ChoiceAction == ScreenOverlayChoiceAction.QuitGameConfirmation)
+            {
+                HandleQuitGameConfirmationChoice(key, scene, overlay);
+                return;
+            }
+
             if (overlay.ShowOverlay && overlay.ChoiceAction == ScreenOverlayChoiceAction.PlanetLostRecovery)
             {
                 HandlePlanetLostRecoveryChoice(key, world, overlay);
@@ -679,7 +685,7 @@ namespace TheOmegaStrain.Game.SceneManagement
             }
 
             if (overlay.Type == ScreenOverlayType.NameEntry ||
-                overlay.ChoiceAction == ScreenOverlayChoiceAction.PlanetLostRecovery)
+                overlay.ChoiceAction != ScreenOverlayChoiceAction.None)
             {
                 return;
             }
@@ -849,6 +855,38 @@ namespace TheOmegaStrain.Game.SceneManagement
             if (key == GameInputKey.Return || key == GameInputKey.Enter || key == GameInputKey.Space)
             {
                 StartPlanetLostRecoveryFade(world, resetToPlanetStart: overlay.SelectedChoiceIndex == 1);
+            }
+        }
+
+        private static void HandleQuitGameConfirmationChoice(GameInputKey key, IScene scene, ScreenOverlayState overlay)
+        {
+            if (key == GameInputKey.Up || key == GameInputKey.W || key == GameInputKey.Left || key == GameInputKey.A)
+            {
+                overlay.MoveChoiceSelection(-1);
+                return;
+            }
+
+            if (key == GameInputKey.Down || key == GameInputKey.S || key == GameInputKey.Right || key == GameInputKey.D)
+            {
+                overlay.MoveChoiceSelection(1);
+                return;
+            }
+
+            if (key == GameInputKey.Escape || key == GameInputKey.X)
+            {
+                CloseQuitGameConfirmation(scene, overlay);
+                return;
+            }
+
+            if (key == GameInputKey.Return || key == GameInputKey.Enter || key == GameInputKey.Space)
+            {
+                if (overlay.SelectedChoiceIndex == 1)
+                {
+                    overlay.QuitApplicationRequested = true;
+                    return;
+                }
+
+                CloseQuitGameConfirmation(scene, overlay);
             }
         }
 
@@ -1031,6 +1069,12 @@ namespace TheOmegaStrain.Game.SceneManagement
                 return;
             }
 
+            if (key == GameInputKey.Escape)
+            {
+                ShowQuitGameConfirmationOverlay(overlay);
+                return;
+            }
+
             // Page navigation with arrow keys
             if (overlay.HasMultiplePages)
             {
@@ -1108,6 +1152,42 @@ namespace TheOmegaStrain.Game.SceneManagement
                 : lastPlayer;
 
             overlay.SetNameEntryPreset(initialName);
+        }
+
+        private static void ShowQuitGameConfirmationOverlay(ScreenOverlayState overlay)
+        {
+            overlay.ResetToDefaults();
+            overlay.Type = ScreenOverlayType.Intro;
+            overlay.Anchor = ScreenOverlayAnchor.Center;
+            overlay.IsModal = true;
+            overlay.CanDismissWithInput = false;
+            overlay.Header = "ASTERION SYSTEMS";
+            overlay.Title = "QUIT GAME?";
+            overlay.Footer = "LEFT/RIGHT SELECT | ENTER CONFIRM\nXBOX: D-PAD SELECT | [A] CONFIRM | [B] BACK";
+            overlay.DimStrength = 0.72f;
+            overlay.PanelWidthRatio = 0.48f;
+            overlay.PanelHeightRatio = 0.30f;
+            overlay.PanelYOffsetRatio = 0.00f;
+            overlay.CenterText = true;
+            overlay.SetChoiceOptions(
+                ScreenOverlayChoiceAction.QuitGameConfirmation,
+                "Return to desktop?",
+                "NO",
+                "YES");
+            overlay.ShowOverlay = true;
+        }
+
+        private static void CloseQuitGameConfirmation(IScene scene, ScreenOverlayState overlay)
+        {
+            overlay.QuitApplicationRequested = false;
+            overlay.ClearChoiceOptions();
+            overlay.HardHide();
+
+            if (scene.SceneType == SceneTypes.Intro)
+            {
+                scene.SetupSceneOverlay();
+                GameState.ScreenOverlayState.ShowOverlay = true;
+            }
         }
 
         private static void CloseTutorialOverlayAndResume(IScene scene, I3dWorld world)
