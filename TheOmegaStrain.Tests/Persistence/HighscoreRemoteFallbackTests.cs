@@ -418,7 +418,7 @@ public class HighscoreRemoteFallbackTests
     }
 
     [TestMethod]
-    public void BuildBody_ShowsNoMoreThanTwentyEntries()
+    public void BuildBody_ShowsNoMoreThanTwentyTextLines()
     {
         HighscoreService.SaveLocalHighscores(new HighscoreList
         {
@@ -429,9 +429,9 @@ public class HighscoreRemoteFallbackTests
 
         string body = HighscoreOverlayFormatter.BuildBody(count: 25);
 
-        Assert.IsTrue(body.Contains("PILOT20"));
-        Assert.IsFalse(body.Contains("PILOT21"));
-        Assert.AreEqual(22, body.Split('\n').Length);
+        Assert.IsTrue(body.Contains("PILOT18"));
+        Assert.IsFalse(body.Contains("PILOT19"));
+        Assert.AreEqual(20, body.Split('\n').Length);
         Assert.AreEqual(25, HighscoreService.LoadLocalHighscores().Entries.Count);
     }
 

@@ -10,11 +10,13 @@ namespace TheOmegaStrain.Common.Persistence
     {
         private const string IntroHighscoreTitle = "TOP PILOTS";
         private const string OutroHighscoreTitle = "LEADERBOARD";
-        private const int MaxDisplayedHighscores = 20;
+        private const int HeaderLineCount = 2;
+        private const int MaxDisplayedHighscoreLines = 20;
+        private const int MaxDisplayedHighscoreEntries = MaxDisplayedHighscoreLines - HeaderLineCount;
 
-        public static string BuildBody(int count = MaxDisplayedHighscores)
+        public static string BuildBody(int count = MaxDisplayedHighscoreEntries)
         {
-            int displayCount = Math.Clamp(count, 0, MaxDisplayedHighscores);
+            int displayCount = Math.Clamp(count, 0, MaxDisplayedHighscoreEntries);
             var entries = HighscoreService.GetTopScores(displayCount)
                 .OrderByDescending(e => e.Score)
                 .Take(displayCount)
@@ -40,7 +42,7 @@ namespace TheOmegaStrain.Common.Persistence
             return sb.ToString().TrimEnd();
         }
 
-        public static bool RefreshCurrentPageIfHighscorePage(ScreenOverlayState overlay, int count = MaxDisplayedHighscores)
+        public static bool RefreshCurrentPageIfHighscorePage(ScreenOverlayState overlay, int count = MaxDisplayedHighscoreEntries)
         {
             if (overlay.Pages.Count == 0 || overlay.CurrentPage < 0 || overlay.CurrentPage >= overlay.Pages.Count)
                 return false;
