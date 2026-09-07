@@ -12,6 +12,10 @@ namespace TheOmegaStrain.Game.World.Objects
     public static class AttackShip
     {
         private const float ZoomRatio = 1f;
+        private const float EngineNozzleCapX = -54.2f;
+        private const float EngineParticleStartX = -100f;
+        private const float EngineParticleGuideX = -114f;
+        private const float EngineParticleLateralOffsetY = 28.5f;
         private const string BodyLight = "B8BDC6", BodyMid = "8B919B", BodyDark = "565C66", Underside = "343941";
         private const string Cockpit = "0B1118", CockpitSoft = "16212B", Engine = "FF9D2E", EngineDark = "8A4312", Wing = "6E7682", Accent = "C33A2C";
         private static readonly Vector3 BodyCenter = V(-2, 0, 0);
@@ -33,10 +37,10 @@ namespace TheOmegaStrain.Game.World.Objects
             AddPart(ship, "AttackShipEngines", BuildEngines(), true);
             AddPart(ship, "AttackShipRearFins", BuildRearFins(), true);
             AddPart(ship, "AttackShipDetails", BuildDetails(), true);
-            AddPart(ship, "AttackShipLeftEngineStartGuide", BuildEngineStartGuide(18.5f), true);
-            AddPart(ship, "AttackShipLeftEngineDirectionGuide", BuildEngineDirectionGuide(18.5f), true);
-            AddPart(ship, "AttackShipRightEngineStartGuide", BuildEngineStartGuide(-18.5f), true);
-            AddPart(ship, "AttackShipRightEngineDirectionGuide", BuildEngineDirectionGuide(-18.5f), true);
+            AddPart(ship, "AttackShipLeftEngineStartGuide", BuildEngineStartGuide(EngineParticleLateralOffsetY), false);
+            AddPart(ship, "AttackShipLeftEngineDirectionGuide", BuildEngineDirectionGuide(EngineParticleLateralOffsetY), false);
+            AddPart(ship, "AttackShipRightEngineStartGuide", BuildEngineStartGuide(-EngineParticleLateralOffsetY), false);
+            AddPart(ship, "AttackShipRightEngineDirectionGuide", BuildEngineDirectionGuide(-EngineParticleLateralOffsetY), false);
             // Three crash boxes approximate the fuselage and both wing/engine sections.
             ship.CrashBoxes = BuildCrashBoxes();
             // Exhaust styling, mirroring ShipControls.ApplyThrustParticleStyle: the default
@@ -113,9 +117,9 @@ namespace TheOmegaStrain.Game.World.Objects
         private static void AddEngine(List<ITriangleMeshWithColorAndTexture> t, float y)
         {
             var c = V(-37, y, 0); var r0 = Ring(10, -18, 5.3f, 5.3f, y); var r1 = Ring(10, -40, 6, 6, y); var r2 = Ring(10, -49, 5.8f, 5.8f, y);
-            var r3 = Ring(10, -53, 4.3f, 4.3f, y); var r4 = Ring(10, -54.2f, 3.1f, 3.1f, y);
+            var r3 = Ring(10, -53, 4.3f, 4.3f, y); var r4 = Ring(10, EngineNozzleCapX, 3.1f, 3.1f, y);
             Connect(t, r0, r1, BodyDark, BodyMid, c); Connect(t, r1, r2, EngineDark, BodyDark, c); Connect(t, r2, r3, BodyDark, EngineDark, c); Connect(t, r3, r4, EngineDark, EngineDark, c);
-            var nc = V(-54.2f, y, 0); for (int i = 0; i < 10; i++) t.Add(CreateTriangleOutward(r4[i], r4[(i + 1) % 10], nc, c, Engine));
+            var nc = V(EngineNozzleCapX, y, 0); for (int i = 0; i < 10; i++) t.Add(CreateTriangleOutward(r4[i], r4[(i + 1) % 10], nc, c, Engine));
         }
 
         private static List<ITriangleMeshWithColorAndTexture> BuildRearFins() { var t = new List<ITriangleMeshWithColorAndTexture>(); AddFin(t, 18.5f); AddFin(t, -18.5f); return t; }
@@ -138,15 +142,15 @@ namespace TheOmegaStrain.Game.World.Objects
 
         private static List<ITriangleMeshWithColorAndTexture> BuildEngineStartGuide(float y)
         {
-            // Just outside the nozzle cap (the engine's closed face sits at x = -54.2).
+            // Clear of the nozzle cap so large exhaust particles are born behind the hull.
             return new List<ITriangleMeshWithColorAndTexture>
             {
                 new TriangleMeshWithColor
                 {
                     Color = "00ff00",
-                    vert1 = new Vector3 { x = -57f, y = y + 2.5f, z = -2.5f },
-                    vert2 = new Vector3 { x = -57f, y = y - 2.5f, z = -2.5f },
-                    vert3 = new Vector3 { x = -57f, y = y, z = 2.5f },
+                    vert1 = new Vector3 { x = EngineParticleStartX, y = y + 2.5f, z = -2.5f },
+                    vert2 = new Vector3 { x = EngineParticleStartX, y = y - 2.5f, z = -2.5f },
+                    vert3 = new Vector3 { x = EngineParticleStartX, y = y, z = 2.5f },
                     noHidden = true
                 }
             };
@@ -160,9 +164,9 @@ namespace TheOmegaStrain.Game.World.Objects
                 new TriangleMeshWithColor
                 {
                     Color = "ff0000",
-                    vert1 = new Vector3 { x = -69f, y = y + 3f, z = 0f },
-                    vert2 = new Vector3 { x = -69f, y = y - 3f, z = 0f },
-                    vert3 = new Vector3 { x = -69f, y = y, z = 6f },
+                    vert1 = new Vector3 { x = EngineParticleGuideX, y = y + 3f, z = 0f },
+                    vert2 = new Vector3 { x = EngineParticleGuideX, y = y - 3f, z = 0f },
+                    vert3 = new Vector3 { x = EngineParticleGuideX, y = y, z = 6f },
                     noHidden = true
                 }
             };

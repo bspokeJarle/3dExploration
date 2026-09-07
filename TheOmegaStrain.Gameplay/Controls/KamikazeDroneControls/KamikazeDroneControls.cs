@@ -29,6 +29,12 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
         private const float DirectionUpdateIntervalSeconds = 1f;
         private const float OvershootSeconds = 5f / GameState.GameplayBaselineFps;
         private const float DroneFlyingVolumeBoost = 1.15f;
+        private const string ParticleStartGuidePartName = "KamikazeParticlesStartGuide";
+        private const string ParticleDirectionGuidePartName = "KamikazeParticlesGuide";
+        private const int FramesBetweenParticleReleases = 2;
+        private const int ParticleThrust = 3;
+        private int _framesSinceParticleRelease = 0;
+        private readonly OmegaMeshRotation _guideRotation = new();
         private DateTime LastDirectionUpdateDateTime = DateTime.MinValue;
         private DateTime LastMovementDateTime = DateTime.MinValue;
         private IVector3 DirectionVelocity = new Vector3 { x = 0, y = 0, z = 0 }; // Initially standing still until the first direction is calculated
@@ -481,6 +487,11 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
 
             TerrainAvoidanceHelpers.ApplyTerrainRecovery(theObject, (float)deltaSeconds);
             HitSparkEffects.MoveHitSparks(theObject);
+            ReleaseParticles(theObject);
+            if (theObject.Particles?.Particles.Count > 0)
+            {
+                theObject.Particles.MoveParticles();
+            }
             _storedWorldPosition = KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition);
             _storedWorldPositionInitialized = theObject.WorldPosition != null;
             KamikazeDroneAi.SyncAuthoritativeDroneState(theObject);
@@ -719,7 +730,57 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
 
         public void ReleaseParticles(I3dObject theObject)
         {
-            throw new NotImplementedException();
+            if (theObject.Particles == null || _isExploding)
+            {
+                return;
+            }
+
+            if (++_framesSinceParticleRelease < FramesBetweenParticleReleases)
+            {
+                return;
+            }
+
+            // LiveGameLoop binds guide parts only after MoveObject has run, so the bound
+            // coordinates would always be one frame behind. Rotate the guides for this frame.
+            var start = GetCurrentFrameRotatedGuide(theObject, ParticleStartGuidePartName);
+            var guide = GetCurrentFrameRotatedGuide(theObject, ParticleDirectionGuidePartName);
+            if (start == null || guide == null)
+            {
+                return;
+            }
+
+            _framesSinceParticleRelease = 0;
+
+            var worldPosition = new Vector3
+            {
+                x = theObject.WorldPosition?.x ?? 0f,
+                y = theObject.WorldPosition?.y ?? 0f,
+                z = theObject.WorldPosition?.z ?? 0f
+            };
+
+            theObject.Particles.ReleaseParticles(
+                guide, start, worldPosition, this, ParticleThrust, null);
+        }
+
+        private ITriangleMeshWithColorAndTexture? GetCurrentFrameRotatedGuide(I3dObject theObject, string partName)
+        {
+            var part = theObject.ObjectParts?.Find(p => p.PartName == partName);
+            if (part?.Triangles == null || part.Triangles.Count == 0)
+            {
+                return null;
+            }
+
+            var rotation = theObject.Rotation ?? new Vector3();
+            var mesh = new List<ITriangleMeshWithColorAndTexture>
+            {
+                OmegaObjectHelpers.CopyTriangle(part.Triangles[0])
+            };
+
+            mesh = _guideRotation.RotateZMesh(mesh, rotation.z);
+            mesh = _guideRotation.RotateYMesh(mesh, rotation.y);
+            mesh = _guideRotation.RotateXMesh(mesh, rotation.x);
+
+            return mesh[0];
         }
     }
 }

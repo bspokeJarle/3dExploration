@@ -1209,6 +1209,20 @@ namespace TheOmegaStrain.Runtime.Loops
                 case "AttackShipRightEngineDirectionGuide":
                     inhabitant.Movement.SetRearEngineGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
                     break;
+                // Rocket has a single engine, so it only uses the primary guide pair.
+                case "RocketParticlesStartGuide":
+                    inhabitant.Movement.SetParticleGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    break;
+                case "RocketParticlesDirectionGuide":
+                    inhabitant.Movement.SetParticleGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
+                    break;
+                // KamikazeDrone has a single engine, so it only uses the primary guide pair.
+                case "KamikazeParticlesStartGuide":
+                    inhabitant.Movement.SetParticleGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    break;
+                case "KamikazeParticlesGuide":
+                    inhabitant.Movement.SetParticleGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
+                    break;
             }
         }
 

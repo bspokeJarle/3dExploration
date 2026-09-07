@@ -224,14 +224,14 @@ namespace TheOmegaStrain.Game.World.Objects
 
         private static List<ITriangleMeshWithColorAndTexture> BuildParticlesStartGuide()
         {
-            // Immediately behind the nozzle (nozzle ends at x = -10).
+            // Clear of the nozzle (nozzle ends at x = -10) so exhaust is not born in the body.
             return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
-                    V(-10.1f,  0.45f, 0.25f),
-                    V(-10.1f, -0.45f, 0.25f),
-                    V(-10.6f,  0.00f, 0.00f),
-                    V(-10.3f,  0.00f, 0.00f),
+                    V(-13.0f,  0.55f,  0.30f),
+                    V(-13.0f, -0.55f,  0.30f),
+                    V(-13.0f,  0.00f, -0.30f),
+                    V(-13.0f,  0.00f,  0.00f),
                     "FFFFFF",
                     true)
             };
@@ -243,10 +243,10 @@ namespace TheOmegaStrain.Game.World.Objects
             return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
-                    V(-10.7f,  0.45f, 0.25f),
-                    V(-10.7f, -0.45f, 0.25f),
-                    V(-12.7f,  0.00f, 0.00f),
-                    V(-11.3f,  0.00f, 0.00f),
+                    V(-15.5f,  0.55f,  0.30f),
+                    V(-15.5f, -0.55f,  0.30f),
+                    V(-15.5f,  0.00f, -0.30f),
+                    V(-15.5f,  0.00f,  0.00f),
                     "FFFFFF",
                     true)
             };

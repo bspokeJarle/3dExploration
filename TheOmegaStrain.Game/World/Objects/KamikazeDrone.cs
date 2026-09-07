@@ -66,6 +66,11 @@ namespace TheOmegaStrain.Game.World.Objects
 
         private static float engineFrontX = -36f;
         private static float engineBackX = -47f;
+
+        // Exhaust guides sit well behind the engine block so the plume is born clear of the
+        // hull instead of inside it, the same clearance lesson as AttackShip and Rocket.
+        private const float ParticleStartX = -90f;
+        private const float ParticleGuideX = -104f;
         private static float engineHalfWidth = 8.5f;
         private static float engineHalfHeight = 6.0f;
 
@@ -128,7 +133,17 @@ namespace TheOmegaStrain.Game.World.Objects
             AddPart(drone, "KamikazeParticlesStartGuide", startGuide, false);
 
             drone.Movement = new KamikazeDroneControls();
-            drone.Particles = new ParticlesAI();
+            // Exhaust styling: the default gravity would drag the plume under the drone.
+            drone.Particles = new ParticlesAI
+            {
+                GravityStrength = 34f,
+                LifeMultiplier = 0.6f,
+                SizeMultiplier = 1.25f,
+                ThrottleDurationFactor = 0.2f,
+                ColorStartOverride = "fff8c8",
+                ColorMidOverride = "ff8a20",
+                ColorEndOverride = "5a1800"
+            };
             drone.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
 
             if (crashBoxes != null)
@@ -517,9 +532,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
-                    new Vector3 { x = engineBackX - 2f, y =  6f, z =  2f },
-                    new Vector3 { x = engineBackX - 2f, y = -6f, z =  2f },
-                    new Vector3 { x = engineBackX - 14f, y =  0f, z =  0f },
+                    new Vector3 { x = ParticleGuideX, y =  7f, z =  2f },
+                    new Vector3 { x = ParticleGuideX, y = -7f, z =  2f },
+                    new Vector3 { x = ParticleGuideX, y =  0f, z = -2f },
                     BodyCenter,
                     "ffffff",
                     noHidden: true)
@@ -531,9 +546,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
-                    new Vector3 { x = engineFrontX - 2f, y =  5f, z =  2f },
-                    new Vector3 { x = engineFrontX - 2f, y = -5f, z =  2f },
-                    new Vector3 { x = engineBackX + 2f, y =  0f, z =  0f },
+                    new Vector3 { x = ParticleStartX, y =  6f, z =  2f },
+                    new Vector3 { x = ParticleStartX, y = -6f, z =  2f },
+                    new Vector3 { x = ParticleStartX, y =  0f, z = -2f },
                     BodyCenter,
                     "ffffff",
                     noHidden: true)

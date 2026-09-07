@@ -474,9 +474,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
-                    new Vector3 { x = propHubBackX - 2f, y =  5f, z =  1.5f },
-                    new Vector3 { x = propHubBackX - 2f, y = -5f, z =  1.5f },
-                    new Vector3 { x = propHubBackX - 14f, y =  0f, z =  0f },
+                    new Vector3 { x = propHubBackX - 22f, y =  6f, z =  1.8f },
+                    new Vector3 { x = propHubBackX - 22f, y = -6f, z =  1.8f },
+                    new Vector3 { x = propHubBackX - 22f, y =  0f, z = -1.8f },
                     BodyCenter,
                     "ffffff",
                     noHidden: true)
@@ -488,9 +488,9 @@ namespace TheOmegaStrain.Game.World.Objects
             return new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateTriangleOutward(
-                    new Vector3 { x = tailRingX + 2f, y =  4f, z =  1.0f },
-                    new Vector3 { x = tailRingX + 2f, y = -4f, z =  1.0f },
-                    new Vector3 { x = propHubFrontX - 1f, y =  0f, z =  0f },
+                    new Vector3 { x = propHubBackX - 8f, y =  5f, z =  1.5f },
+                    new Vector3 { x = propHubBackX - 8f, y = -5f, z =  1.5f },
+                    new Vector3 { x = propHubBackX - 8f, y =  0f, z = -1.5f },
                     BodyCenter,
                     "ffffff",
                     noHidden: true)
