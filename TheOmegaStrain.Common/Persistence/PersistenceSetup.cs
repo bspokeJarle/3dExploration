@@ -163,11 +163,29 @@ namespace TheOmegaStrain.Common.Persistence
         // -----------------------------------------------------------------
 
         private const string SecretsFileName = "secrets.json";
+        private const string OnlineServicesFileName = "online-services.json";
+
+        internal static string? ApplicationFolderOverrideForTests { get; set; }
+
+        private static string ApplicationFolder =>
+            ApplicationFolderOverrideForTests ?? AppContext.BaseDirectory;
 
         /// <summary>
         /// Full path to the local secrets file in the app data folder.
         /// </summary>
         public static string SecretsFilePath => Path.Combine(LocalFolder, SecretsFileName);
+
+        /// <summary>
+        /// Full path to the distributable online services config beside the executable.
+        /// This file contains public client configuration only.
+        /// </summary>
+        public static string OnlineServicesFilePath => Path.Combine(ApplicationFolder, OnlineServicesFileName);
+
+        /// <summary>
+        /// Legacy executable-folder config path. Kept so Steam builds can work when
+        /// a secrets.json file has been copied next to the executable.
+        /// </summary>
+        public static string ApplicationSecretsFilePath => Path.Combine(ApplicationFolder, SecretsFileName);
 
         /// <summary>
         /// Creates local data folder, loads secrets, and ensures key files exist.
@@ -181,29 +199,57 @@ namespace TheOmegaStrain.Common.Persistence
         }
 
         /// <summary>
-        /// Reads Supabase credentials from the local secrets.json file.
-        /// If the file does not exist, the app runs in offline-only mode.
-        /// The file is stored in %APPDATA%/OmegaStrain and is never committed to source control.
+        /// Reads Supabase credentials from AppData first, then from the
+        /// executable folder. If no valid config exists, the app runs offline.
+        /// User data stays in %APPDATA%/OmegaStrain; executable-folder config is
+        /// public client configuration for Steam/installer distribution.
         /// </summary>
         private static void LoadSecrets()
         {
+            foreach (var path in GetSupabaseConfigCandidatePaths())
+            {
+                if (TryLoadSupabaseConfig(path))
+                    return;
+            }
+        }
+
+        private static string[] GetSupabaseConfigCandidatePaths() =>
+            new[]
+            {
+                SecretsFilePath,
+                OnlineServicesFilePath,
+                ApplicationSecretsFilePath
+            };
+
+        private static bool TryLoadSupabaseConfig(string path)
+        {
             try
             {
-                if (!File.Exists(SecretsFilePath)) return;
+                if (!File.Exists(path)) return false;
 
-                var json = File.ReadAllText(SecretsFilePath);
-                var doc = JsonDocument.Parse(json);
+                var json = File.ReadAllText(path);
+                using var doc = JsonDocument.Parse(json);
                 var root = doc.RootElement;
 
-                if (root.TryGetProperty("SupabaseUrl", out var urlProp))
-                    SupabaseUrl = urlProp.GetString();
+                var url = root.TryGetProperty("SupabaseUrl", out var urlProp)
+                    ? urlProp.GetString()
+                    : null;
 
-                if (root.TryGetProperty("SupabaseAnonKey", out var keyProp))
-                    SupabaseAnonKey = keyProp.GetString();
+                var anonKey = root.TryGetProperty("SupabaseAnonKey", out var keyProp)
+                    ? keyProp.GetString()
+                    : null;
+
+                if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(anonKey))
+                    return false;
+
+                SupabaseUrl = url;
+                SupabaseAnonKey = anonKey;
+                return true;
             }
             catch
             {
-                // Secrets file missing or malformed — run offline
+                // Config missing or malformed — try the next location.
+                return false;
             }
         }
     }

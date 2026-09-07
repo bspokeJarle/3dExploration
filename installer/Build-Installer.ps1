@@ -42,7 +42,44 @@ function Resolve-InnoCompiler {
     throw "Inno Setup 6 was not found. Install Inno Setup, or pass -InnoCompiler with the full path to ISCC.exe."
 }
 
-function Test-SecretsFile {
+function ConvertFrom-Base64Url {
+    param([string]$Value)
+
+    $padded = $Value.Replace('-', '+').Replace('_', '/')
+    switch ($padded.Length % 4) {
+        2 { $padded += "==" }
+        3 { $padded += "=" }
+    }
+
+    [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($padded))
+}
+
+function Assert-PublicSupabaseAnonKey {
+    param([string]$Key)
+
+    if ($Key -match "service_role") {
+        throw "SupabaseAnonKey appears to be a service_role key. Use the public anon key only."
+    }
+
+    $parts = $Key -split "\."
+    if ($parts.Length -lt 2) {
+        return
+    }
+
+    try {
+        $payload = ConvertFrom-Base64Url -Value $parts[1] | ConvertFrom-Json
+        if ($payload.role -eq "service_role") {
+            throw "SupabaseAnonKey is a service_role key. Use the public anon key only."
+        }
+    }
+    catch {
+        if ($_.Exception.Message -like "*service_role*") {
+            throw
+        }
+    }
+}
+
+function Read-OnlineServicesConfig {
     param([string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path)) {
@@ -50,13 +87,37 @@ function Test-SecretsFile {
     }
 
     $json = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
-    if ([string]::IsNullOrWhiteSpace($json.SupabaseUrl)) {
+    $supabaseUrl = [string]$json.SupabaseUrl
+    $supabaseAnonKey = [string]$json.SupabaseAnonKey
+
+    if ([string]::IsNullOrWhiteSpace($supabaseUrl)) {
         throw "secrets.json is missing SupabaseUrl."
     }
 
-    if ([string]::IsNullOrWhiteSpace($json.SupabaseAnonKey)) {
+    if ([string]::IsNullOrWhiteSpace($supabaseAnonKey)) {
         throw "secrets.json is missing SupabaseAnonKey."
     }
+
+    Assert-PublicSupabaseAnonKey -Key $supabaseAnonKey
+
+    [PSCustomObject]@{
+        SupabaseUrl = $supabaseUrl
+        SupabaseAnonKey = $supabaseAnonKey
+    }
+}
+
+function Write-OnlineServicesConfig {
+    param(
+        [Parameter(Mandatory = $true)]$Config,
+        [Parameter(Mandatory = $true)][string]$Path
+    )
+
+    $directory = Split-Path -Parent $Path
+    if (-not [string]::IsNullOrWhiteSpace($directory)) {
+        New-Item -ItemType Directory -Force -Path $directory | Out-Null
+    }
+
+    $Config | ConvertTo-Json -Depth 3 | Set-Content -LiteralPath $Path -Encoding UTF8
 }
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
@@ -71,7 +132,7 @@ if ([string]::IsNullOrWhiteSpace($SecretsPath)) {
 }
 
 $SecretsPath = (Resolve-Path -LiteralPath $SecretsPath).Path
-Test-SecretsFile -Path $SecretsPath
+$onlineServicesConfig = Read-OnlineServicesConfig -Path $SecretsPath
 
 New-Item -ItemType Directory -Force -Path $publishDir, $outputDir, $stagingDir | Out-Null
 
@@ -92,14 +153,16 @@ if (-not (Test-Path -LiteralPath $mainExe)) {
 }
 
 $stagedSecrets = Join-Path $stagingDir "secrets.json"
-if ($SecretsPath -ne (Resolve-Path -LiteralPath $stagedSecrets -ErrorAction SilentlyContinue).Path) {
-    Copy-Item -LiteralPath $SecretsPath -Destination $stagedSecrets -Force
-}
+Write-OnlineServicesConfig -Config $onlineServicesConfig -Path $stagedSecrets
+
+$publishedOnlineServicesConfig = Join-Path $publishDir "online-services.json"
+Write-OnlineServicesConfig -Config $onlineServicesConfig -Path $publishedOnlineServicesConfig
 
 if ($SkipInno) {
     Write-Host "Publish and secrets staging completed."
     Write-Host "PublishDir: $publishDir"
     Write-Host "StagedSecrets: $stagedSecrets"
+    Write-Host "PublishedOnlineServicesConfig: $publishedOnlineServicesConfig"
     Write-Host "Skipped Inno compilation."
     return
 }

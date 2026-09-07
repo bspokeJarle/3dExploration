@@ -20,11 +20,13 @@ public class HighscoreRemoteFallbackTests
 
     private string _originalLocalFolder = "";
     private string _testLocalFolder = "";
+    private string _testApplicationFolder = "";
     private int _originalMaxEntries;
     private string? _originalSupabaseUrl;
     private string? _originalSupabaseAnonKey;
     private string _originalSupabaseTableName = "";
     private TimeSpan _originalRemoteFetchCooldown;
+    private string? _originalApplicationFolderOverride;
 
     [TestInitialize]
     public void Setup()
@@ -35,9 +37,11 @@ public class HighscoreRemoteFallbackTests
         _originalSupabaseAnonKey = PersistenceSetup.SupabaseAnonKey;
         _originalSupabaseTableName = PersistenceSetup.SupabaseTableName;
         _originalRemoteFetchCooldown = PersistenceSetup.RemoteFetchCooldown;
+        _originalApplicationFolderOverride = PersistenceSetup.ApplicationFolderOverrideForTests;
 
         _testLocalFolder = Path.Combine(Path.GetTempPath(), "OmegaStrainRemoteHighscoreTests", Guid.NewGuid().ToString("N"));
         PersistenceSetup.LocalFolder = _testLocalFolder;
+        PersistenceSetup.ApplicationFolderOverrideForTests = null;
         PersistenceSetup.MaxHighscoreEntries = 100;
         PersistenceSetup.SupabaseUrl = null;
         PersistenceSetup.SupabaseAnonKey = null;
@@ -65,11 +69,15 @@ public class HighscoreRemoteFallbackTests
         PersistenceSetup.SupabaseAnonKey = _originalSupabaseAnonKey;
         PersistenceSetup.SupabaseTableName = _originalSupabaseTableName;
         PersistenceSetup.RemoteFetchCooldown = _originalRemoteFetchCooldown;
+        PersistenceSetup.ApplicationFolderOverrideForTests = _originalApplicationFolderOverride;
 
         try
         {
             if (Directory.Exists(_testLocalFolder))
                 Directory.Delete(_testLocalFolder, recursive: true);
+
+            if (Directory.Exists(_testApplicationFolder))
+                Directory.Delete(_testApplicationFolder, recursive: true);
         }
         catch
         {
@@ -463,10 +471,91 @@ public class HighscoreRemoteFallbackTests
         Assert.IsFalse(highscorePage[2].Contains("No highscores recorded yet"));
     }
 
+    [TestMethod]
+    public void Initialize_LoadsSupabaseConfigFromApplicationFolderWhenAppDataSecretsAreMissing()
+    {
+        ConfigureTestApplicationFolder();
+        File.WriteAllText(
+            PersistenceSetup.OnlineServicesFilePath,
+            """
+            {
+              "SupabaseUrl": "https://steam-build.supabase.co",
+              "SupabaseAnonKey": "steam-build-anon-key"
+            }
+            """);
+        PersistenceSetup.SupabaseUrl = null;
+        PersistenceSetup.SupabaseAnonKey = null;
+
+        PersistenceSetup.Initialize();
+
+        Assert.AreEqual("https://steam-build.supabase.co", PersistenceSetup.SupabaseUrl);
+        Assert.AreEqual("steam-build-anon-key", PersistenceSetup.SupabaseAnonKey);
+    }
+
+    [TestMethod]
+    public void Initialize_PrefersAppDataSecretsOverApplicationFolderConfig()
+    {
+        ConfigureTestApplicationFolder();
+        File.WriteAllText(
+            PersistenceSetup.SecretsFilePath,
+            """
+            {
+              "SupabaseUrl": "https://appdata.supabase.co",
+              "SupabaseAnonKey": "appdata-anon-key"
+            }
+            """);
+        File.WriteAllText(
+            PersistenceSetup.OnlineServicesFilePath,
+            """
+            {
+              "SupabaseUrl": "https://steam-build.supabase.co",
+              "SupabaseAnonKey": "steam-build-anon-key"
+            }
+            """);
+        PersistenceSetup.SupabaseUrl = null;
+        PersistenceSetup.SupabaseAnonKey = null;
+
+        PersistenceSetup.Initialize();
+
+        Assert.AreEqual("https://appdata.supabase.co", PersistenceSetup.SupabaseUrl);
+        Assert.AreEqual("appdata-anon-key", PersistenceSetup.SupabaseAnonKey);
+    }
+
+    [TestMethod]
+    public void Initialize_LoadsLegacySecretsFromApplicationFolderWhenOnlineServicesConfigIsMissing()
+    {
+        ConfigureTestApplicationFolder();
+        File.WriteAllText(
+            PersistenceSetup.ApplicationSecretsFilePath,
+            """
+            {
+              "SupabaseUrl": "https://legacy-steam.supabase.co",
+              "SupabaseAnonKey": "legacy-steam-anon-key"
+            }
+            """);
+        PersistenceSetup.SupabaseUrl = null;
+        PersistenceSetup.SupabaseAnonKey = null;
+
+        PersistenceSetup.Initialize();
+
+        Assert.AreEqual("https://legacy-steam.supabase.co", PersistenceSetup.SupabaseUrl);
+        Assert.AreEqual("legacy-steam-anon-key", PersistenceSetup.SupabaseAnonKey);
+    }
+
     private static void ConfigureSupabase()
     {
         PersistenceSetup.SupabaseUrl = "https://example.supabase.co";
         PersistenceSetup.SupabaseAnonKey = "test-anon-key";
+    }
+
+    private void ConfigureTestApplicationFolder()
+    {
+        _testApplicationFolder = Path.Combine(
+            Path.GetTempPath(),
+            "OmegaStrainApplicationConfigTests",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(_testApplicationFolder);
+        PersistenceSetup.ApplicationFolderOverrideForTests = _testApplicationFolder;
     }
 
     private static HighscoreEntry CreateEntry(string name, long score, int kills)

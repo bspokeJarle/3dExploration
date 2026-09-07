@@ -1,0 +1,5 @@
+# Require Jarle to review changes across the repository.
+* @bspokeJarle
+
+# Keep ownership of the ownership rules explicit.
+.github/CODEOWNERS @bspokeJarle

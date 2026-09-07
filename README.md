@@ -108,12 +108,19 @@ Steam support is optional and isolated in `TheOmegaStrain.Steam/`. The game
 should continue to run without Steam, without the Steam client, and without the
 Steam DLL.
 
-Supabase/highscore configuration is optional as well. When cloud setup or
+Supabase/highscore configuration is optional at runtime. When cloud setup or
 network access is unavailable, the game should fall back to local persistence.
-For Supabase duplicate cleanup and unique-row enforcement, use
-`Tools/Supabase/CleanupDuplicateHighscores.sql` in the Supabase SQL Editor. To
-reserve callsigns online, use `Tools/Supabase/SetupPlayerCallsignRegistry.sql`;
-missing callsign registry access is treated as offline mode.
+For external player testing and release, the Supabase project must have both
+`highscores` and `player_callsigns` configured so global scores and callsign
+reservations work online. Client config is read from
+`%APPDATA%\OmegaStrain\secrets.json` first, then from `online-services.json` or
+`secrets.json` beside `TheOmegaStrain.exe`; release packaging should copy the
+AppData config into output/content as `online-services.json`. Use
+`Tools/Supabase/CleanupDuplicateHighscores.sql` and
+`Tools/Supabase/SetupPlayerCallsignRegistry.sql` in the Supabase SQL Editor,
+then run `Tools/Supabase/VerifyReleaseSupabaseSetup.sql` before distributing
+keys. Missing callsign registry access is still treated as offline mode by the
+client.
 
 ## Related Repositories
 

@@ -1,5 +1,6 @@
--- Optional online callsign registry for The Omega Strain.
--- The game still works offline, or if this table is not present.
+-- Release-required online callsign registry for The Omega Strain.
+-- Runtime still falls back to local/offline mode if the table or network is
+-- unavailable, but public/beta releases should have this table configured.
 
 CREATE TABLE IF NOT EXISTS public.player_callsigns (
     player_name TEXT PRIMARY KEY,
