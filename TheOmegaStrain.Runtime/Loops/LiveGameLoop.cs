@@ -1196,6 +1196,19 @@ namespace TheOmegaStrain.Runtime.Loops
                 case "BomberBombDropEnd":
                     inhabitant.Movement.SetWeaponGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
                     break;
+                // AttackShip mirrors the Ship layout: one start/direction guide pair per engine.
+                case "AttackShipLeftEngineStartGuide":
+                    inhabitant.Movement.SetParticleGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    break;
+                case "AttackShipLeftEngineDirectionGuide":
+                    inhabitant.Movement.SetParticleGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
+                    break;
+                case "AttackShipRightEngineStartGuide":
+                    inhabitant.Movement.SetRearEngineGuideCoordinates(rotatedMesh.First() as TriangleMeshWithColor, null);
+                    break;
+                case "AttackShipRightEngineDirectionGuide":
+                    inhabitant.Movement.SetRearEngineGuideCoordinates(null, rotatedMesh.First() as TriangleMeshWithColor);
+                    break;
             }
         }
 

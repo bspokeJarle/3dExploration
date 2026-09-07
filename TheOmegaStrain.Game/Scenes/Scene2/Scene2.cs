@@ -61,6 +61,17 @@ namespace TheOmegaStrain.Game.Scenes.Scene2
             guidanceArrow.CrashBoxDebugMode = false;
             world.WorldInhabitants.Add(guidanceArrow);
 
+            // AttackShip
+            var attackShip = AttackShip.CreateAttackShip(Surface);
+            attackShip.ObjectOffsets = new Vector3 { x = 0, y = 0, z = -200 };
+            attackShip.Rotation = new Vector3 { x =0, y = 0, z = 90 };
+            attackShip.WorldPosition = new Vector3 { x = 0, y = 0, z = 0 };
+            attackShip.ObjectName = "AttackShip";
+            attackShip.ImpactStatus = new ImpactStatus { };
+            attackShip.CrashBoxDebugMode = false;
+            attackShip.Movement = new AttackShipControls();
+            world.WorldInhabitants.Add(attackShip);
+
             SpawnJumpingFish(world);
 
             // Drones — waiting until the player has a Decoy powerup
