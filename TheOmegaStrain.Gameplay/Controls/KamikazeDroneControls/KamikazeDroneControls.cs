@@ -71,7 +71,7 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
 
         private void UpdateRotationTowardsTarget(Vector3 directionToTarget)
         {
-            var heading = OmegaObjectHelpers.GetHeadingFromDirection(directionToTarget.x, directionToTarget.z);
+            var heading = MovementHelpers.GetHeadingFromMovementDirection(directionToTarget);
             TargetXrotation = heading.X;
             TargetYrotation = heading.Y;
             TargetZrotation = heading.Z;
@@ -87,15 +87,19 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
 
         private void UpdateCurrentRotation(double deltaSeconds)
         {
-            float maxDelta = RotationDegreesPerSecond * (float)deltaSeconds;
-            if (maxDelta <= 0f)
-            {
-                return;
-            }
+            var rotation = MovementHelpers.MoveRotationTowards(
+                Xrotation,
+                Yrotation,
+                Zrotation,
+                TargetXrotation,
+                TargetYrotation,
+                TargetZrotation,
+                RotationDegreesPerSecond,
+                deltaSeconds);
 
-            Xrotation = OmegaObjectHelpers.MoveAngleTowards(Xrotation, TargetXrotation, maxDelta);
-            Yrotation = OmegaObjectHelpers.MoveAngleTowards(Yrotation, TargetYrotation, maxDelta);
-            Zrotation = OmegaObjectHelpers.MoveAngleTowards(Zrotation, TargetZrotation, maxDelta);
+            Xrotation = rotation.X;
+            Yrotation = rotation.Y;
+            Zrotation = rotation.Z;
         }
 
         private void SyncMovement(I3dObject theObject)
@@ -325,7 +329,6 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
             Vector3 directionToTarget = new Vector3();
             bool shouldRecalculateDirection = false;
             bool isOvershooting = _overshootSecondsRemaining > 0f;
-            float speedPerSecond = 0f;
 
             var closestDecoy = KamikazeDroneAi.GetClosestActiveDecoy(ParentObject);
             Vector3? targetWorldPosition = closestDecoy != null
@@ -340,12 +343,7 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
                 currentDronePosition = parentWorldPosition;
                 currentTargetPosition = resolvedTargetWorldPosition;
 
-                directionToTarget = new Vector3
-                {
-                    x = resolvedTargetWorldPosition.x - parentWorldPosition.x,
-                    y = resolvedTargetWorldPosition.y - parentWorldPosition.y,
-                    z = resolvedTargetWorldPosition.z - parentWorldPosition.z
-                };
+                directionToTarget = MovementHelpers.GetVectorToTarget(parentWorldPosition, resolvedTargetWorldPosition);
 
                 if (isOvershooting)
                 {
@@ -360,26 +358,26 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
                         x = directionToTarget.x,
                         y = 0f,
                         z = directionToTarget.z
-                    };
+                };
                 UpdateRotationTowardsTarget(headingDirection);
 
-                var distance = OmegaObjectHelpers.GetDistance(parentWorldPosition, resolvedTargetWorldPosition);
+                var distance = MovementHelpers.GetLength(directionToTarget);
 
-                shouldRecalculateDirection = !isOvershooting &&
-                    (LastDirectionUpdateDateTime == DateTime.MinValue ||
-                    (now - LastDirectionUpdateDateTime).TotalSeconds >= DirectionUpdateIntervalSeconds ||
-                    KamikazeDroneMovementHelpers.Dot((Vector3)DirectionVelocity, directionToTarget) <= 0f);
+                shouldRecalculateDirection = MovementHelpers.ShouldRefreshPursuitVelocity(
+                    LastDirectionUpdateDateTime,
+                    now,
+                    DirectionUpdateIntervalSeconds,
+                    (Vector3)DirectionVelocity,
+                    directionToTarget,
+                    isOvershooting);
 
                 if (shouldRecalculateDirection && distance > 0)
                 {
-                    var speed = TheOmegaStrain.Common.CommonSetup.ScreenSetup.screenSizeX / (float)DroneSpeedScreenPrSecond;
-
-                    DirectionVelocity = new Vector3
-                    {
-                        x = directionToTarget.x / (float)distance * speed,
-                        y = directionToTarget.y / (float)distance * speed,
-                        z = directionToTarget.z / (float)distance * speed
-                    };
+                    var speed = MovementHelpers.GetScreenCrossingSpeed(DroneSpeedScreenPrSecond);
+                    DirectionVelocity = MovementHelpers.GetVelocityTowardsTarget(
+                        parentWorldPosition,
+                        resolvedTargetWorldPosition,
+                        speed);
                     LastDirectionUpdateDateTime = now;
                 }
                 else if (distance <= 0)
@@ -396,56 +394,39 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
 
                 if (currentDronePosition is Vector3 dronePosition && currentTargetPosition is Vector3 targetPosition)
                 {
-                    var liveDirectionToTarget = new Vector3
-                    {
-                        x = targetPosition.x - dronePosition.x,
-                        y = targetPosition.y - dronePosition.y,
-                        z = targetPosition.z - dronePosition.z
-                    };
-
-                    float currentDistance = (float)OmegaObjectHelpers.GetDistance(dronePosition, targetPosition);
-                    speedPerSecond = KamikazeDroneMovementHelpers.Length((Vector3)DirectionVelocity);
+                    var speedPerSecond = MovementHelpers.GetLength((Vector3)DirectionVelocity);
 
                     if (speedPerSecond > 0f)
                     {
-                        Vector3 moveDirection;
-                        float moveDistance = speedPerSecond * (float)deltaSeconds;
+                        var forcedDirection = _overshootSecondsRemaining > 0f
+                            ? _overshootDirection
+                            : (Vector3?)null;
+                        var pursuitStep = MovementHelpers.GetPursuitStep(
+                            dronePosition,
+                            targetPosition,
+                            (Vector3)DirectionVelocity,
+                            (float)deltaSeconds,
+                            forcedDirection);
 
                         if (_overshootSecondsRemaining > 0f)
                         {
-                            moveDirection = KamikazeDroneMovementHelpers.Normalize(_overshootDirection);
                             _overshootSecondsRemaining = MathF.Max(0f, _overshootSecondsRemaining - (float)deltaSeconds);
                         }
-                        else
+                        else if (pursuitStep.ShouldStartOvershoot)
                         {
-                            moveDirection = KamikazeDroneMovementHelpers.Normalize(liveDirectionToTarget);
-
-                            if (currentDistance > 0f && moveDistance >= currentDistance)
-                            {
-                                _overshootDirection = moveDirection;
-                                _overshootSecondsRemaining = OvershootSeconds;
-                            }
-                            else if (currentDistance <= 0f)
-                            {
-                                moveDistance = 0f;
-                            }
-                            else
-                            {
-                                moveDistance = MathF.Min(moveDistance, currentDistance);
-                            }
+                            _overshootDirection = pursuitStep.MovementDirection;
+                            _overshootSecondsRemaining = OvershootSeconds;
                         }
 
-                        if (moveDistance > 0f)
+                        if (pursuitStep.HasMovement)
                         {
-                            AlignRotationToDirection(moveDirection);
+                            AlignRotationToDirection(pursuitStep.MovementDirection);
                         }
 
-                        theObject.WorldPosition = new Vector3
-                        {
-                            x = objectWorldPosition.x + (moveDirection.x * moveDistance),
-                            y = objectWorldPosition.y + (moveDirection.y * moveDistance),
-                            z = objectWorldPosition.z + (moveDirection.z * moveDistance)
-                        };
+                        theObject.WorldPosition = MovementHelpers.MoveAlongDirection(
+                            objectWorldPosition,
+                            pursuitStep.MovementDirection,
+                            pursuitStep.MoveDistance);
                     }
                     else
                     {

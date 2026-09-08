@@ -1,6 +1,5 @@
 using TheOmegaStrain.Common.CommonGlobalState;
 using TheOmegaStrain.Domain;
-using System;
 
 namespace TheOmegaStrain.Gameplay.Helpers
 {
@@ -19,36 +18,6 @@ namespace TheOmegaStrain.Gameplay.Helpers
                 y = v.y,
                 z = v.z
             };
-        }
-
-        internal static Vector3 Normalize(Vector3 v)
-        {
-            return ToVector3(VectorMath.Normalize(v));
-        }
-
-        internal static float Length(Vector3 v)
-        {
-            return VectorMath.Length(v);
-        }
-
-        internal static float Dot(Vector3 a, Vector3 b)
-        {
-            return VectorMath.Dot(a, b);
-        }
-
-        internal static Vector3 GetLocalCrashCenter(I3dObject obj)
-        {
-            return ToVector3(ObjectCollisionGeometry.GetLocalCrashCenter(obj));
-        }
-
-        internal static Vector3 RotateLocalPoint(Vector3 point, IVector3? rotation)
-        {
-            return ToVector3(ObjectCollisionGeometry.RotateLocalPoint(point, rotation));
-        }
-
-        internal static Vector3 GetRotatedLocalCrashCenter(I3dObject obj)
-        {
-            return ToVector3(ObjectCollisionGeometry.GetRotatedLocalCrashCenter(obj));
         }
 
         internal static Vector3 GetDroneCrashCenterWorldPosition(I3dObject obj)

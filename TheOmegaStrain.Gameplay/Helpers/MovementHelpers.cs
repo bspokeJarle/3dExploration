@@ -1,14 +1,15 @@
 using TheOmegaStrain.Common.CommonGlobalState;
 using TheOmegaStrain.Common.CommonSetup;
+using TheOmegaStrain.Common.OmegaEngineAdapters;
 using TheOmegaStrain.Domain;
 using System;
 using System.Runtime.CompilerServices;
 
 namespace TheOmegaStrain.Gameplay.Helpers
 {
-    internal static class MovementHelpers
+    public static class MovementHelpers
     {
-        internal readonly struct MoveVector
+        public readonly struct MoveVector
         {
             public readonly Vector3 Direction; // normalized, world space
             public readonly float Length;      // world distance
@@ -18,6 +19,211 @@ namespace TheOmegaStrain.Gameplay.Helpers
                 Direction = direction;
                 Length = length;
             }
+        }
+
+        public readonly struct PursuitStep
+        {
+            public readonly Vector3 DirectionToTarget;
+            public readonly Vector3 MovementDirection;
+            public readonly float DistanceToTarget;
+            public readonly float SpeedPerSecond;
+            public readonly float MoveDistance;
+            public readonly bool ShouldStartOvershoot;
+
+            public bool HasMovement => MoveDistance > 0f;
+
+            public PursuitStep(
+                Vector3 directionToTarget,
+                Vector3 movementDirection,
+                float distanceToTarget,
+                float speedPerSecond,
+                float moveDistance,
+                bool shouldStartOvershoot)
+            {
+                DirectionToTarget = directionToTarget;
+                MovementDirection = movementDirection;
+                DistanceToTarget = distanceToTarget;
+                SpeedPerSecond = speedPerSecond;
+                MoveDistance = moveDistance;
+                ShouldStartOvershoot = shouldStartOvershoot;
+            }
+        }
+
+        // ------------------------------------------------------------
+        // Pursuit movement: reusable workshop pattern for enemies.
+        // ------------------------------------------------------------
+
+        public static float GetScreenCrossingSpeed(float secondsPerScreen)
+        {
+            return secondsPerScreen <= 0f
+                ? 0f
+                : ScreenSetup.screenSizeX / secondsPerScreen;
+        }
+
+        public static Vector3 GetVelocityTowardsTarget(Vector3 from, Vector3 target, float speedPerSecond)
+        {
+            if (speedPerSecond <= 0f)
+            {
+                return new Vector3();
+            }
+
+            var moveVector = GetDirectionAndDistanceWorld(from, target);
+            return new Vector3
+            {
+                x = moveVector.Direction.x * speedPerSecond,
+                y = moveVector.Direction.y * speedPerSecond,
+                z = moveVector.Direction.z * speedPerSecond
+            };
+        }
+
+        public static Vector3 GetVectorToTarget(Vector3 from, Vector3 target)
+        {
+            return new Vector3
+            {
+                x = target.x - from.x,
+                y = target.y - from.y,
+                z = target.z - from.z
+            };
+        }
+
+        public static bool ShouldRefreshPursuitVelocity(
+            DateTime lastDirectionUpdate,
+            DateTime now,
+            float updateIntervalSeconds,
+            Vector3 currentVelocity,
+            Vector3 directionToTarget,
+            bool isOvershooting)
+        {
+            if (isOvershooting)
+            {
+                return false;
+            }
+
+            return lastDirectionUpdate == DateTime.MinValue ||
+                (now - lastDirectionUpdate).TotalSeconds >= updateIntervalSeconds ||
+                Dot(currentVelocity, directionToTarget) <= 0f;
+        }
+
+        public static PursuitStep GetPursuitStep(
+            Vector3 currentPosition,
+            Vector3 targetPosition,
+            Vector3 currentVelocity,
+            float deltaSeconds,
+            Vector3? forcedMovementDirection = null)
+        {
+            var targetVector = GetDirectionAndDistanceWorld(currentPosition, targetPosition);
+            var speedPerSecond = GetLength(currentVelocity);
+
+            if (deltaSeconds <= 0f || speedPerSecond <= 0f)
+            {
+                return new PursuitStep(
+                    targetVector.Direction,
+                    new Vector3(),
+                    targetVector.Length,
+                    speedPerSecond,
+                    0f,
+                    false);
+            }
+
+            var moveDirection = forcedMovementDirection is Vector3 forcedDirection
+                ? Normalize(forcedDirection)
+                : targetVector.Direction;
+
+            if (GetLength(moveDirection) <= 0.00001f ||
+                (targetVector.Length <= 0f && forcedMovementDirection == null))
+            {
+                return new PursuitStep(
+                    targetVector.Direction,
+                    new Vector3(),
+                    targetVector.Length,
+                    speedPerSecond,
+                    0f,
+                    false);
+            }
+
+            var moveDistance = speedPerSecond * deltaSeconds;
+            var shouldStartOvershoot = forcedMovementDirection == null &&
+                targetVector.Length > 0f &&
+                moveDistance >= targetVector.Length;
+
+            return new PursuitStep(
+                targetVector.Direction,
+                moveDirection,
+                targetVector.Length,
+                speedPerSecond,
+                moveDistance,
+                shouldStartOvershoot);
+        }
+
+        public static Vector3 MoveAlongDirection(Vector3 currentPosition, Vector3 movementDirection, float moveDistance)
+        {
+            return new Vector3
+            {
+                x = currentPosition.x + (movementDirection.x * moveDistance),
+                y = currentPosition.y + (movementDirection.y * moveDistance),
+                z = currentPosition.z + (movementDirection.z * moveDistance)
+            };
+        }
+
+        public static Vector3 MoveAlongDirection(IVector3 currentPosition, Vector3 movementDirection, float moveDistance)
+        {
+            return MoveAlongDirection(
+                new Vector3 { x = currentPosition.x, y = currentPosition.y, z = currentPosition.z },
+                movementDirection,
+                moveDistance);
+        }
+
+        public static (float X, float Y, float Z) GetHeadingFromMovementDirection(Vector3 movementDirection)
+        {
+            return OmegaObjectHelpers.GetHeadingFromDirection(movementDirection.x, movementDirection.z);
+        }
+
+        public static (float X, float Y, float Z) MoveRotationTowards(
+            float currentX,
+            float currentY,
+            float currentZ,
+            float targetX,
+            float targetY,
+            float targetZ,
+            float degreesPerSecond,
+            double deltaSeconds)
+        {
+            var maxDelta = degreesPerSecond * (float)deltaSeconds;
+            if (maxDelta <= 0f)
+            {
+                return (currentX, currentY, currentZ);
+            }
+
+            return (
+                OmegaObjectHelpers.MoveAngleTowards(currentX, targetX, maxDelta),
+                OmegaObjectHelpers.MoveAngleTowards(currentY, targetY, maxDelta),
+                OmegaObjectHelpers.MoveAngleTowards(currentZ, targetZ, maxDelta));
+        }
+
+        public static Vector3 Normalize(Vector3 vector)
+        {
+            var length = GetLength(vector);
+            if (length <= 0.00001f)
+            {
+                return new Vector3();
+            }
+
+            return new Vector3
+            {
+                x = vector.x / length,
+                y = vector.y / length,
+                z = vector.z / length
+            };
+        }
+
+        public static float GetLength(Vector3 vector)
+        {
+            return MathF.Sqrt((vector.x * vector.x) + (vector.y * vector.y) + (vector.z * vector.z));
+        }
+
+        public static float Dot(Vector3 a, Vector3 b)
+        {
+            return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
         }
 
         /// <summary>
@@ -95,11 +301,13 @@ namespace TheOmegaStrain.Gameplay.Helpers
         // ------------------------------------------------------------
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static MoveVector GetDirectionAndDistanceWorld(Vector3 from, Vector3 to)
+        public static MoveVector GetDirectionAndDistanceWorld(Vector3 from, Vector3 to)
         {
-            float dx = to.x - from.x;
-            float dy = to.y - from.y;
-            float dz = to.z - from.z;
+            var vectorToTarget = GetVectorToTarget(from, to);
+
+            float dx = vectorToTarget.x;
+            float dy = vectorToTarget.y;
+            float dz = vectorToTarget.z;
 
             float lenSq = (dx * dx) + (dy * dy) + (dz * dz);
             if (lenSq <= 0.00001f)
