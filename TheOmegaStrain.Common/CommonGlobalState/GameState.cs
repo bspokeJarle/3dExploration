@@ -22,6 +22,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState
         public static GamePlayState GamePlayState = new GamePlayState();
         public static GameSettingsState SettingsState = new GameSettingsState();
         public static TutorialRuntimeState TutorialState = new TutorialRuntimeState();
+        public static InputDeviceState InputDeviceState = new InputDeviceState();
         public static IGameEventBus? EventBus { get; set; }
         public static List<OmegaObject3D> PendingWorldObjects { get; } = new();
         public static long FrameCount { get; set; } = 0;

@@ -32,8 +32,6 @@ namespace TheOmegaStrain.Game.SceneManagement
         private int currentSceneIndex = 0;
         private const bool enableLogging = false;
         private const int SceneAdvanceDelayFrames = 5;
-        private const string IntroKeyboardControlsPageTitle = "FLIGHT CONTROLS";
-        private const string IntroXboxControlsPageTitle = "XBOX CONTROLLER";
         private bool _pendingSceneAdvance = false;
         private int _pendingSceneAdvanceFramesLeft = 0;
         private int? _targetSceneIndex = null;
@@ -439,6 +437,10 @@ namespace TheOmegaStrain.Game.SceneManagement
 
         public void UpdateFrame(I3dWorld world)
         {
+            // Controllers can be connected after the intro overlay was created.
+            if (GetActiveScene().SceneType == SceneTypes.Intro)
+                Intro.RefreshControlFooter();
+
             if (!_pendingSceneAdvance)
                 return;
 
@@ -630,7 +632,7 @@ namespace TheOmegaStrain.Game.SceneManagement
 
             if (scene.SceneType == SceneTypes.Intro)
             {
-                HandleIntroKey(overlay, key);
+                HandleIntroKey(scene, overlay, key);
                 return;
             }
 
@@ -955,6 +957,12 @@ namespace TheOmegaStrain.Game.SceneManagement
             return false;
         }
 
+        private void OpenControlSettingsForScheme(IScene scene, ScreenOverlayState overlay, ControlInputMode scheme)
+        {
+            GameState.SettingsState.ControlsEditorScheme = scheme;
+            ShowSettingsOverlay(scene, overlay, ScreenOverlaySettingsPanel.Controls);
+        }
+
         private void ShowSettingsOverlay(IScene scene, ScreenOverlayState overlay, ScreenOverlaySettingsPanel panel)
         {
             if (scene.SceneType == SceneTypes.Intro && overlay.Type == ScreenOverlayType.Intro)
@@ -1053,7 +1061,7 @@ namespace TheOmegaStrain.Game.SceneManagement
                     : WorldFadeState.InfectionCriticalContinueReason);
         }
 
-        private void HandleIntroKey(ScreenOverlayState overlay, GameInputKey key)
+        private void HandleIntroKey(IScene scene, ScreenOverlayState overlay, GameInputKey key)
         {
             if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {overlay.ShowOverlay} ", "General");
 
@@ -1064,13 +1072,15 @@ namespace TheOmegaStrain.Game.SceneManagement
                 return;
             }
 
-            if (key == GameInputKey.K && overlay.TrySelectPageByTitle(IntroKeyboardControlsPageTitle))
+            if (key == GameInputKey.K)
             {
+                OpenControlSettingsForScheme(scene, overlay, ControlInputMode.Keyboard);
                 return;
             }
 
-            if (key == GameInputKey.X && overlay.TrySelectPageByTitle(IntroXboxControlsPageTitle))
+            if (key == GameInputKey.X && GameState.InputDeviceState.AnyControllerConnected)
             {
+                OpenControlSettingsForScheme(scene, overlay, ControlInputMode.XboxController);
                 return;
             }
 

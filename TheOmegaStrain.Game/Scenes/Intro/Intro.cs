@@ -13,15 +13,57 @@ namespace TheOmegaStrain.Game.Scenes.Intro
 {
     public class Intro : IScene
     {
-        private const string StoryFooter =
-            "PRESS ANY KEY OR XBOX [A] TO START\n" +
-            "[K] KEYBOARD / MOUSE CONTROLS\n" +
-            "[X] XBOX CONTROLLER CONTROLS | ESC QUIT";
+        // Controller line is only shown when a controller is actually detected.
+        private static string BuildStoryFooter()
+        {
+            var activeScheme = GameState.SettingsState.EffectiveControlScheme;
+            string keyboardActive = activeScheme == ControlInputMode.Keyboard || activeScheme == ControlInputMode.Mouse
+                ? " <- ACTIVE"
+                : string.Empty;
+            string controllerActive = activeScheme == ControlInputMode.XboxController
+                ? " <- ACTIVE"
+                : string.Empty;
 
-        private const string ControlsFooter =
-            "KEYBOARD: ARROWS PAGE | [C] SETTINGS | ESC EXIT\n" +
-            "XBOX: D-PAD PAGE | [A] START | [B] BACK | [X] SETTINGS\n" +
-            "[S] SOUND | [G] GRAPHICS";
+            string footer =
+                "PRESS ANY KEY OR XBOX [A] TO START";
+
+            if (GameState.InputDeviceState.AnyControllerConnected)
+                footer += $"\n[X] CONTROLLER SETTINGS{controllerActive}";
+
+            footer += $"\n[K] KEYBOARD / MOUSE SETTINGS{keyboardActive}";
+
+            return footer + " | ESC QUIT";
+        }
+
+        private const string StoryPageTitle = "THE OMEGA STRAIN";
+
+        /// <summary>
+        /// Controllers can be plugged in after the overlay was built, so the story
+        /// footer is refreshed whenever the detected controller state changes.
+        /// </summary>
+        public static void RefreshControlFooter()
+        {
+            var overlay = GameState.ScreenOverlayState;
+            if (overlay.Type != ScreenOverlayType.Intro)
+                return;
+
+            string footer = BuildStoryFooter();
+
+            for (int i = 0; i < overlay.Pages.Count; i++)
+            {
+                var page = overlay.Pages[i];
+                if (page.Length < 4 || page[1] != StoryPageTitle)
+                    continue;
+
+                if (page[3] == footer)
+                    return;
+
+                page[3] = footer;
+                if (overlay.CurrentPage == i)
+                    overlay.Footer = footer;
+                return;
+            }
+        }
 
         private const string InfoFooter =
             "PRESS ANY KEY OR XBOX [A] TO START\n" +
@@ -71,52 +113,15 @@ namespace TheOmegaStrain.Game.Scenes.Intro
             // Page 1: Story
             o.AddPage(
                 "RETROMESH SYSTEM INITIALIZING",
-                "THE OMEGA STRAIN",
+                StoryPageTitle,
                 "Year 2147.\n\n" +
                 "A foreign organism has spread across the outer colonies.\n" +
                 "Designated: OMEGA STRAIN.\n\n" +
                 "Autonomous Seeder units detected.\n" +
                 "Containment probability: 12%.",
-                StoryFooter);
+                BuildStoryFooter());
 
-            // Page 2: Controls
-            o.AddPage(
-                "RETROMESH // FIELD MANUAL",
-                "FLIGHT CONTROLS",
-                "KEYBOARD:\n" +
-                "  [SPACE]       THRUST\n" +
-                "  [RIGHT SHIFT] FIRE CURRENT WEAPON\n" +
-                "  [1] BULLET  |  [2] DECOY  |  [3] LAZER\n" +
-                "  [T] TUTORIAL  |  [C] CONTROLS  |  [ESC] QUIT\n\n" +
-                "MOUSE:\n" +
-                "  MOVE MOUSE    PITCH / TURN\n" +
-                "  LEFT BUTTON   FIRE\n" +
-                "  RIGHT BUTTON  THRUST\n" +
-                "  [1] BULLET  |  [2] DECOY  |  [3] LAZER\n\n" +
-                "Input type and mappings can be changed in CONTROLS.",
-                ControlsFooter);
-
-            // Page 3: Xbox controller
-            o.AddPage(
-                "RETROMESH // FIELD MANUAL",
-                "XBOX CONTROLLER",
-                "XBOX CONTROLLER:\n" +
-                "  LEFT STICK    PITCH / TURN\n" +
-                "  [RT]          THRUST\n" +
-                "  [LT]          FIRE\n" +
-                "  [X] BULLET  |  [Y] DECOY  |  [B] LAZER\n" +
-                "  [A]           POWERUP 4 RESERVED\n" +
-                "  [MENU]        PAUSE GAMEPLAY\n" +
-                "  [VIEW]        EXIT TO MENU\n\n" +
-                "OVERLAYS:\n" +
-                "  [A] SELECT  |  [B] BACK\n" +
-                "  D-PAD / LEFT STICK NAVIGATE\n" +
-                "  [Y] TRAINING  |  [X] CONTROL SETTINGS\n" +
-                "  [LB] SOUND  |  [RB] GRAPHICS\n" +
-                "  [VIEW]+[MENU] QUIT GAME",
-                ControlsFooter);
-
-            // Page 4: Gameplay tips
+            // Page 2: Gameplay tips
             o.AddPage(
                 "RETROMESH // FIELD MANUAL",
                 "TACTICAL TIPS",
@@ -129,7 +134,7 @@ namespace TheOmegaStrain.Game.Scenes.Intro
                 "  - Eliminate all enemies to face the MotherShip",
                 InfoFooter);
 
-            // Page 5: Highscores
+            // Page 3: Highscores
             o.AddPage(
                 "RETROMESH // HALL OF FAME",
                 "TOP PILOTS",

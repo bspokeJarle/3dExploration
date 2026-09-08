@@ -99,10 +99,11 @@ namespace TheOmegaStrain.Wpf
         private bool _xboxQuitConfirmationShortcutWasDown = false;
         private const double XboxMenuInitialRepeatSeconds = 0.32;
         private const double XboxMenuRepeatSeconds = 0.12;
-        private const string IntroXboxControlsPageTitle = "XBOX CONTROLLER";
         private HwndSource? _rawMouseSource;
         private SteamManager? _steamManager;
         private SteamGameplaySync? _steamGameplaySync;
+        private const int SteamInputDetectionIntervalFrames = 60;
+        private int _steamInputDetectionCountdown;
 
         // MotherShip health bar (in-world overlay)
         private readonly Canvas _motherShipHealthBarCanvas;
@@ -504,6 +505,24 @@ namespace TheOmegaStrain.Wpf
             _steamGameplaySync = null;
             _steamManager?.Dispose();
             _steamManager = null;
+            GameState.InputDeviceState.SetSteamStatus(false, 0);
+        }
+
+        // Detection only: Steam Input controllers are polled at a low rate so the
+        // menu can show controller text, while the game still runs fine without Steam.
+        private void UpdateSteamInputDetection()
+        {
+            if (_steamManager is not { IsAvailable: true })
+            {
+                GameState.InputDeviceState.SetSteamStatus(false, 0);
+                return;
+            }
+
+            if (_steamInputDetectionCountdown-- > 0)
+                return;
+
+            _steamInputDetectionCountdown = SteamInputDetectionIntervalFrames;
+            GameState.InputDeviceState.SetSteamStatus(true, _steamManager.GetConnectedControllerCount());
         }
 
         private static SteamGameplaySnapshot CreateSteamGameplaySnapshot()
@@ -695,12 +714,15 @@ namespace TheOmegaStrain.Wpf
         {
             if (!XboxControllerInput.TryGetState(controllerIndex: 0, out var controllerState))
             {
+                GameState.InputDeviceState.SetXboxControllerConnected(false);
                 ResetXboxMenuInputState();
                 _xboxPauseButtonWasDown = false;
                 _xboxExitButtonWasDown = false;
                 _xboxQuitConfirmationShortcutWasDown = false;
                 return;
             }
+
+            GameState.InputDeviceState.SetXboxControllerConnected(true);
 
             if (TryHandleXboxQuitConfirmationShortcut(controllerState))
                 return;
@@ -883,7 +905,7 @@ namespace TheOmegaStrain.Wpf
                 return false;
 
             if (ShouldDispatchXboxMenuInput(GameInputKey.C))
-                GameState.ScreenOverlayState.TrySelectPageByTitle(IntroXboxControlsPageTitle);
+                DispatchSceneInputKey(GameInputKey.X);
 
             return true;
         }
@@ -1291,6 +1313,7 @@ namespace TheOmegaStrain.Wpf
 
             float dt = (float)dtSeconds;
             _steamGameplaySync?.Update();
+            UpdateSteamInputDetection();
             SynchronizeTutorialOverlayPause();
             UpdateXboxMenuInput();
 

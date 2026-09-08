@@ -5,6 +5,7 @@ namespace TheOmegaStrain.Steam;
 public sealed class SteamManager : IDisposable
 {
     private bool disposed;
+    private bool steamInputInitialized;
 
     public bool IsInitialized { get; private set; }
 
@@ -190,6 +191,34 @@ public sealed class SteamManager : IDisposable
         }
     }
 
+    // Detection only: how many controllers Steam Input currently reports.
+    // Returns 0 when Steam is unavailable so the game stays playable without Steam.
+    public int GetConnectedControllerCount()
+    {
+        if (!IsInitialized)
+        {
+            return 0;
+        }
+
+        try
+        {
+            if (!steamInputInitialized)
+            {
+                SteamInput.Init(false);
+                steamInputInitialized = true;
+            }
+
+            SteamInput.RunFrame();
+            var handles = new InputHandle_t[Constants.STEAM_INPUT_MAX_COUNT];
+            return Math.Max(0, SteamInput.GetConnectedControllers(handles));
+        }
+        catch (Exception exception)
+        {
+            LastError = exception.Message;
+            return 0;
+        }
+    }
+
     public void Shutdown()
     {
         if (!IsInitialized)
@@ -199,6 +228,11 @@ public sealed class SteamManager : IDisposable
 
         try
         {
+            if (steamInputInitialized)
+            {
+                SteamInput.Shutdown();
+            }
+
             SteamAPI.Shutdown();
         }
         catch (Exception exception)
@@ -207,6 +241,7 @@ public sealed class SteamManager : IDisposable
         }
         finally
         {
+            steamInputInitialized = false;
             IsInitialized = false;
         }
     }

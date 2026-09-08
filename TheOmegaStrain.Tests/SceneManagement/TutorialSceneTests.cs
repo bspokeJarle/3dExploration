@@ -39,6 +39,8 @@ public class TutorialSceneTests
         GameState.WeatherVisualState = new WeatherVisualState();
         GameState.WorldFade = new WorldFadeState();
         GameState.TutorialState = new TutorialRuntimeState();
+        GameState.SettingsState = new GameSettingsState();
+        GameState.InputDeviceState = new InputDeviceState();
         GameState.ObjectIdCounter = 0;
     }
 
@@ -599,17 +601,18 @@ public class TutorialSceneTests
     [TestMethod]
     public void IntroOverlay_TextMentionsManualTrainingKey()
     {
+        GameState.InputDeviceState.Reset();
         var intro = new TheOmegaStrain.Game.Scenes.Intro.Intro();
 
         intro.SetupSceneOverlay();
 
         var storyFooter = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "THE OMEGA STRAIN")[3];
-        StringAssert.Contains(storyFooter, "[K] KEYBOARD / MOUSE CONTROLS");
-        StringAssert.Contains(storyFooter, "[X] XBOX CONTROLLER CONTROLS");
+        StringAssert.Contains(storyFooter, "[K] KEYBOARD / MOUSE SETTINGS");
+        StringAssert.Contains(storyFooter, "[K] KEYBOARD / MOUSE SETTINGS <- ACTIVE");
+        Assert.IsFalse(storyFooter.Contains("CONTROLLER SETTINGS", StringComparison.Ordinal));
         Assert.IsFalse(storyFooter.Contains("RIGHT SHIFT", StringComparison.Ordinal));
 
-        var controls = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "FLIGHT CONTROLS")[2];
-        StringAssert.Contains(controls, "[T] TUTORIAL");
+        Assert.IsFalse(GameState.ScreenOverlayState.Pages.Any(page => page[1] == "FLIGHT CONTROLS"));
     }
 
     private sealed class TestWorld : I3dWorld

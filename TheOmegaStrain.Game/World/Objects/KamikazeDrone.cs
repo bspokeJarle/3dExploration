@@ -69,8 +69,8 @@ namespace TheOmegaStrain.Game.World.Objects
 
         // Exhaust guides sit well behind the engine block so the plume is born clear of the
         // hull instead of inside it, the same clearance lesson as AttackShip and Rocket.
-        private const float ParticleStartX = -90f;
-        private const float ParticleGuideX = -104f;
+        private const float ParticleStartX = -110f;
+        private const float ParticleGuideX = -126f;
         private static float engineHalfWidth = 8.5f;
         private static float engineHalfHeight = 6.0f;
 

@@ -221,7 +221,7 @@ namespace TheOmegaStrain.Gameplay.Controls
                 return;
 
             var settings = GetNormalizedSettings();
-            if (settings.ActiveControlScheme != ControlInputMode.Keyboard)
+            if (settings.EffectiveControlScheme != ControlInputMode.Keyboard)
                 return;
 
             if (IsConfiguredKey(e.KeyCode, settings.KeyboardTurnLeftKey)) _leftHeld = true;
@@ -252,7 +252,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
 
             var settings = GetNormalizedSettings();
-            if (settings.ActiveControlScheme != ControlInputMode.Keyboard)
+            if (settings.EffectiveControlScheme != ControlInputMode.Keyboard)
                 return;
 
             if (IsConfiguredKey(e.KeyCode, settings.KeyboardFireKey))
@@ -299,7 +299,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
 
             var settings = GetNormalizedSettings();
-            if (settings.ActiveControlScheme != ControlInputMode.Mouse)
+            if (settings.EffectiveControlScheme != ControlInputMode.Mouse)
             {
                 ResetMouseControlState();
                 return;
@@ -318,7 +318,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
 
             var settings = GetNormalizedSettings();
-            if (settings.ActiveControlScheme != ControlInputMode.Mouse)
+            if (settings.EffectiveControlScheme != ControlInputMode.Mouse)
             {
                 ResetMouseControlState();
                 return;
@@ -446,7 +446,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
 
             var settings = GetNormalizedSettings();
-            if (settings.ActiveControlScheme != ControlInputMode.Mouse)
+            if (settings.EffectiveControlScheme != ControlInputMode.Mouse)
                 return false;
 
             if (requireForeground && !IsGameProcessForeground())
@@ -487,7 +487,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
 
             var settings = GetNormalizedSettings();
-            if (settings.ActiveControlScheme != ControlInputMode.Mouse)
+            if (settings.EffectiveControlScheme != ControlInputMode.Mouse)
                 return false;
 
             if (requireForeground && !IsGameProcessForeground())
@@ -640,7 +640,7 @@ namespace TheOmegaStrain.Gameplay.Controls
         private static bool ShouldSwallowGameplayMouseEvent()
         {
             var settings = GetNormalizedSettings();
-            return settings.ActiveControlScheme == ControlInputMode.Mouse &&
+            return settings.EffectiveControlScheme == ControlInputMode.Mouse &&
                    !IsGameplayInputBlocked() &&
                    IsGameProcessForeground();
         }
@@ -657,7 +657,7 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         private void ApplyActiveControlSchemeInputGuards(GameSettingsState settings)
         {
-            if (settings.ActiveControlScheme != ControlInputMode.Keyboard)
+            if (settings.EffectiveControlScheme != ControlInputMode.Keyboard)
             {
                 _leftHeld = false;
                 _rightHeld = false;
@@ -665,12 +665,12 @@ namespace TheOmegaStrain.Gameplay.Controls
                 _downHeld = false;
             }
 
-            if (settings.ActiveControlScheme != ControlInputMode.Mouse)
+            if (settings.EffectiveControlScheme != ControlInputMode.Mouse)
             {
                 ResetMouseControlState();
             }
 
-            if (settings.ActiveControlScheme != ControlInputMode.XboxController)
+            if (settings.EffectiveControlScheme != ControlInputMode.XboxController)
             {
                 _xboxYawInput = 0f;
                 _xboxPitchInput = 0f;
@@ -679,7 +679,7 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         private void ApplyXboxControllerInput(GameSettingsState settings)
         {
-            if (settings.ActiveControlScheme != ControlInputMode.XboxController)
+            if (settings.EffectiveControlScheme != ControlInputMode.XboxController)
             {
                 _xboxYawInput = 0f;
                 _xboxPitchInput = 0f;
@@ -1340,7 +1340,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             ApplyActiveControlSchemeInputGuards(inputSettings);
             ApplyXboxControllerInput(inputSettings);
 
-            if (inputSettings.ActiveControlScheme == ControlInputMode.Mouse)
+            if (inputSettings.EffectiveControlScheme == ControlInputMode.Mouse)
             {
                 ApplyMouseTargetRotation();
             }
@@ -1360,7 +1360,7 @@ namespace TheOmegaStrain.Gameplay.Controls
                         _downHeld,
                         _xboxYawInput,
                         _xboxPitchInput,
-                        inputSettings.ActiveControlScheme == ControlInputMode.XboxController),
+                        inputSettings.EffectiveControlScheme == ControlInputMode.XboxController),
                     new ShipRotationInputSettings(
                         RotationAcceleration,
                         XboxRotationAccelerationMultiplier,

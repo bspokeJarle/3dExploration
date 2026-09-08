@@ -76,7 +76,7 @@ Measured values currently in the codebase:
 | --- | --- | --- | --- | --- | --- |
 | `Rocket` | ~21 | `-13.0` | 3.0 | `-15.5` | 2.5 |
 | `AttackShip` | ~73 | `-100.0` | 45.8 | `-114.0` | 14.0 |
-| `KamikazeDrone` | ~87 | `-90.0` | 43.0 | `-104.0` | 14.0 |
+| `KamikazeDrone` | ~87 | `-110.0` | 63.0 | `-126.0` | 16.0 |
 
 Starting heuristic, then tune visually:
 

@@ -29,6 +29,7 @@ public class SettingsOverlayTests
         GameState.WorldFade = new WorldFadeState();
         GameState.TutorialState = new TutorialRuntimeState();
         GameState.SettingsState = new GameSettingsState();
+        GameState.InputDeviceState = new InputDeviceState();
         GameState.ObjectIdCounter = 0;
     }
 
@@ -168,7 +169,7 @@ public class SettingsOverlayTests
     }
 
     [TestMethod]
-    public void IntroKeyboardShortcut_SelectsFlightControlsPage()
+    public void IntroKeyboardShortcut_OpensKeyboardControlSettings()
     {
         RunOnStaThread(() =>
         {
@@ -183,20 +184,22 @@ public class SettingsOverlayTests
 
             HandleKeyPress(handler, world, GameInputKey.K);
 
-            Assert.AreEqual(ScreenOverlayType.Intro, overlay.Type);
-            Assert.IsTrue(overlay.ShowOverlay);
-            Assert.AreEqual("FLIGHT CONTROLS", overlay.Title);
+            Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
+            Assert.AreEqual(ScreenOverlaySettingsPanel.Controls, overlay.SettingsPanel);
+            Assert.AreEqual(ControlInputMode.Keyboard, GameState.SettingsState.ControlsEditorScheme);
         });
     }
 
     [TestMethod]
-    public void IntroKeyboardXShortcut_SelectsXboxControlsPage()
+    public void IntroXboxShortcut_OpensControllerSettingsWhenControllerConnected()
     {
         RunOnStaThread(() =>
         {
             var handler = new SceneHandler();
             var world = CreateRealWorld(handler);
             handler.SetupActiveScene(world);
+
+            GameState.InputDeviceState.SetXboxControllerConnected(true);
 
             var overlay = GameState.ScreenOverlayState;
             overlay.ShowOverlay = true;
@@ -205,9 +208,10 @@ public class SettingsOverlayTests
 
             HandleKeyPress(handler, world, GameInputKey.X);
 
-            Assert.AreEqual(ScreenOverlayType.Intro, overlay.Type);
-            Assert.IsTrue(overlay.ShowOverlay);
-            Assert.AreEqual("XBOX CONTROLLER", overlay.Title);
+            Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
+            Assert.AreEqual(ScreenOverlaySettingsPanel.Controls, overlay.SettingsPanel);
+            Assert.AreEqual(ControlInputMode.XboxController, GameState.SettingsState.ControlsEditorScheme);
+            GameState.InputDeviceState.Reset();
         });
     }
 

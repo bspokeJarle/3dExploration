@@ -80,6 +80,17 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
 
         public ControlInputMode ActiveControlScheme { get; set; } = ControlInputMode.Keyboard;
         public ControlInputMode ControlsEditorScheme { get; set; } = ControlInputMode.Keyboard;
+
+        /// <summary>
+        /// The scheme gameplay should actually use. Xbox only stays active while a
+        /// controller is detected, otherwise the game falls back to the keyboard so
+        /// the ship never becomes uncontrollable (important for cabinet setups).
+        /// </summary>
+        public ControlInputMode EffectiveControlScheme =>
+            ActiveControlScheme == ControlInputMode.XboxController &&
+            !GameState.InputDeviceState.AnyControllerConnected
+                ? ControlInputMode.Keyboard
+                : ActiveControlScheme;
         public string KeyboardThrustKey { get; set; } = "Space";
         public string KeyboardFireKey { get; set; } = "RShiftKey";
         public string KeyboardPitchUpKey { get; set; } = "Up";

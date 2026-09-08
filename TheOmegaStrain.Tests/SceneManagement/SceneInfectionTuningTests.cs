@@ -23,6 +23,8 @@ public class SceneInfectionTuningTests
     public void Setup()
     {
         GameState.ScreenOverlayState = new ScreenOverlayState();
+        GameState.SettingsState = new GameSettingsState();
+        GameState.InputDeviceState = new InputDeviceState();
     }
 
     [TestMethod]
@@ -114,30 +116,33 @@ public class SceneInfectionTuningTests
     [TestMethod]
     public void IntroControls_DescribeKeyboardMouseXboxAndMappingSupport()
     {
+        GameState.InputDeviceState.Reset();
         var intro = new Intro();
 
         intro.SetupSceneOverlay();
 
-        var controls = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "FLIGHT CONTROLS")[2];
-        Assert.IsTrue(controls.Contains("[SPACE]       THRUST", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("[RIGHT SHIFT] FIRE CURRENT WEAPON", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("[1] BULLET", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("[2] DECOY", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("[3] LAZER", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("LEFT BUTTON   FIRE", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("RIGHT BUTTON  THRUST", StringComparison.Ordinal));
+        Assert.IsFalse(GameState.ScreenOverlayState.Pages.Any(page => page[1] == "FLIGHT CONTROLS"));
+        Assert.IsFalse(GameState.ScreenOverlayState.Pages.Any(page => page[1] == "XBOX CONTROLLER"));
 
-        var xbox = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "XBOX CONTROLLER")[2];
-        Assert.IsTrue(xbox.Contains("LEFT STICK    PITCH / TURN", StringComparison.Ordinal));
-        Assert.IsTrue(xbox.Contains("[RT]          THRUST", StringComparison.Ordinal));
-        Assert.IsTrue(xbox.Contains("[LT]          FIRE", StringComparison.Ordinal));
-        Assert.IsTrue(xbox.Contains("[X] BULLET", StringComparison.Ordinal));
-        Assert.IsTrue(xbox.Contains("[Y] DECOY", StringComparison.Ordinal));
-        Assert.IsTrue(xbox.Contains("[B] LAZER", StringComparison.Ordinal));
-        Assert.IsTrue(xbox.Contains("[A]           POWERUP 4 RESERVED", StringComparison.Ordinal));
-        Assert.IsTrue(xbox.Contains("[MENU]        PAUSE GAMEPLAY", StringComparison.Ordinal));
-        Assert.IsTrue(xbox.Contains("[VIEW]        EXIT TO MENU", StringComparison.Ordinal));
-        Assert.IsTrue(controls.Contains("Input type and mappings can be changed in CONTROLS.", StringComparison.Ordinal));
+        var storyFooter = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "THE OMEGA STRAIN")[3];
+        Assert.IsTrue(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS", StringComparison.Ordinal));
+        Assert.IsTrue(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS <- ACTIVE", StringComparison.Ordinal));
+        Assert.IsFalse(storyFooter.Contains("CONTROLLER SETTINGS", StringComparison.Ordinal));
+
+        GameState.InputDeviceState.SetXboxControllerConnected(true);
+        intro.SetupSceneOverlay();
+
+        storyFooter = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "THE OMEGA STRAIN")[3];
+        Assert.IsTrue(storyFooter.Contains("[X] CONTROLLER SETTINGS", StringComparison.Ordinal));
+        Assert.IsTrue(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS <- ACTIVE", StringComparison.Ordinal));
+
+        GameState.SettingsState.ActiveControlScheme = ControlInputMode.XboxController;
+        intro.SetupSceneOverlay();
+
+        storyFooter = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "THE OMEGA STRAIN")[3];
+        Assert.IsTrue(storyFooter.Contains("[X] CONTROLLER SETTINGS <- ACTIVE", StringComparison.Ordinal));
+        Assert.IsFalse(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS <- ACTIVE", StringComparison.Ordinal));
+        GameState.InputDeviceState.Reset();
     }
 
     private static string Format(float value) => value.ToString("0.###", CultureInfo.InvariantCulture);
