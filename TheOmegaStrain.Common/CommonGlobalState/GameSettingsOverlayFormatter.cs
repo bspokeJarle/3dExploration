@@ -8,8 +8,10 @@ namespace TheOmegaStrain.Common.CommonGlobalState
     public static class GameSettingsOverlayFormatter
     {
         public const string Footer =
-            "KEYBOARD: UP/DOWN SELECT | LEFT/RIGHT ADJUST | ENTER/ESC CLOSE\n" +
-            "XBOX: D-PAD SELECT/ADJUST | [A]/[B] CLOSE";
+            "UP/DOWN SELECT | LEFT/RIGHT ADJUST | ENTER/ESC CLOSE\n" +
+            "[S] SOUND | [G] GRAPHICS | [C] CONTROLS\n" +
+            "XBOX: D-PAD SELECT/ADJUST | A/B CLOSE\n" +
+            "XBOX: LEFT BUMPER SOUND | RIGHT BUMPER GRAPHICS | X CONTROLS";
 
         public static string BuildAudioBody(GameSettingsState settings, int selectedIndex)
         {

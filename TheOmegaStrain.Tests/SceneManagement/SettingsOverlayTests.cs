@@ -169,6 +169,48 @@ public class SettingsOverlayTests
     }
 
     [TestMethod]
+    public void SettingsOverlay_CanSwitchBetweenSettingsPanelsWithoutReturningToIntro()
+    {
+        RunOnStaThread(() =>
+        {
+            var handler = new SceneHandler();
+            var world = CreateRealWorld(handler);
+            handler.SetupActiveScene(world);
+
+            var overlay = GameState.ScreenOverlayState;
+            overlay.ShowOverlay = true;
+
+            HandleKeyPress(handler, world, GameInputKey.C);
+
+            Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
+            Assert.AreEqual(ScreenOverlaySettingsPanel.Controls, overlay.SettingsPanel);
+            StringAssert.Contains(overlay.Footer, "[S] SOUND");
+            StringAssert.Contains(overlay.Footer, "[G] GRAPHICS");
+            StringAssert.Contains(overlay.Footer, "[C] CONTROLS");
+            StringAssert.Contains(overlay.Footer, "LEFT BUMPER SOUND");
+            StringAssert.Contains(overlay.Footer, "RIGHT BUMPER GRAPHICS");
+
+            HandleKeyPress(handler, world, GameInputKey.G);
+
+            Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
+            Assert.AreEqual(ScreenOverlaySettingsPanel.Graphics, overlay.SettingsPanel);
+            StringAssert.Contains(overlay.Title, "GRAPHICS");
+
+            HandleKeyPress(handler, world, GameInputKey.S);
+
+            Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
+            Assert.AreEqual(ScreenOverlaySettingsPanel.Audio, overlay.SettingsPanel);
+            StringAssert.Contains(overlay.Title, "SOUND");
+
+            HandleKeyPress(handler, world, GameInputKey.C);
+
+            Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
+            Assert.AreEqual(ScreenOverlaySettingsPanel.Controls, overlay.SettingsPanel);
+            StringAssert.Contains(overlay.Title, "CONTROL");
+        });
+    }
+
+    [TestMethod]
     public void IntroKeyboardShortcut_OpensKeyboardControlSettings()
     {
         RunOnStaThread(() =>
