@@ -1,0 +1,3 @@
+interface:
+  display_name: "Omega Particle Workflow"
+  short_description: "Add exhaust particles to Omega objects using the guide placement, LiveGameLoop binding, and controller emission patterns"
