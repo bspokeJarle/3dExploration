@@ -81,8 +81,7 @@ namespace TheOmegaStrain.Wpf.Input
         public static bool IsExitToMenuPressed(XboxControllerSnapshot state) =>
             XboxControllerInput.IsControlPressed(state, XboxControlButton.View);
 
-        public static bool IsQuitConfirmationShortcutPressed(XboxControllerSnapshot state) =>
-            XboxControllerInput.IsControlPressed(state, XboxControlButton.View) &&
-            XboxControllerInput.IsControlPressed(state, XboxControlButton.Menu);
+        public static bool IsQuitHoldPressed(XboxControllerSnapshot state) =>
+            XboxControllerInput.IsControlPressed(state, XboxControlButton.View);
     }
 }

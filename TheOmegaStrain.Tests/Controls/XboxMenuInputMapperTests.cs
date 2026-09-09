@@ -104,11 +104,10 @@ public class XboxMenuInputMapperTests
     }
 
     [TestMethod]
-    public void IsQuitConfirmationShortcutPressed_RequiresViewAndMenu()
+    public void IsQuitHoldPressed_OnlyUsesViewButton()
     {
-        Assert.IsTrue(XboxMenuInputMapper.IsQuitConfirmationShortcutPressed(Snapshot((ushort)(View | Menu))));
-        Assert.IsFalse(XboxMenuInputMapper.IsQuitConfirmationShortcutPressed(Snapshot(View)));
-        Assert.IsFalse(XboxMenuInputMapper.IsQuitConfirmationShortcutPressed(Snapshot(Menu)));
+        Assert.IsTrue(XboxMenuInputMapper.IsQuitHoldPressed(Snapshot(View)));
+        Assert.IsFalse(XboxMenuInputMapper.IsQuitHoldPressed(Snapshot(Menu)));
     }
 
     private static XboxControllerSnapshot Snapshot(

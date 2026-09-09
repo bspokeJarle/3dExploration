@@ -128,6 +128,7 @@ public class SceneInfectionTuningTests
         Assert.IsTrue(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS", StringComparison.Ordinal));
         Assert.IsTrue(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS <- ACTIVE", StringComparison.Ordinal));
         Assert.IsFalse(storyFooter.Contains("CONTROLLER SETTINGS", StringComparison.Ordinal));
+        Assert.IsFalse(storyFooter.Contains("HOLD [VIEW]", StringComparison.Ordinal));
 
         GameState.InputDeviceState.SetXboxControllerConnected(true);
         intro.SetupSceneOverlay();
@@ -135,6 +136,7 @@ public class SceneInfectionTuningTests
         storyFooter = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "THE OMEGA STRAIN")[3];
         Assert.IsTrue(storyFooter.Contains("[X] CONTROLLER SETTINGS", StringComparison.Ordinal));
         Assert.IsTrue(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS <- ACTIVE", StringComparison.Ordinal));
+        Assert.IsFalse(storyFooter.Contains("HOLD [VIEW]", StringComparison.Ordinal));
 
         GameState.SettingsState.ActiveControlScheme = ControlInputMode.XboxController;
         intro.SetupSceneOverlay();
@@ -142,6 +144,9 @@ public class SceneInfectionTuningTests
         storyFooter = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "THE OMEGA STRAIN")[3];
         Assert.IsTrue(storyFooter.Contains("[X] CONTROLLER SETTINGS <- ACTIVE", StringComparison.Ordinal));
         Assert.IsFalse(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS <- ACTIVE", StringComparison.Ordinal));
+        Assert.IsTrue(storyFooter.Contains(
+            "\n\u00A0\nXBOX: HOLD [VIEW] FOR 2 SECONDS TO QUIT\n\u00A0",
+            StringComparison.Ordinal));
         GameState.InputDeviceState.Reset();
     }
 

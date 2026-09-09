@@ -30,9 +30,12 @@ namespace TheOmegaStrain.Game.Scenes.Intro
             if (GameState.InputDeviceState.AnyControllerConnected)
                 footer += $"\n[X] CONTROLLER SETTINGS{controllerActive}";
 
-            footer += $"\n[K] KEYBOARD / MOUSE SETTINGS{keyboardActive}";
+            footer += $"\n[K] KEYBOARD / MOUSE SETTINGS{keyboardActive} | ESC QUIT";
 
-            return footer + " | ESC QUIT";
+            if (activeScheme == ControlInputMode.XboxController)
+                footer += "\n\u00A0\nXBOX: HOLD [VIEW] FOR 2 SECONDS TO QUIT";
+
+            return footer + "\n\u00A0";
         }
 
         private const string StoryPageTitle = "THE OMEGA STRAIN";

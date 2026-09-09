@@ -96,7 +96,7 @@ namespace TheOmegaStrain.Wpf
         private bool _xboxMenuRepeatArmed = false;
         private bool _xboxPauseButtonWasDown = false;
         private bool _xboxExitButtonWasDown = false;
-        private bool _xboxQuitConfirmationShortcutWasDown = false;
+        private readonly XboxQuitHoldTracker _xboxQuitHoldTracker = new();
         private const double XboxMenuInitialRepeatSeconds = 0.32;
         private const double XboxMenuRepeatSeconds = 0.12;
         private HwndSource? _rawMouseSource;
@@ -718,13 +718,13 @@ namespace TheOmegaStrain.Wpf
                 ResetXboxMenuInputState();
                 _xboxPauseButtonWasDown = false;
                 _xboxExitButtonWasDown = false;
-                _xboxQuitConfirmationShortcutWasDown = false;
+                _xboxQuitHoldTracker.Reset();
                 return;
             }
 
             GameState.InputDeviceState.SetXboxControllerConnected(true);
 
-            if (TryHandleXboxQuitConfirmationShortcut(controllerState))
+            if (TryHandleXboxQuitHold(controllerState))
                 return;
 
             if (TryHandleXboxGameplayExit(controllerState))
@@ -875,24 +875,22 @@ namespace TheOmegaStrain.Wpf
             return true;
         }
 
-        private bool TryHandleXboxQuitConfirmationShortcut(XboxControllerSnapshot controllerState)
+        private bool TryHandleXboxQuitHold(XboxControllerSnapshot controllerState)
         {
-            bool quitPressed = XboxMenuInputMapper.IsQuitConfirmationShortcutPressed(controllerState);
-            if (!quitPressed)
+            bool viewPressed = XboxMenuInputMapper.IsQuitHoldPressed(controllerState);
+            if (!viewPressed)
             {
-                _xboxQuitConfirmationShortcutWasDown = false;
+                _xboxQuitHoldTracker.Reset();
                 return false;
             }
 
-            if (_xboxQuitConfirmationShortcutWasDown)
-                return true;
+            // Once tracking starts, consume View until it is released. Otherwise
+            // the same held press would immediately cancel the confirmation dialog.
+            if (!_xboxQuitHoldTracker.IsTracking && !CanXboxQuitHoldCurrentState())
+                return false;
 
-            _xboxQuitConfirmationShortcutWasDown = true;
-
-            if (!CanXboxQuitConfirmationShortcutCurrentState())
-                return true;
-
-            DispatchSceneInputKey(GameInputKey.Escape);
+            if (_xboxQuitHoldTracker.Update(isPressed: true, DateTime.UtcNow))
+                DispatchSceneInputKey(GameInputKey.Escape);
             return true;
         }
 
@@ -923,17 +921,19 @@ namespace TheOmegaStrain.Wpf
             return sceneType == SceneTypes.Intro;
         }
 
-        private bool CanXboxQuitConfirmationShortcutCurrentState()
+        private bool CanXboxQuitHoldCurrentState()
         {
             var overlay = GameState.ScreenOverlayState;
             if (overlay == null ||
                 !overlay.ShowOverlay ||
                 overlay.Type != ScreenOverlayType.Intro ||
+                overlay.CurrentPage != 0 ||
                 overlay.ChoiceAction != ScreenOverlayChoiceAction.None)
                 return false;
 
             var sceneType = world?.SceneHandler?.GetActiveScene().SceneType ?? GameState.GamePlayState.CurrentSceneType;
-            return sceneType == SceneTypes.Intro;
+            return sceneType == SceneTypes.Intro &&
+                   GameState.SettingsState.EffectiveControlScheme == ControlInputMode.XboxController;
         }
 
         private bool CanXboxPauseCurrentState()
