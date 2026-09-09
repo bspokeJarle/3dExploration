@@ -81,7 +81,7 @@ namespace TheOmegaStrain.Wpf.Rendering
                 float calculatedZ = NearZ + (i * stepSize);
 
                 // Map to 0..1 using the new helper
-                float factor01 = GetDepthFactor01(calculatedZ);
+                float factor01 = Math.Max(ScreenSetup.MinimumRenderShade, GetDepthFactor01(calculatedZ));
 
                 // Quantize for stable cache keys (same concept as runtime shading key)
                 float roundedFactor01 = (float)Math.Round(factor01, 2, MidpointRounding.AwayFromZero);
@@ -320,11 +320,11 @@ namespace TheOmegaStrain.Wpf.Rendering
                 if (!ProjectedTriangleRenderMath.IsInsideRenderDepth(triangle.CalculatedZ, NearZ, FarZ))
                     continue;
 
-                float shadeKey = ProjectedTriangleRenderMath.GetTriangleShadeKey(
+                float shadeKey = Math.Max(ScreenSetup.MinimumRenderShade, ProjectedTriangleRenderMath.GetTriangleShadeKey(
                     triangle,
                     NearZ,
                     FarZ,
-                    IsDepthOnlyShadePartName);
+                    IsDepthOnlyShadePartName));
 
                 string baseColor = ProjectedTriangleRenderMath.NormalizeColor(triangle.Color);
 
@@ -584,11 +584,11 @@ namespace TheOmegaStrain.Wpf.Rendering
 
         private static float GetTriangleShadeKey(ProjectedTriangleMesh triangle)
         {
-            return ProjectedTriangleRenderMath.GetTriangleShadeKey(
+            return Math.Max(ScreenSetup.MinimumRenderShade, ProjectedTriangleRenderMath.GetTriangleShadeKey(
                 triangle,
                 NearZ,
                 FarZ,
-                IsDepthOnlyShadePartName);
+                IsDepthOnlyShadePartName));
         }
 
         private static bool IsDepthOnlyShadePartName(string? partName)

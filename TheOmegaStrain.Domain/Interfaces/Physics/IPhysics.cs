@@ -42,6 +42,7 @@ namespace TheOmegaStrain.Domain
         float ThrustHeightMultiplier { get; set; }
         float ThrustRampRate { get; set; }
         float InertiaDrag { get; set; }
+        float CoastingRetention { get; set; }
         float MaxInertia { get; set; }
         float VerticalThrustSmoothing { get; set; }
         float VerticalLiftRate { get; set; }
@@ -57,6 +58,7 @@ namespace TheOmegaStrain.Domain
         void ResetHover();
 
         float ApplyFallGravity(float rotationDegrees, float deltaTime);
+        void ApplyFlightCoasting(float deltaTime);
         void ReduceFallWithThrust(float thrust, float rotationDegrees, float deltaTime);
         float CalculateThrustForces(float thrust, float tiltDegrees, float rotationDegrees, float deltaTime);
         float CalculateCurrentSpeed(bool isLanded);

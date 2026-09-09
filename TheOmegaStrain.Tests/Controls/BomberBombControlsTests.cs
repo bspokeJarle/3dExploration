@@ -138,6 +138,7 @@ public class BomberBombControlsTests
         public float ThrustHeightMultiplier { get; set; }
         public float ThrustRampRate { get; set; }
         public float InertiaDrag { get; set; }
+        public float CoastingRetention { get; set; }
         public float MaxInertia { get; set; }
         public float VerticalThrustSmoothing { get; set; }
         public float VerticalLiftRate { get; set; }
@@ -165,6 +166,7 @@ public class BomberBombControlsTests
         public I3dObject UpdateExplosion(I3dObject explodingObject, DateTime deltaTime) => explodingObject;
         public void ResetHover() { }
         public float ApplyFallGravity(float rotationDegrees, float deltaTime) => 0f;
+        public void ApplyFlightCoasting(float deltaTime) { }
         public void ReduceFallWithThrust(float thrust, float rotationDegrees, float deltaTime) { }
         public float CalculateThrustForces(float thrust, float tiltDegrees, float rotationDegrees, float deltaTime) => 0f;
         public float CalculateCurrentSpeed(bool isLanded) => 0f;

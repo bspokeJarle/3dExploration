@@ -57,6 +57,7 @@ namespace TheOmegaStrain.Gameplay.Physics
         public float ThrustHeightMultiplier { get; set; } = 7.0f;
         public float ThrustRampRate { get; set; } = 30.0f;
         public float InertiaDrag { get; set; } = 0.92f;
+        public float CoastingRetention { get; set; } = 0.9975f;
         public float MaxInertia { get; set; } = 45.0f;
         public float VerticalThrustSmoothing { get; set; } = 0.6f;
         public float VerticalLiftRate { get; set; } = 3.0f;
@@ -260,6 +261,21 @@ namespace TheOmegaStrain.Gameplay.Physics
             FallVelocity = step.FallVelocity;
             HoverElapsed = step.HoverElapsed;
             return InertiaY;
+        }
+
+        // Preserve horizontal momentum after thrust release. This uses a separate,
+        // gentler retention value than powered-flight drag and remains frame-rate independent.
+        public void ApplyFlightCoasting(float deltaTime)
+        {
+            float frameScale = MathF.Max(0f, deltaTime) * GameState.GameplayBaselineFps;
+            float retention = Math.Clamp(CoastingRetention, 0.01f, 0.9999f);
+            float scaledRetention = MathF.Pow(retention, frameScale);
+
+            InertiaX = Math.Clamp(InertiaX * scaledRetention, -MaxInertia, MaxInertia);
+            InertiaZ = Math.Clamp(InertiaZ * scaledRetention, -MaxInertia, MaxInertia);
+
+            if (MathF.Abs(InertiaX) < 0.01f) InertiaX = 0f;
+            if (MathF.Abs(InertiaZ) < 0.01f) InertiaZ = 0f;
         }
 
         public void ResetHover() => HoverElapsed = 0f;

@@ -368,7 +368,12 @@ namespace TheOmegaStrain.Wpf
                 _direct3DRenderer = new Direct3D11ProjectedTriangleRenderer(
                     _direct3DPanel.Handle,
                     Math.Max(1, _direct3DPanel.ClientSize.Width),
-                    Math.Max(1, _direct3DPanel.ClientSize.Height));
+                    Math.Max(1, _direct3DPanel.ClientSize.Height))
+                {
+                    ShadeNearZ = ScreenSetup.RenderNearZ,
+                    ShadeFarZ = ScreenSetup.RenderFarZ,
+                    MinimumShade = ScreenSetup.MinimumRenderShade
+                };
                 _direct3DRenderer.SetProjectionSize(
                     Math.Max(1, ScreenSetup.screenSizeX),
                     Math.Max(1, ScreenSetup.screenSizeY));

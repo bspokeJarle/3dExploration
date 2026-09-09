@@ -14,7 +14,7 @@ namespace TheOmegaStrain.Common.CommonSetup
         public static int RuntimeTargetFps { get; private set; } = targetFps;
         public static double TargetFrameIntervalMs => 1000.0 / RuntimeTargetFps;
 
-        // Screen dimensions — initialized at startup from the actual window size.
+        // Screen dimensions â€” initialized at startup from the actual window size.
         // Default values match the original constants so the engine works even
         // before Initialize() is called (unit tests, benchmarks, etc.).
         public static int screenSizeX { get; private set; } = 1500;
@@ -28,8 +28,9 @@ namespace TheOmegaStrain.Common.CommonSetup
 
         // Depth / view-distance constants
         public const float RenderFarZ = 2000f;
-        public const float RenderNearZ = -1750f;
-        public const float ObjectVisibilityDistance = 2000f;
+        public const float RenderNearZ = -2100f;
+        public const float ObjectVisibilityDistance = 2300f;
+        public const float MinimumRenderShade = 0.15f;
 
         /// <summary>
         /// Call once at startup with the actual DPI-scaled rendering size of the window.

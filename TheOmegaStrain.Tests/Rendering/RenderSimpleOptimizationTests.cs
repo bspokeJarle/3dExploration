@@ -487,6 +487,33 @@ public class RenderSimpleOptimizationTests
     }
 
     [TestMethod]
+    public void ProcessTrianglesForRender_KeepsDeepObjectsAboveMinimumShade()
+    {
+        var triangles = new List<ProjectedTriangleMesh>
+        {
+            new()
+            {
+                CalculatedZ = ScreenSetup.RenderNearZ,
+                TriangleAngle = -1f,
+                Color = "ffffff",
+                PartName = "DeepObject"
+            }
+        };
+        var colorCache = new Dictionary<(float, string), Color>();
+        var brushCache = new Dictionary<Color, SolidColorBrush>();
+        var penCache = new Dictionary<Color, Pen>();
+
+        int processed = WorldRenderer.ProcessTrianglesForRender(
+            triangles,
+            colorCache,
+            brushCache,
+            penCache);
+
+        Assert.AreEqual(1, processed);
+        Assert.IsTrue(colorCache.ContainsKey((ScreenSetup.MinimumRenderShade, "ffffff")));
+    }
+
+    [TestMethod]
     public void IsSameBatch_RequiresSameBrushAndPenInstances()
     {
         var brush = new SolidColorBrush(Color.FromRgb(10, 20, 30));

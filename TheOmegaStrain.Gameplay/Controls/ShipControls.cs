@@ -2167,6 +2167,9 @@ namespace TheOmegaStrain.Gameplay.Controls
                 }
             }
 
+            Physics.ApplyFlightCoasting(deltaTime);
+            ApplyHorizontalCoastingTravel(deltaTime);
+
             float verticalInertia = Physics.ApplyFallGravity(rotationX, deltaTime);
             float frameScale = GameState.FrameScale90;
             ParentObject.ObjectOffsets.y = Physics.ClampToScreenDrop(Physics.ClampToHeightRange(ParentObject.ObjectOffsets.y - verticalInertia * frameScale));
@@ -2196,6 +2199,31 @@ namespace TheOmegaStrain.Gameplay.Controls
                     airAltStep = airMaxStep * MathF.Sign(airAltDiff);
                 GameState.SurfaceState.GlobalMapPosition.y += airAltStep;
             }
+        }
+
+        private void ApplyHorizontalCoastingTravel(float deltaTime)
+        {
+            if (ParentObject.ParentSurface == null)
+                return;
+
+            float frameScale = deltaTime * GameState.GameplayBaselineFps;
+            float travelSpeedMultiplier = GameState.GamePlayState.TravelSpeedMultiplier *
+                                          BiomePhysicsSetup.CurrentProfile.TravelSpeedMultiplier;
+            float maxX = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
+                         (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
+            float maxZ = (ParentObject.ParentSurface.GlobalMapSize() * ParentObject.ParentSurface.TileSize()) -
+                         (ParentObject.ParentSurface.ViewPortSize() * ParentObject.ParentSurface.TileSize());
+
+            GameState.SurfaceState.GlobalMapPosition.x = Physics.WrapPosition(
+                GameState.SurfaceState.GlobalMapPosition.x,
+                Physics.InertiaX * frameScale * travelSpeedMultiplier,
+                SurfaceSetup.tileSize,
+                maxX);
+            GameState.SurfaceState.GlobalMapPosition.z = Physics.WrapPosition(
+                GameState.SurfaceState.GlobalMapPosition.z,
+                Physics.InertiaZ * frameScale * travelSpeedMultiplier,
+                0,
+                maxZ);
         }
 
         /// <summary>
