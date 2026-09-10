@@ -199,11 +199,19 @@ public class SettingsOverlayTests
             Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
             Assert.AreEqual(ScreenOverlaySettingsPanel.Flight, overlay.SettingsPanel);
             StringAssert.Contains(overlay.Title, "FLIGHT");
-            StringAssert.Contains(overlay.Body, "COASTING");
+            StringAssert.Contains(overlay.Body, "FLIGHT FEEL    BALANCED");
+            StringAssert.Contains(overlay.Body, "COASTING       NORMAL");
+            StringAssert.Contains(overlay.Body, "THRUST ACCEL.  NORMAL");
+            StringAssert.Contains(overlay.Body, "GRAVITY PULL   NORMAL");
+            StringAssert.Contains(overlay.Body, "RESET          BALANCED DEFAULTS");
 
             HandleKeyPress(handler, world, GameInputKey.Down);
             HandleKeyPress(handler, world, GameInputKey.Right);
             Assert.AreEqual(FlightHandlingPreset.Inertial, GameState.SettingsState.FlightPreset);
+            StringAssert.Contains(overlay.Body, "FLIGHT FEEL    INERTIAL");
+            StringAssert.Contains(overlay.Body, "COASTING       LONG");
+            StringAssert.Contains(overlay.Body, "THRUST ACCEL.  GENTLE");
+            StringAssert.Contains(overlay.Body, "GRAVITY PULL   LIGHT");
             Assert.IsTrue(File.Exists(PersistenceSetup.LocalSettingsFilePath));
 
             HandleKeyPress(handler, world, GameInputKey.S);
@@ -238,6 +246,7 @@ public class SettingsOverlayTests
         Assert.AreEqual(FlightHandlingPreset.Balanced, settings.FlightPreset);
         Assert.AreEqual(0.9975f, settings.ShipCoastingRetention);
         Assert.AreEqual(30f, settings.ShipThrustRampRate);
+        Assert.AreEqual(9.6f, settings.ShipThrustSpeedMultiplier);
         Assert.AreEqual(9f, settings.ShipGravityPullMultiplier);
     }
 

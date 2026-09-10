@@ -108,6 +108,7 @@ public class GameSettingsPersistenceTests
         Assert.AreEqual(FlightHandlingPreset.Balanced, GameState.SettingsState.FlightPreset);
         Assert.AreEqual(0.9975f, GameState.SettingsState.ShipCoastingRetention);
         Assert.AreEqual(30f, GameState.SettingsState.ShipThrustRampRate);
+        Assert.AreEqual(9.6f, GameState.SettingsState.ShipThrustSpeedMultiplier);
         Assert.AreEqual(9f, GameState.SettingsState.ShipGravityPullMultiplier);
         Assert.AreEqual(ControlInputMode.Keyboard, GameState.SettingsState.ActiveControlScheme);
         Assert.AreEqual(ControlInputMode.Keyboard, GameState.SettingsState.ControlsEditorScheme);

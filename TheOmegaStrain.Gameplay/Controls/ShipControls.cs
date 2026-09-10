@@ -8,6 +8,7 @@ using TheOmegaStrain.Common.Input;
 using TheOmegaStrain.Common.Persistence;
 using TheOmegaStrain.Domain;
 using TheOmegaStrain.Gameplay.Audio.Services;
+using TheOmegaStrain.Gameplay.Physics;
 using Gma.System.MouseKeyHook;
 using RetroMesh.Engine;
 using System;
@@ -2205,11 +2206,7 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         private void ApplyFlightSettings()
         {
-            var settings = GameState.SettingsState;
-            settings.Normalize();
-            Physics.CoastingRetention = settings.ShipCoastingRetention;
-            Physics.ThrustRampRate = settings.ShipThrustRampRate;
-            Physics.GravityPullMultiplier = settings.ShipGravityPullMultiplier;
+            ShipFlightPhysicsSettings.Apply(Physics, GameState.SettingsState);
         }
 
         private void ApplyHorizontalCoastingTravel(float deltaTime)

@@ -144,14 +144,20 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         };
         public float ShipThrustRampRate => FlightThrustResponseSetting switch
         {
-            FlightThrustResponse.Soft => 22f,
-            FlightThrustResponse.Quick => 40f,
+            FlightThrustResponse.Soft => 10f,
+            FlightThrustResponse.Quick => 60f,
             _ => 30f
+        };
+        public float ShipThrustSpeedMultiplier => FlightThrustResponseSetting switch
+        {
+            FlightThrustResponse.Soft => 8.4f,
+            FlightThrustResponse.Quick => 10.8f,
+            _ => 9.6f
         };
         public float ShipGravityPullMultiplier => FlightGravityResponseSetting switch
         {
-            FlightGravityResponse.Light => 8.2f,
-            FlightGravityResponse.Strong => 9.8f,
+            FlightGravityResponse.Light => 7.6f,
+            FlightGravityResponse.Strong => 10.4f,
             _ => 9f
         };
 

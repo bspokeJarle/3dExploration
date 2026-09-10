@@ -112,14 +112,14 @@ namespace TheOmegaStrain.Common.CommonGlobalState
             settings.Normalize();
             var lines = new List<string>
             {
-                "Tune existing ship handling. Enemies and weapons are unchanged.",
+                "Tune player ship handling. Enemies, weapons and biome physics remain unchanged.",
                 ""
             };
 
             AddValueLine(lines, selectedIndex, (int)FlightSettingsField.Preset, "FLIGHT FEEL", settings.FlightPreset.ToString().ToUpperInvariant());
             AddValueLine(lines, selectedIndex, (int)FlightSettingsField.Coasting, "COASTING", settings.FlightCoastingSetting.ToString().ToUpperInvariant());
-            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.ThrustResponse, "THRUST RESPONSE", settings.FlightThrustResponseSetting.ToString().ToUpperInvariant());
-            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.GravityResponse, "GRAVITY", settings.FlightGravityResponseSetting.ToString().ToUpperInvariant());
+            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.ThrustResponse, "THRUST ACCEL.", FormatThrustAcceleration(settings.FlightThrustResponseSetting));
+            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.GravityResponse, "GRAVITY PULL", FormatGravityPull(settings.FlightGravityResponseSetting));
             AddValueLine(lines, selectedIndex, (int)FlightSettingsField.ResetDefaults, "RESET", "BALANCED DEFAULTS");
             return string.Join("\n", lines);
         }
@@ -142,6 +142,20 @@ namespace TheOmegaStrain.Common.CommonGlobalState
         }
 
         private static string OnOff(bool value) => value ? "ON" : "OFF";
+
+        private static string FormatThrustAcceleration(FlightThrustResponse value) => value switch
+        {
+            FlightThrustResponse.Soft => "GENTLE",
+            FlightThrustResponse.Quick => "STRONG",
+            _ => "NORMAL"
+        };
+
+        private static string FormatGravityPull(FlightGravityResponse value) => value switch
+        {
+            FlightGravityResponse.Light => "LIGHT",
+            FlightGravityResponse.Strong => "STRONG",
+            _ => "NORMAL"
+        };
 
         private static string FormatControlMode(ControlInputMode mode) =>
             mode switch
