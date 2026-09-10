@@ -1,5 +1,6 @@
 using TheOmegaStrain.Wpf.MainWindowClasses;
 using TheOmegaStrain.Domain;
+using TheOmegaStrain.Common.CommonGlobalState;
 
 namespace TheOmegaStrain.Tests.SceneManagement;
 
@@ -22,6 +23,30 @@ public class OverlayLayoutTests
             "Top-anchored overlay panel should not extend below the screen after applying its top offset.");
         Assert.IsTrue(panelHeight < screenHeight * 0.90,
             "The height cap should account for the top offset, not only the total screen height.");
+    }
+
+    [TestMethod]
+    public void CalculatePanelHeight_CompactContentDoesNotExpandBeyondMinimum()
+    {
+        double panelHeight = OverlayHandler.CalculatePanelHeight(
+            desiredHeight: 220.0,
+            screenHeight: 1080.0,
+            yOffset: 0.0,
+            ScreenOverlayAnchor.Center);
+
+        Assert.AreEqual(220.0, panelHeight);
+    }
+
+    [TestMethod]
+    public void IntroOverlay_IsCenteredAndGrowsAroundScreenCenter()
+    {
+        GameState.ScreenOverlayState = new ScreenOverlayState();
+        var intro = new TheOmegaStrain.Game.Scenes.Intro.Intro();
+
+        intro.SetupSceneOverlay();
+
+        Assert.AreEqual(ScreenOverlayAnchor.Center, GameState.ScreenOverlayState.Anchor);
+        Assert.AreEqual(0f, GameState.ScreenOverlayState.PanelYOffsetRatio);
     }
 
     // Regression: the LiveGameLoop victory flow builds a Game-type overlay

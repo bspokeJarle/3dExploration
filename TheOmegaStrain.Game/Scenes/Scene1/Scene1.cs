@@ -95,7 +95,10 @@ namespace TheOmegaStrain.Game.Scenes.Scene1
                 GameState.SurfaceState.GlobalMapPosition,
                 totalSeederCount: 7,
                 regularSeed: 1011,
-                nearSeederCount: 4);
+                nearSeederCount: 4,
+                firstRingRadius: 6500f,
+                ringRadiusStep: 7500f,
+                minSeederDistance: 3600f);
 
             //Mothership for this Scene — spawns inactive, enters when all seeders are destroyed
             var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);

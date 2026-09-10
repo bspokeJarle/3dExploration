@@ -2101,6 +2101,7 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         public void HandleThrust(float deltaTime)
         {
+            ApplyFlightSettings();
             float verticalInertia = Physics.CalculateThrustForces(Thrust, tilt, rotationZ, deltaTime);
             float frameScale = GameState.FrameScale90;
             float travelSpeedMultiplier = GameState.GamePlayState.TravelSpeedMultiplier *
@@ -2125,6 +2126,7 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         public void ApplyGravity(float deltaTime)
         {
+            ApplyFlightSettings();
             if (landed && !ThrustOn)
             {
                 // Smoothly settle screen position and altitude to resting values after landing.
@@ -2199,6 +2201,15 @@ namespace TheOmegaStrain.Gameplay.Controls
                     airAltStep = airMaxStep * MathF.Sign(airAltDiff);
                 GameState.SurfaceState.GlobalMapPosition.y += airAltStep;
             }
+        }
+
+        private void ApplyFlightSettings()
+        {
+            var settings = GameState.SettingsState;
+            settings.Normalize();
+            Physics.CoastingRetention = settings.ShipCoastingRetention;
+            Physics.ThrustRampRate = settings.ShipThrustRampRate;
+            Physics.GravityPullMultiplier = settings.ShipGravityPullMultiplier;
         }
 
         private void ApplyHorizontalCoastingTravel(float deltaTime)

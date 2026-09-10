@@ -36,4 +36,12 @@ public class WpfGameInputKeyMapperTests
     {
         Assert.AreEqual(GameInputKey.None, WpfGameInputKeyMapper.ToGameInputKey(Key.LeftShift));
     }
+
+    [TestMethod]
+    public void ToSettingsGameInputKey_MapsPageNavigation()
+    {
+        Assert.AreEqual(GameInputKey.S, WpfGameInputKeyMapper.ToSettingsGameInputKey(Key.PageUp));
+        Assert.AreEqual(GameInputKey.G, WpfGameInputKeyMapper.ToSettingsGameInputKey(Key.PageDown));
+        Assert.AreEqual(GameInputKey.Left, WpfGameInputKeyMapper.ToSettingsGameInputKey(Key.Left));
+    }
 }

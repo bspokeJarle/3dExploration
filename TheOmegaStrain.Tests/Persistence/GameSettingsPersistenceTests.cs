@@ -47,6 +47,10 @@ public class GameSettingsPersistenceTests
             GlowEffectsEnabled = true,
             EnhancedWeatherEnabled = true,
             EnhancedShadowsEnabled = false,
+            FlightPreset = FlightHandlingPreset.Custom,
+            FlightCoastingSetting = FlightCoasting.Long,
+            FlightThrustResponseSetting = FlightThrustResponse.Quick,
+            FlightGravityResponseSetting = FlightGravityResponse.Light,
             ActiveControlScheme = ControlInputMode.Mouse,
             ControlsEditorScheme = ControlInputMode.XboxController,
             KeyboardThrustKey = "W",
@@ -73,6 +77,10 @@ public class GameSettingsPersistenceTests
         Assert.IsTrue(loaded.GlowEffectsEnabled);
         Assert.IsTrue(loaded.EnhancedWeatherEnabled);
         Assert.IsFalse(loaded.EnhancedShadowsEnabled);
+        Assert.AreEqual(FlightHandlingPreset.Custom, loaded.FlightPreset);
+        Assert.AreEqual(FlightCoasting.Long, loaded.FlightCoastingSetting);
+        Assert.AreEqual(FlightThrustResponse.Quick, loaded.FlightThrustResponseSetting);
+        Assert.AreEqual(FlightGravityResponse.Light, loaded.FlightGravityResponseSetting);
         Assert.AreEqual(ControlInputMode.Mouse, loaded.ActiveControlScheme);
         Assert.AreEqual(ControlInputMode.XboxController, loaded.ControlsEditorScheme);
         Assert.AreEqual("W", loaded.KeyboardThrustKey);
@@ -97,6 +105,10 @@ public class GameSettingsPersistenceTests
 
         Assert.AreEqual(100, GameState.SettingsState.MasterVolumePercent);
         Assert.AreEqual(GraphicsQualityPreset.Balanced, GameState.SettingsState.GraphicsQuality);
+        Assert.AreEqual(FlightHandlingPreset.Balanced, GameState.SettingsState.FlightPreset);
+        Assert.AreEqual(0.9975f, GameState.SettingsState.ShipCoastingRetention);
+        Assert.AreEqual(30f, GameState.SettingsState.ShipThrustRampRate);
+        Assert.AreEqual(9f, GameState.SettingsState.ShipGravityPullMultiplier);
         Assert.AreEqual(ControlInputMode.Keyboard, GameState.SettingsState.ActiveControlScheme);
         Assert.AreEqual(ControlInputMode.Keyboard, GameState.SettingsState.ControlsEditorScheme);
         Assert.AreEqual(MouseControlButton.Right, GameState.SettingsState.MouseThrustButton);

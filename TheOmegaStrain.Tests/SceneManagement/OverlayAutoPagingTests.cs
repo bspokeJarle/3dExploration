@@ -42,7 +42,18 @@ public class OverlayAutoPagingTests
         string text = OverlayHandler.BuildPageIndicatorText(totalPages: 3, currentPage: 1);
 
         Assert.IsTrue(text.Contains("[*]"));
-        Assert.IsTrue(text.Contains("PRESS ARROW KEYS TO NAVIGATE"));
+        Assert.IsTrue(text.Contains("LEFT/RIGHT TO NAVIGATE"));
+    }
+
+    [TestMethod]
+    public void SettingsPageIndicator_ShowsActivePageAndDedicatedNavigationHint()
+    {
+        string text = OverlayHandler.BuildSettingsPageIndicatorText(ScreenOverlaySettingsPanel.Graphics);
+
+        Assert.AreEqual(1, text.Split("[*]").Length - 1);
+        Assert.AreEqual(4, text.Split("[").Length - 1);
+        Assert.IsTrue(text.Contains("PAGE UP/DOWN TO CHANGE SETTINGS PAGE"));
+        Assert.IsFalse(text.Contains("LEFT/RIGHT TO NAVIGATE"));
     }
 
     [TestMethod]
@@ -81,21 +92,36 @@ public class OverlayAutoPagingTests
     }
 
     [TestMethod]
-    public void IntroOverlay_AutoPagesAfterLogoShowsOverlay()
+    public void IntroOverlay_MainMenuDoesNotAutoPage()
     {
         var intro = new Intro();
         intro.SetupSceneOverlay();
         var overlay = GameState.ScreenOverlayState;
 
         Assert.IsTrue(overlay.HasMultiplePages);
-        Assert.AreEqual(ScreenOverlayState.DefaultAutoPageSeconds, overlay.AutoPageSeconds);
+        Assert.AreEqual(0f, overlay.AutoPageSeconds);
         Assert.IsFalse(overlay.ShowOverlay, "Intro logo should still hide overlay initially.");
+        Assert.AreEqual(ScreenOverlayChoiceAction.IntroMainMenu, overlay.ChoiceAction);
+        Assert.AreEqual("THE OMEGA STRAIN", overlay.Title);
 
         overlay.ShowOverlay = true;
         overlay.Update(0.016f);
         overlay.Update(ScreenOverlayState.DefaultAutoPageSeconds + 0.016f);
 
-        Assert.AreEqual(1, overlay.CurrentPage);
-        Assert.AreEqual("TACTICAL TIPS", overlay.Title);
+        Assert.AreEqual(0, overlay.CurrentPage);
+    }
+
+    [TestMethod]
+    public void RefreshControlFooter_PreservesMainMenuSelection()
+    {
+        var intro = new Intro();
+        intro.SetupSceneOverlay();
+        var overlay = GameState.ScreenOverlayState;
+        overlay.MoveChoiceSelection(1);
+
+        Intro.RefreshControlFooter();
+
+        Assert.AreEqual(1, overlay.SelectedChoiceIndex);
+        Assert.AreEqual("TRAINING", overlay.SelectedChoice);
     }
 }

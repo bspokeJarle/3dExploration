@@ -18,6 +18,7 @@ namespace TheOmegaStrain.Common.Persistence
         public const string EmptyCallsignMessage = ">> CALLSIGN CANNOT BE EMPTY";
         public const string LocalCallsignTakenMessage = ">> CALLSIGN ALREADY IN USE - USE RIGHT FOR NEW";
         public const string RemoteCallsignTakenMessage = ">> CALLSIGN RESERVED ONLINE - USE RIGHT FOR NEW";
+        public const string NumberedCallsignSuggestedMessage = ">> CALLSIGN TAKEN - NUMBERED SUGGESTION READY";
 
         public static string CreateSuggestedCallsign(string currentCallsign = "")
         {
@@ -27,6 +28,14 @@ namespace TheOmegaStrain.Common.Persistence
                 reserved.Add(current);
 
             return PlayerCallsignGenerator.CreateSuggestion(reserved);
+        }
+
+        public static string CreateNumberedSuggestedCallsign(string currentCallsign)
+        {
+            return PlayerCallsignGenerator.CreateNumberedSuggestion(
+                currentCallsign,
+                Random.Shared,
+                LoadReservedLocalCallsigns());
         }
 
         public static IReadOnlyList<string> LoadLocalProfileCallsigns()

@@ -28,9 +28,23 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         EnhancedShadows = 4
     }
 
+    public enum FlightSettingsField
+    {
+        Preset = 0,
+        Coasting = 1,
+        ThrustResponse = 2,
+        GravityResponse = 3,
+        ResetDefaults = 4
+    }
+
+    public enum FlightHandlingPreset { Stable = 0, Balanced = 1, Inertial = 2, Custom = 3 }
+    public enum FlightCoasting { Short = 0, Normal = 1, Long = 2 }
+    public enum FlightThrustResponse { Soft = 0, Normal = 1, Quick = 2 }
+    public enum FlightGravityResponse { Light = 0, Normal = 1, Strong = 2 }
+
     public sealed class GameSettingsState : IAudioVolumeProfile
     {
-        public const int CurrentSettingsSchemaVersion = 4;
+        public const int CurrentSettingsSchemaVersion = 5;
         public const int VolumeStepPercent = 5;
         public const int ParticleDensityStepPercent = 10;
         private const int ControlFlowOptionCount = 2;
@@ -78,6 +92,11 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         public bool EnhancedWeatherEnabled { get; set; } = true;
         public bool EnhancedShadowsEnabled { get; set; } = true;
 
+        public FlightHandlingPreset FlightPreset { get; set; } = FlightHandlingPreset.Balanced;
+        public FlightCoasting FlightCoastingSetting { get; set; } = FlightCoasting.Normal;
+        public FlightThrustResponse FlightThrustResponseSetting { get; set; } = FlightThrustResponse.Normal;
+        public FlightGravityResponse FlightGravityResponseSetting { get; set; } = FlightGravityResponse.Normal;
+
         public ControlInputMode ActiveControlScheme { get; set; } = ControlInputMode.Keyboard;
         public ControlInputMode ControlsEditorScheme { get; set; } = ControlInputMode.Keyboard;
 
@@ -117,6 +136,24 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         public float EffectsVolumeMultiplier => MasterVolumeMultiplier * PercentToMultiplier(EffectsVolumePercent);
         public float VoiceVolumeMultiplier => MasterVolumeMultiplier * PercentToMultiplier(VoiceVolumePercent);
         public float ParticleDensityMultiplier => Math.Clamp(ParticleDensityPercent, 50, 200) / 100f;
+        public float ShipCoastingRetention => FlightCoastingSetting switch
+        {
+            FlightCoasting.Short => 0.9955f,
+            FlightCoasting.Long => 0.9985f,
+            _ => 0.9975f
+        };
+        public float ShipThrustRampRate => FlightThrustResponseSetting switch
+        {
+            FlightThrustResponse.Soft => 22f,
+            FlightThrustResponse.Quick => 40f,
+            _ => 30f
+        };
+        public float ShipGravityPullMultiplier => FlightGravityResponseSetting switch
+        {
+            FlightGravityResponse.Light => 8.2f,
+            FlightGravityResponse.Strong => 9.8f,
+            _ => 9f
+        };
 
         public void Normalize()
         {
@@ -128,6 +165,15 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
 
             if (!Enum.IsDefined(typeof(GraphicsQualityPreset), GraphicsQuality))
                 GraphicsQuality = GraphicsQualityPreset.Balanced;
+
+            if (!Enum.IsDefined(typeof(FlightHandlingPreset), FlightPreset))
+                FlightPreset = FlightHandlingPreset.Balanced;
+            if (!Enum.IsDefined(typeof(FlightCoasting), FlightCoastingSetting))
+                FlightCoastingSetting = FlightCoasting.Normal;
+            if (!Enum.IsDefined(typeof(FlightThrustResponse), FlightThrustResponseSetting))
+                FlightThrustResponseSetting = FlightThrustResponse.Normal;
+            if (!Enum.IsDefined(typeof(FlightGravityResponse), FlightGravityResponseSetting))
+                FlightGravityResponseSetting = FlightGravityResponse.Normal;
 
             if (!Enum.IsDefined(typeof(ControlInputMode), ActiveControlScheme))
                 ActiveControlScheme = ControlInputMode.Keyboard;
@@ -223,6 +269,62 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             }
 
             Version++;
+        }
+
+        public void AdjustFlight(FlightSettingsField field, int direction)
+        {
+            if (direction == 0)
+                return;
+
+            Normalize();
+            switch (field)
+            {
+                case FlightSettingsField.Preset:
+                    int next = ((int)FlightPreset + (direction > 0 ? 1 : -1) + 3) % 3;
+                    ApplyFlightPreset((FlightHandlingPreset)next);
+                    break;
+                case FlightSettingsField.Coasting:
+                    FlightCoastingSetting = CycleEnum(FlightCoastingSetting, direction);
+                    FlightPreset = FlightHandlingPreset.Custom;
+                    break;
+                case FlightSettingsField.ThrustResponse:
+                    FlightThrustResponseSetting = CycleEnum(FlightThrustResponseSetting, direction);
+                    FlightPreset = FlightHandlingPreset.Custom;
+                    break;
+                case FlightSettingsField.GravityResponse:
+                    FlightGravityResponseSetting = CycleEnum(FlightGravityResponseSetting, direction);
+                    FlightPreset = FlightHandlingPreset.Custom;
+                    break;
+                case FlightSettingsField.ResetDefaults:
+                    ApplyFlightPreset(FlightHandlingPreset.Balanced);
+                    break;
+            }
+
+            Version++;
+        }
+
+        private void ApplyFlightPreset(FlightHandlingPreset preset)
+        {
+            FlightPreset = preset;
+            switch (preset)
+            {
+                case FlightHandlingPreset.Stable:
+                    FlightCoastingSetting = FlightCoasting.Short;
+                    FlightThrustResponseSetting = FlightThrustResponse.Quick;
+                    FlightGravityResponseSetting = FlightGravityResponse.Strong;
+                    break;
+                case FlightHandlingPreset.Inertial:
+                    FlightCoastingSetting = FlightCoasting.Long;
+                    FlightThrustResponseSetting = FlightThrustResponse.Soft;
+                    FlightGravityResponseSetting = FlightGravityResponse.Light;
+                    break;
+                default:
+                    FlightPreset = FlightHandlingPreset.Balanced;
+                    FlightCoastingSetting = FlightCoasting.Normal;
+                    FlightThrustResponseSetting = FlightThrustResponse.Normal;
+                    FlightGravityResponseSetting = FlightGravityResponse.Normal;
+                    break;
+            }
         }
 
         public int GetControlsOptionCount()

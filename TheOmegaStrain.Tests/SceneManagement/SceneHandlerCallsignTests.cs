@@ -88,6 +88,42 @@ public class SceneHandlerCallsignTests
         Assert.AreEqual(">> NEW CALLSIGN SUGGESTED", overlay.NameEntryValidationMessage);
     }
 
+    [TestMethod]
+    public void HandleNameEntryKey_TakenCallsignOffersNumberedVariant()
+    {
+        HighscoreService.SaveLocalHighscores(new HighscoreList
+        {
+            Entries = new List<HighscoreEntry> { new() { PlayerName = "RED CARMACK" } }
+        });
+        var handler = new SceneHandler();
+        var overlay = GameState.ScreenOverlayState;
+        InvokeShowNameEntryOverlay(handler, overlay);
+        overlay.NameEntryBuffer = "RED CARMACK";
+
+        InvokeHandleNameEntryKey(handler, GameInputKey.Return, overlay);
+
+        StringAssert.StartsWith(overlay.NameEntryBuffer, "RED CARMACK ");
+        Assert.IsTrue(char.IsDigit(overlay.NameEntryBuffer[^1]));
+        Assert.AreEqual(
+            PlayerCallsignService.NumberedCallsignSuggestedMessage,
+            overlay.NameEntryValidationMessage);
+        Assert.IsFalse(overlay.IsNameConfirmed);
+    }
+
+    [TestMethod]
+    public void HandleNameEntryKey_EscapeRestoresVisibleIntroMenuImmediately()
+    {
+        var handler = new SceneHandler();
+        var overlay = GameState.ScreenOverlayState;
+        InvokeShowNameEntryOverlay(handler, overlay);
+
+        InvokeHandleNameEntryKey(handler, GameInputKey.Escape, overlay);
+
+        Assert.AreEqual(ScreenOverlayType.Intro, overlay.Type);
+        Assert.AreEqual(ScreenOverlayChoiceAction.IntroMainMenu, overlay.ChoiceAction);
+        Assert.IsTrue(overlay.ShowOverlay);
+    }
+
     private static void InvokeShowNameEntryOverlay(SceneHandler handler, ScreenOverlayState overlay)
     {
         var method = typeof(SceneHandler).GetMethod("ShowNameEntryOverlay", BindingFlags.NonPublic | BindingFlags.Instance);

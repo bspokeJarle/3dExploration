@@ -13,32 +13,19 @@ namespace TheOmegaStrain.Game.Scenes.Intro
 {
     public class Intro : IScene
     {
-        // Controller line is only shown when a controller is actually detected.
-        private static string BuildStoryFooter()
+        private static string BuildMainMenuFooter()
         {
             var activeScheme = GameState.SettingsState.EffectiveControlScheme;
-            string keyboardActive = activeScheme == ControlInputMode.Keyboard || activeScheme == ControlInputMode.Mouse
-                ? " <- ACTIVE"
-                : string.Empty;
-            string controllerActive = activeScheme == ControlInputMode.XboxController
-                ? " <- ACTIVE"
-                : string.Empty;
-
-            string footer =
-                "PRESS ANY KEY OR XBOX [A] TO START";
-
-            if (GameState.InputDeviceState.AnyControllerConnected)
-                footer += $"\n[X] CONTROLLER SETTINGS{controllerActive}";
-
-            footer += $"\n[K] KEYBOARD / MOUSE SETTINGS{keyboardActive} | ESC QUIT";
-
             if (activeScheme == ControlInputMode.XboxController)
-                footer += "\n\u00A0\nXBOX: HOLD [VIEW] FOR 2 SECONDS TO QUIT";
+                return "D-PAD UP/DOWN SELECT | [A] CONFIRM\n" +
+                       "D-PAD LEFT/RIGHT VIEW INFO\n\n" +
+                       "HOLD [VIEW] FOR 2 SECONDS TO QUIT";
 
-            return footer + "\n\u00A0";
+            return "UP/DOWN SELECT | ENTER CONFIRM\n" +
+                   "LEFT/RIGHT VIEW INFO";
         }
 
-        private const string StoryPageTitle = "THE OMEGA STRAIN";
+        private const string MainMenuPageTitle = "THE OMEGA STRAIN";
 
         /// <summary>
         /// Controllers can be plugged in after the overlay was built, so the story
@@ -50,27 +37,53 @@ namespace TheOmegaStrain.Game.Scenes.Intro
             if (overlay.Type != ScreenOverlayType.Intro)
                 return;
 
-            string footer = BuildStoryFooter();
-
-            for (int i = 0; i < overlay.Pages.Count; i++)
+            if (overlay.CurrentPage == 0 &&
+                overlay.ChoiceAction == ScreenOverlayChoiceAction.IntroMainMenu)
             {
-                var page = overlay.Pages[i];
-                if (page.Length < 4 || page[1] != StoryPageTitle)
-                    continue;
-
-                if (page[3] == footer)
+                string expectedControlMode = GetControlModeLabel();
+                string expectedPrefix = $"ACTIVE CONTROL: {expectedControlMode}";
+                string expectedFooter = BuildMainMenuFooter();
+                if (overlay.ChoiceBodyPrefix == expectedPrefix &&
+                    overlay.Footer == expectedFooter)
                     return;
 
-                page[3] = footer;
-                if (overlay.CurrentPage == i)
-                    overlay.Footer = footer;
-                return;
+                int selectedIndex = overlay.SelectedChoiceIndex;
+                ConfigureMainMenu(overlay);
+                overlay.MoveChoiceSelection(selectedIndex);
             }
         }
 
-        private const string InfoFooter =
-            "PRESS ANY KEY OR XBOX [A] TO START\n" +
-            "ARROWS / D-PAD CHANGE PAGE";
+        public static void ConfigurePageMode(ScreenOverlayState overlay)
+        {
+            if (overlay.CurrentPage == 0)
+                ConfigureMainMenu(overlay);
+            else
+                overlay.ClearChoiceOptions();
+        }
+
+        private static void ConfigureMainMenu(ScreenOverlayState overlay)
+        {
+            string controlMode = GetControlModeLabel();
+
+            overlay.SetChoiceOptions(
+                ScreenOverlayChoiceAction.IntroMainMenu,
+                $"ACTIVE CONTROL: {controlMode}",
+                "START GAME",
+                "TRAINING",
+                "SETTINGS",
+                "QUIT");
+            overlay.Footer = BuildMainMenuFooter();
+        }
+
+        private static string GetControlModeLabel() =>
+            GameState.SettingsState.EffectiveControlScheme switch
+            {
+                ControlInputMode.XboxController => "XBOX CONTROLLER",
+                ControlInputMode.Mouse => "MOUSE + KEYBOARD",
+                _ => "KEYBOARD"
+            };
+
+        private const string InfoFooter = "LEFT/RIGHT CHANGE PAGE | ESC/B BACK TO MENU";
 
         public bool SkipLogoCube { get; set; } = false;
 
@@ -111,33 +124,64 @@ namespace TheOmegaStrain.Game.Scenes.Intro
             var o = GameState.ScreenOverlayState;
 
             o.Type = ScreenOverlayType.Intro;
-            o.Anchor = ScreenOverlayAnchor.Top;
+            o.Anchor = ScreenOverlayAnchor.Center;
 
-            // Page 1: Story
+            // Page 1: Main menu
+            o.AddPage(
+                "RETROMESH COMMAND CONSOLE",
+                MainMenuPageTitle,
+                "",
+                BuildMainMenuFooter());
+
+            // Page 2: Story
             o.AddPage(
                 "RETROMESH SYSTEM INITIALIZING",
-                StoryPageTitle,
+                "THE OMEGA STRAIN // BRIEFING",
                 "Year 2147.\n\n" +
                 "A foreign organism has spread across the outer colonies.\n" +
                 "Designated: OMEGA STRAIN.\n\n" +
                 "Autonomous Seeder units detected.\n" +
                 "Containment probability: 12%.",
-                BuildStoryFooter());
-
-            // Page 2: Gameplay tips
-            o.AddPage(
-                "RETROMESH // FIELD MANUAL",
-                "TACTICAL TIPS",
-                "COMBAT TIPS:\n" +
-                "  - Destroy Seeders fast to control infection spread\n" +
-                "  - Every Seeder kill helps slow the infection cascade\n" +
-                "  - Kamikaze Drones will rush your ship - deploy Decoys!\n" +
-                "  - Decoys unlock after collecting your first PowerUp\n" +
-                "  - PowerUps drop from glowing Seeders\n" +
-                "  - Eliminate all enemies to face the MotherShip",
                 InfoFooter);
 
-            // Page 3: Highscores
+            // Pages 3-5: Gameplay tips. Keep each page short enough to remain
+            // readable on the centered menu panel at every supported resolution.
+            o.AddPage(
+                "RETROMESH // FIELD MANUAL",
+                "GAMEPLAY TIPS & TRICKS",
+                "NAVIGATION & OBJECTIVES:\n" +
+                "  - The green arrow below the HUD points to the closest Seeder\n" +
+                "  - Keep the arrow ahead of you to reach the next target quickly\n" +
+                "  - Destroy Seeders fast to stop their infection cascades\n" +
+                "  - Watch the infection meter - reaching the limit loses the planet\n" +
+                "  - Clear the enemy wave to bring in the MotherShip",
+                InfoFooter);
+
+            o.AddPage(
+                "RETROMESH // FIELD MANUAL",
+                "WEAPONS & POWERUPS",
+                "COMBAT SYSTEMS:\n" +
+                "  - Keyboard 1: Bullet | 2: Decoy | 3: Laser\n" +
+                "  - Xbox defaults: [X] Bullet | [Y] Decoy | [B] Laser\n" +
+                "  - Select a system, then use your configured FIRE control\n" +
+                "  - Decoys lure Kamikaze Drones away from your ship\n" +
+                "  - Seeder kills can drop PowerUps - fly into them to collect\n" +
+                "  - Some PowerUps permanently improve travel speed",
+                InfoFooter);
+
+            o.AddPage(
+                "RETROMESH // FIELD MANUAL",
+                "FLIGHT & SURVIVAL",
+                "PILOT NOTES:\n" +
+                "  - Thrust, steering, fire and Xbox buttons are editable in Settings\n" +
+                "  - Flight Settings tune coasting, thrust and gravity response\n" +
+                "  - Releasing thrust preserves momentum; plan turns before the target\n" +
+                "  - Hard surface impacts damage the ship - control your descent\n" +
+                "  - Use Training from the main menu to practise safely\n" +
+                "  - ESC opens the menu; on its first page hold [VIEW] 2 seconds to quit",
+                InfoFooter);
+
+            // Final page: Highscores
             o.AddPage(
                 "RETROMESH // HALL OF FAME",
                 "TOP PILOTS",
@@ -146,6 +190,8 @@ namespace TheOmegaStrain.Game.Scenes.Intro
 
             o.CurrentPage = 0;
             o.ApplyPageContent();
+            o.AutoPageSeconds = 0f;
+            ConfigureMainMenu(o);
 
             // LogoCube plays first
             o.ShowOverlay = false;
@@ -158,6 +204,7 @@ namespace TheOmegaStrain.Game.Scenes.Intro
             o.DimStrength = 0.55f;
             o.PanelWidthRatio = 0.72f;
             o.PanelHeightRatio = 0.32f;
+            o.PanelYOffsetRatio = 0.00f;
             //Hide Debug overlay
             o.ShowDebugOverlay = false;
         }

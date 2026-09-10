@@ -1,4 +1,5 @@
 using TheOmegaStrain.Domain;
+using TheOmegaStrain.Common.CommonGlobalState;
 using System;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,7 +19,6 @@ namespace TheOmegaStrain.Wpf.MainWindowClasses
         private const double MinimumPanelHeightDip = 160.0;
         private const double PanelEdgeMarginDip = 24.0;
         private const double SoftMaxPanelHeightRatio = 0.90;
-        private const string MultiPageNavigationHint = "PRESS ARROW KEYS TO NAVIGATE";
 
         private readonly Grid _root;
 
@@ -174,9 +174,17 @@ namespace TheOmegaStrain.Wpf.MainWindowClasses
             _footer.Visibility = string.IsNullOrWhiteSpace(_footer.Text) ? Visibility.Collapsed : Visibility.Visible;
 
             // Page indicator
-            if (state.HasMultiplePages)
+            if (state.Type == ScreenOverlayType.Settings &&
+                state.SettingsPanel != ScreenOverlaySettingsPanel.None)
             {
-                _pageIndicator.Text = BuildPageIndicatorText(state.TotalPages, state.CurrentPage);
+                bool controllerActive = GameState.SettingsState.EffectiveControlScheme == ControlInputMode.XboxController;
+                _pageIndicator.Text = BuildSettingsPageIndicatorText(state.SettingsPanel, controllerActive);
+                _pageIndicator.Visibility = Visibility.Visible;
+            }
+            else if (state.HasMultiplePages)
+            {
+                bool controllerActive = GameState.SettingsState.EffectiveControlScheme == ControlInputMode.XboxController;
+                _pageIndicator.Text = BuildPageIndicatorText(state.TotalPages, state.CurrentPage, controllerActive);
                 _pageIndicator.Visibility = Visibility.Visible;
             }
             else
@@ -198,6 +206,20 @@ namespace TheOmegaStrain.Wpf.MainWindowClasses
 
             _panel.Width = panelW;
             _panel.CornerRadius = new CornerRadius(state.CornerRadius);
+
+            // Keep readable content as one centered composition while preserving
+            // left-aligned terminal text inside that composition.
+            double panelContentWidth = Math.Max(
+                0,
+                panelW - _panel.Padding.Left - _panel.Padding.Right -
+                _panel.BorderThickness.Left - _panel.BorderThickness.Right);
+            double contentColumnWidth = Math.Min(panelContentWidth, 960.0);
+            _header.Width = contentColumnWidth;
+            _title.Width = contentColumnWidth;
+            _body.Width = contentColumnWidth;
+            _header.HorizontalAlignment = HorizontalAlignment.Center;
+            _title.HorizontalAlignment = HorizontalAlignment.Center;
+            _body.HorizontalAlignment = HorizontalAlignment.Center;
 
             // Anchor
             _panel.VerticalAlignment = state.Anchor switch
@@ -228,17 +250,21 @@ namespace TheOmegaStrain.Wpf.MainWindowClasses
             // ----------------------------
             // Dynamic height to fit content (no cutting)
             // ----------------------------
-            // First: let panel auto-size
+            // Measure the content directly. Measuring the Border after it previously
+            // had an explicit height can preserve that old desired size in WPF and
+            // make a short menu look much taller than its content.
             _panel.Height = double.NaN;
-
-            // Measure desired height based on current content
-            _panel.Measure(new Size(panelW, double.PositiveInfinity));
-            double desiredH = _panel.DesiredSize.Height;
+            double horizontalChrome = _panel.Padding.Left + _panel.Padding.Right +
+                                      _panel.BorderThickness.Left + _panel.BorderThickness.Right;
+            double verticalChrome = _panel.Padding.Top + _panel.Padding.Bottom +
+                                    _panel.BorderThickness.Top + _panel.BorderThickness.Bottom;
+            _stack.Measure(new Size(Math.Max(0, panelW - horizontalChrome), double.PositiveInfinity));
+            double desiredH = _stack.DesiredSize.Height + verticalChrome;
 
             _panel.Height = CalculatePanelHeight(desiredH, screenHeight, yOffset, state.Anchor);
         }
 
-        public static string BuildPageIndicatorText(int totalPages, int currentPage)
+        public static string BuildPageIndicatorText(int totalPages, int currentPage, bool controllerActive = false)
         {
             if (totalPages <= 1)
                 return string.Empty;
@@ -248,8 +274,24 @@ namespace TheOmegaStrain.Wpf.MainWindowClasses
                 dots.Append(i == currentPage ? " [*] " : " [ ] ");
 
             dots.Append("   ");
-            dots.Append(MultiPageNavigationHint);
+            dots.Append(controllerActive ? "D-PAD LEFT/RIGHT TO NAVIGATE" : "LEFT/RIGHT TO NAVIGATE");
             return dots.ToString();
+        }
+
+        public static string BuildSettingsPageIndicatorText(
+            ScreenOverlaySettingsPanel panel,
+            bool controllerActive = false)
+        {
+            int pageCount = Enum.GetValues<ScreenOverlaySettingsPanel>().Length - 1;
+            int currentPage = Math.Clamp((int)panel - 1, 0, pageCount - 1);
+            string indicator = BuildPageIndicatorText(pageCount, currentPage, controllerActive);
+            string defaultHint = controllerActive
+                ? "D-PAD LEFT/RIGHT TO NAVIGATE"
+                : "LEFT/RIGHT TO NAVIGATE";
+            string settingsHint = controllerActive
+                ? "LB/RB TO CHANGE SETTINGS PAGE"
+                : "PAGE UP/DOWN TO CHANGE SETTINGS PAGE";
+            return indicator.Replace(defaultHint, settingsHint, StringComparison.Ordinal);
         }
 
         public static double CalculatePanelHeight(

@@ -70,7 +70,7 @@ namespace TheOmegaStrain.Wpf.Input
         {
             if (XboxControllerInput.IsControlPressed(state, XboxControlButton.B) ||
                 XboxControllerInput.IsControlPressed(state, XboxControlButton.View))
-                return GameInputKey.Left;
+                return GameInputKey.Escape;
 
             return ToGameInputKey(state);
         }
