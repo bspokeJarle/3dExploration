@@ -181,6 +181,19 @@ namespace TheOmegaStrain.Game.Scenes.Intro
                 "  - ESC opens the menu; on its first page hold [VIEW] 2 seconds to quit",
                 InfoFooter);
 
+            o.AddPage(
+                "RETROMESH // FIELD MANUAL",
+                "READING THE HUD",
+                "SHIPBOARD DISPLAY:\n" +
+                "  - Minimap: your ship stays centered; blinking marks show threats and pickups\n" +
+                "  - POWER is hull health | ALT is altitude | THR is current thrust\n" +
+                "  - BIO shows infection progress toward the planet's critical limit\n" +
+                "  - Drone and Seeder bars show how much of each enemy wave remains\n" +
+                "  - Bright weapon icon = selected; very faint icon = not yet unlocked\n" +
+                "  - Speed icon shows your permanent travel upgrade level\n" +
+                "  - MotherShip health appears during its battle; FPS/TRI are performance data",
+                InfoFooter);
+
             // Final page: Highscores
             o.AddPage(
                 "RETROMESH // HALL OF FAME",

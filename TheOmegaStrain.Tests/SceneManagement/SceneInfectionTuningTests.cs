@@ -121,6 +121,13 @@ public class SceneInfectionTuningTests
         var flight = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "FLIGHT & SURVIVAL")[2];
         Assert.IsTrue(flight.Contains("Flight Settings", StringComparison.Ordinal));
         Assert.IsTrue(flight.Contains("control your descent", StringComparison.Ordinal));
+
+        var hud = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "READING THE HUD")[2];
+        Assert.IsTrue(hud.Contains("POWER is hull health | ALT is altitude | THR is current thrust", StringComparison.Ordinal));
+        Assert.IsTrue(hud.Contains("BIO shows infection progress", StringComparison.Ordinal));
+        Assert.IsTrue(hud.Contains("Drone and Seeder bars", StringComparison.Ordinal));
+        Assert.IsTrue(hud.Contains("Bright weapon icon = selected", StringComparison.Ordinal));
+        Assert.IsTrue(hud.Contains("MotherShip health", StringComparison.Ordinal));
     }
 
     [TestMethod]
