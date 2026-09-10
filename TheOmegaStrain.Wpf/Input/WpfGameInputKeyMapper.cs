@@ -31,5 +31,13 @@ namespace TheOmegaStrain.Wpf.Input
                 _ => GameInputKey.None
             };
         }
+
+        public static GameInputKey ToSettingsGameInputKey(Key key) =>
+            key switch
+            {
+                Key.PageUp => GameInputKey.S,
+                Key.PageDown => GameInputKey.G,
+                _ => ToGameInputKey(key)
+            };
     }
 }

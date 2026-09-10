@@ -691,6 +691,12 @@ namespace TheOmegaStrain.Game.SceneManagement
                 return;
             }
 
+            if (overlay.ChoiceAction == ScreenOverlayChoiceAction.IntroMainMenu)
+            {
+                ActivateIntroMainMenuChoice(scene, overlay);
+                return;
+            }
+
             if (overlay.Type == ScreenOverlayType.NameEntry ||
                 overlay.ChoiceAction != ScreenOverlayChoiceAction.None)
             {
@@ -751,6 +757,7 @@ namespace TheOmegaStrain.Game.SceneManagement
             {
                 overlay.HardHide();
                 scene.SetupSceneOverlay();
+                overlay.ShowOverlay = true;
                 return;
             }
 
@@ -782,7 +789,17 @@ namespace TheOmegaStrain.Game.SceneManagement
                 var confirmation = PlayerCallsignService.TryConfirmCallsign(overlay.NameEntryBuffer, priorName);
                 if (!confirmation.IsAccepted)
                 {
-                    overlay.NameEntryValidationMessage = confirmation.ValidationMessage;
+                    bool callsignTaken = confirmation.ValidationMessage == PlayerCallsignService.LocalCallsignTakenMessage ||
+                                         confirmation.ValidationMessage == PlayerCallsignService.RemoteCallsignTakenMessage;
+                    if (callsignTaken)
+                    {
+                        overlay.NameEntryBuffer = PlayerCallsignService.CreateNumberedSuggestedCallsign(overlay.NameEntryBuffer);
+                        overlay.NameEntryValidationMessage = PlayerCallsignService.NumberedCallsignSuggestedMessage;
+                    }
+                    else
+                    {
+                        overlay.NameEntryValidationMessage = confirmation.ValidationMessage;
+                    }
                     return;
                 }
 
@@ -899,17 +916,42 @@ namespace TheOmegaStrain.Game.SceneManagement
 
         private void HandleSettingsOverlayKey(GameInputKey key, IScene scene, ScreenOverlayState overlay)
         {
-            if (key == GameInputKey.Escape || key == GameInputKey.Return || key == GameInputKey.Enter)
+            if (key == GameInputKey.Escape)
             {
                 CloseSettingsOverlay(scene, overlay);
                 return;
             }
 
-            if (TryOpenSettingsOverlay(key, scene, overlay))
+            if (key == GameInputKey.S)
+            {
+                ChangeSettingsPage(scene, overlay, -1);
                 return;
+            }
+
+            if (key == GameInputKey.G)
+            {
+                ChangeSettingsPage(scene, overlay, 1);
+                return;
+            }
+
+            if (key == GameInputKey.C)
+            {
+                ShowSettingsOverlay(scene, overlay, ScreenOverlaySettingsPanel.Controls);
+                return;
+            }
 
             if (key == GameInputKey.Up)
             {
+                if (overlay.SettingsPageNavigationSelected)
+                    return;
+
+                if (overlay.SelectedSettingsIndex == 0)
+                {
+                    overlay.SetSettingsPageNavigationSelected(true);
+                    RefreshSettingsOverlayBody(overlay);
+                    return;
+                }
+
                 overlay.MoveSettingsSelection(-1, GetSettingsOptionCount(overlay.SettingsPanel));
                 RefreshSettingsOverlayBody(overlay);
                 return;
@@ -917,6 +959,20 @@ namespace TheOmegaStrain.Game.SceneManagement
 
             if (key == GameInputKey.Down)
             {
+                if (overlay.SettingsPageNavigationSelected)
+                {
+                    overlay.SetSettingsPageNavigationSelected(false);
+                    RefreshSettingsOverlayBody(overlay);
+                    return;
+                }
+
+                if (overlay.SelectedSettingsIndex == GetSettingsOptionCount(overlay.SettingsPanel) - 1)
+                {
+                    overlay.SetSettingsPageNavigationSelected(true);
+                    RefreshSettingsOverlayBody(overlay);
+                    return;
+                }
+
                 overlay.MoveSettingsSelection(1, GetSettingsOptionCount(overlay.SettingsPanel));
                 RefreshSettingsOverlayBody(overlay);
                 return;
@@ -924,14 +980,28 @@ namespace TheOmegaStrain.Game.SceneManagement
 
             if (key == GameInputKey.Left)
             {
-                AdjustSelectedSetting(overlay, -1);
+                if (overlay.SettingsPageNavigationSelected)
+                    ChangeSettingsPage(scene, overlay, -1);
+                else
+                    AdjustSelectedSetting(overlay, -1);
                 return;
             }
 
             if (key == GameInputKey.Right)
             {
-                AdjustSelectedSetting(overlay, 1);
+                if (overlay.SettingsPageNavigationSelected)
+                    ChangeSettingsPage(scene, overlay, 1);
+                else
+                    AdjustSelectedSetting(overlay, 1);
             }
+        }
+
+        private void ChangeSettingsPage(IScene scene, ScreenOverlayState overlay, int direction)
+        {
+            int pageCount = Enum.GetValues<ScreenOverlaySettingsPanel>().Length - 1;
+            int currentIndex = Math.Max(0, (int)overlay.SettingsPanel - 1);
+            int nextIndex = (currentIndex + direction + pageCount) % pageCount;
+            ShowSettingsOverlay(scene, overlay, (ScreenOverlaySettingsPanel)(nextIndex + 1));
         }
 
         private bool TryOpenSettingsOverlay(GameInputKey key, IScene scene, ScreenOverlayState overlay)
@@ -972,8 +1042,8 @@ namespace TheOmegaStrain.Game.SceneManagement
             overlay.SetSettingsPreset(
                 panel,
                 GetSettingsTitle(panel),
-                BuildSettingsOverlayBody(panel, selectedIndex: 0),
-                GameSettingsOverlayFormatter.Footer);
+                BuildSettingsOverlayBody(panel, selectedIndex: 0, pageNavigationSelected: true),
+                GameSettingsOverlayFormatter.BuildFooter(GameState.SettingsState, pageNavigationSelected: true));
         }
 
         private void CloseSettingsOverlay(IScene scene, ScreenOverlayState overlay)
@@ -987,6 +1057,7 @@ namespace TheOmegaStrain.Game.SceneManagement
                 scene.SetupSceneOverlay();
                 overlay.CurrentPage = Math.Clamp(_settingsReturnIntroPage, 0, overlay.TotalPages - 1);
                 overlay.ApplyPageContent();
+                Intro.ConfigurePageMode(overlay);
                 overlay.ShowOverlay = true;
                 return;
             }
@@ -1008,6 +1079,10 @@ namespace TheOmegaStrain.Game.SceneManagement
             {
                 GameState.SettingsState.AdjustControls(overlay.SelectedSettingsIndex, direction);
             }
+            else if (overlay.SettingsPanel == ScreenOverlaySettingsPanel.Flight)
+            {
+                GameState.SettingsState.AdjustFlight((FlightSettingsField)overlay.SelectedSettingsIndex, direction);
+            }
 
             GameSettingsPersistence.SaveSettings(GameState.SettingsState);
             RefreshSettingsOverlayBody(overlay);
@@ -1015,17 +1090,31 @@ namespace TheOmegaStrain.Game.SceneManagement
 
         private static void RefreshSettingsOverlayBody(ScreenOverlayState overlay)
         {
-            overlay.Body = BuildSettingsOverlayBody(overlay.SettingsPanel, overlay.SelectedSettingsIndex);
+            overlay.Body = BuildSettingsOverlayBody(
+                overlay.SettingsPanel,
+                overlay.SelectedSettingsIndex,
+                overlay.SettingsPageNavigationSelected);
+            overlay.Footer = GameSettingsOverlayFormatter.BuildFooter(
+                GameState.SettingsState,
+                overlay.SettingsPageNavigationSelected);
         }
 
-        private static string BuildSettingsOverlayBody(ScreenOverlaySettingsPanel panel, int selectedIndex)
+        private static string BuildSettingsOverlayBody(
+            ScreenOverlaySettingsPanel panel,
+            int selectedIndex,
+            bool pageNavigationSelected)
         {
-            return panel switch
+            string pageName = GetSettingsTitle(panel).Replace(" SETTINGS", "", StringComparison.Ordinal);
+            string pageSelector = $"{(pageNavigationSelected ? ">" : " ")} SETTINGS PAGE     < {pageName} >";
+            int visibleSelectedIndex = pageNavigationSelected ? -1 : selectedIndex;
+            string settingsBody = panel switch
             {
-                ScreenOverlaySettingsPanel.Audio => GameSettingsOverlayFormatter.BuildAudioBody(GameState.SettingsState, selectedIndex),
-                ScreenOverlaySettingsPanel.Controls => GameSettingsOverlayFormatter.BuildControlsBody(GameState.SettingsState, selectedIndex),
-                _ => GameSettingsOverlayFormatter.BuildGraphicsBody(GameState.SettingsState, selectedIndex)
+                ScreenOverlaySettingsPanel.Audio => GameSettingsOverlayFormatter.BuildAudioBody(GameState.SettingsState, visibleSelectedIndex),
+                ScreenOverlaySettingsPanel.Controls => GameSettingsOverlayFormatter.BuildControlsBody(GameState.SettingsState, visibleSelectedIndex),
+                ScreenOverlaySettingsPanel.Flight => GameSettingsOverlayFormatter.BuildFlightBody(GameState.SettingsState, visibleSelectedIndex),
+                _ => GameSettingsOverlayFormatter.BuildGraphicsBody(GameState.SettingsState, visibleSelectedIndex)
             };
+            return pageSelector + "\n\n" + settingsBody;
         }
 
         private static int GetSettingsOptionCount(ScreenOverlaySettingsPanel panel)
@@ -1034,6 +1123,7 @@ namespace TheOmegaStrain.Game.SceneManagement
             {
                 ScreenOverlaySettingsPanel.Audio => Enum.GetValues<AudioSettingsField>().Length,
                 ScreenOverlaySettingsPanel.Controls => GameState.SettingsState.GetControlsOptionCount(),
+                ScreenOverlaySettingsPanel.Flight => Enum.GetValues<FlightSettingsField>().Length,
                 _ => Enum.GetValues<GraphicsSettingsField>().Length
             };
         }
@@ -1043,6 +1133,7 @@ namespace TheOmegaStrain.Game.SceneManagement
             {
                 ScreenOverlaySettingsPanel.Audio => "SOUND SETTINGS",
                 ScreenOverlaySettingsPanel.Controls => "CONTROL SETTINGS",
+                ScreenOverlaySettingsPanel.Flight => "FLIGHT SETTINGS",
                 _ => "GRAPHICS SETTINGS"
             };
 
@@ -1065,10 +1156,67 @@ namespace TheOmegaStrain.Game.SceneManagement
         {
             if (Logger.ShouldLog(enableLogging)) Logger.Log($"Scenehandler: Keypress during Intro ShowOverlay: {overlay.ShowOverlay} ", "General");
 
-            if (IsTutorialStartKey(key))
+            if (overlay.ChoiceAction == ScreenOverlayChoiceAction.IntroMainMenu)
             {
-                _pendingTutorialStart = true;
-                ShowNameEntryOverlay(overlay);
+                if (IsTutorialStartKey(key))
+                {
+                    _pendingTutorialStart = true;
+                    ShowNameEntryOverlay(overlay);
+                    return;
+                }
+
+                if (key == GameInputKey.K)
+                {
+                    OpenControlSettingsForScheme(scene, overlay, ControlInputMode.Keyboard);
+                    return;
+                }
+
+                if (key == GameInputKey.X && GameState.InputDeviceState.AnyControllerConnected)
+                {
+                    OpenControlSettingsForScheme(scene, overlay, ControlInputMode.XboxController);
+                    return;
+                }
+
+                if (key == GameInputKey.Up)
+                {
+                    overlay.MoveChoiceSelection(-1);
+                    return;
+                }
+
+                if (key == GameInputKey.Down)
+                {
+                    overlay.MoveChoiceSelection(1);
+                    return;
+                }
+
+                if (key == GameInputKey.Left || key == GameInputKey.Right)
+                {
+                    overlay.ClearChoiceOptions();
+                    if (key == GameInputKey.Right)
+                        overlay.NextPage();
+                    else
+                        overlay.PreviousPage();
+                    RefreshCurrentHighscorePage(overlay);
+                    Intro.ConfigurePageMode(overlay);
+                    return;
+                }
+
+                if (key == GameInputKey.Return || key == GameInputKey.Enter || key == GameInputKey.Space)
+                {
+                    ActivateIntroMainMenuChoice(scene, overlay);
+                    return;
+                }
+
+                if (key == GameInputKey.Escape)
+                    ShowQuitGameConfirmationOverlay(overlay);
+                return;
+            }
+
+            if (key == GameInputKey.Escape)
+            {
+                overlay.CurrentPage = 0;
+                overlay.ApplyPageContent();
+                Intro.ConfigurePageMode(overlay);
                 return;
             }
 
@@ -1084,12 +1232,6 @@ namespace TheOmegaStrain.Game.SceneManagement
                 return;
             }
 
-            if (key == GameInputKey.Escape)
-            {
-                ShowQuitGameConfirmationOverlay(overlay);
-                return;
-            }
-
             // Page navigation with arrow keys
             if (overlay.HasMultiplePages)
             {
@@ -1097,17 +1239,37 @@ namespace TheOmegaStrain.Game.SceneManagement
                 {
                     overlay.NextPage();
                     RefreshCurrentHighscorePage(overlay);
+                    Intro.ConfigurePageMode(overlay);
                     return;
                 }
                 if (key == GameInputKey.Left || key == GameInputKey.A)
                 {
                     overlay.PreviousPage();
                     RefreshCurrentHighscorePage(overlay);
+                    Intro.ConfigurePageMode(overlay);
                     return;
                 }
             }
+        }
 
-            ShowNameEntryOverlay(overlay);
+        private void ActivateIntroMainMenuChoice(IScene scene, ScreenOverlayState overlay)
+        {
+            switch (overlay.SelectedChoiceIndex)
+            {
+                case 0:
+                    ShowNameEntryOverlay(overlay);
+                    break;
+                case 1:
+                    _pendingTutorialStart = true;
+                    ShowNameEntryOverlay(overlay);
+                    break;
+                case 2:
+                    ShowSettingsOverlay(scene, overlay, ScreenOverlaySettingsPanel.Audio);
+                    break;
+                case 3:
+                    ShowQuitGameConfirmationOverlay(overlay);
+                    break;
+            }
         }
 
         private static void HandleGameKey(GameInputKey key, IScene scene, ScreenOverlayState overlay)

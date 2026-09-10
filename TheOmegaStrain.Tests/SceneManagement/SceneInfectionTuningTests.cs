@@ -108,9 +108,26 @@ public class SceneInfectionTuningTests
 
         intro.SetupSceneOverlay();
 
-        var gameplayTips = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "TACTICAL TIPS")[2];
+        var gameplayTips = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "GAMEPLAY TIPS & TRICKS")[2];
         Assert.IsTrue(gameplayTips.Contains("Destroy Seeders fast", StringComparison.Ordinal));
-        Assert.IsTrue(gameplayTips.Contains("Every Seeder kill helps slow the infection cascade", StringComparison.Ordinal));
+        Assert.IsTrue(gameplayTips.Contains("green arrow below the HUD", StringComparison.Ordinal));
+        Assert.IsTrue(gameplayTips.Contains("infection meter", StringComparison.Ordinal));
+
+        var weapons = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "WEAPONS & POWERUPS")[2];
+        Assert.IsTrue(weapons.Contains("Keyboard 1: Bullet | 2: Decoy | 3: Laser", StringComparison.Ordinal));
+        Assert.IsTrue(weapons.Contains("[X] Bullet | [Y] Decoy | [B] Laser", StringComparison.Ordinal));
+        Assert.IsTrue(weapons.Contains("fly into them to collect", StringComparison.Ordinal));
+
+        var flight = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "FLIGHT & SURVIVAL")[2];
+        Assert.IsTrue(flight.Contains("Flight Settings", StringComparison.Ordinal));
+        Assert.IsTrue(flight.Contains("control your descent", StringComparison.Ordinal));
+
+        var hud = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "READING THE HUD")[2];
+        Assert.IsTrue(hud.Contains("POWER is hull health | ALT is altitude | THR is current thrust", StringComparison.Ordinal));
+        Assert.IsTrue(hud.Contains("BIO shows infection progress", StringComparison.Ordinal));
+        Assert.IsTrue(hud.Contains("Drone and Seeder bars", StringComparison.Ordinal));
+        Assert.IsTrue(hud.Contains("Bright weapon icon = selected", StringComparison.Ordinal));
+        Assert.IsTrue(hud.Contains("MotherShip health", StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -124,29 +141,21 @@ public class SceneInfectionTuningTests
         Assert.IsFalse(GameState.ScreenOverlayState.Pages.Any(page => page[1] == "FLIGHT CONTROLS"));
         Assert.IsFalse(GameState.ScreenOverlayState.Pages.Any(page => page[1] == "XBOX CONTROLLER"));
 
-        var storyFooter = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "THE OMEGA STRAIN")[3];
-        Assert.IsTrue(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS", StringComparison.Ordinal));
-        Assert.IsTrue(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS <- ACTIVE", StringComparison.Ordinal));
-        Assert.IsFalse(storyFooter.Contains("CONTROLLER SETTINGS", StringComparison.Ordinal));
-        Assert.IsFalse(storyFooter.Contains("HOLD [VIEW]", StringComparison.Ordinal));
+        var menu = GameState.ScreenOverlayState;
+        Assert.IsTrue(menu.Body.Contains("ACTIVE CONTROL: KEYBOARD", StringComparison.Ordinal));
+        Assert.IsTrue(menu.Body.Contains("START GAME", StringComparison.Ordinal));
+        Assert.IsTrue(menu.Body.Contains("SETTINGS", StringComparison.Ordinal));
+        Assert.IsFalse(menu.Footer.Contains("HOLD [VIEW]", StringComparison.Ordinal));
 
         GameState.InputDeviceState.SetXboxControllerConnected(true);
-        intro.SetupSceneOverlay();
-
-        storyFooter = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "THE OMEGA STRAIN")[3];
-        Assert.IsTrue(storyFooter.Contains("[X] CONTROLLER SETTINGS", StringComparison.Ordinal));
-        Assert.IsTrue(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS <- ACTIVE", StringComparison.Ordinal));
-        Assert.IsFalse(storyFooter.Contains("HOLD [VIEW]", StringComparison.Ordinal));
-
         GameState.SettingsState.ActiveControlScheme = ControlInputMode.XboxController;
         intro.SetupSceneOverlay();
 
-        storyFooter = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "THE OMEGA STRAIN")[3];
-        Assert.IsTrue(storyFooter.Contains("[X] CONTROLLER SETTINGS <- ACTIVE", StringComparison.Ordinal));
-        Assert.IsFalse(storyFooter.Contains("[K] KEYBOARD / MOUSE SETTINGS <- ACTIVE", StringComparison.Ordinal));
-        Assert.IsTrue(storyFooter.Contains(
-            "\n\u00A0\nXBOX: HOLD [VIEW] FOR 2 SECONDS TO QUIT\n\u00A0",
-            StringComparison.Ordinal));
+        menu = GameState.ScreenOverlayState;
+        Assert.IsTrue(menu.Body.Contains("ACTIVE CONTROL: XBOX CONTROLLER", StringComparison.Ordinal));
+        Assert.IsTrue(menu.Footer.Contains("D-PAD UP/DOWN SELECT", StringComparison.Ordinal));
+        Assert.IsTrue(menu.Footer.Contains("HOLD [VIEW] FOR 2 SECONDS TO QUIT", StringComparison.Ordinal));
+
         GameState.InputDeviceState.Reset();
     }
 

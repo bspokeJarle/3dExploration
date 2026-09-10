@@ -89,7 +89,10 @@ namespace TheOmegaStrain.Game.Scenes.Scene2
                 GameState.SurfaceState.GlobalMapPosition,
                 totalSeederCount: 10,
                 regularSeed: 2021,
-                nearSeederCount: 5);
+                nearSeederCount: 5,
+                firstRingRadius: 6500f,
+                ringRadiusStep: 7500f,
+                minSeederDistance: 3600f);
 
             // Mothership — spawns inactive, enters when all seeders and drones are destroyed
             var motherShip = MotherShipSmall.CreateMotherShipSmall(Surface);

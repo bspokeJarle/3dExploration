@@ -32,6 +32,29 @@ public class SeederPlacementHelpersTests
     }
 
     [TestMethod]
+    public void OpeningSceneTuning_KeepsEverySeederWithinCompactCombatRadius()
+    {
+        var center = new Vector3 { x = 95100f, y = 0, z = 95200f };
+
+        foreach (var setup in new[] { (Count: 7, Near: 4, Seed: 1011), (Count: 10, Near: 5, Seed: 2021) })
+        {
+            var positions = SeederPlacementHelpers.CreateRingSeederPositions(
+                setup.Count,
+                center,
+                setup.Seed,
+                setup.Near,
+                firstRingRadius: 6500f,
+                ringRadiusStep: 7500f,
+                minSeederDistance: 3600f);
+
+            Assert.AreEqual(setup.Count, positions.Count);
+            Assert.IsTrue(positions.All(position => DistanceXZ(center, position) < 16500f * SurfaceSetup.WorldScale),
+                "Scene 1 and 2 seeders should remain in a compact radius to reduce dead flight time.");
+            AssertAllSeparated(positions, positions, 3600f * SurfaceSetup.WorldScale);
+        }
+    }
+
+    [TestMethod]
     public void CreateRingSeederPositions_KeepsSeedersAtLeastHalfAScreenApart()
     {
         var center = new Vector3 { x = 95100f, y = 0, z = 95200f };

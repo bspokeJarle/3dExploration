@@ -68,6 +68,7 @@ public class SettingsOverlayTests
             Assert.IsTrue(overlay.IsModal);
             StringAssert.Contains(overlay.Title, "SOUND");
 
+            HandleKeyPress(handler, world, GameInputKey.Down);
             HandleKeyPress(handler, world, GameInputKey.Left);
 
             Assert.AreEqual(95, GameState.SettingsState.MasterVolumePercent);
@@ -99,6 +100,7 @@ public class SettingsOverlayTests
             Assert.AreEqual(ScreenOverlaySettingsPanel.Graphics, overlay.SettingsPanel);
             Assert.AreEqual(GraphicsQualityPreset.Balanced, GameState.SettingsState.GraphicsQuality);
 
+            HandleKeyPress(handler, world, GameInputKey.Down);
             HandleKeyPress(handler, world, GameInputKey.Right);
 
             Assert.AreEqual(GraphicsQualityPreset.High, GameState.SettingsState.GraphicsQuality);
@@ -127,9 +129,10 @@ public class SettingsOverlayTests
             Assert.AreEqual(ScreenOverlaySettingsPanel.Controls, overlay.SettingsPanel);
             Assert.AreEqual(ControlInputMode.Keyboard, GameState.SettingsState.ActiveControlScheme);
             StringAssert.Contains(overlay.Title, "CONTROL");
-            StringAssert.Contains(overlay.Body, "ACTIVE IN GAME");
-            StringAssert.Contains(overlay.Body, "EDIT MAPPINGS");
+            StringAssert.Contains(overlay.Body, "PLAY USING");
+            StringAssert.Contains(overlay.Body, "CONFIGURE");
 
+            HandleKeyPress(handler, world, GameInputKey.Down);
             HandleKeyPress(handler, world, GameInputKey.Right);
 
             Assert.AreEqual(ControlInputMode.Mouse, GameState.SettingsState.ActiveControlScheme);
@@ -153,6 +156,7 @@ public class SettingsOverlayTests
 
             HandleKeyPress(handler, world, GameInputKey.C);
 
+            HandleKeyPress(handler, world, GameInputKey.Down);
             HandleKeyPress(handler, world, GameInputKey.Down);
             HandleKeyPress(handler, world, GameInputKey.Right);
 
@@ -184,29 +188,92 @@ public class SettingsOverlayTests
 
             Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
             Assert.AreEqual(ScreenOverlaySettingsPanel.Controls, overlay.SettingsPanel);
-            StringAssert.Contains(overlay.Footer, "[S] SOUND");
-            StringAssert.Contains(overlay.Footer, "[G] GRAPHICS");
-            StringAssert.Contains(overlay.Footer, "[C] CONTROLS");
-            StringAssert.Contains(overlay.Footer, "LEFT BUMPER SOUND");
-            StringAssert.Contains(overlay.Footer, "RIGHT BUMPER GRAPHICS");
+            Assert.IsTrue(overlay.SettingsPageNavigationSelected);
+            StringAssert.Contains(overlay.Body, "> SETTINGS PAGE");
+            StringAssert.Contains(overlay.Footer, "LEFT/RIGHT CHANGE PAGE");
+            StringAssert.Contains(overlay.Footer, "DOWN EDIT SETTINGS");
+            StringAssert.Contains(overlay.Footer, "ESC BACK");
 
             HandleKeyPress(handler, world, GameInputKey.G);
 
             Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
-            Assert.AreEqual(ScreenOverlaySettingsPanel.Graphics, overlay.SettingsPanel);
-            StringAssert.Contains(overlay.Title, "GRAPHICS");
+            Assert.AreEqual(ScreenOverlaySettingsPanel.Flight, overlay.SettingsPanel);
+            StringAssert.Contains(overlay.Title, "FLIGHT");
+            StringAssert.Contains(overlay.Body, "FLIGHT FEEL    BALANCED");
+            StringAssert.Contains(overlay.Body, "COASTING       NORMAL");
+            StringAssert.Contains(overlay.Body, "THRUST ACCEL.  NORMAL");
+            StringAssert.Contains(overlay.Body, "GRAVITY PULL   NORMAL");
+            StringAssert.Contains(overlay.Body, "RESET          BALANCED DEFAULTS");
+
+            HandleKeyPress(handler, world, GameInputKey.Down);
+            HandleKeyPress(handler, world, GameInputKey.Right);
+            Assert.AreEqual(FlightHandlingPreset.Inertial, GameState.SettingsState.FlightPreset);
+            StringAssert.Contains(overlay.Body, "FLIGHT FEEL    INERTIAL");
+            StringAssert.Contains(overlay.Body, "COASTING       LONG");
+            StringAssert.Contains(overlay.Body, "THRUST ACCEL.  GENTLE");
+            StringAssert.Contains(overlay.Body, "GRAVITY PULL   LIGHT");
+            Assert.IsTrue(File.Exists(PersistenceSetup.LocalSettingsFilePath));
 
             HandleKeyPress(handler, world, GameInputKey.S);
 
             Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
-            Assert.AreEqual(ScreenOverlaySettingsPanel.Audio, overlay.SettingsPanel);
-            StringAssert.Contains(overlay.Title, "SOUND");
+            Assert.AreEqual(ScreenOverlaySettingsPanel.Controls, overlay.SettingsPanel);
+            StringAssert.Contains(overlay.Title, "CONTROL");
 
             HandleKeyPress(handler, world, GameInputKey.C);
 
             Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
             Assert.AreEqual(ScreenOverlaySettingsPanel.Controls, overlay.SettingsPanel);
             StringAssert.Contains(overlay.Title, "CONTROL");
+        });
+    }
+
+    [TestMethod]
+    public void FlightSettings_AdjustExistingShipPhysicsProfilesAndResetToCurrentDefaults()
+    {
+        var settings = new GameSettingsState();
+
+        settings.AdjustFlight(FlightSettingsField.Preset, -1);
+        Assert.AreEqual(FlightHandlingPreset.Stable, settings.FlightPreset);
+        Assert.AreEqual(FlightCoasting.Short, settings.FlightCoastingSetting);
+        Assert.AreEqual(FlightThrustResponse.Quick, settings.FlightThrustResponseSetting);
+        Assert.AreEqual(FlightGravityResponse.Strong, settings.FlightGravityResponseSetting);
+
+        settings.AdjustFlight(FlightSettingsField.Coasting, 1);
+        Assert.AreEqual(FlightHandlingPreset.Custom, settings.FlightPreset);
+
+        settings.AdjustFlight(FlightSettingsField.ResetDefaults, 1);
+        Assert.AreEqual(FlightHandlingPreset.Balanced, settings.FlightPreset);
+        Assert.AreEqual(0.9975f, settings.ShipCoastingRetention);
+        Assert.AreEqual(30f, settings.ShipThrustRampRate);
+        Assert.AreEqual(9.6f, settings.ShipThrustSpeedMultiplier);
+        Assert.AreEqual(9f, settings.ShipGravityPullMultiplier);
+    }
+
+    [TestMethod]
+    public void SettingsOverlay_DownEntersValuesAndUpReturnsToPageSelector()
+    {
+        RunOnStaThread(() =>
+        {
+            var handler = new SceneHandler();
+            var world = CreateRealWorld(handler);
+            handler.SetupActiveScene(world);
+            GameState.ScreenOverlayState.ShowOverlay = true;
+
+            HandleKeyPress(handler, world, GameInputKey.S);
+            var overlay = GameState.ScreenOverlayState;
+            Assert.IsTrue(overlay.SettingsPageNavigationSelected);
+            StringAssert.Contains(overlay.Body, "> SETTINGS PAGE");
+            Assert.IsFalse(overlay.Body.Contains("> MASTER", StringComparison.Ordinal));
+
+            HandleKeyPress(handler, world, GameInputKey.Down);
+            Assert.IsFalse(overlay.SettingsPageNavigationSelected);
+            StringAssert.Contains(overlay.Body, "> MASTER");
+            StringAssert.Contains(overlay.Footer, "LEFT/RIGHT ADJUST");
+
+            HandleKeyPress(handler, world, GameInputKey.Up);
+            Assert.IsTrue(overlay.SettingsPageNavigationSelected);
+            StringAssert.Contains(overlay.Body, "> SETTINGS PAGE");
         });
     }
 

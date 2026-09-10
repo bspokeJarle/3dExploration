@@ -599,18 +599,18 @@ public class TutorialSceneTests
     }
 
     [TestMethod]
-    public void IntroOverlay_TextMentionsManualTrainingKey()
+    public void IntroOverlay_OffersTrainingAsExplicitMenuChoice()
     {
         GameState.InputDeviceState.Reset();
         var intro = new TheOmegaStrain.Game.Scenes.Intro.Intro();
 
         intro.SetupSceneOverlay();
 
-        var storyFooter = GameState.ScreenOverlayState.Pages.Single(page => page[1] == "THE OMEGA STRAIN")[3];
-        StringAssert.Contains(storyFooter, "[K] KEYBOARD / MOUSE SETTINGS");
-        StringAssert.Contains(storyFooter, "[K] KEYBOARD / MOUSE SETTINGS <- ACTIVE");
-        Assert.IsFalse(storyFooter.Contains("CONTROLLER SETTINGS", StringComparison.Ordinal));
-        Assert.IsFalse(storyFooter.Contains("RIGHT SHIFT", StringComparison.Ordinal));
+        var overlay = GameState.ScreenOverlayState;
+        StringAssert.Contains(overlay.Body, "TRAINING");
+        StringAssert.Contains(overlay.Body, "SETTINGS");
+        Assert.AreEqual(ScreenOverlayChoiceAction.IntroMainMenu, overlay.ChoiceAction);
+        Assert.IsFalse(overlay.Footer.Contains("RIGHT SHIFT", StringComparison.Ordinal));
 
         Assert.IsFalse(GameState.ScreenOverlayState.Pages.Any(page => page[1] == "FLIGHT CONTROLS"));
     }

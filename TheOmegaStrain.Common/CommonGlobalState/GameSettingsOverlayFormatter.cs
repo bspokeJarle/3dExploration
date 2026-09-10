@@ -7,11 +7,20 @@ namespace TheOmegaStrain.Common.CommonGlobalState
 {
     public static class GameSettingsOverlayFormatter
     {
-        public const string Footer =
-            "UP/DOWN SELECT | LEFT/RIGHT ADJUST | ENTER/ESC CLOSE\n" +
-            "[S] SOUND | [G] GRAPHICS | [C] CONTROLS\n" +
-            "XBOX: D-PAD SELECT/ADJUST | A/B CLOSE\n" +
-            "XBOX: LEFT BUMPER SOUND | RIGHT BUMPER GRAPHICS | X CONTROLS";
+        public static string BuildFooter(GameSettingsState settings, bool pageNavigationSelected = false)
+        {
+            settings.Normalize();
+            if (pageNavigationSelected)
+            {
+                return settings.EffectiveControlScheme == ControlInputMode.XboxController
+                    ? "D-PAD LEFT/RIGHT CHANGE PAGE | DOWN EDIT SETTINGS | [B] BACK"
+                    : "LEFT/RIGHT CHANGE PAGE | DOWN EDIT SETTINGS | ESC BACK";
+            }
+
+            return settings.EffectiveControlScheme == ControlInputMode.XboxController
+                ? "D-PAD UP/DOWN SELECT | LEFT/RIGHT ADJUST | [LB]/[RB] CHANGE PAGE | [B] BACK"
+                : "UP/DOWN SELECT | LEFT/RIGHT ADJUST | PAGE UP/DOWN CHANGE PAGE | ESC BACK";
+        }
 
         public static string BuildAudioBody(GameSettingsState settings, int selectedIndex)
         {
@@ -56,13 +65,13 @@ namespace TheOmegaStrain.Common.CommonGlobalState
 
             var lines = new List<string>
             {
-                "Set the control source first. Then choose which mapping list to edit.",
+                "Choose how to play, then which device bindings to configure.",
                 "Keyboard weapon keys 1/2/3 stay live for quick weapon select.",
                 ""
             };
 
-            AddValueLine(lines, selectedIndex, 0, "ACTIVE IN GAME", FormatControlMode(settings.ActiveControlScheme));
-            AddValueLine(lines, selectedIndex, 1, "EDIT MAPPINGS", FormatControlMode(settings.ControlsEditorScheme));
+            AddValueLine(lines, selectedIndex, 0, "PLAY USING", FormatControlMode(settings.ActiveControlScheme));
+            AddValueLine(lines, selectedIndex, 1, "CONFIGURE", FormatControlMode(settings.ControlsEditorScheme));
             lines.Add("");
             lines.Add($"{FormatControlMode(settings.ControlsEditorScheme)} MAPPINGS");
 
@@ -80,10 +89,10 @@ namespace TheOmegaStrain.Common.CommonGlobalState
                     AddValueLine(lines, selectedIndex, 5, "PITCH DOWN", FormatXboxButton(settings.XboxPitchDownButton));
                     AddValueLine(lines, selectedIndex, 6, "TURN LEFT", FormatXboxButton(settings.XboxTurnLeftButton));
                     AddValueLine(lines, selectedIndex, 7, "TURN RIGHT", FormatXboxButton(settings.XboxTurnRightButton));
-                    AddValueLine(lines, selectedIndex, 8, "POWERUP 1", FormatXboxButton(settings.XboxBulletButton));
-                    AddValueLine(lines, selectedIndex, 9, "POWERUP 2", FormatXboxButton(settings.XboxDecoyButton));
-                    AddValueLine(lines, selectedIndex, 10, "POWERUP 3", FormatXboxButton(settings.XboxLazerButton));
-                    AddValueLine(lines, selectedIndex, 11, "POWERUP 4", FormatXboxButton(settings.XboxPowerup4Button));
+                    AddValueLine(lines, selectedIndex, 8, "BULLET POWERUP", FormatXboxButton(settings.XboxBulletButton));
+                    AddValueLine(lines, selectedIndex, 9, "DECOY", FormatXboxButton(settings.XboxDecoyButton));
+                    AddValueLine(lines, selectedIndex, 10, "LASER POWERUP", FormatXboxButton(settings.XboxLazerButton));
+                    AddValueLine(lines, selectedIndex, 11, "SPECIAL POWERUP", FormatXboxButton(settings.XboxPowerup4Button));
                     break;
                 default:
                     AddValueLine(lines, selectedIndex, 2, "THRUST", FormatKeyboardKey(settings.KeyboardThrustKey));
@@ -95,6 +104,23 @@ namespace TheOmegaStrain.Common.CommonGlobalState
                     break;
             }
 
+            return string.Join("\n", lines);
+        }
+
+        public static string BuildFlightBody(GameSettingsState settings, int selectedIndex)
+        {
+            settings.Normalize();
+            var lines = new List<string>
+            {
+                "Tune player ship handling. Enemies, weapons and biome physics remain unchanged.",
+                ""
+            };
+
+            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.Preset, "FLIGHT FEEL", settings.FlightPreset.ToString().ToUpperInvariant());
+            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.Coasting, "COASTING", settings.FlightCoastingSetting.ToString().ToUpperInvariant());
+            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.ThrustResponse, "THRUST ACCEL.", FormatThrustAcceleration(settings.FlightThrustResponseSetting));
+            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.GravityResponse, "GRAVITY PULL", FormatGravityPull(settings.FlightGravityResponseSetting));
+            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.ResetDefaults, "RESET", "BALANCED DEFAULTS");
             return string.Join("\n", lines);
         }
 
@@ -116,6 +142,20 @@ namespace TheOmegaStrain.Common.CommonGlobalState
         }
 
         private static string OnOff(bool value) => value ? "ON" : "OFF";
+
+        private static string FormatThrustAcceleration(FlightThrustResponse value) => value switch
+        {
+            FlightThrustResponse.Soft => "GENTLE",
+            FlightThrustResponse.Quick => "STRONG",
+            _ => "NORMAL"
+        };
+
+        private static string FormatGravityPull(FlightGravityResponse value) => value switch
+        {
+            FlightGravityResponse.Light => "LIGHT",
+            FlightGravityResponse.Strong => "STRONG",
+            _ => "NORMAL"
+        };
 
         private static string FormatControlMode(ControlInputMode mode) =>
             mode switch

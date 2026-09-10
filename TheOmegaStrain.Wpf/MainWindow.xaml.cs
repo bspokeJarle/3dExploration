@@ -618,7 +618,18 @@ namespace TheOmegaStrain.Wpf
         private void HandleKeys(object sender, KeyEventArgs e)
         {
             bool overlayWasShowing = GameState.ScreenOverlayState.ShowOverlay;
-            var gameInputKey = WpfGameInputKeyMapper.ToGameInputKey(e.Key);
+            bool isSettingsPageKey = GameState.ScreenOverlayState is
+                { ShowOverlay: true, Type: ScreenOverlayType.Settings } &&
+                (e.Key == Key.PageUp || e.Key == Key.PageDown);
+            if (isSettingsPageKey && e.IsRepeat)
+            {
+                e.Handled = true;
+                return;
+            }
+
+            var gameInputKey = GameState.ScreenOverlayState is { ShowOverlay: true, Type: ScreenOverlayType.Settings }
+                ? WpfGameInputKeyMapper.ToSettingsGameInputKey(e.Key)
+                : WpfGameInputKeyMapper.ToGameInputKey(e.Key);
 
             if (IsSteamOverlayShortcut(e))
             {
@@ -929,16 +940,11 @@ namespace TheOmegaStrain.Wpf
         private bool CanXboxQuitHoldCurrentState()
         {
             var overlay = GameState.ScreenOverlayState;
-            if (overlay == null ||
-                !overlay.ShowOverlay ||
-                overlay.Type != ScreenOverlayType.Intro ||
-                overlay.CurrentPage != 0 ||
-                overlay.ChoiceAction != ScreenOverlayChoiceAction.None)
-                return false;
-
             var sceneType = world?.SceneHandler?.GetActiveScene().SceneType ?? GameState.GamePlayState.CurrentSceneType;
-            return sceneType == SceneTypes.Intro &&
-                   GameState.SettingsState.EffectiveControlScheme == ControlInputMode.XboxController;
+            return XboxQuitHoldAvailability.CanStart(
+                overlay,
+                sceneType,
+                GameState.SettingsState.EffectiveControlScheme);
         }
 
         private bool CanXboxPauseCurrentState()
@@ -1474,6 +1480,8 @@ namespace TheOmegaStrain.Wpf
                             try
                             {
                                 UpdateDirect3DBackgroundFlash();
+                                if (_useDirect3D11)
+                                    Direct3DGraphicsSettings.Apply(screenCoordinates, GameState.SettingsState);
                                 worldRenderer.RenderTriangles(screenCoordinates);
                             }
                             finally

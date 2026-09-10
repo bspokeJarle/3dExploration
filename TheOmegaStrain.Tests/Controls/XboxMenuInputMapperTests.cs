@@ -81,10 +81,10 @@ public class XboxMenuInputMapperTests
     }
 
     [TestMethod]
-    public void ToIntroGameInputKey_MapsBackButtonsToPreviousPage()
+    public void ToIntroGameInputKey_MapsBackButtonsToMenu()
     {
-        Assert.AreEqual(GameInputKey.Left, XboxMenuInputMapper.ToIntroGameInputKey(Snapshot(B)));
-        Assert.AreEqual(GameInputKey.Left, XboxMenuInputMapper.ToIntroGameInputKey(Snapshot(View)));
+        Assert.AreEqual(GameInputKey.Escape, XboxMenuInputMapper.ToIntroGameInputKey(Snapshot(B)));
+        Assert.AreEqual(GameInputKey.Escape, XboxMenuInputMapper.ToIntroGameInputKey(Snapshot(View)));
         Assert.AreEqual(GameInputKey.Return, XboxMenuInputMapper.ToIntroGameInputKey(Snapshot(A)));
         Assert.AreEqual(GameInputKey.Return, XboxMenuInputMapper.ToIntroGameInputKey(Snapshot(Menu)));
     }

@@ -21,7 +21,8 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         None = 0,
         Audio = 1,
         Graphics = 2,
-        Controls = 3
+        Controls = 3,
+        Flight = 4
     }
 
     public enum ScreenOverlayAnchor
@@ -35,7 +36,8 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
     {
         None = 0,
         PlanetLostRecovery = 1,
-        QuitGameConfirmation = 2
+        QuitGameConfirmation = 2,
+        IntroMainMenu = 3
     }
 
         /// <summary>
@@ -95,6 +97,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         // -----------------------------
         public ScreenOverlaySettingsPanel SettingsPanel { get; set; } = ScreenOverlaySettingsPanel.None;
         public int SelectedSettingsIndex { get; private set; } = 0;
+        public bool SettingsPageNavigationSelected { get; private set; } = false;
 
         // -----------------------------
         // Choice overlays
@@ -336,6 +339,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             Footer = "";
             SettingsPanel = ScreenOverlaySettingsPanel.None;
             SelectedSettingsIndex = 0;
+            SettingsPageNavigationSelected = false;
             QuitApplicationRequested = false;
             ClearChoiceOptions();
 
@@ -698,6 +702,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             Type = ScreenOverlayType.Settings;
             SettingsPanel = panel;
             SelectedSettingsIndex = 0;
+            SettingsPageNavigationSelected = true;
             Anchor = ScreenOverlayAnchor.Center;
             IsModal = true;
             CanDismissWithInput = true;
@@ -706,12 +711,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             CurrentPage = 0;
             ClearChoiceOptions();
 
-            Header = panel switch
-            {
-                ScreenOverlaySettingsPanel.Audio => "RETROMESH // AUDIO CONFIG",
-                ScreenOverlaySettingsPanel.Controls => "RETROMESH // CONTROL CONFIG",
-                _ => "RETROMESH // GRAPHICS CONFIG"
-            };
+            Header = "RETROMESH // SETTINGS";
             Title = title ?? "";
             Body = body ?? "";
             Footer = footer ?? "";
@@ -747,5 +747,8 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             SelectedSettingsIndex = next;
             return true;
         }
+
+        public void SetSettingsPageNavigationSelected(bool selected) =>
+            SettingsPageNavigationSelected = selected;
     }
 }

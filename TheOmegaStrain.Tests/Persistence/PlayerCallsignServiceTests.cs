@@ -64,6 +64,7 @@ public class PlayerCallsignServiceTests
 
             Assert.IsFalse(string.IsNullOrWhiteSpace(suggestion));
             Assert.AreEqual(suggestion.ToUpperInvariant(), suggestion);
+            Assert.IsFalse(char.IsDigit(suggestion[^1]), $"{suggestion} should not use a number before one is needed.");
             Assert.IsTrue(
                 suggestion.Length <= ScreenOverlayState.MaxCallsignLength,
                 $"{suggestion} should fit inside the name entry field.");
@@ -71,20 +72,55 @@ public class PlayerCallsignServiceTests
     }
 
     [TestMethod]
-    public void CreateSuggestion_EveryPrefixAndNameCombinationFitsOverlay()
+    public void CreateSuggestion_AllWordsParticipateInAtLeastOneValidCombination()
     {
-        // Guards the word lists: adding a long word must not silently push
-        // suggestions past the name entry field width.
         foreach (var prefix in PlayerCallsignGenerator.Prefixes)
         {
-            foreach (var name in PlayerCallsignGenerator.Names)
-            {
-                string candidate = $"{prefix} {name}";
-                Assert.IsTrue(
-                    candidate.Length <= ScreenOverlayState.MaxCallsignLength,
-                    $"{candidate} is {candidate.Length} characters and does not fit the name entry field.");
-            }
+            Assert.IsTrue(PlayerCallsignGenerator.Names.Any(name =>
+                $"{prefix} {name}".Length <= ScreenOverlayState.MaxCallsignLength));
         }
+
+        foreach (var name in PlayerCallsignGenerator.Names)
+        {
+            Assert.IsTrue(PlayerCallsignGenerator.Prefixes.Any(prefix =>
+                $"{prefix} {name}".Length <= ScreenOverlayState.MaxCallsignLength));
+        }
+    }
+
+    [TestMethod]
+    public void UniqueCombinationCount_MatchesAllDistinctValidPairs()
+    {
+        int expected = PlayerCallsignGenerator.Prefixes
+            .SelectMany(prefix => PlayerCallsignGenerator.Names.Select(name => $"{prefix} {name}"))
+            .Where(candidate => candidate.Length <= ScreenOverlayState.MaxCallsignLength)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
+
+        Assert.AreEqual(expected, PlayerCallsignGenerator.UniqueCombinationCount);
+    }
+
+    [TestMethod]
+    public void CreateNumberedSuggestion_AddsNumberOnlyAfterCollision()
+    {
+        string suggestion = PlayerCallsignGenerator.CreateNumberedSuggestion(
+            "RED CARMACK",
+            new Random(42),
+            new[] { "RED CARMACK" });
+
+        StringAssert.StartsWith(suggestion, "RED CARMACK ");
+        Assert.IsTrue(char.IsDigit(suggestion[^1]));
+        Assert.IsTrue(suggestion.Length <= ScreenOverlayState.MaxCallsignLength);
+    }
+
+    [TestMethod]
+    public void CreateNumberedSuggestion_AdvancesExistingSuffixAfterAnotherCollision()
+    {
+        string suggestion = PlayerCallsignGenerator.CreateNumberedSuggestion(
+            "RED CARMACK 41",
+            new Random(42),
+            new[] { "RED CARMACK", "RED CARMACK 41" });
+
+        Assert.AreEqual("RED CARMACK 42", suggestion);
     }
 
     [TestMethod]

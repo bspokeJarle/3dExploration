@@ -8,6 +8,7 @@ using TheOmegaStrain.Common.Input;
 using TheOmegaStrain.Common.Persistence;
 using TheOmegaStrain.Domain;
 using TheOmegaStrain.Gameplay.Audio.Services;
+using TheOmegaStrain.Gameplay.Physics;
 using Gma.System.MouseKeyHook;
 using RetroMesh.Engine;
 using System;
@@ -2101,6 +2102,7 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         public void HandleThrust(float deltaTime)
         {
+            ApplyFlightSettings();
             float verticalInertia = Physics.CalculateThrustForces(Thrust, tilt, rotationZ, deltaTime);
             float frameScale = GameState.FrameScale90;
             float travelSpeedMultiplier = GameState.GamePlayState.TravelSpeedMultiplier *
@@ -2125,6 +2127,7 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         public void ApplyGravity(float deltaTime)
         {
+            ApplyFlightSettings();
             if (landed && !ThrustOn)
             {
                 // Smoothly settle screen position and altitude to resting values after landing.
@@ -2199,6 +2202,11 @@ namespace TheOmegaStrain.Gameplay.Controls
                     airAltStep = airMaxStep * MathF.Sign(airAltDiff);
                 GameState.SurfaceState.GlobalMapPosition.y += airAltStep;
             }
+        }
+
+        private void ApplyFlightSettings()
+        {
+            ShipFlightPhysicsSettings.Apply(Physics, GameState.SettingsState);
         }
 
         private void ApplyHorizontalCoastingTravel(float deltaTime)

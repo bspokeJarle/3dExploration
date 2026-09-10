@@ -45,7 +45,7 @@ public class SceneHandlerQuitConfirmationTests
         handler.HandleKeyPress(GameInputKey.Escape, world);
 
         var overlay = GameState.ScreenOverlayState;
-        Assert.AreEqual(ScreenOverlayChoiceAction.None, overlay.ChoiceAction);
+        Assert.AreEqual(ScreenOverlayChoiceAction.IntroMainMenu, overlay.ChoiceAction);
         Assert.AreEqual(ScreenOverlayType.Intro, overlay.Type);
         Assert.IsTrue(overlay.ShowOverlay);
         Assert.IsFalse(overlay.QuitApplicationRequested);
@@ -66,6 +66,29 @@ public class SceneHandlerQuitConfirmationTests
         handler.HandleKeyPress(GameInputKey.Return, world);
 
         Assert.IsTrue(GameState.ScreenOverlayState.QuitApplicationRequested);
+    }
+
+    [TestMethod]
+    public void QuitConfirmation_RemainsStableAcrossFrameUpdatesAndCanQuit()
+    {
+        var handler = CreateIntroHandlerWithVisibleOverlay(out var world);
+
+        handler.HandleKeyPress(GameInputKey.Escape, world);
+        for (int i = 0; i < 10; i++)
+            handler.UpdateFrame(world);
+
+        var overlay = GameState.ScreenOverlayState;
+        Assert.AreEqual(ScreenOverlayChoiceAction.QuitGameConfirmation, overlay.ChoiceAction);
+        CollectionAssert.AreEqual(new[] { "NO", "YES" }, overlay.ChoiceOptions);
+
+        handler.HandleKeyPress(GameInputKey.Right, world);
+        handler.UpdateFrame(world);
+
+        Assert.AreEqual("YES", overlay.SelectedChoice);
+
+        handler.HandleKeyPress(GameInputKey.Return, world);
+
+        Assert.IsTrue(overlay.QuitApplicationRequested);
     }
 
     private static SceneHandler CreateIntroHandlerWithVisibleOverlay(out GameWorld world)
