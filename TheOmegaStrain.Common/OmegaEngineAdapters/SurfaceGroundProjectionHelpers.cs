@@ -46,5 +46,37 @@ namespace TheOmegaStrain.Common.OmegaEngineAdapters
                 out groundY,
                 out groundZ);
         }
+
+        public static bool IsWithinSurfaceBounds(
+            IReadOnlyList<ITriangleMeshWithColorAndTexture>? rotatedTiles,
+            float targetX,
+            float targetZ)
+        {
+            if (rotatedTiles == null || rotatedTiles.Count == 0)
+                return false;
+
+            float minX = float.MaxValue;
+            float maxX = float.MinValue;
+            float minZ = float.MaxValue;
+            float maxZ = float.MinValue;
+
+            for (int i = 0; i < rotatedTiles.Count; i++)
+            {
+                AccumulateBounds(rotatedTiles[i].vert1);
+                AccumulateBounds(rotatedTiles[i].vert2);
+                AccumulateBounds(rotatedTiles[i].vert3);
+            }
+
+            return targetX >= minX && targetX <= maxX
+                && targetZ >= minZ && targetZ <= maxZ;
+
+            void AccumulateBounds(IVector3 vertex)
+            {
+                minX = MathF.Min(minX, vertex.x);
+                maxX = MathF.Max(maxX, vertex.x);
+                minZ = MathF.Min(minZ, vertex.z);
+                maxZ = MathF.Max(maxZ, vertex.z);
+            }
+        }
     }
 }

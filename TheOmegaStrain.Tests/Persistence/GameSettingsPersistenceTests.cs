@@ -43,12 +43,14 @@ public class GameSettingsPersistenceTests
             EffectsVolumePercent = 60,
             VoiceVolumePercent = 50,
             GraphicsQuality = GraphicsQualityPreset.High,
+            CameraAngle = CameraAnglePreset.High,
             ParticleDensityPercent = 130,
             GlowEffectsEnabled = true,
             EnhancedWeatherEnabled = true,
             EnhancedShadowsEnabled = false,
             FlightPreset = FlightHandlingPreset.Custom,
             FlightCoastingSetting = FlightCoasting.Long,
+            FlightRotationInertiaSetting = FlightRotationInertia.High,
             FlightThrustResponseSetting = FlightThrustResponse.Quick,
             FlightGravityResponseSetting = FlightGravityResponse.Light,
             ActiveControlScheme = ControlInputMode.Mouse,
@@ -73,12 +75,14 @@ public class GameSettingsPersistenceTests
         Assert.AreEqual(60, loaded.EffectsVolumePercent);
         Assert.AreEqual(50, loaded.VoiceVolumePercent);
         Assert.AreEqual(GraphicsQualityPreset.High, loaded.GraphicsQuality);
+        Assert.AreEqual(CameraAnglePreset.High, loaded.CameraAngle);
         Assert.AreEqual(130, loaded.ParticleDensityPercent);
         Assert.IsTrue(loaded.GlowEffectsEnabled);
         Assert.IsTrue(loaded.EnhancedWeatherEnabled);
         Assert.IsFalse(loaded.EnhancedShadowsEnabled);
         Assert.AreEqual(FlightHandlingPreset.Custom, loaded.FlightPreset);
         Assert.AreEqual(FlightCoasting.Long, loaded.FlightCoastingSetting);
+        Assert.AreEqual(FlightRotationInertia.High, loaded.FlightRotationInertiaSetting);
         Assert.AreEqual(FlightThrustResponse.Quick, loaded.FlightThrustResponseSetting);
         Assert.AreEqual(FlightGravityResponse.Light, loaded.FlightGravityResponseSetting);
         Assert.AreEqual(ControlInputMode.Mouse, loaded.ActiveControlScheme);
@@ -105,8 +109,11 @@ public class GameSettingsPersistenceTests
 
         Assert.AreEqual(100, GameState.SettingsState.MasterVolumePercent);
         Assert.AreEqual(GraphicsQualityPreset.Balanced, GameState.SettingsState.GraphicsQuality);
+        Assert.AreEqual(CameraAnglePreset.Normal, GameState.SettingsState.CameraAngle);
+        Assert.AreEqual(63f, GameState.SettingsState.CameraPitchDegrees);
         Assert.AreEqual(FlightHandlingPreset.Balanced, GameState.SettingsState.FlightPreset);
         Assert.AreEqual(0.9975f, GameState.SettingsState.ShipCoastingRetention);
+        Assert.AreEqual(0.90f, GameState.SettingsState.ShipRotationRetention);
         Assert.AreEqual(30f, GameState.SettingsState.ShipThrustRampRate);
         Assert.AreEqual(9.6f, GameState.SettingsState.ShipThrustSpeedMultiplier);
         Assert.AreEqual(9f, GameState.SettingsState.ShipGravityPullMultiplier);

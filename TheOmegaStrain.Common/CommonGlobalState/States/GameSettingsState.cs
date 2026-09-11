@@ -11,6 +11,8 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         High = 2
     }
 
+    public enum CameraAnglePreset { Low = 0, Normal = 1, High = 2 }
+
     public enum AudioSettingsField
     {
         MasterVolume = 0,
@@ -22,29 +24,32 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
     public enum GraphicsSettingsField
     {
         QualityPreset = 0,
-        ParticleDensity = 1,
-        GlowEffects = 2,
-        EnhancedWeather = 3,
-        EnhancedShadows = 4
+        CameraAngle = 1,
+        ParticleDensity = 2,
+        GlowEffects = 3,
+        EnhancedWeather = 4,
+        EnhancedShadows = 5
     }
 
     public enum FlightSettingsField
     {
         Preset = 0,
-        Coasting = 1,
-        ThrustResponse = 2,
-        GravityResponse = 3,
-        ResetDefaults = 4
+        FlightInertia = 1,
+        RotationInertia = 2,
+        ThrustResponse = 3,
+        GravityResponse = 4,
+        ResetDefaults = 5
     }
 
     public enum FlightHandlingPreset { Stable = 0, Balanced = 1, Inertial = 2, Custom = 3 }
     public enum FlightCoasting { Short = 0, Normal = 1, Long = 2 }
+    public enum FlightRotationInertia { Low = 0, Normal = 1, High = 2 }
     public enum FlightThrustResponse { Soft = 0, Normal = 1, Quick = 2 }
     public enum FlightGravityResponse { Light = 0, Normal = 1, Strong = 2 }
 
     public sealed class GameSettingsState : IAudioVolumeProfile
     {
-        public const int CurrentSettingsSchemaVersion = 5;
+        public const int CurrentSettingsSchemaVersion = 7;
         public const int VolumeStepPercent = 5;
         public const int ParticleDensityStepPercent = 10;
         private const int ControlFlowOptionCount = 2;
@@ -87,6 +92,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         public int VoiceVolumePercent { get; set; } = 100;
 
         public GraphicsQualityPreset GraphicsQuality { get; set; } = GraphicsQualityPreset.Balanced;
+        public CameraAnglePreset CameraAngle { get; set; } = CameraAnglePreset.Normal;
         public int ParticleDensityPercent { get; set; } = 100;
         public bool GlowEffectsEnabled { get; set; } = false;
         public bool EnhancedWeatherEnabled { get; set; } = true;
@@ -94,6 +100,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
 
         public FlightHandlingPreset FlightPreset { get; set; } = FlightHandlingPreset.Balanced;
         public FlightCoasting FlightCoastingSetting { get; set; } = FlightCoasting.Normal;
+        public FlightRotationInertia FlightRotationInertiaSetting { get; set; } = FlightRotationInertia.Normal;
         public FlightThrustResponse FlightThrustResponseSetting { get; set; } = FlightThrustResponse.Normal;
         public FlightGravityResponse FlightGravityResponseSetting { get; set; } = FlightGravityResponse.Normal;
 
@@ -136,6 +143,11 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         public float EffectsVolumeMultiplier => MasterVolumeMultiplier * PercentToMultiplier(EffectsVolumePercent);
         public float VoiceVolumeMultiplier => MasterVolumeMultiplier * PercentToMultiplier(VoiceVolumePercent);
         public float ParticleDensityMultiplier => Math.Clamp(ParticleDensityPercent, 50, 200) / 100f;
+        public float CameraPitchDegrees => CameraAngle switch
+        {
+            CameraAnglePreset.High => 70f,
+            _ => 63f
+        };
         public float ShipCoastingRetention => FlightCoastingSetting switch
         {
             FlightCoasting.Short => 0.9955f,
@@ -160,6 +172,24 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             FlightGravityResponse.Strong => 10.4f,
             _ => 9f
         };
+        public float ShipRotationRetention => FlightRotationInertiaSetting switch
+        {
+            FlightRotationInertia.Low => 0.82f,
+            FlightRotationInertia.High => 0.96f,
+            _ => 0.90f
+        };
+        public float ShipMouseRotationFollow => FlightRotationInertiaSetting switch
+        {
+            FlightRotationInertia.Low => 0.60f,
+            FlightRotationInertia.High => 0.25f,
+            _ => 0.42f
+        };
+        public float ShipHoverFloatDuration => FlightCoastingSetting switch
+        {
+            FlightCoasting.Short => 2f,
+            FlightCoasting.Long => 1f,
+            _ => 1.5f
+        };
 
         public void Normalize()
         {
@@ -171,11 +201,18 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
 
             if (!Enum.IsDefined(typeof(GraphicsQualityPreset), GraphicsQuality))
                 GraphicsQuality = GraphicsQualityPreset.Balanced;
+            // Low remains in the persisted enum for backwards compatibility,
+            // but is no longer a shipping option until it has broader gameplay QA.
+            if (!Enum.IsDefined(typeof(CameraAnglePreset), CameraAngle) ||
+                CameraAngle == CameraAnglePreset.Low)
+                CameraAngle = CameraAnglePreset.Normal;
 
             if (!Enum.IsDefined(typeof(FlightHandlingPreset), FlightPreset))
                 FlightPreset = FlightHandlingPreset.Balanced;
             if (!Enum.IsDefined(typeof(FlightCoasting), FlightCoastingSetting))
                 FlightCoastingSetting = FlightCoasting.Normal;
+            if (!Enum.IsDefined(typeof(FlightRotationInertia), FlightRotationInertiaSetting))
+                FlightRotationInertiaSetting = FlightRotationInertia.Normal;
             if (!Enum.IsDefined(typeof(FlightThrustResponse), FlightThrustResponseSetting))
                 FlightThrustResponseSetting = FlightThrustResponse.Normal;
             if (!Enum.IsDefined(typeof(FlightGravityResponse), FlightGravityResponseSetting))
@@ -259,6 +296,11 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
                     GraphicsQuality = AdjustQuality(GraphicsQuality, direction);
                     ApplyPresetDefaults(GraphicsQuality);
                     break;
+                case GraphicsSettingsField.CameraAngle:
+                    CameraAngle = CameraAngle == CameraAnglePreset.High
+                        ? CameraAnglePreset.Normal
+                        : CameraAnglePreset.High;
+                    break;
                 case GraphicsSettingsField.ParticleDensity:
                     int delta = direction > 0 ? ParticleDensityStepPercent : -ParticleDensityStepPercent;
                     ParticleDensityPercent = Math.Clamp(ParticleDensityPercent + delta, 50, 200);
@@ -289,8 +331,12 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
                     int next = ((int)FlightPreset + (direction > 0 ? 1 : -1) + 3) % 3;
                     ApplyFlightPreset((FlightHandlingPreset)next);
                     break;
-                case FlightSettingsField.Coasting:
+                case FlightSettingsField.FlightInertia:
                     FlightCoastingSetting = CycleEnum(FlightCoastingSetting, direction);
+                    FlightPreset = FlightHandlingPreset.Custom;
+                    break;
+                case FlightSettingsField.RotationInertia:
+                    FlightRotationInertiaSetting = CycleEnum(FlightRotationInertiaSetting, direction);
                     FlightPreset = FlightHandlingPreset.Custom;
                     break;
                 case FlightSettingsField.ThrustResponse:
@@ -316,17 +362,20 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             {
                 case FlightHandlingPreset.Stable:
                     FlightCoastingSetting = FlightCoasting.Short;
+                    FlightRotationInertiaSetting = FlightRotationInertia.Low;
                     FlightThrustResponseSetting = FlightThrustResponse.Quick;
                     FlightGravityResponseSetting = FlightGravityResponse.Strong;
                     break;
                 case FlightHandlingPreset.Inertial:
                     FlightCoastingSetting = FlightCoasting.Long;
+                    FlightRotationInertiaSetting = FlightRotationInertia.High;
                     FlightThrustResponseSetting = FlightThrustResponse.Soft;
                     FlightGravityResponseSetting = FlightGravityResponse.Light;
                     break;
                 default:
                     FlightPreset = FlightHandlingPreset.Balanced;
                     FlightCoastingSetting = FlightCoasting.Normal;
+                    FlightRotationInertiaSetting = FlightRotationInertia.Normal;
                     FlightThrustResponseSetting = FlightThrustResponse.Normal;
                     FlightGravityResponseSetting = FlightGravityResponse.Normal;
                     break;

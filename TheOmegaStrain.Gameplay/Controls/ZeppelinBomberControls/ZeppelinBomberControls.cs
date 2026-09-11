@@ -10,12 +10,12 @@ namespace TheOmegaStrain.Gameplay.Controls.ZeppelinBomberControls
 {
     public class ZeppelinBomberControls : IObjectMovement
     {
-        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
+        private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 90f;
         private const float RotationDegreesPerSecond = 60f;
         private const float ExplosionForce = 200f;
-        private const float SurfaceAltitudeLift = 60f;
+        private const float SurfaceAltitudeLift = 80f;
 
         // Propeller animation
         private const float PropellerDegreesPerSecond = 720f;
@@ -458,6 +458,7 @@ namespace TheOmegaStrain.Gameplay.Controls.ZeppelinBomberControls
             }
 
             theObject.ObjectOffsets = SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY);
+            SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(theObject, WorldViewSetup.SurfacePitchDegrees);
         }
 
         private static void SyncToOriginal(I3dObject source)

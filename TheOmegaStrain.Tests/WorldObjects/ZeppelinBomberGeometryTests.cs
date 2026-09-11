@@ -70,7 +70,7 @@ public class ZeppelinBomberGeometryTests
     }
 
     [TestMethod]
-    public void BomberMovement_SyncsSixtyUnitsAboveSurface()
+    public void BomberMovement_SyncsEightyUnitsAboveSurface()
     {
         var bomber = ZeppelinBomber.CreateZeppelinBomber(null!);
         bomber.WorldPosition = new Vector3 { x = 1000f, y = 0f, z = 2000f };
@@ -83,7 +83,7 @@ public class ZeppelinBomberGeometryTests
         controls.MoveObject(bomber, null, null);
 
         Assert.AreEqual(10f, bomber.ObjectOffsets!.x, 0.001f);
-        Assert.AreEqual(160f, bomber.ObjectOffsets.y, 0.001f);
+        Assert.AreEqual(140f, bomber.ObjectOffsets.y, 0.001f);
         Assert.AreEqual(400f, bomber.ObjectOffsets.z, 0.001f);
     }
 

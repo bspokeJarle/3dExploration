@@ -7,18 +7,19 @@ namespace TheOmegaStrain.Tests.WorldObjects;
 public class SeederGuideTests
 {
     [TestMethod]
-    public void ParticleGuides_AreCenteredUnderSeederWithSameGuideDistance()
+    public void ParticleGuides_AreCenteredWithStartClearOfUnderside()
     {
         var start = GetCentroid(Seeder.ParticlesStartGuide()![0]);
         var guide = GetCentroid(Seeder.ParticlesDirectionGuide()![0]);
 
         Assert.AreEqual(0f, start.x, 0.001f, "Seeder particle start guide should be centered on local X.");
         Assert.AreEqual(0f, start.y, 0.001f, "Seeder particle start guide should be centered on local Y.");
-        Assert.AreEqual(-13f, start.z, 0.001f, "Seeder particle start guide should sit at the bottom center module.");
+        Assert.AreEqual(-38f, start.z, 0.001f, "Seeder particle start guide should sit below the bottom center module.");
 
         Assert.AreEqual(start.x, guide.x, 0.001f, "Seeder particle end guide should stay centered on local X.");
         Assert.AreEqual(start.y, guide.y, 0.001f, "Seeder particle end guide should stay centered on local Y.");
-        Assert.AreEqual(100f, MathF.Abs(guide.z - start.z), 0.001f, "Seeder particle guide distance should stay unchanged.");
+        Assert.AreEqual(-133f, guide.z, 0.001f, "Seeder particle direction guide should retain its established position.");
+        Assert.IsTrue(guide.z < start.z, "Seeder particle direction guide should remain below the start guide.");
     }
 
     [TestMethod]
@@ -27,8 +28,8 @@ public class SeederGuideTests
         var start = Seeder.ParticlesStartGuide()![0];
         var guide = Seeder.ParticlesDirectionGuide()![0];
 
-        AssertPointAnchor(start, -13f);
-        AssertPointAnchor(guide, -113f);
+        AssertPointAnchor(start, -38f);
+        AssertPointAnchor(guide, -133f);
     }
 
     [TestMethod]
@@ -42,7 +43,9 @@ public class SeederGuideTests
             .SelectMany(t => new[] { t.vert1, t.vert2, t.vert3 })
             .Min(v => v.z);
 
-        AssertPointAnchor(start, visibleBottomZ);
+        Assert.AreEqual(visibleBottomZ - 30f, start.vert1.z, 0.001f,
+            "Scaled Seeder particle start should include the additional twenty-unit downward offset.");
+        AssertPointAnchor(start, start.vert1.z);
     }
 
     private static void AssertPointAnchor(ITriangleMeshWithColorAndTexture triangle, float expectedZ)

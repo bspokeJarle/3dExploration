@@ -23,7 +23,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
         // -------------------------------------------------------
         //  Rotation
         // -------------------------------------------------------
-        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
+        private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 90f;
         private const float RotationDegreesPerSecond = 15f;
@@ -252,6 +252,9 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
                 float smoothT = 1f - (1f - t) * (1f - t);
                 float descentTarget = GameState.SurfaceState.GlobalMapPosition.y * SyncFactorY + SyncAnchorY;
                 theObject.ObjectOffsets.y = _descentStartY + (descentTarget - _descentStartY) * smoothT;
+                SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(
+                    theObject,
+                    WorldViewSetup.SurfacePitchDegrees);
 
                 // Spin slowly during descent
                 Zrotation += SpinSpeed * (float)deltaSeconds;
@@ -278,6 +281,9 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
                 // At combat altitude: hover in place like MotherShipSmall (no travel, no live tracking).
                 // Heading is re-sampled only between shots so aiming is not continuous.
                 SyncMovement(theObject);
+                SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(
+                    theObject,
+                    WorldViewSetup.SurfacePitchDegrees);
                 UpdateFacingBetweenShots(theObject);
 
                 float maxDelta = GetRotationDegreesPerSecond() * (float)deltaSeconds;

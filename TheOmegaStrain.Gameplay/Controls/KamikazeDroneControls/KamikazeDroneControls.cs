@@ -318,6 +318,7 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
                 _storedWorldPosition = KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition);
                 _storedWorldPositionInitialized = theObject.WorldPosition != null;
                 KamikazeDroneAi.SyncAuthoritativeDroneState(theObject);
+                SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(theObject, WorldViewSetup.SurfacePitchDegrees);
                 LastMovementDateTime = now;
                 return theObject;
             }
@@ -427,6 +428,10 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
                             objectWorldPosition,
                             pursuitStep.MovementDirection,
                             pursuitStep.MoveDistance);
+
+                        // Homing may aim downward, but it must never command the
+                        // drone body through the locally rendered terrain.
+                        KamikazeDroneMovementHelpers.KeepAboveVisibleSurface(theObject);
                     }
                     else
                     {
@@ -476,6 +481,9 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
             _storedWorldPosition = KamikazeDroneMovementHelpers.ToVector3(theObject.WorldPosition);
             _storedWorldPositionInitialized = theObject.WorldPosition != null;
             KamikazeDroneAi.SyncAuthoritativeDroneState(theObject);
+            // Navigation and authoritative state use the uncorrected offsets.
+            // Add the visual surface correction only to this rendered main object.
+            SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(theObject, WorldViewSetup.SurfacePitchDegrees);
             LastMovementDateTime = now;
 
             return theObject;

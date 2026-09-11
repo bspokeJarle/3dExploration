@@ -93,7 +93,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             float dt = GameState.DeltaTime > 0f ? GameState.DeltaTime : GameState.GameplayBaselineDeltaTime;
             _zRotation += IdleSpinDegreesPerSecond * dt;
 
-            theObject.Rotation.x = 90f;
+            theObject.Rotation.x = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
             theObject.Rotation.y = 0f;
             theObject.Rotation.z = _zRotation;
         }
@@ -107,6 +107,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
 
             theObject.ObjectOffsets = SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY, SyncFactorY);
+            SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(theObject, WorldViewSetup.SurfacePitchDegrees);
         }
 
         private static void SyncToOriginal(I3dObject deepCopy)

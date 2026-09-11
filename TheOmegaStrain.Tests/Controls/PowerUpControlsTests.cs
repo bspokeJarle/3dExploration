@@ -11,11 +11,32 @@ public class PowerUpControlsTests
     [TestInitialize]
     public void Setup()
     {
+        OmegaWorldViewSetup.ConfigurePitch(63f);
         GameState.SurfaceState = new SurfaceState
         {
             GlobalMapPosition = new Vector3(),
             AiObjects = new List<OmegaObject3D>()
         };
+    }
+
+    [TestCleanup]
+    public void Cleanup()
+    {
+        OmegaWorldViewSetup.ConfigurePitch(63f);
+    }
+
+    [DataTestMethod]
+    [DataRow(56f)]
+    [DataRow(63f)]
+    [DataRow(70f)]
+    public void MoveObject_UsesConfiguredWorldPitch(float pitchDegrees)
+    {
+        OmegaWorldViewSetup.ConfigurePitch(pitchDegrees);
+        var powerup = CreatePowerUp();
+
+        new PowerUpControls().MoveObject(powerup, audioPlayer: null, soundRegistry: null);
+
+        Assert.AreEqual(pitchDegrees, powerup.Rotation!.x, 0.001f);
     }
 
     [TestMethod]

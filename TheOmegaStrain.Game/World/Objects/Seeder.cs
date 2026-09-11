@@ -21,7 +21,9 @@ namespace TheOmegaStrain.Game.World.Objects
         private static float bottomDomeHeight = 12f;   // Lower dome bottom below center (z)
         private static float centerModuleRadius = 10f;   // Radius of the center module under the saucer
         private static float centerModuleHeight = 7f;    // Height of the center module
+        private static float particleStartClearance = 5f;
         private static float particleGuideDistance = 100f;
+        private const float ParticleGuideDownOffset = 20f;
 
         private static int mainSegments = 12;    // Segments around the main circle
         private static int centerSegments = 8;     // Segments for the center module
@@ -164,7 +166,7 @@ namespace TheOmegaStrain.Game.World.Objects
 
             // Default offsets and rotation
             seeder.ObjectOffsets = new Vector3 { x = 0, y = 0, z = 0 };
-            seeder.Rotation = new Vector3 { x = 0, y = 0, z = 0 };
+            seeder.Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 };
 
             if (seederCrashBox != null)
                 seeder.CrashBoxes = seederCrashBox;
@@ -506,7 +508,7 @@ namespace TheOmegaStrain.Game.World.Objects
 
         public static List<ITriangleMeshWithColorAndTexture>? ParticlesDirectionGuide()
         {
-            float guideZ = -seederThickness - centerModuleHeight - particleGuideDistance;
+            float guideZ = -seederThickness - centerModuleHeight - particleGuideDistance - ParticleGuideDownOffset;
             var direction = new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateParticleGuidePoint(guideZ)
@@ -516,7 +518,8 @@ namespace TheOmegaStrain.Game.World.Objects
 
         public static List<ITriangleMeshWithColorAndTexture>? ParticlesStartGuide()
         {
-            float startZ = -seederThickness - centerModuleHeight;
+            // Start below the underside module so the first particles do not spawn inside it.
+            float startZ = -seederThickness - centerModuleHeight - particleStartClearance - ParticleGuideDownOffset;
             var direction = new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateParticleGuidePoint(startZ)
@@ -551,9 +554,9 @@ namespace TheOmegaStrain.Game.World.Objects
             float zMax = topDomeHeight + alienRadius + expandZ;
 
             // Mirror Z min to match Z max so the crash box is Z-symmetric.
-            // The seeder's BaseXRotation = 90 transforms Z → Y; an asymmetric Z
-            // shifts the crash box center away from the visual center, forcing the
-            // player to aim below the seeder to register a hit.
+            // The seeder follows the configured world pitch. Keeping Z symmetric
+            // prevents that rotation from shifting the crash-box center away from
+            // the visible object and forcing the player to aim above or below it.
             var min = new Vector3
             {
                 x = -seederRadius - expandXY,

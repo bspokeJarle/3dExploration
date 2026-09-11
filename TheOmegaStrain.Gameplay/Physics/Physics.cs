@@ -83,9 +83,9 @@ namespace TheOmegaStrain.Gameplay.Physics
         // HoverFloatDuration seconds, then ramps linearly to full over
         // HoverRampDuration seconds.
         public float HoverElapsed { get; set; } = 0f;
-        public float HoverFloatDuration { get; set; } = 0.4f;
+        public float HoverFloatDuration { get; set; } = 1.5f;
         public float HoverRampDuration { get; set; } = 0.75f;
-        public float HoverMinGravityScale { get; set; } = 0.05f;
+        public float HoverMinGravityScale { get; set; } = 0f;
 
         // -- Airborne settle (return-to-rest while not thrusting) -----
         // Gentle spring rate that pulls the surface back toward its

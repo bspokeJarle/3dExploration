@@ -6,7 +6,7 @@ namespace TheOmegaStrain.Gameplay.Controls
     public class IglooControls : IObjectMovement
     {
         private const float BaseYRotation = 0f;
-        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
+        private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
         public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public IPhysics Physics { get; set; } = new Physics.Physics();

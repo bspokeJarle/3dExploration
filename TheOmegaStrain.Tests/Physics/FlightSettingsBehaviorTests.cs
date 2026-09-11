@@ -2,6 +2,7 @@ using TheOmegaStrain.Common.CommonGlobalState;
 using TheOmegaStrain.Common.CommonGlobalState.States;
 using TheOmegaStrain.Domain;
 using TheOmegaStrain.Gameplay.Physics;
+using RetroMesh.Engine;
 
 namespace TheOmegaStrain.Tests.Physics;
 
@@ -31,6 +32,8 @@ public class FlightSettingsBehaviorTests
         Assert.AreEqual(30f, physics.ThrustRampRate);
         Assert.AreEqual(9.6f, physics.ThrustSpeedMultiplier);
         Assert.AreEqual(9f, physics.GravityPullMultiplier);
+        Assert.AreEqual(1.5f, physics.HoverFloatDuration);
+        Assert.AreEqual(0f, physics.HoverMinGravityScale);
     }
 
     [TestMethod]
@@ -74,6 +77,49 @@ public class FlightSettingsBehaviorTests
             $"Gravity range should create a measurable difference, actual LIGHT {light:F2}, STRONG {strong:F2}.");
     }
 
+    [TestMethod]
+    public void RotationInertiaOptions_ProduceClearlyOrderedSpinRetention()
+    {
+        float low = SimulateReleasedRotation(FlightRotationInertia.Low);
+        float normal = SimulateReleasedRotation(FlightRotationInertia.Normal);
+        float high = SimulateReleasedRotation(FlightRotationInertia.High);
+
+        Assert.IsTrue(low < normal && normal < high,
+            $"Expected LOW < NORMAL < HIGH retained rotation, actual {low:F2}, {normal:F2}, {high:F2}.");
+        Assert.IsTrue(high - low > 10f,
+            $"Rotation inertia range should be clearly measurable, actual LOW {low:F2}, HIGH {high:F2}.");
+    }
+
+    [DataTestMethod]
+    [DataRow(FlightCoasting.Short, 2f)]
+    [DataRow(FlightCoasting.Normal, 1.5f)]
+    [DataRow(FlightCoasting.Long, 1f)]
+    public void ThrustRelease_HoverDurationTracksFlightInertiaSetting(
+        FlightCoasting flightInertiaSetting,
+        float expectedHoverSeconds)
+    {
+        var physics = CreatePhysics(new GameSettingsState
+        {
+            FlightCoastingSetting = flightInertiaSetting
+        });
+
+        Assert.AreEqual(expectedHoverSeconds, physics.HoverFloatDuration);
+        Assert.AreEqual(0f, physics.HoverMinGravityScale);
+
+        int framesBeforeHoverEnds = (int)(expectedHoverSeconds / DeltaTime90) - 1;
+        for (int frame = 0; frame < framesBeforeHoverEnds; frame++)
+            physics.ApplyFallGravity(rotationDegrees: 65f, DeltaTime90);
+
+        Assert.AreEqual(0f, physics.InertiaY, 0.0001f,
+            "The ship should maintain altitude throughout the hover window.");
+
+        for (int frame = 0; frame < 3; frame++)
+            physics.ApplyFallGravity(rotationDegrees: 65f, DeltaTime90);
+
+        Assert.IsTrue(physics.InertiaY < 0f,
+            "Gravity should begin pulling the ship down after the hover window.");
+    }
+
     [DataTestMethod]
     [DataRow(FlightCoasting.Short)]
     [DataRow(FlightCoasting.Normal)]
@@ -111,6 +157,38 @@ public class FlightSettingsBehaviorTests
             physics.CalculateThrustForces(10f, 90f, 0f, DeltaTime90);
 
         return (physics.ThrustEffect, MathF.Abs(physics.InertiaZ));
+    }
+
+    [TestMethod]
+    public void ReleaseHoverDuration_GrowsWithHorizontalSpeedAndCapsAtConfiguredMaximum()
+    {
+        const float maximumSeconds = 2f;
+        const float maxInertia = 45f;
+
+        float stopped = ShipFlightPhysicsSettings.CalculateReleaseHoverDuration(
+            maximumSeconds, 0f, 0f, maxInertia);
+        float cruising = ShipFlightPhysicsSettings.CalculateReleaseHoverDuration(
+            maximumSeconds, maxInertia * 0.5f, 0f, maxInertia);
+        float fast = ShipFlightPhysicsSettings.CalculateReleaseHoverDuration(
+            maximumSeconds, maxInertia, maxInertia, maxInertia);
+
+        Assert.IsTrue(stopped < cruising && cruising < fast);
+        Assert.AreEqual(0.5f, stopped, 0.001f);
+        Assert.AreEqual(maximumSeconds, fast, 0.001f);
+    }
+
+    private static float SimulateReleasedRotation(FlightRotationInertia option)
+    {
+        var settings = new GameSettingsState { FlightRotationInertiaSetting = option };
+        var result = PhysicsMotionMath.ApplyShipRotationInput(
+            new ShipRotationInputState(100f, 0f, 0f, 0f),
+            new ShipRotationInputCommand(false, false, false, false, 0f, 0f, false),
+            new ShipRotationInputSettings(1000f, 1.35f, settings.ShipRotationRetention, 160f, 1.35f),
+            new PhysicsTuningProfile(1f, 1f, 1f, 1f),
+            DeltaTime90,
+            GameState.GameplayBaselineFps);
+
+        return result.State.YawVelocity;
     }
 
     private static float SimulateFall(FlightGravityResponse option)

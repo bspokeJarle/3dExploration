@@ -11,9 +11,9 @@ namespace TheOmegaStrain.Gameplay.Controls
     public class PowerUpControls : IObjectMovement
     {
         // Visual rotation:
-        // - BaseXRotation tilts to face the camera (same approach as SeederControls).
+        // - BaseXRotation follows the same world pitch as the ground and other objects.
         // - Yrotation increments each frame for a slow spin around the Y axis.
-        private const float BaseXRotation = 90f;
+        private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 0f;
         private const float BaseYRotationIncrementPerFrame = 0.8f;
@@ -35,7 +35,6 @@ namespace TheOmegaStrain.Gameplay.Controls
         public IPhysics Physics { get; set; } = new Physics.Physics();
 
         private float Yrotation = BaseYRotation;
-        private float Xrotation = BaseXRotation;
         private float Zrotation = BaseZRotation;
 
         private bool _syncInitialized = false;
@@ -107,7 +106,7 @@ namespace TheOmegaStrain.Gameplay.Controls
             }
 
             if (theObject.Rotation != null) theObject.Rotation.y = Yrotation;
-            if (theObject.Rotation != null) theObject.Rotation.x = Xrotation;
+            if (theObject.Rotation != null) theObject.Rotation.x = BaseXRotation;
             if (theObject.Rotation != null) theObject.Rotation.z = Zrotation;
 
             // Visual spin around Y
@@ -139,6 +138,10 @@ namespace TheOmegaStrain.Gameplay.Controls
                     theObject.CrashBoxes = _savedCrashBoxes;
                 }
             }
+
+            SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(
+                theObject,
+                WorldViewSetup.SurfacePitchDegrees);
 
             // Push positions back to original in AiObjects
             SyncToOriginal(theObject);

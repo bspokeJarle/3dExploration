@@ -552,6 +552,12 @@ namespace TheOmegaStrain.Game.SceneManagement
 
         public void HandleKeyPress(GameInputKey key, I3dWorld world)
         {
+            // The old scene has already been hidden/cleared while a deferred scene
+            // transition is pending. A second Escape here used to start a competing
+            // return-to-intro transition against that half-finished load.
+            if (_pendingSceneAdvance && IsMenuExitKey(key))
+                return;
+
             var scene = GetActiveScene();
             var overlay = GameState.ScreenOverlayState;
 
@@ -1598,6 +1604,7 @@ namespace TheOmegaStrain.Game.SceneManagement
 
         private static void ApplySceneSettings(IScene scene)
         {
+            OmegaWorldViewSetup.ConfigurePitch(GameState.SettingsState.CameraPitchDegrees);
             var gps = GameState.GamePlayState;
             gps.InfectionCriticalMass = scene.InfectionThresholdPercent;
             gps.InfectionSpreadRate = scene.InfectionSpreadRate;

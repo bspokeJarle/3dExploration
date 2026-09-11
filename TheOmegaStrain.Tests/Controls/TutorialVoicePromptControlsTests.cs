@@ -74,6 +74,8 @@ public class TutorialVoicePromptControlsTests
         StringAssert.Contains(GameState.ScreenOverlayState.Body, "front");
         StringAssert.Contains(GameState.ScreenOverlayState.Body, "attack angle");
         StringAssert.Contains(GameState.ScreenOverlayState.Body, "debris");
+        StringAssert.Contains(GameState.ScreenOverlayState.Body, "1, 2, 3 and 4");
+        StringAssert.Contains(GameState.ScreenOverlayState.Body, "after you have collected");
         DismissTutorialOverlay();
 
         seeder.ImpactStatus!.ObjectHealth = 0;
