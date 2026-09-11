@@ -60,15 +60,15 @@ namespace TheOmegaStrain.Common.CommonSetup
         // MaxRange = max distance (screen units) to consider enemies
         // -------------------------------------------------------
         public static float LazerAimAssistConeDot  = 0.40f;   // ~66° half-angle
-        public static float LazerAimAssistStrength = 0.78f;
+        public static float LazerAimAssistStrength = 0.84f;
         public static float LazerAimAssistMaxRange = 2500f;
 
         public static float BulletAimAssistConeDot  = 0.45f;  // ~63° half-angle
-        public static float BulletAimAssistStrength = 0.72f;
+        public static float BulletAimAssistStrength = 0.78f;
         public static float BulletAimAssistMaxRange = 2500f;
 
         public static float RocketAimAssistConeDot  = 0.85f;  // ~32° half-angle
-        public static float RocketAimAssistStrength = 0.65f;
+        public static float RocketAimAssistStrength = 0.70f;
         public static float RocketAimAssistMaxRange = 2500f;
 
         public static bool IsWeaponTypeValid(string weaponName)

@@ -23,6 +23,7 @@ namespace TheOmegaStrain.Game.World.Objects
         private static float centerModuleHeight = 7f;    // Height of the center module
         private static float particleStartClearance = 5f;
         private static float particleGuideDistance = 100f;
+        private const float ParticleGuideDownOffset = 20f;
 
         private static int mainSegments = 12;    // Segments around the main circle
         private static int centerSegments = 8;     // Segments for the center module
@@ -507,7 +508,7 @@ namespace TheOmegaStrain.Game.World.Objects
 
         public static List<ITriangleMeshWithColorAndTexture>? ParticlesDirectionGuide()
         {
-            float guideZ = -seederThickness - centerModuleHeight - particleGuideDistance;
+            float guideZ = -seederThickness - centerModuleHeight - particleGuideDistance - ParticleGuideDownOffset;
             var direction = new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateParticleGuidePoint(guideZ)
@@ -518,7 +519,7 @@ namespace TheOmegaStrain.Game.World.Objects
         public static List<ITriangleMeshWithColorAndTexture>? ParticlesStartGuide()
         {
             // Start below the underside module so the first particles do not spawn inside it.
-            float startZ = -seederThickness - centerModuleHeight - particleStartClearance;
+            float startZ = -seederThickness - centerModuleHeight - particleStartClearance - ParticleGuideDownOffset;
             var direction = new List<ITriangleMeshWithColorAndTexture>
             {
                 CreateParticleGuidePoint(startZ)

@@ -370,17 +370,12 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipSmallControls
                 syncedOffsets = SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY, SyncFactorY);
             }
 
-            if (theObject.IsOnScreen)
-            {
-                // Correct only the mothership's own offset for the tilted surface.
-                // Do not apply a second correction to weapons or particles: their
-                // guides already originate from this corrected object position.
-                syncedOffsets.y += SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(
-                    theObject,
-                    WorldViewSetup.SurfacePitchDegrees);
-            }
-
             theObject.ObjectOffsets = syncedOffsets;
+
+            // Correct only the main object after its normal/descent Y is known.
+            SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(
+                theObject,
+                WorldViewSetup.SurfacePitchDegrees);
         }
 
         private static void SyncToOriginal(I3dObject deepCopy)

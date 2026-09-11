@@ -365,6 +365,74 @@ public class ParticleShadowProjectionTests
     }
 
     [TestMethod]
+    public void HandleParticles_WorldPositionedEmitterProjectsShadowUnderRenderedParticle()
+    {
+        GameState.SurfaceState.GlobalMapPosition = new Vector3 { x = 1000f, y = 0f, z = 1000f };
+        var surface = new Surface
+        {
+            RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>
+            {
+                new TriangleMeshWithColor
+                {
+                    vert1 = new Vector3 { x = -500f, y = 0f, z = -500f },
+                    vert2 = new Vector3 { x = 500f, y = 0f, z = -500f },
+                    vert3 = new Vector3 { x = -500f, y = 0f, z = 500f }
+                },
+                new TriangleMeshWithColor
+                {
+                    vert1 = new Vector3 { x = 500f, y = 0f, z = -500f },
+                    vert2 = new Vector3 { x = 500f, y = 0f, z = 500f },
+                    vert3 = new Vector3 { x = -500f, y = 0f, z = 500f }
+                }
+            }
+        };
+        GameState.SurfaceState.SurfaceViewportObject = new OmegaObject3D
+        {
+            ObjectId = 1,
+            ObjectName = "Surface",
+            ObjectOffsets = new Vector3(),
+            WorldPosition = new Vector3()
+        };
+        var source = new OmegaObject3D
+        {
+            ObjectId = 2,
+            ObjectName = "Seeder",
+            ParentSurface = surface,
+            WorldPosition = new Vector3 { x = 900f, y = 0f, z = 900f },
+            ObjectOffsets = new Vector3 { x = 0f, y = -100f, z = 0f },
+            Rotation = new Vector3(),
+            Particles = new ParticlesAI
+            {
+                Particles = new List<IParticle>
+                {
+                    new Particle
+                    {
+                        ParticleTriangle = CreateParticleTriangle(),
+                        Position = new Vector3(),
+                        WorldPosition = new Vector3 { x = 900f, y = 0f, z = 900f },
+                        Rotation = new Vector3(),
+                        RotationSpeed = new Vector3(),
+                        Velocity = new Vector3(),
+                        Acceleration = new Vector3(),
+                        BirthTime = DateTime.UtcNow,
+                        Visible = true,
+                        ImpactStatus = new ImpactStatus()
+                    }
+                }
+            }
+        };
+
+        var renderedParticles = new List<OmegaObject3D>();
+        new ParticleManager().HandleParticles(source, renderedParticles);
+
+        var shadow = renderedParticles.Single(item => item.ObjectName == "ParticleShadow");
+        var triangle = shadow.ObjectParts[0].Triangles[0];
+        float shadowCenterX = (triangle.vert1.x + triangle.vert2.x + triangle.vert3.x) / 3f;
+        Assert.IsTrue(shadowCenterX < -80f,
+            $"Seeder shadow should retain its -100 world-derived screen X; actual {shadowCenterX:F2}.");
+    }
+
+    [TestMethod]
     public void HandleParticles_DoesNotMutateStoredParticleTriangleWhenRotatingForRender()
     {
         GameState.SurfaceState.SurfaceViewportObject = null;

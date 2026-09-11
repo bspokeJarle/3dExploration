@@ -145,7 +145,6 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
         public float ParticleDensityMultiplier => Math.Clamp(ParticleDensityPercent, 50, 200) / 100f;
         public float CameraPitchDegrees => CameraAngle switch
         {
-            CameraAnglePreset.Low => 56f,
             CameraAnglePreset.High => 70f,
             _ => 63f
         };
@@ -185,10 +184,10 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
             FlightRotationInertia.High => 0.25f,
             _ => 0.42f
         };
-        public float ShipHoverFloatDuration => FlightGravityResponseSetting switch
+        public float ShipHoverFloatDuration => FlightCoastingSetting switch
         {
-            FlightGravityResponse.Light => 2f,
-            FlightGravityResponse.Strong => 1f,
+            FlightCoasting.Short => 2f,
+            FlightCoasting.Long => 1f,
             _ => 1.5f
         };
 
@@ -202,7 +201,10 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
 
             if (!Enum.IsDefined(typeof(GraphicsQualityPreset), GraphicsQuality))
                 GraphicsQuality = GraphicsQualityPreset.Balanced;
-            if (!Enum.IsDefined(typeof(CameraAnglePreset), CameraAngle))
+            // Low remains in the persisted enum for backwards compatibility,
+            // but is no longer a shipping option until it has broader gameplay QA.
+            if (!Enum.IsDefined(typeof(CameraAnglePreset), CameraAngle) ||
+                CameraAngle == CameraAnglePreset.Low)
                 CameraAngle = CameraAnglePreset.Normal;
 
             if (!Enum.IsDefined(typeof(FlightHandlingPreset), FlightPreset))
@@ -295,7 +297,9 @@ namespace TheOmegaStrain.Common.CommonGlobalState.States
                     ApplyPresetDefaults(GraphicsQuality);
                     break;
                 case GraphicsSettingsField.CameraAngle:
-                    CameraAngle = CycleEnum(CameraAngle, direction);
+                    CameraAngle = CameraAngle == CameraAnglePreset.High
+                        ? CameraAnglePreset.Normal
+                        : CameraAnglePreset.High;
                     break;
                 case GraphicsSettingsField.ParticleDensity:
                     int delta = direction > 0 ? ParticleDensityStepPercent : -ParticleDensityStepPercent;

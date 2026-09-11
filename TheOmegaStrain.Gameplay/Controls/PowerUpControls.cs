@@ -139,6 +139,10 @@ namespace TheOmegaStrain.Gameplay.Controls
                 }
             }
 
+            SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(
+                theObject,
+                WorldViewSetup.SurfacePitchDegrees);
+
             // Push positions back to original in AiObjects
             SyncToOriginal(theObject);
 

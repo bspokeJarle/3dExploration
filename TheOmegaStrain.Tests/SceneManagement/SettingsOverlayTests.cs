@@ -121,10 +121,13 @@ public class SettingsOverlayTests
     }
 
     [TestMethod]
-    public void CameraAngleSettings_MapLowNormalAndHighToCentralOmegaPitch()
+    public void CameraAngleSettings_LegacyLowFallsBackToNormalPitch()
     {
         var settings = new GameSettingsState { CameraAngle = CameraAnglePreset.Low };
-        Assert.AreEqual(56f, settings.CameraPitchDegrees);
+        Assert.AreEqual(63f, settings.CameraPitchDegrees);
+
+        settings.Normalize();
+        Assert.AreEqual(CameraAnglePreset.Normal, settings.CameraAngle);
 
         settings.CameraAngle = CameraAnglePreset.Normal;
         Assert.AreEqual(63f, settings.CameraPitchDegrees);

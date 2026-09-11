@@ -83,6 +83,24 @@ namespace TheOmegaStrain.Runtime.Rendering
                 float particleOffsetY = inhabitant.ObjectOffsets.y + particle.Position.y;
                 float particleOffsetZ = inhabitant.ObjectOffsets.z + particle.Position.z;
 
+                // Particles inherit the emitter's world anchor. Keep a separate
+                // screen-space position for ground lookup; the rendered particle
+                // itself receives WorldPosition below and is transformed by the
+                // normal object pipeline.
+                float particleScreenX = particleOffsetX;
+                float particleScreenY = particleOffsetY;
+                float particleScreenZ = particleOffsetZ;
+                if (!WorldPositionMath.IsOrigin(particle.WorldPosition))
+                {
+                    var globalMapPosition = GameState.SurfaceState.GlobalMapPosition;
+                    float localWorldX = globalMapPosition.x - particle.WorldPosition.x;
+                    float localWorldY = globalMapPosition.y - particle.WorldPosition.y;
+                    float localWorldZ = globalMapPosition.z - particle.WorldPosition.z;
+                    particleScreenX = -localWorldX + particleOffsetX;
+                    particleScreenY = -localWorldY + particleOffsetY;
+                    particleScreenZ = localWorldZ + particleOffsetZ;
+                }
+
                 // Original particle — rendered as its actual colored triangle in 3D space
                 particleObjectList.Add(new OmegaObject3D
                 {
@@ -141,8 +159,8 @@ namespace TheOmegaStrain.Runtime.Rendering
                 //   - X from the PARTICLE (continuous, not snapped)
                 //   - Z from the PARTICLE (continuous, not snapped)
                 //   - Y interpolated from the surface triangle below
-                float targetX = particleOffsetX - surfaceX;
-                float targetZ = particleOffsetZ - surfaceObj!.ObjectOffsets.z;
+                float targetX = particleScreenX - surfaceX;
+                float targetZ = particleScreenZ - surfaceObj!.ObjectOffsets.z;
                 float groundLocalX = targetX;
                 float groundLocalY = 0f;
                 float groundLocalZ = targetZ;
@@ -166,11 +184,11 @@ namespace TheOmegaStrain.Runtime.Rendering
                 // Clamped so very-high particles (e.g. bombers, explosions) still
                 // produce visible shadows near their ground point.
                 float groundScreenY = surfaceY + groundLocalY;
-                if (!ShouldRenderParticleShadow(inhabitant.ObjectName, particleOffsetY, groundScreenY))
+                if (!ShouldRenderParticleShadow(inhabitant.ObjectName, particleScreenY, groundScreenY))
                     continue;
 
                 var shadowProjection = GroundShadowProjectionMath.ProjectTriangleShadow(
-                    particleOffsetY,
+                    particleScreenY,
                     groundScreenY,
                     groundLocalX,
                     groundLocalY,

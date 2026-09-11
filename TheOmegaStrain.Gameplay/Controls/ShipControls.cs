@@ -99,6 +99,7 @@ namespace TheOmegaStrain.Gameplay.Controls
         private float _yawAccumulator = 0f;
         private float _pitchAccumulator = 0f;
         private bool landed = false;
+        private float? _releaseHoverDuration;
         private bool _surfaceBounceWaitingForGravity = false;
         private bool _unsafeSurfaceHitArmed = false;
         private DateTime _unsafeSurfaceHitAt = DateTime.MinValue;
@@ -574,6 +575,7 @@ namespace TheOmegaStrain.Gameplay.Controls
         {
             if (ThrustOn == false)
             {
+                _releaseHoverDuration = null;
                 if (_rocketInstance != null)
                 {
                     if (Logger.ShouldLog(logging)) Logger.Log("Audio: Force-stopping previous rocket instance before starting new.");
@@ -600,6 +602,12 @@ namespace TheOmegaStrain.Gameplay.Controls
 
         private void EndThrust()
         {
+            ApplyFlightSettings();
+            _releaseHoverDuration = ShipFlightPhysicsSettings.CalculateReleaseHoverDuration(
+                Physics.HoverFloatDuration,
+                Physics.InertiaX,
+                Physics.InertiaZ,
+                Physics.MaxInertia);
             ThrustOn = false;
             Thrust = 0;
             Physics.ThrustEffect = 0f;
@@ -2178,33 +2186,48 @@ namespace TheOmegaStrain.Gameplay.Controls
             // equilibrium oscillates against the clamp, causing surface vibration.
             GameState.SurfaceState.GlobalMapPosition.y = MathF.Min(GameState.SurfaceState.GlobalMapPosition.y + verticalInertia * frameScale, Physics.CeilingHeight);
 
-            // Gently pull screen position and altitude back toward resting values
-            const float MaxAirSettleSpeed = 300f;
-            float airSettle = MathF.Min(Physics.AirborneSettleRate * deltaTime, 1f);
-            float airScreenDiff = ShipRestingScreenY - ParentObject.ObjectOffsets.y;
-            float airAltDiff = -GameState.SurfaceState.GlobalMapPosition.y;
-            float airMaxStep = MaxAirSettleSpeed * deltaTime;
-
-            if (MathF.Abs(airScreenDiff) > 0.5f)
+            // Coasting begins immediately when thrust is released. During the
+            // configured hover window neither gravity nor the separate settle
+            // spring may change altitude; otherwise the ship visibly drops
+            // before it starts to coast.
+            if (Physics.HoverElapsed > Physics.HoverFloatDuration)
             {
-                float airScreenStep = airScreenDiff * airSettle;
-                if (MathF.Abs(airScreenStep) > airMaxStep)
-                    airScreenStep = airMaxStep * MathF.Sign(airScreenDiff);
-                ParentObject.ObjectOffsets.y += airScreenStep;
-            }
+                // Gently pull screen position and altitude back toward resting values.
+                const float MaxAirSettleSpeed = 300f;
+                float settleRamp = Physics.HoverRampDuration <= 0f
+                    ? 1f
+                    : Math.Clamp(
+                        (Physics.HoverElapsed - Physics.HoverFloatDuration) / Physics.HoverRampDuration,
+                        0f,
+                        1f);
+                float airSettle = MathF.Min(Physics.AirborneSettleRate * deltaTime, 1f) * settleRamp;
+                float airScreenDiff = ShipRestingScreenY - ParentObject.ObjectOffsets.y;
+                float airAltDiff = -GameState.SurfaceState.GlobalMapPosition.y;
+                float airMaxStep = MaxAirSettleSpeed * deltaTime * settleRamp;
 
-            if (MathF.Abs(airAltDiff) > 0.5f)
-            {
-                float airAltStep = airAltDiff * airSettle;
-                if (MathF.Abs(airAltStep) > airMaxStep)
-                    airAltStep = airMaxStep * MathF.Sign(airAltDiff);
-                GameState.SurfaceState.GlobalMapPosition.y += airAltStep;
+                if (MathF.Abs(airScreenDiff) > 0.5f)
+                {
+                    float airScreenStep = airScreenDiff * airSettle;
+                    if (MathF.Abs(airScreenStep) > airMaxStep)
+                        airScreenStep = airMaxStep * MathF.Sign(airScreenDiff);
+                    ParentObject.ObjectOffsets.y += airScreenStep;
+                }
+
+                if (MathF.Abs(airAltDiff) > 0.5f)
+                {
+                    float airAltStep = airAltDiff * airSettle;
+                    if (MathF.Abs(airAltStep) > airMaxStep)
+                        airAltStep = airMaxStep * MathF.Sign(airAltDiff);
+                    GameState.SurfaceState.GlobalMapPosition.y += airAltStep;
+                }
             }
         }
 
         private void ApplyFlightSettings()
         {
             ShipFlightPhysicsSettings.Apply(Physics, GameState.SettingsState);
+            if (!ThrustOn && _releaseHoverDuration.HasValue)
+                Physics.HoverFloatDuration = _releaseHoverDuration.Value;
         }
 
         private void ApplyHorizontalCoastingTravel(float deltaTime)

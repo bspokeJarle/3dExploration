@@ -235,6 +235,20 @@ public class ReturnToIntroAndSimulationRoundTests
     }
 
     [TestMethod]
+    public void EscapeDuringPendingSceneLoad_IsIgnored()
+    {
+        var handler = new SceneHandler();
+        var world = CreateMinimalWorld(handler);
+        SetCurrentSceneIndex(handler, 1);
+        SetPrivateField(handler, "_pendingSceneAdvance", true);
+
+        HandleKeyPress(handler, world, GameInputKey.Escape);
+
+        Assert.AreEqual(SceneTypes.Game, handler.GetActiveScene().SceneType);
+        Assert.AreEqual(1, GameState.GamePlayState.SceneIndex);
+    }
+
+    [TestMethod]
     public void XFromGame_ReturnsToIntro()
     {
         RunOnStaThread(() =>
@@ -337,6 +351,13 @@ public class ReturnToIntroAndSimulationRoundTests
         var field = typeof(SceneHandler).GetField("currentSceneIndex", BindingFlags.NonPublic | BindingFlags.Instance);
         field?.SetValue(handler, index);
         GameState.GamePlayState.SceneIndex = index;
+    }
+
+    private static void SetPrivateField(SceneHandler handler, string fieldName, object value)
+    {
+        var field = typeof(SceneHandler).GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.IsNotNull(field, $"Field {fieldName} not found.");
+        field!.SetValue(handler, value);
     }
 
     private static void InvokeReturnToIntro(SceneHandler handler, GameWorld world)

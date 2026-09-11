@@ -91,16 +91,16 @@ public class FlightSettingsBehaviorTests
     }
 
     [DataTestMethod]
-    [DataRow(FlightGravityResponse.Light, 2f)]
-    [DataRow(FlightGravityResponse.Normal, 1.5f)]
-    [DataRow(FlightGravityResponse.Strong, 1f)]
-    public void ThrustRelease_HoverDurationTracksGravitySetting(
-        FlightGravityResponse gravitySetting,
+    [DataRow(FlightCoasting.Short, 2f)]
+    [DataRow(FlightCoasting.Normal, 1.5f)]
+    [DataRow(FlightCoasting.Long, 1f)]
+    public void ThrustRelease_HoverDurationTracksFlightInertiaSetting(
+        FlightCoasting flightInertiaSetting,
         float expectedHoverSeconds)
     {
         var physics = CreatePhysics(new GameSettingsState
         {
-            FlightGravityResponseSetting = gravitySetting
+            FlightCoastingSetting = flightInertiaSetting
         });
 
         Assert.AreEqual(expectedHoverSeconds, physics.HoverFloatDuration);
@@ -157,6 +157,24 @@ public class FlightSettingsBehaviorTests
             physics.CalculateThrustForces(10f, 90f, 0f, DeltaTime90);
 
         return (physics.ThrustEffect, MathF.Abs(physics.InertiaZ));
+    }
+
+    [TestMethod]
+    public void ReleaseHoverDuration_GrowsWithHorizontalSpeedAndCapsAtConfiguredMaximum()
+    {
+        const float maximumSeconds = 2f;
+        const float maxInertia = 45f;
+
+        float stopped = ShipFlightPhysicsSettings.CalculateReleaseHoverDuration(
+            maximumSeconds, 0f, 0f, maxInertia);
+        float cruising = ShipFlightPhysicsSettings.CalculateReleaseHoverDuration(
+            maximumSeconds, maxInertia * 0.5f, 0f, maxInertia);
+        float fast = ShipFlightPhysicsSettings.CalculateReleaseHoverDuration(
+            maximumSeconds, maxInertia, maxInertia, maxInertia);
+
+        Assert.IsTrue(stopped < cruising && cruising < fast);
+        Assert.AreEqual(0.5f, stopped, 0.001f);
+        Assert.AreEqual(maximumSeconds, fast, 0.001f);
     }
 
     private static float SimulateReleasedRotation(FlightRotationInertia option)

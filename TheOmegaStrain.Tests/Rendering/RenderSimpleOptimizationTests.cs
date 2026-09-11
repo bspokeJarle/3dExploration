@@ -410,6 +410,28 @@ public class RenderSimpleOptimizationTests
     }
 
     [TestMethod]
+    public void ProjectToTriangles_CapsPerspectiveGrowthNearCamera()
+    {
+        var converter = OmegaPerspectiveProjectorFactory.Create(new ProjectionViewport(
+            screenWidth: 1000,
+            screenHeight: 800,
+            perspectiveAdjustment: 1500,
+            objectZoom: 2));
+        var obj = CreateRenderableObject();
+        obj.ObjectOffsets!.z = -1490f;
+
+        var result = converter.ProjectToTriangles(new List<OmegaObject3D> { obj }, 1);
+
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual(450, result[0].X1);
+        Assert.AreEqual(350, result[0].Y1);
+        Assert.AreEqual(550, result[0].X2);
+        Assert.AreEqual(350, result[0].Y2);
+        Assert.AreEqual(500, result[0].X3);
+        Assert.AreEqual(450, result[0].Y3);
+    }
+
+    [TestMethod]
     public void ProjectionMath_ProjectsVertexWithViewportSettings()
     {
         var viewport = new ProjectionViewport(1000, 800, 1500, 2);

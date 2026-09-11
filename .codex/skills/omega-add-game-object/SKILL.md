@@ -148,6 +148,17 @@ Flying objects should have shadows when similar objects have shadows. Use the
 existing ground projection pattern rather than inventing a new shadow position
 calculation.
 
+When applying Omega's camera-angle surface-height correction to a flying object:
+
+- Calculate the object's normal movement, descent, hover, or altitude-cycle Y first.
+- Add the shared correction only to the main object's `ObjectOffsets.y`.
+- The correction supplements behavior; it never replaces or controls base movement.
+- Do not separately correct weapons, projectiles, particles, particle guides, or shadows.
+  They already derive from the corrected main object, while shadows remain projected
+  directly onto the surface.
+- Apply the correction at most once per frame, after every base-Y contribution that
+  should be preserved.
+
 ## Crash Boxes
 
 Use existing crash-box helpers. Do not create unrelated manual collision math

@@ -26,6 +26,7 @@ public class FlightCoastingTests
         {
             GlobalMapPosition = new Vector3 { x = 1000f, y = 100f, z = 1000f }
         };
+        GameState.SettingsState = new GameSettingsState();
     }
 
     [TestMethod]
@@ -65,6 +66,59 @@ public class FlightCoastingTests
         Assert.IsTrue(GameState.SurfaceState.GlobalMapPosition.z < startZ);
         Assert.IsTrue(controls.Physics.InertiaX is > 19f and < 20f);
         Assert.IsTrue(controls.Physics.InertiaZ is > -10f and < -9f);
+    }
+
+    [TestMethod]
+    public void ShipApplyGravity_LowFlightInertiaCoastsTwoSecondsWithoutLosingAltitude()
+    {
+        GameState.SettingsState.FlightCoastingSetting = FlightCoasting.Short;
+        var surface = new Surface();
+        var ship = Ship.CreateShip(surface);
+        var controls = (ShipControls)ship.Movement!;
+        controls.ParentObject = ship;
+        controls.ThrustOn = false;
+        controls.Thrust = 0f;
+        controls.Physics.InertiaX = 20f;
+
+        float startScreenY = ship.ObjectOffsets.y;
+        float startAltitude = GameState.SurfaceState.GlobalMapPosition.y;
+        int hoverFrames = (int)(2f / GameState.GameplayBaselineDeltaTime) - 1;
+
+        for (int frame = 0; frame < hoverFrames; frame++)
+            controls.ApplyGravity(GameState.GameplayBaselineDeltaTime);
+
+        Assert.AreEqual(startScreenY, ship.ObjectOffsets.y, 0.001f);
+        Assert.AreEqual(startAltitude, GameState.SurfaceState.GlobalMapPosition.y, 0.001f);
+        Assert.IsTrue(controls.Physics.InertiaX > 0f,
+            "Horizontal coasting should continue while altitude is held.");
+    }
+
+    [TestMethod]
+    public void ShipApplyGravity_AfterHoverRampsSettleInGradually()
+    {
+        GameState.SettingsState.FlightCoastingSetting = FlightCoasting.Short;
+        var surface = new Surface();
+        var ship = Ship.CreateShip(surface);
+        var controls = (ShipControls)ship.Movement!;
+        controls.ParentObject = ship;
+        controls.ThrustOn = false;
+        controls.Thrust = 0f;
+        controls.Physics.HoverElapsed = 2f;
+
+        float startAltitude = GameState.SurfaceState.GlobalMapPosition.y;
+        controls.ApplyGravity(GameState.GameplayBaselineDeltaTime);
+        float firstFrameDrop = startAltitude - GameState.SurfaceState.GlobalMapPosition.y;
+
+        for (int frame = 0; frame < 90; frame++)
+            controls.ApplyGravity(GameState.GameplayBaselineDeltaTime);
+
+        float laterFrameStart = GameState.SurfaceState.GlobalMapPosition.y;
+        controls.ApplyGravity(GameState.GameplayBaselineDeltaTime);
+        float laterFrameDrop = laterFrameStart - GameState.SurfaceState.GlobalMapPosition.y;
+
+        Assert.IsTrue(firstFrameDrop >= 0f);
+        Assert.IsTrue(firstFrameDrop < laterFrameDrop,
+            $"Settle should fade in after hover; first={firstFrameDrop:F4}, later={laterFrameDrop:F4}.");
     }
 
     private static TheOmegaStrain.Gameplay.Physics.Physics CreateMovingPhysics() => new()

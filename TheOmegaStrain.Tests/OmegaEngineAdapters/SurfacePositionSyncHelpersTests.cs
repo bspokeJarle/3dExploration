@@ -45,44 +45,67 @@ public class SurfacePositionSyncHelpersTests
     [DataRow(70f)]
     public void GetSurfacePitchHeightCorrectionY_MatchesDifferenceFromOriginalCalibration(float pitchDegrees)
     {
-        const float surfaceLocalZ = 400f;
+        const float surfaceLongitudinalDistance = -400f;
         float radians = pitchDegrees * (MathF.PI / 180f);
         float originalRadians = OmegaWorldViewSetup.OriginalWorldPitchDegrees * (MathF.PI / 180f);
-        float expectedY = surfaceLocalZ * ((1f / MathF.Tan(radians)) - (1f / MathF.Tan(originalRadians)));
+        float expectedY = surfaceLongitudinalDistance * (MathF.Cos(radians) - MathF.Cos(originalRadians));
+        if (pitchDegrees <= 56.5f)
+            expectedY *= SurfacePositionSyncHelpers.LowAngleBackgroundCorrectionFactor;
+        else
+            expectedY += surfaceLongitudinalDistance *
+                         SurfacePositionSyncHelpers.NormalAndHighBackgroundLiftPerWorldUnit;
 
-        float correction = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(surfaceLocalZ, pitchDegrees);
+        float correction = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(surfaceLongitudinalDistance, pitchDegrees);
 
         Assert.AreEqual(expectedY, correction, 0.001f);
-    }
-
-    [TestMethod]
-    public void GetSurfacePitchHeightCorrectionY_IsZeroAtOriginalCameraAngle()
-    {
-        float correction = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(
-            1500f,
-            OmegaWorldViewSetup.OriginalWorldPitchDegrees);
-
-        Assert.AreEqual(0f, correction, 0.001f);
     }
 
     [DataTestMethod]
     [DataRow(56f)]
     [DataRow(63f)]
     [DataRow(70f)]
-    public void GetSurfacePitchHeightCorrectionY_IsZeroAtCentreAndOppositeAtFrontAndBack(float pitchDegrees)
+    public void GetSurfacePitchHeightCorrectionY_ForegroundIsUnchanged(float pitchDegrees)
+    {
+        const float surfaceLongitudinalDistance = 400f;
+        float correction = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(
+            surfaceLongitudinalDistance,
+            pitchDegrees);
+
+        Assert.AreEqual(0f, correction, 0.001f);
+    }
+
+    [TestMethod]
+    public void GetSurfacePitchHeightCorrectionY_OriginalAngleGetsSmallBackgroundLift()
+    {
+        float correction = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(
+            -1500f,
+            OmegaWorldViewSetup.OriginalWorldPitchDegrees);
+
+        Assert.AreEqual(
+            -1500f * SurfacePositionSyncHelpers.NormalAndHighBackgroundLiftPerWorldUnit,
+            correction,
+            0.001f);
+    }
+
+    [DataTestMethod]
+    [DataRow(56f)]
+    [DataRow(63f)]
+    [DataRow(70f)]
+    public void GetSurfacePitchHeightCorrectionY_IsZeroFromCentreForward(float pitchDegrees)
     {
         const float localDistance = 300f;
 
         float centre = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(0f, pitchDegrees);
-        float back = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(localDistance, pitchDegrees);
-        float front = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(-localDistance, pitchDegrees);
+        float back = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(-localDistance, pitchDegrees);
+        float front = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(localDistance, pitchDegrees);
 
         Assert.AreEqual(0f, centre, 0.001f);
-        Assert.AreEqual(-front, back, 0.001f);
+        Assert.AreEqual(0f, front, 0.001f);
+        Assert.AreNotEqual(0f, back, 0.001f);
     }
 
     [TestMethod]
-    public void GetSurfacePitchHeightCorrectionY_ForObject_UsesPositionRelativeToSurfaceViewport()
+    public void GetSurfacePitchHeightCorrectionY_ForObject_UsesWorldDistanceAndIgnoresVisualZOffsets()
     {
         GameState.SurfaceState.GlobalMapPosition = new Vector3 { z = 1000f };
         GameState.SurfaceState.SurfaceViewportObject = new OmegaObject3D
@@ -90,17 +113,49 @@ public class SurfacePositionSyncHelpersTests
             ObjectId = 2,
             ObjectOffsets = new Vector3 { z = 25f }
         };
-        var obj = CreateObject(worldX: 0f, worldZ: 700f, offsetX: 0f);
+        var obj = CreateObject(worldX: 0f, worldZ: 1300f, offsetX: 0f);
         obj.ObjectOffsets.z = 15f;
 
         float correction = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(obj, 63f);
 
-        float expectedSurfaceLocalZ = (1000f - 700f) + 15f - 25f;
-        float currentRadians = 63f * MathF.PI / 180f;
-        float originalRadians = OmegaWorldViewSetup.OriginalWorldPitchDegrees * MathF.PI / 180f;
-        float expected = expectedSurfaceLocalZ
-                         * ((1f / MathF.Tan(currentRadians)) - (1f / MathF.Tan(originalRadians)));
-        Assert.AreEqual(expected, correction, 0.001f);
+        float expectedSurfaceLongitudinalDistance = 1300f - 1000f;
+        Assert.IsTrue(expectedSurfaceLongitudinalDistance > 0f);
+        Assert.AreEqual(0f, correction, 0.001f);
+    }
+
+    [TestMethod]
+    public void AddSurfacePitchHeightCorrectionY_AddsToExistingYOnly()
+    {
+        GameState.SurfaceState.GlobalMapPosition = new Vector3 { z = 1000f };
+        GameState.SurfaceState.SurfaceViewportObject = new OmegaObject3D
+        {
+            ObjectId = 2,
+            ObjectOffsets = new Vector3()
+        };
+        var obj = CreateObject(worldX: 0f, worldZ: 700f, offsetX: 25f);
+        obj.IsOnScreen = true;
+        obj.ObjectOffsets.y = 125f;
+        obj.ObjectOffsets.z = 15f;
+        float expectedCorrection = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(obj, 63f);
+
+        SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(obj, 63f);
+
+        Assert.AreEqual(25f, obj.ObjectOffsets.x, 0.001f);
+        Assert.AreEqual(125f + expectedCorrection, obj.ObjectOffsets.y, 0.001f);
+        Assert.AreEqual(15f, obj.ObjectOffsets.z, 0.001f);
+        Assert.AreEqual(700f, obj.WorldPosition.z, 0.001f);
+    }
+
+    [TestMethod]
+    public void AddSurfacePitchHeightCorrectionY_WhenObjectIsOffScreen_DoesNotChangeOffsets()
+    {
+        var obj = CreateObject(worldX: 0f, worldZ: 700f, offsetX: 25f);
+        obj.IsOnScreen = false;
+        obj.ObjectOffsets.y = 125f;
+
+        SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(obj, 63f);
+
+        Assert.AreEqual(125f, obj.ObjectOffsets.y, 0.001f);
     }
 
     private static OmegaObject3D CreateObject(float worldX, float worldZ, float offsetX)
