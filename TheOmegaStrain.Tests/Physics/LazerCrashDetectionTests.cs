@@ -21,6 +21,70 @@ public class LazerCrashDetectionTests
         };
     }
 
+    [TestCleanup]
+    public void Cleanup()
+    {
+        OmegaWorldViewSetup.ConfigurePitch(63f);
+    }
+
+    [DataTestMethod]
+    [DataRow(CameraAnglePreset.Low)]
+    [DataRow(CameraAnglePreset.Normal)]
+    [DataRow(CameraAnglePreset.High)]
+    public void Ship_CollidesWithSurfaceAtCrashCenterRotatedForCameraAngle(CameraAnglePreset angle)
+    {
+        var settings = new GameSettingsState { CameraAngle = angle };
+        OmegaWorldViewSetup.ConfigurePitch(settings.CameraPitchDegrees);
+
+        var ship = CreateCrashObject("Ship", 9001);
+        ship.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 0f };
+        ship.CrashBoxes = new List<List<IVector3>>
+        {
+            OmegaObject3DHelpers.GenerateCrashBoxCorners(
+                new Vector3 { x = -8f, y = -8f, z = 72f },
+                new Vector3 { x = 8f, y = 8f, z = 88f })
+        };
+        ship.CrashBoxesFollowRotation = true;
+        new ObjectFrameTransformer().RotateObjectGeometry(ship);
+
+        var surface = CreateCrashObject("Surface", 9002);
+        surface.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 0f };
+        surface.CrashBoxes = new List<List<IVector3>>
+        {
+            OmegaObject3DHelpers.GenerateCrashBoxCorners(
+                new Vector3 { x = -8f, y = -8f, z = 72f },
+                new Vector3 { x = 8f, y = 8f, z = 88f })
+        };
+        surface.CrashBoxesFollowRotation = true;
+        new ObjectFrameTransformer().RotateObjectGeometry(surface);
+
+        var rotatedCenter = Center(ship.CrashBoxes[0]);
+        Assert.AreEqual(80f * MathF.Sin(settings.CameraPitchDegrees * MathF.PI / 180f), MathF.Abs(rotatedCenter.y), 0.01f);
+        Assert.AreEqual(80f * MathF.Cos(settings.CameraPitchDegrees * MathF.PI / 180f), MathF.Abs(rotatedCenter.z), 0.01f);
+
+        ship.ObjectOffsets = new Vector3 { x = -rotatedCenter.x, y = -rotatedCenter.y, z = -rotatedCenter.z };
+        surface.ObjectOffsets = new Vector3 { x = -rotatedCenter.x, y = -rotatedCenter.y, z = -rotatedCenter.z };
+
+        bool collided = CollisionBoxScanner.TryFindFirstBoxCollision(
+            ship,
+            surface,
+            new CollisionMargins(0f, 0f, 0f),
+            static (obj, _, box) =>
+            {
+                var offset = CrashBoxTransform.GetEffectiveCrashOffset(
+                    obj,
+                    static (x, y, z) => new Vector3 { x = x, y = y, z = z });
+                return CrashBoxTransform.ToCrashWorldPoints(
+                    box,
+                    offset,
+                    static (x, y, z) => new Vector3 { x = x, y = y, z = z });
+            },
+            out _);
+
+        Assert.IsTrue(collided, $"Crash detection should find the rotated ship/surface overlap for {angle}.");
+        Assert.AreEqual(settings.CameraPitchDegrees, ship.Rotation.x, 0.001f);
+    }
+
     [TestMethod]
     public void PlayerLazer_CollidesWithEnemy()
     {
@@ -122,6 +186,16 @@ public class LazerCrashDetectionTests
                     }
                 }
             }
+        };
+    }
+
+    private static Vector3 Center(IReadOnlyList<IVector3> points)
+    {
+        return new Vector3
+        {
+            x = points.Average(point => point.x),
+            y = points.Average(point => point.y),
+            z = points.Average(point => point.z)
         };
     }
 }

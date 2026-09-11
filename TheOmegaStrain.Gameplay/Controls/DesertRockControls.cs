@@ -12,7 +12,7 @@ namespace TheOmegaStrain.Gameplay.Controls
         public IPhysics Physics { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         private const float Yrotation = 0f;
-        private const float Xrotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
+        private static float Xrotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
 
         public I3dObject MoveObject(I3dObject theObject, IAudioPlayer? audioPlayer, ISoundRegistry? soundRegistry)
         {

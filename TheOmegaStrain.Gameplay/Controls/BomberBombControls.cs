@@ -10,7 +10,7 @@ namespace TheOmegaStrain.Gameplay.Controls
 {
     public class BomberBombControls : IObjectMovement
     {
-        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
+        private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 270f;
 

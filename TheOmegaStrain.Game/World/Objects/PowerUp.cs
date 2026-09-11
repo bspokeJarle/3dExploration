@@ -39,7 +39,7 @@ namespace TheOmegaStrain.Game.World.Objects
             {
                 ObjectId = GameState.ObjectIdCounter++,
                 ObjectOffsets = new Vector3 { x = 0, y = 0, z = 0 },
-                Rotation = new Vector3 { x = 0, y = 0, z = 0 },
+                Rotation = new Vector3 { x = WorldViewSetup.SurfaceFacingObjectPitchDegrees, y = 0, z = 0 },
                 WorldPosition = new Vector3 { x = 0, y = 0, z = 0 },
                 Particles = new ParticlesAI(),
                 ParentSurface = parentSurface,

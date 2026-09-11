@@ -21,7 +21,7 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float DiveArcScreenY = -18f;
         private const float DiveArcHeadingZDegrees = 8f;
         private const float DiveArcBankYDegrees = -5f;
-        private const float BasePitchX = WorldViewSetup.CameraPitchDegrees;
+        private static float BasePitchX => WorldViewSetup.CameraPitchDegrees;
         private const float ApproachBankY = -24f;
         private const float DiveHeadingZ = 0f;
         private const float ImpactHoldSeconds = 0.5f;

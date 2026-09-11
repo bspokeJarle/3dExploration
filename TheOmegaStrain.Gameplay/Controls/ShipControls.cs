@@ -33,7 +33,6 @@ namespace TheOmegaStrain.Gameplay.Controls
         private const float MaxRotationSpeed = 160f;
         private const float XboxRotationAccelerationMultiplier = 1.35f;
         private const float XboxMaxRotationSpeedMultiplier = 1.35f;
-        private const float RotationDrag = 0.90f;
         private const float DEG2RAD = MathF.PI / 180f;
         private const float SurfaceLandingDamageSpeedThreshold = 5f;
         private const int MinSurfaceLandingDamage = 2;
@@ -276,7 +275,6 @@ namespace TheOmegaStrain.Gameplay.Controls
         private int _lastMouseY;
         private const float MouseYawTargetSensitivity = 0.25f;
         private const float MousePitchTargetSensitivity = 0.12f;
-        private const float MouseTargetFollowPer90Frame = 0.42f;
         private const float MouseDeadZonePixels = 2f;
         private const float MaxMouseDeltaPerEvent = 80f;
         private static readonly TimeSpan RawMouseFallbackWindow = TimeSpan.FromMilliseconds(250);
@@ -402,11 +400,11 @@ namespace TheOmegaStrain.Gameplay.Controls
             _mouseTargetInitialized = true;
         }
 
-        private void ApplyMouseTargetRotation()
+        private void ApplyMouseTargetRotation(GameSettingsState settings)
         {
             EnsureMouseTargetInitialized();
 
-            float follow = 1f - MathF.Pow(1f - MouseTargetFollowPer90Frame, GameState.FrameScale90);
+            float follow = 1f - MathF.Pow(1f - settings.ShipMouseRotationFollow, GameState.FrameScale90);
             _mouseSmoothedRotationZ += (_mouseTargetRotationZ - _mouseSmoothedRotationZ) * follow;
             _mouseSmoothedTilt += (_mouseTargetTilt - _mouseSmoothedTilt) * follow;
 
@@ -1343,7 +1341,7 @@ namespace TheOmegaStrain.Gameplay.Controls
 
             if (inputSettings.EffectiveControlScheme == ControlInputMode.Mouse)
             {
-                ApplyMouseTargetRotation();
+                ApplyMouseTargetRotation(inputSettings);
             }
             else
             {
@@ -1365,7 +1363,7 @@ namespace TheOmegaStrain.Gameplay.Controls
                     new ShipRotationInputSettings(
                         RotationAcceleration,
                         XboxRotationAccelerationMultiplier,
-                        RotationDrag,
+                        inputSettings.ShipRotationRetention,
                         MaxRotationSpeed,
                         XboxMaxRotationSpeedMultiplier),
                     new PhysicsTuningProfile(

@@ -11,7 +11,7 @@ namespace TheOmegaStrain.Gameplay.Controls.SpaceSwanControls
     public class SpaceSwanControls : IObjectMovement
     {
         // Visual rotation:
-        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
+        private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 90f;
         private const float RotationDegreesPerSecond = 120f;

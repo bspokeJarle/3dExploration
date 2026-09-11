@@ -144,8 +144,76 @@ public class RenderSimpleOptimizationTests
         Assert.IsTrue(positioned);
         var pivotVertex = obj.ObjectParts[0].Triangles[0].vert1;
         Assert.AreEqual(target.x, pivotVertex.x, 0.001f);
-        Assert.AreEqual(target.y, pivotVertex.y, 0.001f);
+        Assert.AreEqual(target.y - LandBasedObjectSetup.GroundContactNudgeYScaled, pivotVertex.y, 0.001f);
         Assert.AreEqual(target.z, pivotVertex.z, 0.001f);
+
+        Assert.AreEqual(
+            target.y - LandBasedObjectSetup.GroundContactNudgeYScaled - 1f,
+            obj.CrashBoxes[0][0].y,
+            0.001f,
+            "Crash geometry must receive the same surface clearance as the visible object.");
+    }
+
+    [DataTestMethod]
+    [DataRow(56f)]
+    [DataRow(63f)]
+    [DataRow(70f)]
+    public void SurfaceBasedPlacement_KeepsMinimumClearanceAtEveryCameraAngle(float pitchDegrees)
+    {
+        OmegaWorldViewSetup.ConfigurePitch(pitchDegrees);
+        try
+        {
+            var surface = new Surface();
+            surface.RotatedSurfaceTriangleByLandId[7] = new TriangleMeshWithColor
+            {
+                landBasedPosition = 7,
+                vert1 = new Vector3 { x = 40f, y = 120f, z = 15f },
+                vert2 = new Vector3 { x = 50f, y = 120f, z = 15f },
+                vert3 = new Vector3 { x = 40f, y = 130f, z = 15f }
+            };
+            var obj = new OmegaObject3D
+            {
+                ObjectId = 47,
+                ObjectName = "SurfaceClearanceObject",
+                ObjectOffsets = new Vector3(),
+                Rotation = new Vector3 { x = pitchDegrees },
+                WorldPosition = new Vector3(),
+                ParentSurface = surface,
+                SurfaceBasedId = 7,
+                UseSurfaceFootprintPivot = true,
+                ObjectParts =
+                [
+                    new OmegaObjectPart3D
+                    {
+                        IsVisible = true,
+                        PartName = "Main",
+                        Triangles =
+                        [
+                            new TriangleMeshWithColor
+                            {
+                                vert1 = new Vector3(),
+                                vert2 = new Vector3 { x = 10f },
+                                vert3 = new Vector3 { z = 20f }
+                            }
+                        ]
+                    }
+                ],
+                CrashBoxes = []
+            };
+
+            new ObjectFrameTransformer().RotateObjectGeometry(obj);
+            bool positioned = ObjectPlacementHelpers.TryGetRenderPosition(obj, 100, 100, out _, out _, out _);
+
+            Assert.IsTrue(positioned);
+            Assert.AreEqual(
+                120f - LandBasedObjectSetup.GroundContactNudgeYScaled,
+                obj.ObjectParts[0].Triangles[0].vert1.y,
+                0.001f);
+        }
+        finally
+        {
+            OmegaWorldViewSetup.ConfigurePitch(63f);
+        }
     }
 
     [TestMethod]

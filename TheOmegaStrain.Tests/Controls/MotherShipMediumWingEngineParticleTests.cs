@@ -68,7 +68,11 @@ public class MotherShipMediumWingEngineParticleTests
 
     // Replicates LiveGameLoop.RotateMesh for a single axis sequence (z then x — ship default x=WorldViewSetup.CameraPitchDegrees, y=0, z=90).
     private static List<ITriangleMeshWithColorAndTexture> ApplyShipRotation(
-        List<ITriangleMeshWithColorAndTexture> tris, float rotX = WorldViewSetup.CameraPitchDegrees, float rotY = 0f, float rotZ = 90f)
+        List<ITriangleMeshWithColorAndTexture> tris)
+        => ApplyShipRotation(tris, WorldViewSetup.CameraPitchDegrees);
+
+    private static List<ITriangleMeshWithColorAndTexture> ApplyShipRotation(
+        List<ITriangleMeshWithColorAndTexture> tris, float rotX, float rotY = 0f, float rotZ = 90f)
     {
         var r = Rotate.RotateZMesh(tris, rotZ);
         r = Rotate.RotateYMesh(r, rotY);

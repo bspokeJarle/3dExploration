@@ -51,6 +51,7 @@ namespace TheOmegaStrain.Common.CommonGlobalState
             };
 
             AddValueLine(lines, selectedIndex, (int)GraphicsSettingsField.QualityPreset, "QUALITY", settings.GraphicsQuality.ToString().ToUpperInvariant());
+            AddValueLine(lines, selectedIndex, (int)GraphicsSettingsField.CameraAngle, "CAMERA ANGLE", settings.CameraAngle.ToString().ToUpperInvariant());
             AddPercentLine(lines, selectedIndex, (int)GraphicsSettingsField.ParticleDensity, "PARTICLES", settings.ParticleDensityPercent);
             AddValueLine(lines, selectedIndex, (int)GraphicsSettingsField.GlowEffects, "GLOW", OnOff(settings.GlowEffectsEnabled));
             AddValueLine(lines, selectedIndex, (int)GraphicsSettingsField.EnhancedWeather, "WEATHER FX", OnOff(settings.EnhancedWeatherEnabled));
@@ -117,7 +118,8 @@ namespace TheOmegaStrain.Common.CommonGlobalState
             };
 
             AddValueLine(lines, selectedIndex, (int)FlightSettingsField.Preset, "FLIGHT FEEL", settings.FlightPreset.ToString().ToUpperInvariant());
-            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.Coasting, "COASTING", settings.FlightCoastingSetting.ToString().ToUpperInvariant());
+            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.FlightInertia, "FLIGHT INERTIA", FormatFlightInertia(settings.FlightCoastingSetting));
+            AddValueLine(lines, selectedIndex, (int)FlightSettingsField.RotationInertia, "ROTATION INERTIA", settings.FlightRotationInertiaSetting.ToString().ToUpperInvariant());
             AddValueLine(lines, selectedIndex, (int)FlightSettingsField.ThrustResponse, "THRUST ACCEL.", FormatThrustAcceleration(settings.FlightThrustResponseSetting));
             AddValueLine(lines, selectedIndex, (int)FlightSettingsField.GravityResponse, "GRAVITY PULL", FormatGravityPull(settings.FlightGravityResponseSetting));
             AddValueLine(lines, selectedIndex, (int)FlightSettingsField.ResetDefaults, "RESET", "BALANCED DEFAULTS");
@@ -147,6 +149,13 @@ namespace TheOmegaStrain.Common.CommonGlobalState
         {
             FlightThrustResponse.Soft => "GENTLE",
             FlightThrustResponse.Quick => "STRONG",
+            _ => "NORMAL"
+        };
+
+        private static string FormatFlightInertia(FlightCoasting value) => value switch
+        {
+            FlightCoasting.Short => "LOW",
+            FlightCoasting.Long => "HIGH",
             _ => "NORMAL"
         };
 

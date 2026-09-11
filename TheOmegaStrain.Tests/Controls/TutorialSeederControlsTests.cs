@@ -13,11 +13,32 @@ public class TutorialSeederControlsTests
     [TestInitialize]
     public void Setup()
     {
+        OmegaWorldViewSetup.ConfigurePitch(63f);
         GameState.GamePlayState = new GamePlayState();
         GameState.SurfaceState = new SurfaceState();
         GameState.ScreenOverlayState = new ScreenOverlayState();
         GameState.TutorialState = new TutorialRuntimeState();
         GameState.DeltaTime = 1f / 60f;
+    }
+
+    [TestCleanup]
+    public void Cleanup()
+    {
+        OmegaWorldViewSetup.ConfigurePitch(63f);
+    }
+
+    [DataTestMethod]
+    [DataRow(56f)]
+    [DataRow(63f)]
+    [DataRow(70f)]
+    public void MoveObject_IdlePoseUsesConfiguredWorldPitch(float pitchDegrees)
+    {
+        OmegaWorldViewSetup.ConfigurePitch(pitchDegrees);
+        var seeder = CreateSeeder();
+
+        new TutorialSeederControls().MoveObject(seeder, audioPlayer: null, soundRegistry: null);
+
+        Assert.AreEqual(pitchDegrees, seeder.Rotation!.x, 0.001f);
     }
 
     [TestMethod]

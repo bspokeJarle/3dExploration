@@ -26,6 +26,60 @@ public class WeaponsAimAssistTests
         };
     }
 
+    [TestCleanup]
+    public void Cleanup()
+    {
+        OmegaWorldViewSetup.ConfigurePitch(63f);
+    }
+
+    [DataTestMethod]
+    [DataRow(CameraAnglePreset.Low)]
+    [DataRow(CameraAnglePreset.Normal)]
+    [DataRow(CameraAnglePreset.High)]
+    public void LazerAimAssist_ProjectsRotatedCrashCenterAtEveryCameraAngle(CameraAnglePreset angle)
+    {
+        var settings = new GameSettingsState { CameraAngle = angle };
+        OmegaWorldViewSetup.ConfigurePitch(settings.CameraPitchDegrees);
+
+        var ship = CreateShip();
+        var weapons = CreateWeapons(ship);
+        var enemy = CreateEnemy("KamikazeDrone", x: 120f, y: -250f, z: 0f);
+        enemy.Rotation = new Vector3 { x = WorldViewSetup.CameraPitchDegrees, y = 0f, z = 0f };
+        enemy.CrashBoxes = new List<List<IVector3>>
+        {
+            OmegaObject3DHelpers.GenerateCrashBoxCorners(
+                new Vector3 { x = -20f, y = -20f, z = 60f },
+                new Vector3 { x = 20f, y = 20f, z = 100f })
+        };
+        enemy.CrashBoxesFollowRotation = true;
+        new ObjectFrameTransformer().RotateObjectGeometry(enemy);
+        GameState.SurfaceState.AiObjects.Add(enemy);
+
+        var lazer = FireStraightLazer(weapons, ship);
+        weapons.MoveWeapon(null, null);
+
+        var rotatedCenter = Center(enemy.CrashBoxes[0]);
+        float originX = ScreenSetup.screenSizeX / 2f + enemy.WorldPosition!.x;
+        float originY = ScreenSetup.screenSizeY / 2f + enemy.WorldPosition.y;
+        Assert.IsTrue(ProjectionMath.TryProjectVertex(
+            rotatedCenter,
+            originX,
+            originY,
+            -enemy.WorldPosition.z,
+            ScreenSetup.perspectiveAdjustment,
+            ScreenSetup.defaultObjectZoom,
+            out var expectedScreen));
+
+        Assert.IsTrue(expectedScreen.x >= 0f && expectedScreen.x <= ScreenSetup.screenSizeX &&
+                      expectedScreen.y >= 0f && expectedScreen.y <= ScreenSetup.screenSizeY,
+            $"Rotated crash center should remain visible for {angle}; actual ({expectedScreen.x:0.##}, {expectedScreen.y:0.##}).");
+
+        Assert.IsTrue(GameState.GamePlayState.AimAssistTargetActive, $"Aim assist should acquire a target at {angle} angle.");
+        Assert.AreEqual(expectedScreen.x, GameState.GamePlayState.AimAssistTargetScreenX, 1f);
+        Assert.AreEqual(expectedScreen.y, GameState.GamePlayState.AimAssistTargetScreenY, 1f);
+        Assert.IsTrue(lazer.Trajectory.x > 0f, $"Aim assist should pull the lazer toward the projected target at {angle} angle.");
+    }
+
     [TestMethod]
     public void LazerAimAssist_IgnoresOffscreenEnemiesAndHidesGuide()
     {
@@ -167,6 +221,16 @@ public class WeaponsAimAssistTests
                     }
                 }
             }
+        };
+    }
+
+    private static Vector3 Center(IReadOnlyList<IVector3> points)
+    {
+        return new Vector3
+        {
+            x = points.Average(point => point.x),
+            y = points.Average(point => point.y),
+            z = points.Average(point => point.z)
         };
     }
 

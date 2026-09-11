@@ -74,7 +74,7 @@ namespace TheOmegaStrain.Gameplay.Controls.JumpingFishControls
 
     public class JumpingFishControls : IObjectMovement
     {
-        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
+        private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const int InitialJumpDirection = -1;
         private const float StartZRotation = -90f;

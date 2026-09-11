@@ -1598,6 +1598,7 @@ namespace TheOmegaStrain.Game.SceneManagement
 
         private static void ApplySceneSettings(IScene scene)
         {
+            OmegaWorldViewSetup.ConfigurePitch(GameState.SettingsState.CameraPitchDegrees);
             var gps = GameState.GamePlayState;
             gps.InfectionCriticalMass = scene.InfectionThresholdPercent;
             gps.InfectionSpreadRate = scene.InfectionSpreadRate;

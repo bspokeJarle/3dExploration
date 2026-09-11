@@ -23,7 +23,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
         // -------------------------------------------------------
         //  Rotation
         // -------------------------------------------------------
-        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
+        private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 90f;
         private const float RotationDegreesPerSecond = 45f;

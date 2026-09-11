@@ -16,6 +16,8 @@ namespace TheOmegaStrain.Gameplay.Physics
             physics.ThrustRampRate = settings.ShipThrustRampRate;
             physics.ThrustSpeedMultiplier = settings.ShipThrustSpeedMultiplier;
             physics.GravityPullMultiplier = settings.ShipGravityPullMultiplier;
+            physics.HoverFloatDuration = settings.ShipHoverFloatDuration;
+            physics.HoverMinGravityScale = 0f;
         }
     }
 }

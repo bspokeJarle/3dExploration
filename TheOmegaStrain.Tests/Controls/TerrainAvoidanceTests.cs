@@ -1,6 +1,7 @@
 using TheOmegaStrain.Common.CommonGlobalState;
 using TheOmegaStrain.Common.CommonGlobalState.States;
 using TheOmegaStrain.Common.CommonSetup;
+using TheOmegaStrain.Common.OmegaEngineAdapters;
 using TheOmegaStrain.Domain;
 using TheOmegaStrain.Gameplay.Controls.MotherShipSmallControls;
 using TheOmegaStrain.Gameplay.Helpers;
@@ -176,6 +177,29 @@ public class TerrainAvoidanceTests
         Assert.IsFalse(motherShip.ImpactStatus.HasCrashed, "MotherShip should consume terrain contact as avoidance, not damage.");
         Assert.AreEqual(EnemySetup.MotherShipSmallHealth, motherShip.ImpactStatus.ObjectHealth);
         Assert.IsTrue(motherShip.ObjectOffsets!.y < 75f, "MotherShip recovery should lift it away from the terrain.");
+    }
+
+    [TestMethod]
+    public void MotherShipSmall_MoveObject_DuringDescent_KeepsDescentYAndAddsSurfaceCorrection()
+    {
+        const float descentStartY = -500f;
+        var motherShip = CreateAiObject(1007, "MotherShipSmall", string.Empty);
+        motherShip.ImpactStatus!.HasCrashed = false;
+        motherShip.IsOnScreen = true;
+        motherShip.ObjectOffsets = new Vector3 { x = 0f, y = descentStartY, z = 0f };
+        GameState.SurfaceState.AiObjects.Add(motherShip);
+        var controls = new MotherShipSmallControls();
+
+        controls.MoveObject(motherShip, null, null);
+
+        float correction = SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(
+            motherShip,
+            WorldViewSetup.SurfacePitchDegrees);
+        Assert.AreEqual(
+            descentStartY + correction,
+            motherShip.ObjectOffsets.y,
+            1f,
+            "Surface correction must be added to the scripted descent Y, not replace it with normal flight sync.");
     }
 
     [TestMethod]

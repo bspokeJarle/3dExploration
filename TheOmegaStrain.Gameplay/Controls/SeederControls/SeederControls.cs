@@ -16,7 +16,7 @@ namespace TheOmegaStrain.Gameplay.Controls.SeederControls
         // Visual rotation:
         // - Base rotations applied each frame to the seeder object.
         private const float BaseYRotation = 0f;
-        private const float BaseXRotation = 90f;
+        private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseZRotationIncrementPerFrame = 2f;
 
         // Sync offsets:
@@ -44,7 +44,6 @@ namespace TheOmegaStrain.Gameplay.Controls.SeederControls
         private bool _audioConfigured = false;
 
         private float Yrotation = BaseYRotation;
-        private float Xrotation = BaseXRotation;
         private float Zrotation = 0;
 
         private bool _syncInitialized = false;
@@ -122,7 +121,7 @@ namespace TheOmegaStrain.Gameplay.Controls.SeederControls
             else
             {
                 if (theObject.Rotation != null) theObject.Rotation.y = Yrotation;
-                if (theObject.Rotation != null) theObject.Rotation.x = Xrotation;
+                if (theObject.Rotation != null) theObject.Rotation.x = BaseXRotation;
                 if (theObject.Rotation != null) theObject.Rotation.z = Zrotation;
             }
 

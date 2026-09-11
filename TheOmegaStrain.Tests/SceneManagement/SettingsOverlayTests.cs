@@ -99,6 +99,8 @@ public class SettingsOverlayTests
             Assert.AreEqual(ScreenOverlayType.Settings, overlay.Type);
             Assert.AreEqual(ScreenOverlaySettingsPanel.Graphics, overlay.SettingsPanel);
             Assert.AreEqual(GraphicsQualityPreset.Balanced, GameState.SettingsState.GraphicsQuality);
+            Assert.AreEqual(CameraAnglePreset.Normal, GameState.SettingsState.CameraAngle);
+            StringAssert.Contains(overlay.Body, "CAMERA ANGLE   NORMAL");
 
             HandleKeyPress(handler, world, GameInputKey.Down);
             HandleKeyPress(handler, world, GameInputKey.Right);
@@ -108,7 +110,27 @@ public class SettingsOverlayTests
             Assert.IsTrue(GameState.SettingsState.GlowEffectsEnabled);
             Assert.IsTrue(GameState.SettingsState.EnhancedWeatherEnabled);
             Assert.IsTrue(GameState.SettingsState.EnhancedShadowsEnabled);
+
+            HandleKeyPress(handler, world, GameInputKey.Down);
+            HandleKeyPress(handler, world, GameInputKey.Right);
+
+            Assert.AreEqual(CameraAnglePreset.High, GameState.SettingsState.CameraAngle);
+            Assert.AreEqual(70f, GameState.SettingsState.CameraPitchDegrees);
+            StringAssert.Contains(overlay.Body, "CAMERA ANGLE   HIGH");
         });
+    }
+
+    [TestMethod]
+    public void CameraAngleSettings_MapLowNormalAndHighToCentralOmegaPitch()
+    {
+        var settings = new GameSettingsState { CameraAngle = CameraAnglePreset.Low };
+        Assert.AreEqual(56f, settings.CameraPitchDegrees);
+
+        settings.CameraAngle = CameraAnglePreset.Normal;
+        Assert.AreEqual(63f, settings.CameraPitchDegrees);
+
+        settings.CameraAngle = CameraAnglePreset.High;
+        Assert.AreEqual(70f, settings.CameraPitchDegrees);
     }
 
     [TestMethod]
@@ -200,7 +222,8 @@ public class SettingsOverlayTests
             Assert.AreEqual(ScreenOverlaySettingsPanel.Flight, overlay.SettingsPanel);
             StringAssert.Contains(overlay.Title, "FLIGHT");
             StringAssert.Contains(overlay.Body, "FLIGHT FEEL    BALANCED");
-            StringAssert.Contains(overlay.Body, "COASTING       NORMAL");
+            StringAssert.Contains(overlay.Body, "FLIGHT INERTIA NORMAL");
+            StringAssert.Contains(overlay.Body, "ROTATION INERTIA NORMAL");
             StringAssert.Contains(overlay.Body, "THRUST ACCEL.  NORMAL");
             StringAssert.Contains(overlay.Body, "GRAVITY PULL   NORMAL");
             StringAssert.Contains(overlay.Body, "RESET          BALANCED DEFAULTS");
@@ -209,7 +232,8 @@ public class SettingsOverlayTests
             HandleKeyPress(handler, world, GameInputKey.Right);
             Assert.AreEqual(FlightHandlingPreset.Inertial, GameState.SettingsState.FlightPreset);
             StringAssert.Contains(overlay.Body, "FLIGHT FEEL    INERTIAL");
-            StringAssert.Contains(overlay.Body, "COASTING       LONG");
+            StringAssert.Contains(overlay.Body, "FLIGHT INERTIA HIGH");
+            StringAssert.Contains(overlay.Body, "ROTATION INERTIA HIGH");
             StringAssert.Contains(overlay.Body, "THRUST ACCEL.  GENTLE");
             StringAssert.Contains(overlay.Body, "GRAVITY PULL   LIGHT");
             Assert.IsTrue(File.Exists(PersistenceSetup.LocalSettingsFilePath));
@@ -236,15 +260,21 @@ public class SettingsOverlayTests
         settings.AdjustFlight(FlightSettingsField.Preset, -1);
         Assert.AreEqual(FlightHandlingPreset.Stable, settings.FlightPreset);
         Assert.AreEqual(FlightCoasting.Short, settings.FlightCoastingSetting);
+        Assert.AreEqual(FlightRotationInertia.Low, settings.FlightRotationInertiaSetting);
         Assert.AreEqual(FlightThrustResponse.Quick, settings.FlightThrustResponseSetting);
         Assert.AreEqual(FlightGravityResponse.Strong, settings.FlightGravityResponseSetting);
 
-        settings.AdjustFlight(FlightSettingsField.Coasting, 1);
+        settings.AdjustFlight(FlightSettingsField.FlightInertia, 1);
         Assert.AreEqual(FlightHandlingPreset.Custom, settings.FlightPreset);
+
+        settings.AdjustFlight(FlightSettingsField.RotationInertia, 1);
+        Assert.AreEqual(FlightRotationInertia.Normal, settings.FlightRotationInertiaSetting);
 
         settings.AdjustFlight(FlightSettingsField.ResetDefaults, 1);
         Assert.AreEqual(FlightHandlingPreset.Balanced, settings.FlightPreset);
         Assert.AreEqual(0.9975f, settings.ShipCoastingRetention);
+        Assert.AreEqual(0.90f, settings.ShipRotationRetention);
+        Assert.AreEqual(0.42f, settings.ShipMouseRotationFollow);
         Assert.AreEqual(30f, settings.ShipThrustRampRate);
         Assert.AreEqual(9.6f, settings.ShipThrustSpeedMultiplier);
         Assert.AreEqual(9f, settings.ShipGravityPullMultiplier);

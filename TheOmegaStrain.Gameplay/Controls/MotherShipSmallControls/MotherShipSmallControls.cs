@@ -12,7 +12,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipSmallControls
     public class MotherShipSmallControls : IObjectMovement
     {
         // Visual rotation:
-        private const float BaseXRotation = WorldViewSetup.SurfaceFacingObjectPitchDegrees;
+        private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 0f;
 
@@ -346,13 +346,41 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipSmallControls
 
         private void SyncMovement(I3dObject theObject)
         {
-            if (!_syncInitialized)
+            Vector3 syncedOffsets;
+
+            if (_isDescending)
             {
-                _syncInitialized = true;
-                _syncY = SyncAnchorY;
+                // Descent has already calculated the base Y for this frame.
+                // Copy it so the surface correction remains purely additive.
+                syncedOffsets = new Vector3
+                {
+                    x = theObject.ObjectOffsets.x,
+                    y = theObject.ObjectOffsets.y,
+                    z = theObject.ObjectOffsets.z
+                };
+            }
+            else
+            {
+                if (!_syncInitialized)
+                {
+                    _syncInitialized = true;
+                    _syncY = SyncAnchorY;
+                }
+
+                syncedOffsets = SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY, SyncFactorY);
             }
 
-            theObject.ObjectOffsets = SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY, SyncFactorY);
+            if (theObject.IsOnScreen)
+            {
+                // Correct only the mothership's own offset for the tilted surface.
+                // Do not apply a second correction to weapons or particles: their
+                // guides already originate from this corrected object position.
+                syncedOffsets.y += SurfacePositionSyncHelpers.GetSurfacePitchHeightCorrectionY(
+                    theObject,
+                    WorldViewSetup.SurfacePitchDegrees);
+            }
+
+            theObject.ObjectOffsets = syncedOffsets;
         }
 
         private static void SyncToOriginal(I3dObject deepCopy)

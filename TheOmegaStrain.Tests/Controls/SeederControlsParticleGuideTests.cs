@@ -12,6 +12,7 @@ public class SeederControlsParticleGuideTests
     [TestInitialize]
     public void Setup()
     {
+        OmegaWorldViewSetup.ConfigurePitch(63f);
         GameState.SurfaceState = new SurfaceState
         {
             AiObjects = new List<OmegaObject3D>(),
@@ -23,6 +24,27 @@ public class SeederControlsParticleGuideTests
                 WorldPosition = new Vector3()
             }
         };
+    }
+
+    [TestCleanup]
+    public void Cleanup()
+    {
+        OmegaWorldViewSetup.ConfigurePitch(63f);
+    }
+
+    [DataTestMethod]
+    [DataRow(56f)]
+    [DataRow(63f)]
+    [DataRow(70f)]
+    public void MoveObject_UsesConfiguredWorldPitch(float pitchDegrees)
+    {
+        OmegaWorldViewSetup.ConfigurePitch(pitchDegrees);
+        var seeder = CreateSeederCollisionObject();
+        seeder.IsOnScreen = false;
+
+        new SeederControls().MoveObject(seeder, audioPlayer: null, soundRegistry: null);
+
+        Assert.AreEqual(pitchDegrees, seeder.Rotation!.x, 0.001f);
     }
 
     [TestMethod]

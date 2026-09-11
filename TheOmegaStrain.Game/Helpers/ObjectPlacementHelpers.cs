@@ -1,5 +1,6 @@
 using TheOmegaStrain.Game.World;
 using TheOmegaStrain.Common.OmegaEngineAdapters;
+using TheOmegaStrain.Common.CommonSetup;
 using TheOmegaStrain.Domain;
 using System;
 using System.Collections.Generic;
@@ -45,7 +46,14 @@ namespace TheOmegaStrain.Game.Helpers
                 var triangle = GetSurfaceTriangle(obj);
                 if (triangle == null) return false;
 
-                surfaceAnchor = triangle.vert1;
+                // Keep every surface-anchored object visibly clear of the terrain.
+                // Smaller Y is upward in Omega's coordinate system.
+                surfaceAnchor = new Vector3
+                {
+                    x = triangle.vert1.x,
+                    y = triangle.vert1.y - LandBasedObjectSetup.GroundContactNudgeYScaled,
+                    z = triangle.vert1.z
+                };
             }
 
             return ObjectPlacementMath.TryGetRenderPosition(

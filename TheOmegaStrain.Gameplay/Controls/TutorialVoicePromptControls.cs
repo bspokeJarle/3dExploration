@@ -250,7 +250,7 @@ namespace TheOmegaStrain.Gameplay.Controls
                         "Use RIGHT SHIFT or left mouse to fire.\n\n" +
                         "Approach seeders from the front and line up as straight as you can before firing. The aiming helper works best when your attack angle is clean.\n\n" +
                         "Keep distance after a kill. Exploding objects can throw debris that damages your ship.\n\n" +
-                        "Use 1, 2 and 3 to switch available systems.";
+                        "Use 1, 2, 3 and 4 to switch systems after you have collected the corresponding PowerUps.";
                     return true;
 
                 case ShipAiVoiceCue.TutorialDecoySelect:
