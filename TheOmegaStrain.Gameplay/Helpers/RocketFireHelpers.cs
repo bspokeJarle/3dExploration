@@ -1,6 +1,6 @@
 using System;
 
-namespace TheOmegaStrain.Gameplay.Controls;
+namespace TheOmegaStrain.Gameplay.Helpers;
 
 public static class RocketFireHelpers
 {

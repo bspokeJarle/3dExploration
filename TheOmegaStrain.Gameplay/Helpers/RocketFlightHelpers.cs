@@ -1,9 +1,8 @@
 using System;
 using RetroMesh.Engine;
 using TheOmegaStrain.Domain;
-using TheOmegaStrain.Gameplay.Helpers;
 
-namespace TheOmegaStrain.Gameplay.Controls;
+namespace TheOmegaStrain.Gameplay.Helpers;
 
 public enum RocketFlightPhase
 {

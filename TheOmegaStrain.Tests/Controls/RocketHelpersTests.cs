@@ -1,5 +1,5 @@
 using TheOmegaStrain.Domain;
-using TheOmegaStrain.Gameplay.Controls;
+using TheOmegaStrain.Gameplay.Helpers;
 
 namespace TheOmegaStrain.Tests.Controls;
 
