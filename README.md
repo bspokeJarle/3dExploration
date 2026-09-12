@@ -27,6 +27,31 @@ audio foundations, timing, and other shared game-loop functionality.
 
 ## Local Setup
 
+### Workshop quick start
+
+Requirements:
+
+- Windows x64
+- [Git for Windows](https://git-scm.com/download/win)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- PowerShell
+
+Open PowerShell and run this complete setup from the folder where you keep
+source repositories:
+
+```powershell
+git clone https://github.com/bspokeJarle/TheOmegaStrain.git
+Set-Location .\TheOmegaStrain
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build\Prepare-RetroMeshDependencies.ps1 -RestoreOmega -BuildOmega
+dotnet run --project .\TheOmegaStrain.Wpf\TheOmegaStrain.Wpf.csproj
+```
+
+The setup script clones the public RetroMesh repository as a sibling checkout,
+restores both repositories, builds the engine, runs its tests, and builds The
+Omega Strain. Steam and Supabase are not required for local workshop use.
+
+### Repository layout
+
 For local development, keep The Omega Strain and RetroMesh as sibling
 repositories:
 
@@ -44,7 +69,7 @@ sibling checkout builds without machine-specific paths.
 From a fresh checkout, run:
 
 ```powershell
-.\build\Prepare-RetroMeshDependencies.ps1 -RestoreOmega -BuildOmega
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build\Prepare-RetroMeshDependencies.ps1 -RestoreOmega -BuildOmega
 ```
 
 That script clones RetroMesh next to this repository if it is missing, builds
@@ -60,7 +85,7 @@ dotnet build .\TheOmegaStrain.sln -p:RetroMeshRoot=C:\Path\To\RetroMesh\
 Use Release for the Steam/installer output:
 
 ```powershell
-.\build\Prepare-RetroMeshDependencies.ps1 -Configuration Release -RestoreOmega -BuildOmega
+powershell -NoProfile -ExecutionPolicy Bypass -File .\build\Prepare-RetroMeshDependencies.ps1 -Configuration Release -RestoreOmega -BuildOmega
 dotnet build .\TheOmegaStrain.sln -c Release --no-restore
 ```
 
@@ -81,8 +106,10 @@ The general engine/game boundary is documented in
 Requirements:
 
 - Windows
+- Git for Windows
 - .NET 10 SDK
 - x64 runtime
+- PowerShell
 
 Build the solution:
 
@@ -124,7 +151,7 @@ client.
 
 ## Related Repositories
 
-- `RetroMesh`: the reusable engine.
+- [`RetroMesh`](https://github.com/bspokeJarle/RetroMesh): the reusable engine.
 - `RetroMesh.GameTemplate`: a minimal game template using RetroMesh and the
   copied LogoCube intro scene as a starting point.
 
