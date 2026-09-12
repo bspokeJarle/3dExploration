@@ -18,7 +18,7 @@ public static class FlyingObjectSurfaceClearanceHelpers
 
     public static bool ApplyMinimumClearance(I3dObject obj, float minimumClearance)
     {
-        float requiredLift = CalculateRequiredLift(obj, minimumClearance);
+        float requiredLift = CalculateRequiredLift(obj, minimumClearance) ?? 0f;
         if (requiredLift <= 0f || obj.ObjectOffsets == null)
             return false;
 
@@ -31,10 +31,13 @@ public static class FlyingObjectSurfaceClearanceHelpers
         FlyingObjectSurfaceClearanceState state,
         float deltaSeconds)
     {
-        float requiredLift = CalculateRequiredLift(
+        float? requiredLift = CalculateRequiredLift(
             obj,
             TerrainAvoidanceSetup.GetMinimumSurfaceClearance(obj.ObjectName));
-        float appliedLift = state.Update(requiredLift, deltaSeconds);
+        // Missing terrain is unknown, not evidence that it is safe to descend.
+        float appliedLift = requiredLift.HasValue
+            ? state.Update(requiredLift.Value, deltaSeconds)
+            : state.RetainedLift;
         if (appliedLift <= 0f || obj.ObjectOffsets == null)
             return false;
 
@@ -42,17 +45,17 @@ public static class FlyingObjectSurfaceClearanceHelpers
         return true;
     }
 
-    private static float CalculateRequiredLift(I3dObject obj, float minimumClearance)
+    private static float? CalculateRequiredLift(I3dObject obj, float minimumClearance)
     {
         if (!obj.IsOnScreen || minimumClearance <= 0f ||
             obj is not OmegaObject3D omegaObject || obj.ObjectOffsets == null)
-            return 0f;
+            return null;
 
         var surfaceOffsets = GameState.SurfaceState.SurfaceViewportObject?.ObjectOffsets;
         var rotatedTiles = obj.ParentSurface?.RotatedSurfaceTriangles;
         var localWorld = omegaObject.GetLocalWorldPosition();
         if (surfaceOffsets == null || localWorld == null || rotatedTiles == null || rotatedTiles.Count == 0)
-            return 0f;
+            return null;
 
         float objectScreenX = -localWorld.x + obj.ObjectOffsets.x;
         float objectScreenZ = localWorld.z + obj.ObjectOffsets.z;
@@ -94,8 +97,17 @@ public static class FlyingObjectSurfaceClearanceHelpers
             maximumRequiredLift = MathF.Max(maximumRequiredLift, requiredLift);
         }
 
-        if (!foundGround || maximumRequiredLift <= 0f)
-            return 0f;
+        // Visible arrivals can lie beyond the finite Surface patch. The existing
+        // projection helper falls back to the nearest tile's mean height there.
+        // Use that reference only when none of the footprint samples hit terrain.
+        if (!foundGround)
+        {
+            if (!SurfaceGroundProjectionHelpers.TryGetSurfaceGroundPoint(
+                rotatedTiles, surfaceLocalX, surfaceLocalZ, out _, out float edgeY, out _))
+                return null;
+            maximumRequiredLift = MathF.Max(0f,
+                minimumClearance - (surfaceOffsets.y + edgeY - objectScreenY));
+        }
 
         return maximumRequiredLift;
     }

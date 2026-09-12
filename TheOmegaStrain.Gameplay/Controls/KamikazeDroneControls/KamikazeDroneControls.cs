@@ -181,11 +181,13 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
                 HasLiveNonDroneEnemies() &&
                 IsShipOutsideImmediateHuntRange(theObject))
             {
+                ApplyWaitingSurfaceClearance(theObject);
                 return theObject;
             }
 
             if (ShouldWaitForSurpriseHuntDelay(theObject, now))
             {
+                ApplyWaitingSurfaceClearance(theObject);
                 return theObject;
             }
 
@@ -491,6 +493,14 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
             LastMovementDateTime = now;
 
             return theObject;
+        }
+
+        private void ApplyWaitingSurfaceClearance(I3dObject obj)
+        {
+            SyncMovement(obj);
+            SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(obj, WorldViewSetup.SurfacePitchDegrees);
+            FlyingObjectSurfaceClearanceHelpers.ApplyMinimumClearance(
+                obj, _surfaceClearance, (float)GameState.ClampedDeltaTime);
         }
 
         private static bool HasLiveNonDroneEnemies()

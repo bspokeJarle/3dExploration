@@ -24,6 +24,34 @@ public class FlyingObjectSurfaceClearanceHelpersTests
     }
 
     [TestInitialize]
+    public void InitializeForTest() => Setup();
+
+    [DataTestMethod]
+    [DataRow(63f)]
+    [DataRow(70f)]
+    public void VisibleArrivalBeyondSurface_UsesNearestTileAndRetainsLiftWhenTerrainIsMissing(float pitch)
+    {
+        var drone = new OmegaObject3D
+        {
+            ObjectId = 999, ObjectName = "KamikazeDrone", IsOnScreen = true,
+            WorldPosition = new Vector3 { x = 1f },
+            ObjectOffsets = new Vector3 { z = 900f, y = 300f },
+            ParentSurface = CreateSurfacePlane(pitch)
+        };
+        var state = new FlyingObjectSurfaceClearanceState();
+        Assert.IsTrue(FlyingObjectSurfaceClearanceHelpers.ApplyMinimumClearance(drone, state, 0.01f));
+        float lift = state.RetainedLift;
+        Assert.IsTrue(lift > 0f);
+        drone.ParentSurface = null;
+        for (int i = 0; i < 40; i++)
+        {
+            drone.ObjectOffsets.y = 300f;
+            FlyingObjectSurfaceClearanceHelpers.ApplyMinimumClearance(drone, state, 0.1f);
+        }
+        Assert.AreEqual(lift, state.RetainedLift);
+        Assert.AreEqual(300f - lift, drone.ObjectOffsets.y, 0.001f);
+    }
+
     public void Setup()
     {
         OmegaWorldViewSetup.ConfigurePitch(63f);

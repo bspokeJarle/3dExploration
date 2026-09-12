@@ -61,7 +61,7 @@ public class KamikazeDroneControlsHuntTimingTests
             StartHuntDateTime = DateTime.Now.AddMinutes(5)
         };
 
-        var drone = CreateDrone(300, 0, 0);
+        var drone = CreateDrone(300, 1, 0);
         var liveSeeder = new OmegaObject3D
         {
             ObjectId = 301,
@@ -76,7 +76,25 @@ public class KamikazeDroneControlsHuntTimingTests
         GameState.SurfaceState.AiObjects.Add(drone);
         GameState.SurfaceState.AiObjects.Add(liveSeeder);
 
+        drone.IsOnScreen = true;
+        drone.ObjectOffsets.y = 500f;
+        GameState.SurfaceState.SurfaceViewportObject = new OmegaObject3D { ObjectId = 999, ObjectOffsets = new Vector3() };
+        drone.ParentSurface = new TheOmegaStrain.Game.World.Objects.Surface
+        {
+            RotatedSurfaceTriangles = new List<ITriangleMeshWithColorAndTexture>
+            {
+                new TriangleMeshWithColor
+                {
+                    vert1 = new Vector3(-10000f, 0f, -10000f),
+                    vert2 = new Vector3(10000f, 0f, -10000f),
+                    vert3 = new Vector3(0f, 0f, 10000f)
+                }
+            }
+        };
+
         control.MoveObject(drone, null, null);
+        Assert.IsTrue(drone.ObjectOffsets.y <= -120f,
+            "Waiting for hunt must still enforce visible terrain clearance.");
         var before = (Vector3)drone.WorldPosition;
 
         Thread.Sleep(20);
