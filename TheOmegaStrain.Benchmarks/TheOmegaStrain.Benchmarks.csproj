@@ -5,6 +5,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>TheOmegaStrain.Benchmarks</RootNamespace>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,6 +13,9 @@
     <PackageReference Include="Microsoft.VisualStudio.DiagnosticsHub.BenchmarkDotNetDiagnosers" Version="18.3.36812.1" />
     <Reference Include="RetroMesh.Engine">
       <HintPath>$(RetroMeshEnginePath)</HintPath>
+    </Reference>
+    <Reference Include="RetroMesh.Rendering.Direct3D11">
+      <HintPath>$(RetroMeshDirect3D11Path)</HintPath>
     </Reference>
   </ItemGroup>
 
