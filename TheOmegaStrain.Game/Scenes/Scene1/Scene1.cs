@@ -39,6 +39,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene1
         //Killing a seeder will stop the cascade of infections from spreading to its neighbors. If there is a seeder within this radius the infection will go on until it is killed
         public float LocalInfectionSpreadRadius { get; } = 4000f;
         public float MotherShipSmallAggression { get; } = 0.90f;
+        public float KamikazeDroneSpeedMultiplier { get; } = 0.90f;
 
         public void SetupScene(I3dWorld world)
         {
@@ -75,7 +76,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene1
                 var rmd = new Random();
 
                 //Add Kamikaze drones
-                var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
+                var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface, speedMultiplier: KamikazeDroneSpeedMultiplier);
                 kamikaze.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-25000, 25000)) * ws, y = 0, z = (92000 + rmd.Next(-25000, 25000)) * ws };
                 kamikaze.Rotation = new Vector3 { };
                 kamikaze.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };

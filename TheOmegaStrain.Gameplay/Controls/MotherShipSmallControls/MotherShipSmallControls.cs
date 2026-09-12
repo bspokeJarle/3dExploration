@@ -11,6 +11,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipSmallControls
 {
     public class MotherShipSmallControls : IObjectMovement
     {
+        private readonly FlyingObjectSurfaceClearanceState _surfaceClearance = new();
         // Visual rotation:
         private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
@@ -376,6 +377,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipSmallControls
             SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(
                 theObject,
                 WorldViewSetup.SurfacePitchDegrees);
+            FlyingObjectSurfaceClearanceHelpers.ApplyMinimumClearance(theObject, _surfaceClearance, (float)GameState.ClampedDeltaTime);
         }
 
         private static void SyncToOriginal(I3dObject deepCopy)

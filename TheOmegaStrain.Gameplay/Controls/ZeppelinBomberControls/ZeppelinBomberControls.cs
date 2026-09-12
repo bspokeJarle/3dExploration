@@ -10,6 +10,7 @@ namespace TheOmegaStrain.Gameplay.Controls.ZeppelinBomberControls
 {
     public class ZeppelinBomberControls : IObjectMovement
     {
+        private readonly FlyingObjectSurfaceClearanceState _surfaceClearance = new();
         private static float BaseXRotation => WorldViewSetup.SurfaceFacingObjectPitchDegrees;
         private const float BaseYRotation = 0f;
         private const float BaseZRotation = 90f;
@@ -459,6 +460,7 @@ namespace TheOmegaStrain.Gameplay.Controls.ZeppelinBomberControls
 
             theObject.ObjectOffsets = SurfacePositionSyncHelpers.GetSurfaceSyncedObjectOffsets(theObject, _syncY);
             SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(theObject, WorldViewSetup.SurfacePitchDegrees);
+            FlyingObjectSurfaceClearanceHelpers.ApplyMinimumClearance(theObject, _surfaceClearance, (float)GameState.ClampedDeltaTime);
         }
 
         private static void SyncToOriginal(I3dObject source)

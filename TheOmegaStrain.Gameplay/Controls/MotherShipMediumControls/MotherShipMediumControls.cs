@@ -12,6 +12,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
 {
     public class MotherShipMediumControls : IObjectMovement
     {
+        private readonly FlyingObjectSurfaceClearanceState _surfaceClearance = new();
         // -------------------------------------------------------
         //  Interface properties
         // -------------------------------------------------------
@@ -255,6 +256,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
                 SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(
                     theObject,
                     WorldViewSetup.SurfacePitchDegrees);
+                FlyingObjectSurfaceClearanceHelpers.ApplyMinimumClearance(theObject, _surfaceClearance, (float)GameState.ClampedDeltaTime);
 
                 // Spin slowly during descent
                 Zrotation += SpinSpeed * (float)deltaSeconds;
@@ -284,6 +286,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
                 SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(
                     theObject,
                     WorldViewSetup.SurfacePitchDegrees);
+                FlyingObjectSurfaceClearanceHelpers.ApplyMinimumClearance(theObject, _surfaceClearance, (float)GameState.ClampedDeltaTime);
                 UpdateFacingBetweenShots(theObject);
 
                 float maxDelta = GetRotationDegreesPerSecond() * (float)deltaSeconds;

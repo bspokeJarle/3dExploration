@@ -12,7 +12,7 @@ namespace TheOmegaStrain.Game.World.Objects
     public class SpaceSwan
     {
         private const float ZoomRatio = 1.9f;
-        private const float CrashboxSize = 1.5f;
+        private const float CrashboxSize = 1.725f;
 
         // ----------------------------------------------------
         //  MAIN BODY

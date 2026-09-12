@@ -33,6 +33,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene2
         public float LocalInfectionSpreadDelaySec { get; } = 6.0f;
         public float LocalInfectionSpreadRadius { get; } = 4200f;
         public float MotherShipSmallAggression { get; } = 1.00f;
+        public float KamikazeDroneSpeedMultiplier { get; } = 0.95f;
 
         public void SetupScene(I3dWorld world)
         {
@@ -68,7 +69,7 @@ namespace TheOmegaStrain.Game.Scenes.Scene2
             {
                 var rmd = new Random();
 
-                var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
+                var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface, speedMultiplier: KamikazeDroneSpeedMultiplier);
                 kamikaze.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-55000, 55000)) * ws, y = 0, z = (92000 + rmd.Next(-55000, 55000)) * ws };
                 kamikaze.Rotation = new Vector3 { };
                 kamikaze.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };

@@ -47,7 +47,6 @@ public class TerrainAvoidanceTests
 
     [DataTestMethod]
     [DataRow("Seeder", 2010)]
-    [DataRow("KamikazeDrone", 2011)]
     [DataRow("ZeppelinBomber", 2012)]
     [DataRow("MotherShipSmall", 2013)]
     [DataRow("MotherShipMedium", 2014)]
@@ -68,6 +67,31 @@ public class TerrainAvoidanceTests
         Assert.IsFalse(aiObject.ImpactStatus!.HasCrashed);
         Assert.IsTrue(aiObject.ObjectOffsets.y < originalY, $"{objectName} should lift away from the tower contact.");
         Assert.AreNotEqual(originalX, aiObject.WorldPosition.x, $"{objectName} should steer horizontally away from the tower.");
+    }
+
+    [TestMethod]
+    public void TryStartTerrainRecovery_WhenKamikazeDroneHitsTower_PreservesCrashForExplosion()
+    {
+        var drone = CreateAiObject(2011, "KamikazeDrone", "Tower");
+        GameState.SurfaceState.AiObjects.Add(drone);
+
+        var started = TerrainAvoidanceHelpers.TryStartTerrainRecovery(drone);
+
+        Assert.IsFalse(started);
+        Assert.IsTrue(drone.ImpactStatus!.HasCrashed);
+        Assert.AreEqual("Tower", drone.ImpactStatus.ObjectName);
+    }
+
+    [TestMethod]
+    public void TryStartTerrainRecovery_WhenKamikazeDroneHitsSurface_StillRecovers()
+    {
+        var drone = CreateAiObject(2012, "KamikazeDrone", "Surface");
+        GameState.SurfaceState.AiObjects.Add(drone);
+
+        var started = TerrainAvoidanceHelpers.TryStartTerrainRecovery(drone);
+
+        Assert.IsTrue(started);
+        Assert.IsFalse(drone.ImpactStatus!.HasCrashed);
     }
 
     [DataTestMethod]

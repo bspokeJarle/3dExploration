@@ -10,6 +10,7 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
 {
     public class KamikazeDroneControls : IObjectMovement
     {
+        private readonly FlyingObjectSurfaceClearanceState _surfaceClearance = new();
         public ITriangleMeshWithColorAndTexture? StartCoordinates { get; set; }
         public ITriangleMeshWithColorAndTexture? GuideCoordinates { get; set; }
         public I3dObject ParentObject { get; set; }
@@ -25,6 +26,9 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
         private float TargetZrotation = 90;
 
         const int DroneSpeedScreenPrSecond = 3; //How many seconds it should take for the drone to cross the entire screen at its current speed. Adjust as needed.
+        public float SpeedMultiplier { get; }
+        public float MovementSpeedPerSecond =>
+            MovementHelpers.GetScreenCrossingSpeed(DroneSpeedScreenPrSecond) * SpeedMultiplier;
         private const float RotationDegreesPerSecond = 180f;
         private const float DirectionUpdateIntervalSeconds = 1f;
         private const float OvershootSeconds = 5f / GameState.GameplayBaselineFps;
@@ -60,8 +64,9 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
         private float _overshootSecondsRemaining = 0f;
         private Vector3 _overshootDirection = new Vector3();
 
-        public KamikazeDroneControls()
+        public KamikazeDroneControls(float speedMultiplier = 1f)
         {
+            SpeedMultiplier = Math.Clamp(speedMultiplier, 0.1f, 1.2f);
             var rd = new Random();
             var TimeDelay = GameSetup.KamikazeDroneMinHuntDelay +
                 rd.Next(0, GameSetup.KamikazeDroneMaxHuntDelay - GameSetup.KamikazeDroneMinHuntDelay);
@@ -319,6 +324,7 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
                 _storedWorldPositionInitialized = theObject.WorldPosition != null;
                 KamikazeDroneAi.SyncAuthoritativeDroneState(theObject);
                 SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(theObject, WorldViewSetup.SurfacePitchDegrees);
+                FlyingObjectSurfaceClearanceHelpers.ApplyMinimumClearance(theObject, _surfaceClearance, (float)GameState.ClampedDeltaTime);
                 LastMovementDateTime = now;
                 return theObject;
             }
@@ -374,7 +380,7 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
 
                 if (shouldRecalculateDirection && distance > 0)
                 {
-                    var speed = MovementHelpers.GetScreenCrossingSpeed(DroneSpeedScreenPrSecond);
+                    var speed = MovementSpeedPerSecond;
                     DirectionVelocity = MovementHelpers.GetVelocityTowardsTarget(
                         parentWorldPosition,
                         resolvedTargetWorldPosition,
@@ -429,9 +435,6 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
                             pursuitStep.MovementDirection,
                             pursuitStep.MoveDistance);
 
-                        // Homing may aim downward, but it must never command the
-                        // drone body through the locally rendered terrain.
-                        KamikazeDroneMovementHelpers.KeepAboveVisibleSurface(theObject);
                     }
                     else
                     {
@@ -484,6 +487,7 @@ namespace TheOmegaStrain.Gameplay.Controls.KamikazeDroneControls
             // Navigation and authoritative state use the uncorrected offsets.
             // Add the visual surface correction only to this rendered main object.
             SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(theObject, WorldViewSetup.SurfacePitchDegrees);
+            FlyingObjectSurfaceClearanceHelpers.ApplyMinimumClearance(theObject, _surfaceClearance, (float)GameState.ClampedDeltaTime);
             LastMovementDateTime = now;
 
             return theObject;

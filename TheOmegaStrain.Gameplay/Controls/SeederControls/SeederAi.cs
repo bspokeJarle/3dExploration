@@ -525,6 +525,27 @@ namespace TheOmegaStrain.Gameplay.Controls.SeederControls
 
             Vector3 next = SeederMovementHelpers.StepTowardTargetWorldXZ(current, s.TargetWorld, actualStep);
 
+            // Pause before entering another Seeder's space. Retargeting lets
+            // head-on pairs find new bio instead of waiting forever.
+            foreach (var other in GameState.SurfaceState.AiObjects)
+            {
+                if (other.ObjectId == id || other.ObjectName != "Seeder" ||
+                    other.ImpactStatus?.HasExploded == true || other.WorldPosition == null)
+                    continue;
+                var otherPosition = _aiStates.TryGetValue(other.ObjectId, out var otherState) && otherState.AuthPosInitialized
+                    ? otherState.AuthWorldPos
+                    : new Vector3(other.WorldPosition.x, other.WorldPosition.y, other.WorldPosition.z);
+                if (DistanceXZ(next, otherPosition) < 300f &&
+                    DistanceXZ(next, otherPosition) <= DistanceXZ(current, otherPosition))
+                {
+                    s.HasMovementTarget = false;
+                    s.StepsRemaining = 0;
+                    s.NextLocalRetargetTicks = nowTicks + TimeSpan.TicksPerSecond;
+                    s.NextGlobalDecisionTicks = nowTicks + TimeSpan.TicksPerSecond;
+                    return current;
+                }
+            }
+
             int baseDec = isOnScreen ? 1 : offscreenStepFactor;
             int dec = Math.Max(1, (int)Math.Round(baseDec * dtScale));
             s.StepsRemaining -= dec;

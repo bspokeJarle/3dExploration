@@ -136,6 +136,12 @@ namespace TheOmegaStrain.Gameplay.Helpers
             if (!TerrainAvoidanceSetup.IsTerrainObstacle(contactObjectName))
                 return false;
 
+            // Kamikaze drones may skim above Surface, but solid landmarks are
+            // intentional collision targets. A tower hit must reach the normal
+            // crash/explosion path instead of being consumed as recovery.
+            if (obj.ObjectName == "KamikazeDrone" && contactObjectName != "Surface")
+                return false;
+
             var aiObjects = GameState.SurfaceState?.AiObjects;
             if (aiObjects == null)
                 return false;

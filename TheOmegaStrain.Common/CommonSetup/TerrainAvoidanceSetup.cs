@@ -14,6 +14,16 @@ namespace TheOmegaStrain.Common.CommonSetup
         public const float HeavyProactiveAvoidanceDistance = 950f;
         public const float MotherShipSmallProactiveAvoidanceDistance = 350f;
 
+        // These clearances preserve the flight heights already authored for each
+        // object type. The local surface tile, not the camera or world origin,
+        // decides where the floor is.
+        public const float SeederMinimumSurfaceClearance = 200f;
+        public const float KamikazeDroneMinimumSurfaceClearance = 120f;
+        public const float ZeppelinBomberMinimumSurfaceClearance = 130f;
+        public const float MotherShipSmallMinimumSurfaceClearance = 25f;
+        public const float MotherShipMediumMinimumSurfaceClearance = 105f;
+        public const float MotherShipLargeMinimumSurfaceClearance = 75f;
+
         private static readonly HashSet<string> TerrainObstacleNames = new()
         {
             "Surface",
@@ -63,5 +73,16 @@ namespace TheOmegaStrain.Common.CommonSetup
             objectName == "MotherShipSmall"
                 ? MotherShipSmallProactiveAvoidanceDistance
                 : HeavyProactiveAvoidanceDistance;
+
+        public static float GetMinimumSurfaceClearance(string? objectName) => objectName switch
+        {
+            "Seeder" => SeederMinimumSurfaceClearance,
+            "KamikazeDrone" => KamikazeDroneMinimumSurfaceClearance,
+            "ZeppelinBomber" => ZeppelinBomberMinimumSurfaceClearance,
+            "MotherShipSmall" => MotherShipSmallMinimumSurfaceClearance,
+            "MotherShipMedium" => MotherShipMediumMinimumSurfaceClearance,
+            "MotherShipLarge" => MotherShipLargeMinimumSurfaceClearance,
+            _ => 0f
+        };
     }
 }

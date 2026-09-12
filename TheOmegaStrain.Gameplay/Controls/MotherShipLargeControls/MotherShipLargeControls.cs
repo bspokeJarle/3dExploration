@@ -12,6 +12,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
 {
     public class MotherShipLargeControls : IObjectMovement
     {
+        private readonly FlyingObjectSurfaceClearanceState _surfaceClearance = new();
         // -------------------------------------------------------
         //  Interface properties
         // -------------------------------------------------------
@@ -275,6 +276,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
                 SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(
                     theObject,
                     WorldViewSetup.SurfacePitchDegrees);
+                FlyingObjectSurfaceClearanceHelpers.ApplyMinimumClearance(theObject, _surfaceClearance, (float)GameState.ClampedDeltaTime);
 
                 // Face the player ship during descent — same pattern as other motherships
                 UpdateFacingTowardsShip(theObject, (float)deltaSeconds);
@@ -311,6 +313,7 @@ namespace TheOmegaStrain.Gameplay.Controls.MotherShipMediumControls
                 SurfacePositionSyncHelpers.AddSurfacePitchHeightCorrectionY(
                     theObject,
                     WorldViewSetup.SurfacePitchDegrees);
+                FlyingObjectSurfaceClearanceHelpers.ApplyMinimumClearance(theObject, _surfaceClearance, (float)GameState.ClampedDeltaTime);
 
                 UpdateFacingTowardsShip(theObject, (float)deltaSeconds);
 

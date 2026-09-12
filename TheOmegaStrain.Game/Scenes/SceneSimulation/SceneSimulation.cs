@@ -46,6 +46,7 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
         private readonly float _spreadDelaySec;
         private readonly float _spreadRadius;
         private readonly float _motherShipAggression;
+        private readonly float _droneSpeedMultiplier;
         private readonly bool _useLargeMotherShip;
 
         public string SceneMusic { get; private set; } = "music_flight";
@@ -63,6 +64,7 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
         public float MotherShipSmallAggression { get; }
         public float MotherShipMediumAggression { get; }
         public float MotherShipLargeAggression { get; }
+        public float KamikazeDroneSpeedMultiplier => _droneSpeedMultiplier;
 
         public SceneSimulation()
         {
@@ -93,6 +95,7 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
             _spreadDelaySec = Math.Max(1.2f, 2.0f - round * 0.10f);
             _spreadRadius = Math.Min(5500f + round * 150f, 6500f);
             _motherShipAggression = Math.Min(1.20f + round * 0.08f, 2.2f);
+            _droneSpeedMultiplier = Math.Min(1.00f + round * 0.02f, 1.20f);
 
             // Assign to interface properties
             InfectionThresholdPercent = _infectionThreshold;
@@ -166,7 +169,7 @@ namespace TheOmegaStrain.Game.Scenes.SceneSimulation
             for (int i = 0; i < _drones; i++)
             {
                 var rmd = new Random();
-                var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface);
+                var kamikaze = KamikazeDrone.CreateKamikazeDrone(Surface, speedMultiplier: KamikazeDroneSpeedMultiplier);
                 kamikaze.WorldPosition = new Vector3 { x = (95700 + rmd.Next(-55000, 55000)) * ws, y = 0, z = (92000 + rmd.Next(-55000, 55000)) * ws };
                 kamikaze.Rotation = new Vector3 { };
                 kamikaze.ObjectOffsets = new Vector3 { x = 0, y = 150, z = 400 };

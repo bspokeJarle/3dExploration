@@ -97,7 +97,7 @@ namespace TheOmegaStrain.Game.World.Objects
 
         private static readonly Vector3 BodyCenter = new Vector3 { x = 0, y = 0, z = 0 };
 
-        public static OmegaObject3D CreateKamikazeDrone(ISurface parentSurface)
+        public static OmegaObject3D CreateKamikazeDrone(ISurface parentSurface, float speedMultiplier = 1f)
         {
             var nose = KamikazeRoundedNose();
             var noseTransition = KamikazeNoseTransition();
@@ -132,7 +132,7 @@ namespace TheOmegaStrain.Game.World.Objects
             AddPart(drone, "KamikazeParticlesGuide", guide, false);
             AddPart(drone, "KamikazeParticlesStartGuide", startGuide, false);
 
-            drone.Movement = new KamikazeDroneControls();
+            drone.Movement = new KamikazeDroneControls(speedMultiplier);
             // Exhaust styling: the default gravity would drag the plume under the drone.
             drone.Particles = new ParticlesAI
             {
